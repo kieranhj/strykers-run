@@ -3,13 +3,14 @@
 //
 //   node tools/passhist.mjs DISC.ssd [FROM_FRAME] [FRAMES] [--right]
 //
-// Per pass: cycles from main_game_loop to the next, less those in wait_for_pass_slot;
+// Per pass: cycles from main_game_loop to the next, less those in wait_for_pass_slot (or, from
+// decision 26, wait_for_flip);
 // interrupts included. Tagged with the columns the renderer built and wrote, the bytes drawn
 // and restored, and the MOS sound calls. Prints a histogram by 10k and the mean of each tag
 // per bucket.
 import { readFileSync } from "node:fs";
 import { loadMachineSession } from "./jsbeeb_src.mjs";
-import { KEY, makeScript, applyEvents, bootMaster, START_AT } from "./playscript.mjs";
+import { KEY, makeScript, applyEvents, bootMaster, START_AT, gameKey } from "./playscript.mjs";
 const MachineSession = await loadMachineSession();
 const args = process.argv.slice(2);
 const rightAt = args.indexOf("--right"); const RIGHT = rightAt >= 0; if (RIGHT) args.splice(rightAt, 1);
@@ -21,7 +22,7 @@ for (const sec of JSON.parse(readFileSync(disc.replace(/\.ssd$/, ".symbols.json"
 const s = await bootMaster(MachineSession, disc);
 const events = makeScript(FROM + FRAMES + 10, 1);
 for (let f = 1; f <= FROM; f++) { if (!RIGHT || f <= START_AT + 1000) applyEvents(events, f, [s]); await s.runFrames(1); }
-if (RIGHT) { s.releaseAllKeys(); s.keyDownRaw(KEY.RIGHT); }
+if (RIGHT) { s.releaseAllKeys(); s.keyDownRaw(gameKey(s, "RIGHT")); }
 const cpu = s._machine.processor;
 const cyc = () => cpu.currentCycles + cpu.cycleSeconds * 2000000;
 const passes = []; let cur = null, waitFrom = null, lastC = cyc(), renFrom = null, inIrq = false, irqFrom = 0, lastOp = 0;
@@ -33,7 +34,7 @@ cpu.debugInstruction.add((pc, op) => {
     if (pc === syms.main_game_loop) { if (cur) { cur.cycles = c - cur.start - cur.wait; passes.push(cur); } cur = { start: c, render: 0, irq: 0, wait: 0, built: 0, written: 0, drawn: 0, restored: 0, sounds: 0 }; }
     if (!cur) return false;
     if (waitFrom && cpu.s > waitFrom.sp) { cur.wait += c - waitFrom.c; waitFrom = null; }
-    if (pc === syms.wait_for_pass_slot && !waitFrom) waitFrom = { c, sp: cpu.s };
+    if ((pc === syms.wait_for_pass_slot || (pc === syms.wait_for_flip && (cpu.romsel & 15) === 4)) && !waitFrom) waitFrom = { c, sp: cpu.s };
     if (renFrom && !inIrq && cpu.s > renFrom.sp) { cur.render += c - renFrom.c; renFrom = null; }
     if (bank4() && pc === syms.render && !renFrom) renFrom = { c, sp: cpu.s };
     if (pc === syms.initialise_column_buffer) cur.built++;

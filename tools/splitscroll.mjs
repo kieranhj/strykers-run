@@ -8,7 +8,7 @@
 // that re-arm write landed (rounded to 10 cycles).
 import { readFileSync } from "node:fs";
 import { loadMachineSession } from "./jsbeeb_src.mjs";
-import { START_AT, makeScript, applyEvents, bootMaster, KEY } from "./playscript.mjs";
+import { START_AT, makeScript, applyEvents, bootMaster, KEY, gameKey } from "./playscript.mjs";
 const MS = await loadMachineSession();
 const disc = process.argv[2]; const syms = {};
 for (const sec of JSON.parse(readFileSync(disc.replace(/\.ssd$/, ".symbols.json"), "utf8")).assemblies[0].sections)
@@ -21,6 +21,6 @@ cpu.debugInstruction.add((pc) => { cpu.sysvia._catchUp(); const f = cpu.sysvia.i
 cpu.debugWrite.add((addr) => { if (rise === null) return false;
   if (addr === 0xfe65 && !(cpu.pc >= syms.irq1_handler && cpu.pc < syms.multiply_A_by_X_2f1e)) { rearm = true; const d = Math.round((cyc() - rise) / 10) * 10; rearmAt[d] = (rearmAt[d] || 0) + 1; }
   if (addr === 0xfe21 && cpu.pc >= syms.irq1_handler && cpu.pc < syms.multiply_A_by_X_2f1e) { const d = cyc() - rise; if (d > 5000) { const b = rearm ? H.rearmed : H.normal; const k = Math.round(d / 64) * 64; b[k] = (b[k] || 0) + 1; } } return false; });
-s.keyDownRaw(KEY.RIGHT); for (let f = 0; f < 600; f++) await s.runFrames(1);
+s.keyDownRaw(gameKey(s, "RIGHT")); for (let f = 0; f < 600; f++) await s.runFrames(1);
 const top = (o) => Object.entries(o).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, n]) => `${k}:${n}`).join(" ");
 console.log(disc, "\n  bottom write, re-armed fields:", top(H.rearmed), "\n  bottom write, other fields:", top(H.normal), "\n  T1 re-arm write after vsync:", top(rearmAt));

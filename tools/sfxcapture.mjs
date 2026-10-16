@@ -11,7 +11,7 @@
 // effect is the same whatever it replaces, and its script can simply restart.
 import { readFileSync, writeFileSync } from "node:fs";
 import { loadMachineSession } from "./jsbeeb_src.mjs";
-import { makeScript, applyEvents, bootMaster } from "./playscript.mjs";
+import { makeScript, applyEvents, bootMaster, gameKey } from "./playscript.mjs";
 const MS = await loadMachineSession();
 const args = process.argv.slice(2);
 const PAIRS = args.includes("--pairs");
@@ -22,7 +22,7 @@ for (const sec of JSON.parse(readFileSync(disc.replace(/\.ssd$/, ".symbols.json"
 const s = await bootMaster(MS, disc); const ev = makeScript(4100, 1);
 for (let f = 1; f <= 4000; f++) { applyEvents(ev, f, [s]); await s.runFrames(1); }
 s.releaseAllKeys(); await s.runFrames(20);
-s.keyDownRaw([7, 3]); await s.runFrames(10); s.keyUpRaw([7, 3]); await s.runFrames(300);   // P: pause, let sounds end
+s.keyDownRaw(gameKey(s, "P")); await s.runFrames(10); s.keyUpRaw(gameKey(s, "P")); await s.runFrames(300);   // P: pause, let sounds end
 const cpu = s._machine.processor; const cyc = () => cpu.currentCycles + cpu.cycleSeconds * 2000000;
 const chip = cpu.soundChip; const orig = chip.poke.bind(chip);
 let log = null; chip.poke = (v) => { if (log) log.push([cyc(), v]); return orig(v); };

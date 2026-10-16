@@ -8,25 +8,26 @@ column), and the rest of the list at the end.
 
 ## Result so far
 
-Same game in both (keys by pass, `tools/passbench.mjs`, seed 1, passes 500-2000, both built
+Same game in each (keys by pass, `tools/passbench.mjs`, seed 1, passes 500-2000, built
 `-Shift 256 -ShiftEnd -Define DEBUG_LIVES`):
 
-| | Layer 2's control (`0a078b8`, one screen, EOR) | Layer 3 now (two screens, masked) |
+| | passes/s | cycles a pass |
 |---|---|---|
-| passes/s | 17.79 | **20.55** |
-| cycles a pass | 112,407 | 97,337 |
-| fields per pass | 2: 777, 3: 333, 4: 310, 5: 57, 6+: 23 | 2: 939, 3: 471, 4: 85, 5: 5 |
+| Layer 2's control (`0a078b8`: one screen, EOR sprites) | 17.79 | 112,407 |
+| A, B, C and the searches (`2e0fedc`) | 20.55 | 97,337 |
+| + E, the 50 Hz sound driver (`828ec7a`) | 21.59 | 92,652 |
+| + the pass lock not waiting (decision 26) | **23.38** | 85,535 |
 
 Frame-timed play (`tools/profile.mjs`, `tools/speed.mjs`; these press keys by frame, so each
 build plays a slightly different game and the numbers move a few percent with it):
 
 | | Layer 2 (`63892d7`) | Layer 3 now |
 |---|---|---|
-| frames 4000-5000 (town), passes/s | 11.57 | 20.58 |
-| frames 16000-17000 (`DEBUG_LIVES`), passes/s | 16.58 | 20.08 |
-| `tools/speed.mjs` (RIGHT held), passes/s | 10.25 | 19.58 |
+| frames 4000-5000 (town), passes/s | 11.57 | **23.89** (2 fields: 427, 3: 50) |
+| frames 16000-17000 (`DEBUG_LIVES`), passes/s | 16.58 | **24.34** |
+| `tools/speed.mjs` (RIGHT held), passes/s | 10.25 | **23.32** |
 
-Where a pass's time goes now (frames 4000-5000, `tools/passcost.mjs`): waiting for the pass's slot
+Where a pass's time went before E and decision 26 (frames 4000-5000, `tools/passcost.mjs`): waiting for the pass's slot
 25%; drawing sprites (`draw_column`) 16%; the interrupts (nearly all the MOS's 100 Hz sound tick)
 10%; putting the background back (`restore_block`) 9%; collisions 5%; the sprite column walk
 (`ren_draw_sprite`) 4%; the renderer's own bookkeeping ~9%. `tools/passhist.mjs` shows a pass's
@@ -85,6 +86,15 @@ posts effect + 1 by chip channel in `sfx_request` (below `&3000`); the vsync int
 driver. Compared field by field (`tools/soundfx.mjs`): within a step or two of period and
 amplitude, sometimes half a field apart. Interrupts: 10.9% of the CPU to 2.2% (765 cycles a field,
 frames 4000-5000). Same game: 21.59 passes/s.
+
+**The pass lock no longer waits** (decision 26, KC). A quarter of each pass (~24k cycles) was
+spent waiting for the vsync that ended its 2-field slot - a pass that overran by a little waited
+out the whole third field. The logic does not draw (layer 2), so the next pass's logic now starts
+as soon as the frame is rendered and its flip armed; only the next render waits for that flip
+(`wait_for_flip`), since until then the hidden screen holds the frame still to be shown. Frames
+still change at a vsync, at least 2 fields apart. Same game: 21.59 to 23.38 passes/s; fields
+between passes (`field_count` at `main_game_loop`, no longer whole slots): 1 or 2 for 1,239 of
+1,500, 3 for 252, 4 for 9.
 
 ## Checks
 

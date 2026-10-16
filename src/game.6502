@@ -3615,34 +3615,33 @@ move_mover_routine_address_high = * + 2
     STA helicopter_to_update
     STY mover_to_update
     JSR update_enemy_helicopter
-\ Step 2 (decision 18): the original held update_movers to at least 36,864 us (~1.84 fields)
-\ of System VIA T2 here. Now a pass is locked to the field counter: one that ends inside its
-\ 2-field slot waits for the slot's end; one that overruns waits for the next field, so every
-\ pass is a whole number of fields and starts at a vsync. pass_start needs no initialising:
-\ a stale value costs at most the first pass one or two fields.
+\ Step 2 (decisions 18, 26): the original held update_movers to at least 36,864 us (~1.84
+\ fields) of System VIA T2 here. Now the frames are locked to the field counter: the renderer
+\ draws this pass into the hidden screen (once the last frame is shown: render waits for its
+\ flip), and the vsync interrupt shows it 2 fields after the last flip, or at the next field if
+\ that has gone by. Then the next pass's logic starts at once: it does not draw, so it need
+\ not wait for the flip (decision 26, KC; decision 18 waited here for that field). pass_start
+\ is the field of the last flip; it needs no initialising: a stale value costs at most the
+\ first frame one or two fields.
 .wait_for_timer_281a
     JSR render_pass                 \ Step 2 (layer 2): draw this pass into the hidden screen
     SEI                             \ the field chosen and the flip armed before a vsync can pass
     LDA field_count
     TAX
     SEC
-    SBC pass_start                  \ fields this pass has taken so far
+    SBC pass_start                  \ fields since the last flip
     CMP #&02
     INX
     TXA                             \ A = the next field
-    BCS set_pass_slot_end           \ overran: end at the next field
+    BCS set_flip_field              \ 2 or more: show it at the next field
     LDA pass_start
-    ADC #&02                        \ (C clear) on time: end at the slot's end
-.set_pass_slot_end
+    ADC #&02                        \ (C clear) fewer: 2 fields after the last flip
+.set_flip_field
     STA flip_target                 \ layer 2: the vsync interrupt shows the new screen then
+    STA pass_start
     LDA #&80
     STA flip_pending
     CLI
-    LDA flip_target
-.wait_for_pass_slot
-    CMP field_count
-    BNE wait_for_pass_slot
-    STA pass_start
     RTS
 
 .movers_to_update

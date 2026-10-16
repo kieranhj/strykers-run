@@ -10,7 +10,7 @@
 // the fields each pass took (field_count, &90, at main_game_loop).
 import { readFileSync } from "node:fs";
 import { loadMachineSession } from "./jsbeeb_src.mjs";
-import { KEY, makeScript, applyEvents, bootMaster } from "./playscript.mjs";
+import { KEY, makeScript, applyEvents, bootMaster, gameKey } from "./playscript.mjs";
 const MachineSession = await loadMachineSession();
 const args = process.argv.slice(2);
 const opt = (name, dflt) => { const i = args.indexOf(name); if (i < 0) return dflt; const v = args[i + 1]; args.splice(i, 2); return parseInt(v, 10); };
@@ -62,8 +62,8 @@ for (const disc of discs) {
         for (let i = 0; m.passes < p; i++) { if (i === 150) { stalled = p; break; } await s.runFor(400000); }
         if (stalled) break;
         const want = keysAt[p] || [];
-        for (const k of held) if (!want.includes(k)) s.keyUpRaw(KEY[k]);
-        for (const k of want) if (!held.includes(k)) s.keyDownRaw(KEY[k]);
+        for (const k of held) if (!want.includes(k)) s.keyUpRaw(gameKey(s, k));
+        for (const k of want) if (!held.includes(k)) s.keyDownRaw(gameKey(s, k));
         held = want;
     }
     const last = stalled ? stalled - 1 : FROM + N;

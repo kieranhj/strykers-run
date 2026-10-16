@@ -19,7 +19,7 @@
 // Use DEBUG_LIVES builds, so the game never ends.
 import { readFileSync } from "node:fs";
 import { loadMachineSession } from "./jsbeeb_src.mjs";
-import { KEY, makeScript, applyEvents, bootMaster } from "./playscript.mjs";
+import { KEY, makeScript, applyEvents, bootMaster, gameKey } from "./playscript.mjs";
 const MachineSession = await loadMachineSession();
 
 const args = process.argv.slice(2);
@@ -95,8 +95,11 @@ function state(m) {
     if (out.player_helicopter[0] === 0) out.helicopter_fuel = [0, 0];
     return out;
 }
+// the newest frame: the one waiting for its flip if there is one (decision 26: a pass can start
+// before its frame is shown), else the one shown
 function shown(m) {
-    const shadow = !!(m.cpu.acccon & 1);
+    const pending = m.syms.flip_pending !== undefined && (m.s.readMemory(m.syms.flip_pending, 1, { shadow: false })[0] & 0x80);
+    const shadow = pending ? !!m.s.readMemory(m.syms.flip_screen, 1, { shadow: false })[0] : !!(m.cpu.acccon & 1);
     return { shadow, bytes: m.s.readMemory(0x4000, 0x4000, { shadow }) };
 }
 
@@ -207,8 +210,8 @@ for (let p = 1; p <= PASSES; p++) {
         }
     }
     const want = keysAt[p] || [];
-    for (const k of held) if (!want.includes(k)) { A.s.keyUpRaw(KEY[k]); B.s.keyUpRaw(KEY[k]); }
-    for (const k of want) if (!held.includes(k)) { A.s.keyDownRaw(KEY[k]); B.s.keyDownRaw(KEY[k]); }
+    for (const k of held) if (!want.includes(k)) { A.s.keyUpRaw(gameKey(A.s, k)); B.s.keyUpRaw(gameKey(B.s, k)); }
+    for (const k of want) if (!held.includes(k)) { A.s.keyDownRaw(gameKey(A.s, k)); B.s.keyDownRaw(gameKey(B.s, k)); }
     held = want;
     if (p % 500 === 0) console.log(`pass ${p}: state identical` + (SCREEN ? `, screen bytes differing this pass ${screenDiffs[screenDiffs.length - 1]}` : ""));
 }

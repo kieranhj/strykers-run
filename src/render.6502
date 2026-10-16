@@ -248,7 +248,8 @@ MAX_BLOCK   = &2A0                  \ more than any mover's save block: 656 byte
 \ =============================================================================================
 .render
 {
-    JSR save_game_zp
+    JSR wait_for_flip               \ the hidden screen is the one the last frame went to until
+    JSR save_game_zp                \ it is shown (decision 26)
     LDA shown_screen                \ draw into the screen not being shown
     EOR #1
     STA back
@@ -482,13 +483,20 @@ ENDIF
     CLI
     RTS
 
+\ ---- wait_for_flip: until the vsync interrupt has shown the last frame (decision 26: the logic
+\ of the next pass runs meanwhile, and the renderer waits here) -------------------------------
+.wait_for_flip
+{
+    BIT flip_pending
+    BMI wait_for_flip
+    RTS
+}
+
 \ ---- render_to_main: the game is over (or observer mode left): the newest frame on the main
 \ screen, shown, so the game over text and the title go where the original put them.
 .render_to_main
 {
-.wait_for_flip
-    BIT flip_pending                \ a flip still to come happens first
-    BMI wait_for_flip
+    JSR wait_for_flip               \ a flip still to come happens first
     LDA shown_screen
     BEQ done                        \ main is shown, and newest
     JSR render                      \ draws into main, the hidden one

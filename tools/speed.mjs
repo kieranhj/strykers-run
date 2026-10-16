@@ -8,7 +8,7 @@
 // (movers_x_high/low slot 0), viewport_left (&BA/&B2), CRTC start (&B0/&B1).
 import { readFileSync } from "node:fs";
 import { loadMachineSession } from "./jsbeeb_src.mjs";
-import { KEY, START_AT, makeScript, applyEvents, bootMaster } from "./playscript.mjs";
+import { KEY, START_AT, makeScript, applyEvents, bootMaster, gameKey } from "./playscript.mjs";
 const MachineSession = await loadMachineSession();
 
 const [disc, holdArg] = process.argv.slice(2);
@@ -36,9 +36,9 @@ cpu.debugInstruction.add((pc) => {
     }
     return false;
 });
-s.keyDownRaw(KEY.RIGHT);
+s.keyDownRaw(gameKey(s, "RIGHT"));
 for (let f = 0; f < HOLD; f++) await s.runFrames(1);
-s.keyUpRaw(KEY.RIGHT);
+s.keyUpRaw(gameKey(s, "RIGHT"));
 
 const first = samples[10], last = samples[samples.length - 1];      // skip the start of the run
 const frames = last.frame - first.frame, passes = samples.length - 11;

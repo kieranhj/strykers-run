@@ -13,7 +13,7 @@
 // erases and draws, edge columns built and written, save-under bytes.
 import { readFileSync, writeFileSync } from "node:fs";
 import { loadMachineSession } from "./jsbeeb_src.mjs";
-import { KEY, makeScript, applyEvents, bootMaster, START_AT } from "./playscript.mjs";
+import { KEY, makeScript, applyEvents, bootMaster, START_AT, gameKey } from "./playscript.mjs";
 const MachineSession = await loadMachineSession();
 
 const args = process.argv.slice(2);
@@ -45,7 +45,7 @@ const PHASES = [
     "render", "history_push", "save_game_zp", "restore_game_zp", "player_needs_redrawing",
     "restore_save_under", "take_save_under", "write_column", "record_differs", "span_in_zone",
     "swap_record_in", "swap_record_out", "record_live", "check_if_mover_is_on_screen",
-    "wait_for_pass_slot", "wait_for_field_count_2242",
+    "wait_for_pass_slot", "wait_for_flip", "wait_for_field_count_2242",
     "mark_to_draw", "close_over_overlaps", "take_off", "put_on", "draw_mover", "ren_draw_sprite",
     "draw_column", "restore_block", "raise_address", "up_a_cell", "compact",
 ].filter((n) => n in syms);
@@ -56,7 +56,7 @@ const irqLo = syms.irq1_handler, irqHi = syms.multiply_A_by_X_2f1e;
 const s = await bootMaster(MachineSession, disc);
 const events = makeScript(FROM + FRAMES + 10, 1);
 for (let f = 1; f <= FROM; f++) { if (!RIGHT || f <= START_AT + 1000) applyEvents(events, f, [s]); await s.runFrames(1); }
-if (RIGHT) { s.releaseAllKeys(); s.keyDownRaw(KEY.RIGHT); }
+if (RIGHT) { s.releaseAllKeys(); s.keyDownRaw(gameKey(s, "RIGHT")); }
 
 const cpu = s._machine.processor;
 const cyc = () => cpu.currentCycles + cpu.cycleSeconds * 2000000;

@@ -9,7 +9,7 @@
 // the original's player save-under used.
 import { readFileSync } from "node:fs";
 import { loadMachineSession } from "./jsbeeb_src.mjs";
-import { KEY, makeScript, applyEvents, bootMaster, START_AT } from "./playscript.mjs";
+import { KEY, makeScript, applyEvents, bootMaster, START_AT, gameKey } from "./playscript.mjs";
 const MachineSession = await loadMachineSession();
 const args = process.argv.slice(2);
 const rightAt = args.indexOf("--right"); const RIGHT = rightAt >= 0; if (RIGHT) args.splice(rightAt, 1);
@@ -21,7 +21,7 @@ for (const sec of JSON.parse(readFileSync(disc.replace(/\.ssd$/, ".symbols.json"
 const s = await bootMaster(MachineSession, disc);
 const events = makeScript(FROM + FRAMES + 10, 1);
 for (let f = 1; f <= FROM; f++) { if (!RIGHT || f <= START_AT + 1000) applyEvents(events, f, [s]); await s.runFrames(1); }
-if (RIGHT) { s.releaseAllKeys(); s.keyDownRaw(KEY.RIGHT); }
+if (RIGHT) { s.releaseAllKeys(); s.keyDownRaw(gameKey(s, "RIGHT")); }
 const cpu = s._machine.processor;
 const W = s.readMemory(syms.mover_types_width_table, 64, { shadow: false }), H = s.readMemory(syms.mover_types_height_table, 64, { shadow: false });
 const REC_XH = 0xb180, REC_TYPE = 0xb000;

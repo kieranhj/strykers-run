@@ -55,6 +55,7 @@ shown screen byte-identical on all but 8 of 42,000 passes. Slower: 11.6 passes/s
       logic reads; the collision and target searches reject far movers early. 20.55 passes/s
       on the same game as layer 2's control (17.79); identical state over 24,000 passes
 - [x] E: our own 50 Hz sound effect driver, `src/lib/sfx50.6502` (decision 25)
+- [x] The next pass's logic runs while the frame waits for its flip (decision 26)
 - [ ] D: the landscape column
 - [ ] The sprite loops' per-column overhead; the renderer's bookkeeping; a helicopter test
 - [ ] Budget: half an original pass of work, plus double-buffer overhead, under 39,936 cycles.
