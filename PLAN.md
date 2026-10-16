@@ -30,14 +30,15 @@ Speed reference: the original's design rate, 25 passes a second (decision 12): o
 of movement per 2 fields. Each layer is measured (`tools/profile.mjs`, `tools/speed.mjs`), gets a
 decisions row and a commit.
 
-## Layer 1 - own the interrupt, lock to vsync
-- [ ] Measure the MOS's 20%: what it does on each of the game's interrupts (keyboard scan, sound,
-      centisecond tick, unclaimed User VIA interrupts offered to ROMs)
-- [ ] The game's own IRQ1V: vsync (field counter, palette top, T1 for the split), T1 (palette
-      bottom); hand the MOS only what sound needs
-- [ ] The pass locked to 2 fields by the field counter, replacing `wait_for_timer_281a`
-- [ ] Keyboard read direct from the System VIA (kit `keydown.6502`); a PRNG for the User VIA T2
-      reads (a deviation: timing is now fixed, so T2 would repeat)
+## Layer 1 - own the interrupt, lock to vsync: DONE 2026-10-16 (`docs/step2-layer1.md`)
+Decisions 14-19. In play the game's handler keeps vsync and User VIA T1, the MOS only its
+100 Hz tick for the OSWORD 7 sound; the front end is still the MOS's. Pass locked to 2 fields,
+keyboard direct, PRNG. Interrupts 21% -> 10.6% of the CPU; 16.8 -> 17.8 passes/s (town),
+15.1 -> 17.0 (frame 16000); about half the passes still overrun their slot.
+Left for later (KC): the MOS out of the interrupt entirely, with the game's own sound driver
+(probably 50 Hz) in place of OSWORD 7 and the MOS envelopes (the tick is still 9-10% of the
+CPU, ~6.8% of it sound); then the front end owned too (its music events, `&EC` key reads,
+OSBYTE 19 and OSBYTE &81 scans).
 
 ## Layer 2 - double buffering in shadow RAM
 - [ ] Screens at &4000-&7FFF in main and shadow (same addresses: the wrap code is unchanged);
@@ -48,7 +49,8 @@ decisions row and a commit.
 - [ ] Verified by a buffer oracle (screen against a fresh redraw) and on b2/beebjit
 
 ## Layer 3 - fast enough
-- [ ] Profile; speed up `unpack_column_of_sprite`, collisions, player buffering, the MOS sound path
+- [ ] Profile; speed up `unpack_column_of_sprite`, collisions, player buffering; the game's own
+      sound driver in place of the MOS's (layer 1, KC: probably 50 Hz)
 - [ ] Budget: half an original pass of work, plus double-buffer overhead, under 39,936 cycles.
       Report before layer 4; if it cannot fit, bring the numbers and the options
 

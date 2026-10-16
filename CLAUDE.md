@@ -29,10 +29,11 @@ the bug log. The method is beeb-port-kit's (`C:\Users\khcon\OneDrive\BEEB\Repos\
 
 ```powershell
 .\build.ps1             # build/strykers.ssd, then tools/compare.py against the reference
-.\build.ps1 -NoCompare  # once the code deliberately differs from the reference
+.\build.ps1 -NoCompare  # step 2: the code deliberately differs from the reference
 .\build.ps1 -Release
 ```
 
+Step 1's byte-identical source is the tag `step1-identical`; from step 2 on, build with `-NoCompare`.
 Baron 0.5.3 (`bin\baron.exe`, gitignored; built from `C:\Users\khcon\OneDrive\BEEB\Repos\baron`,
 decision 2). One assembly, `src/main.6502`, so the game and the banks share one symbol table.
 `build/strykers.lst` is the listing, `build/strykers.symbols.json` the symbol dump: take
@@ -51,6 +52,7 @@ addresses from there (`python tools/listing.py symbols build/strykers.symbols.js
 | `zp.6502` | zero-page names (several per address: the game reuses zero page) and fixed workspace |
 | `os.6502` | MOS calls, vectors, hardware registers |
 | `lib/boot_stamp.6502` | the kit's stamp macros |
+| `lib/keydown.6502` | the kit's `keydown_int`, forked (step 2 layer 1): the keyboard read straight off the System VIA |
 
 `game.6502` and `bank*.6502` were generated once by `tools/disasm2baron.py` from
 `reference/strykers-run-enhanced-disassembly.txt` and are **hand-maintained**: the converter
@@ -67,6 +69,11 @@ disassembly's `actually`/`also` notes say what an operand really is.
 - `tools/playscript.mjs` - the scripted game (boot, start, run/fire/jump); `tools/play.mjs DISC` plays it with screenshots
 - `tools/lockstep.mjs A B [FRAMES]` - two builds on the same input, first frame whose screen differs
 - `tools/tracediff.mjs CONTROL SHIFTED SHIFT [@FRAME]` - the first instruction or screen write that differs, both stopped there (`DUMP=05` shows the bytes at a zero-page pointer)
+- `tools/profile.mjs DISC [FROM] [FRAMES]`, `tools/speed.mjs DISC` - passes/s, fields per pass, flat profile; speed with RIGHT held
+- `tools/irqprofile.mjs DISC [FROM] [FRAMES]` - every interrupt by the VIA source it serviced, its cycles by MOS subroutine (nesting handled: the MOS's tick re-enables interrupts)
+- `tools/frontend.mjs DISC` - title, instructions, define controls, pause, high score entry, toggles, two games: 14 checks, plus the MOS state handed over and back
+- `tools/split.mjs DISC FROM FRAMES`, `tools/splitscroll.mjs DISC` - when the palette writes land after vsync, every field / on scrolling fields
+- `tools/soundfx.mjs DISC OUT.json` - each sound effect's SN76489 writes, for comparing two builds
 
 ## Memory (MGAME, as the reference lays it out)
 
@@ -74,3 +81,9 @@ disassembly's `actually`/`also` notes say what an operand really is.
 `&0300` column buffer; `&0400-&07FF` and `&0880-&095F` copied-down code and data; `&0E00-&3FFF`
 code and data; `&4000-&46FF` start-up code, then the screen `&4000-&7FFF` (16K, MODE 2,
 hardware-scrolled by the CRTC). Bank 5 `&8000-&83FF` is the player buffer.
+
+Step 2 additions: zero page `&90` (`field_count`), `&92`/`&93` (the PRNG); `&33B9-&33FF` (the
+standard version's dead table) holds layer 1's keyboard read, PRNG and two variables, padded so
+everything from `&3400` stays put, 3 bytes free (2026-10-16); bank 5 grows only at its end
+(`&A3FA-&A463`), because its music is page-aligned. In play the game's `irq1_handler` owns vsync
+(`irq_owned` = `&FF`); on the front end the MOS has it (decision 14).

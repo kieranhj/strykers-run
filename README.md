@@ -3,8 +3,8 @@
 Stryker's Run was written by Chris Roberts and Philip Meller, with graphics by Nick Elms and music
 by Martin Galway, and published by Superior Software for the BBC Micro in 1986. This repository
 rebuilds the BBC Master 128 enhanced version as [Baron](https://github.com/waitingforvsync/baron)
-source - byte for byte identical to the original - as the starting point for optimising it to
-50 Hz and removing its sprite flicker.
+source - byte for byte identical to the original at the tag `step1-identical` - and is now
+optimising it to 50 Hz and removing its sprite flicker (`PLAN.md`).
 
 The game remains the copyright of its authors and publisher. This repository is for study and
 preservation; it does not include the original disc images or the disassembly it was made from.
@@ -23,7 +23,7 @@ preservation; it does not include the original disc images or the disassembly it
 Needs Baron 0.5.3 (`bin/baron.exe` or on the PATH) and Python 3; Node.js and jsbeeb for the
 test harnesses.
 
-    .\build.ps1        # -> build/strykers.ssd
+    .\build.ps1 -NoCompare   # -> build/strykers.ssd (step1-identical builds without -NoCompare)
 
 Boot `build/strykers.ssd` on a Master 128 (SHIFT+BREAK).
 

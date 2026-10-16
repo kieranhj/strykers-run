@@ -2689,11 +2689,15 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     JSR update_movers
     JMP main_game_loop
 
+\ Step 2 (decision 16): X = negative INKEY number, Z set if the key is down - OSBYTE &81's
+\ contract as the callers use it (none reads X, Y or C after), read straight off the System VIA.
+\ This is the kit's keydown_inkey (src/lib/keydown.6502), the same ten bytes the OSBYTE took.
 .check_for_keypress
-    LDY #&FF
-    LDA #&81                        \ Scan for a particular key
-    JSR osbyte                      \ OSBYTE
-    CPX #&FF
+    TXA
+    EOR #&FF                        \ INKEY number -> internal key number
+    TAX
+    JSR keydown_int                 \ A = &80 if down, else 0
+    EOR #&80                        \ Z set = down
     RTS
 
 .scroll_into_world
@@ -2729,8 +2733,18 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     RTS
 
 .wait_for_vsync_2242
-    LDA #&13                        \ Wait for vertical retrace
-    JSR osbyte                      \ OSBYTE                               ***
+    LDA field_count                 \ Wait for vertical retrace: step 2 (decision 14) counts
+.wait_for_field_count_2242          \ fields itself, as OSBYTE 19 hangs once the MOS is kept
+    CMP field_count                 \ from vsync in play
+    BEQ wait_for_field_count_2242
+    \ Step 2 (decision 19): OSBYTE 19 returned ~170 cycles later than this (the MOS's own vsync
+    \ work and the OSBYTE exit), and the User VIA timers restarted below are the raster clock
+    \ and the palette split. 176 cycles keep both where the original put them on scrolling
+    \ fields. In place of the original's LDA #0 : STA usrvia_ier below, which changed nothing.
+    LDX #35                         \ 2 + 35 * 5 - 1 = 176 cycles
+.delay_as_osbyte_19
+    DEX
+    BNE delay_as_osbyte_19
     LDA sysvia_acr                  \ System VIA auxiliary control register***
     AND #&DF                        \ *** Set System VIA timer 2 to one-shot mode
     STA usrvia_acr                  \ User VIA auxiliary control register  ***
@@ -2742,8 +2756,6 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     LDA usrvia_acr                  \ User VIA auxiliary control register  ***
     AND #&3F                        \ *** Set User VIA timer 1 to one-shot mode
     STA usrvia_acr                  \ User VIA auxiliary control register  ***
-    LDA #&00                        \ *** Do nothing
-    STA usrvia_ier                  \ User VIA interrupt enable register   ***
     LDA #&00                        \ ***
     STA usrvia_t1cl                 \ User VIA timer 1 counter LSB         ***
     LDA #&29                        \ ***
@@ -2892,7 +2904,7 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     TAY
     LDA new_helicopter_types,Y
     STA movers_type_and_colour,X
-    LDA usrvia_t2cl                 \ User VIA timer 2 counter LSB
+    JSR random                      \ Step 2 (decision 17): was User VIA timer 2 LSB
     AND #&1F                        \ Use random height for helicopter
     CLC
     ADC #&73
@@ -3506,14 +3518,8 @@ move_mover_routine_address_high = * + 2
     EQUB &00    \ ***
 
 .update_movers
-    LDA sysvia_acr                  \ System VIA auxiliary control register
-    AND #&DF                        \ Set System VIA timer 2 to one-shot mode
-    STA sysvia_acr                  \ System VIA auxiliary control register
-    LDA #&20                        \ Enable System VIA timer 2 interrupts
-    STA sysvia_ier                  \ System VIA interrupt enable register
-    LDA #&FF
-    STA sysvia_t2cl                 \ System VIA timer 2 counter LSB
-    STA sysvia_t2ch                 \ System VIA timer 2 counter MSB
+    \ Step 2 (decision 18): the original started System VIA T2 here as a stopwatch for
+    \ wait_for_timer_281a's floor; the pass is now locked to the field counter instead.
     LDY movers_to_update_base
     LDX #&02
     STX movers_to_update_count
@@ -3556,10 +3562,26 @@ move_mover_routine_address_high = * + 2
     STA helicopter_to_update
     STY mover_to_update
     JSR update_enemy_helicopter
+\ Step 2 (decision 18): the original held update_movers to at least 36,864 us (~1.84 fields)
+\ of System VIA T2 here. Now a pass is locked to the field counter: one that ends inside its
+\ 2-field slot waits for the slot's end; one that overruns waits for the next field, so every
+\ pass is a whole number of fields and starts at a vsync. pass_start needs no initialising:
+\ a stale value costs at most the first pass one or two fields.
 .wait_for_timer_281a
-    LDA sysvia_t2ch                 \ System VIA timer 2 counter MSB
-    CMP #&70
-    BCS wait_for_timer_281a         \ Wait for raster to be in sky
+    LDA field_count
+    TAX
+    SEC
+    SBC pass_start                  \ fields this pass has taken so far
+    CMP #&02
+    INX
+    TXA                             \ A = the next field
+    BCS wait_for_pass_slot          \ overran: end at the next field
+    LDA pass_start
+    ADC #&02                        \ (C clear) on time: end at the slot's end
+.wait_for_pass_slot
+    CMP field_count
+    BNE wait_for_pass_slot
+    STA pass_start
     RTS
 
 .movers_to_update
@@ -4595,7 +4617,7 @@ ENDIF
     LDA usrvia_t1cl                 \ User VIA timer 1 counter LSB
     LDA bottom_palette_value
     STA ula_palette                 \ video ULA palette register
-    BNE leave_irq1_handler          \ Always branches
+    BRA leave_irq1_handler_owned    \ Step 2 (decision 15): the MOS only offered this to the ROMs
 .not_vsync_2ee3
     LDA usrvia_acr                  \ User VIA auxiliary control register
     AND #&DF                        \ Set User VIA timer 2 to one-shot mode
@@ -4617,7 +4639,21 @@ ENDIF
     LDA top_palette_value           \ ***
     STA ula_palette                 \ video ULA palette register
     DEC game_over_cooldown
-.leave_irq1_handler
+    \ Step 2 (decision 14): count fields, and in play keep vsync from the MOS. On the title
+    \ (irq_owned clear) the MOS acknowledges it as before: OSBYTE 19 and its events need it.
+    INC field_count
+    BIT irq_owned
+    BPL leave_irq1_handler
+    LDA #&02                        \ acknowledge CA1 (vsync) ourselves
+    STA sysvia_ifr                  \ System VIA interrupt flag register
+.leave_irq1_handler_owned           \ serviced here: back to the interrupted code, not the MOS
+    PLA
+    STA irq_accumulator
+    PLY
+    PLX
+    LDA irq_accumulator             \ the interrupted A, which the MOS's IRQ entry saved
+    RTI
+.leave_irq1_handler                 \ anything else (in play, only System VIA T1: the MOS's sound)
     PLA                             \ ***
     STA irq_accumulator             \ ***
     PLY                             \ *** 65C02 opcode
@@ -4938,7 +4974,7 @@ previous_irq1_vector_low = * + 1
     JSR rnd_skewed_towards_right_of_world
     BCS leave_3160
     LDX #&06                        \ FRAME_GUN_DOWN
-    LDA usrvia_t2ch                 \ User VIA timer 2 counter MSB
+    JSR random                      \ Step 2 (decision 17): was User VIA timer 2 MSB
     AND #&0F                        \ Soldiers more likely to crouch to shoot further right
     CMP viewport_left_high
     BCS set_firing_frame
@@ -4985,7 +5021,7 @@ previous_irq1_vector_low = * + 1
     RTS
 
 .animate_stationery_mover
-    LDA usrvia_t2ch                 \ User VIA timer 2 counter MSB
+    JSR random                      \ Step 2 (decision 17): was User VIA timer 2 MSB
     AND #&20
     BNE leave_3168
     LDA #&08                        \ FRAME_GUN_DOWN
@@ -5136,7 +5172,7 @@ previous_irq1_vector_low = * + 1
     CLC
     ADC #&04
     STA threshold
-    LDA usrvia_t2cl                 \ User VIA timer 2 counter LSB
+    JSR random                      \ Step 2 (decision 17): was User VIA timer 2 LSB
     AND &CE
     CMP threshold
     RTS
@@ -5344,42 +5380,40 @@ previous_irq1_vector_low = * + 1
     RTS
 
 .unused_33b9    \ # Table would start at &338e
-    EQUB &01, &0E    \ 270
-    EQUB &01, &18    \ 280
-    EQUB &01, &22    \ 290
-    EQUB &01, &2C    \ 300
-    EQUB &01, &36    \ 310
-    EQUB &01, &40    \ 320
-    EQUB &01, &4A    \ 330
-    EQUB &01, &54    \ 340
-    EQUB &01, &5E    \ 350
-    EQUB &01, &68    \ 360
-    EQUB &01, &72    \ 370
-    EQUB &01, &7C    \ 380
-    EQUB &01, &86    \ 390
-    EQUB &01, &90    \ 400
-    EQUB &01, &9A    \ 410
-    EQUB &01, &A4    \ 420
-    EQUB &01, &AE    \ 430
-    EQUB &01, &B8    \ 440
-    EQUB &01, &C2    \ 450
-    EQUB &01, &CC    \ 460
-    EQUB &01, &D6    \ 470
-    EQUB &01, &E0    \ 480
-    EQUB &01, &EA    \ 490
-    EQUB &01, &F4    \ 500
-    EQUB &01, &FE    \ 510
-    EQUB &02, &08    \ 520
-    EQUB &02, &12    \ 530
-    EQUB &02, &1C    \ 540
-    EQUB &02, &26    \ 550
-    EQUB &02, &30    \ 560
-    EQUB &02, &3A    \ 570
-    EQUB &02, &44    \ 580
-    EQUB &02, &4E    \ 590
-    EQUB &02, &58    \ 600
-    EQUB &02, &62    \ 610
-    EQUB &02
+\ Step 2: the 71 bytes the standard version's table left here (never read or written:
+\ a 30,000-frame watch of &33B9-&33FF, play and title, 2026-10-16) hold layer 1's new code.
+\ Padded to its old end so the font and the sprites above stay where they were (BUGS #1, #2).
+    INCLUDE "lib/keydown.6502"
+
+\ Step 2 (decision 17): the random numbers the original read from User VIA T2. A 16-bit
+\ xorshift (7, 9, 8; John Metcalf's 6502 version), period 65,535; A = a new byte. Seeded
+\ at every game start (bank 5, take_irq_for_play), so a game replays exactly from its input.
+.random
+    LDA rnd_seed_high
+    LSR A
+    LDA rnd_seed_low
+    ROR A
+    EOR rnd_seed_high
+    STA rnd_seed_high               \ x ^= x << 7 (high byte)
+    ROR A
+    EOR rnd_seed_low
+    STA rnd_seed_low                \ x ^= x >> 9
+    EOR rnd_seed_high
+    STA rnd_seed_high               \ x ^= x << 8
+    RTS
+
+.irq_owned                          \ decision 14: &FF in play (vsync kept from the MOS), 0 on the title
+    EQUB &00
+.pass_start                         \ decision 18: field_count when this pass's slot began
+    EQUB &00
+
+IF SHIFT = 0
+    unused_3400_original = &3400
+ELSE
+    unused_3400_original = &3404 - GAME_DOWN    \ the ground texture patch adds four bytes before it
+ENDIF
+    ASSERT * <= unused_3400_original, "layer 1's code overruns the free block by ", * - unused_3400_original, " bytes"
+    SKIP unused_3400_original - *
 
 .unused_3400    \ # Source code fragment
     EQUB &0D    \ # Start of BASIC program

@@ -24,3 +24,16 @@ from &3FE1 (jsbeeb 2.5.0, frame ~2458 of the lockstep script). Not yet understoo
 count outruns the data; to look at in step 2, where the sprites will move and this will read
 something else. The relocation test builds (`SHIFT` set) put the font after this sprite so the
 overrun reads the same bytes in both.
+
+## 3. The palette split is missing from about one field in a hundred (original behaviour; fixed in step 2 layer 1)
+
+Seen 2026-10-16 by the palette-split probe (`tools/split.mjs`, jsbeeb 2.5.0, Master 128, frames
+4000-5000 of the scripted game): in the byte-identical build, 12 fields of 1,000 had neither the
+top nor the bottom palette write from `irq1_handler`. The handler checks for vsync, finds none,
+and chains the interrupt (the MOS's 100 Hz tick, or the User VIA T1 fire) to the MOS; a vsync
+arriving in the ~30 cycles before the MOS's dispatcher reads the VIA is taken by the MOS, which
+tests vsync before its timer and acknowledges it, so the game never sees that field: no split,
+no User VIA T2 restart for the raster waits, no `game_over_cooldown` tick. Fixed by decision 14:
+in play the MOS's System VIA IRQ mask (`&0279`) leaves vsync to the game, and the User VIA T1
+fire is never chained (decision 15). 0 fields of 1,000 since. On the title the MOS still has
+vsync, so the race remains there, where the only effect is the palette.

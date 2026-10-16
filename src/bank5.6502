@@ -800,7 +800,7 @@ text_colour = * + 1
     EQUB &FF    \ end of text
 
 .title_screen
-    JSR clear_title_screen
+    JSR give_irq_back               \ step 2: was JSR clear_title_screen, which this ends in
     LDA #&0C                        \ R12: Displayed screen start address register (high)
     STA crtc_reg                    \ video register number
     LDA #&08
@@ -972,7 +972,7 @@ text_colour = * + 1
     STA ula_palette                 \ video ULA palette register
     LDA #&67                        \ Set colour 6 to black
     STA ula_palette                 \ video ULA palette register
-    JMP start_game
+    JMP take_irq_for_play           \ step 2: was JMP start_game, which this ends in
 
 .instructions_text_one
     EQUB &00, &43, &03    \ at &4300, colour &03 (RR)
@@ -2423,3 +2423,71 @@ text_colour = * + 1
     JMP (wordv)
 
 
+\ ---- Step 2, layer 1: the interrupt during play (decisions 14-17) ----------------------------
+\ The title, high scores, instructions and define controls run under the MOS as the original
+\ did (their music is MOS interval-timer events, their keys the MOS's &EC, and OSBYTE 19). In
+\ play, irq1_handler keeps vsync and User VIA T1 from the MOS, and the MOS keeps only System
+\ VIA T1, its 100 Hz tick, for the OSWORD 7 sound. Both calls run with bank 5 paged in.
+
+RND_SEED = &7A31                    \ decision 17: every game starts the generator here
+
+\ Entered once per game, from prepare_to_start_game, in place of its JMP start_game (bank 5
+\ grows only at its end: its music is page-aligned). ORDER MATTERS: irq_owned goes on before the
+\ MOS is told to ignore vsync, or a vsync handed to a MOS that ignores it is never acknowledged.
+.take_irq_for_play
+    LDA #LO(RND_SEED)
+    STA rnd_seed_low
+    LDA #HI(RND_SEED)
+    STA rnd_seed_high
+    SEI
+    LDA sysvia_ier                  \ the MOS's keyboard (CA2) and ADC (CB1) enables, for later
+    AND #&11
+    STA saved_sysvia_ier_bits
+    LDA #&11                        \ CA2 and CB1 off: in play the keyboard is read direct
+    STA sysvia_ier                  \ (decision 16) and the ADC is unused
+    LDA #&FF
+    STA irq_owned                   \ vsync is ours from the next one
+    LDA field_count
+    STA pass_start
+    CLI
+    LDA #&E9                        \ System VIA IRQ mask &0279: clear bit 1, so a vsync that
+    LDX #&00                        \ arrives while irq1_handler is chaining the 100 Hz tick
+    LDY #&FD                        \ is left for irq1_handler, not taken by the MOS
+    JSR osbyte                      \ OSBYTE (new = old AND Y EOR X; X = old)
+    STX saved_sysvia_irq_mask
+    LDA #&B2                        \ keyboard semaphore &0242 = 0: the 100 Hz tick no longer
+    LDX #&00                        \ scans the keyboard
+    LDY #&00
+    JSR osbyte                      \ OSBYTE
+    STX saved_keyboard_semaphore
+    JMP start_game
+
+\ Called at the start of every title_screen in place of clear_title_screen, which it ends in;
+\ does nothing else until take_irq_for_play has run.
+\ The reverse, in reverse order: the MOS takes vsync back before irq1_handler stops taking it.
+.give_irq_back
+    BIT irq_owned
+    BPL leave_give_irq_back
+    LDA #&B2
+    LDX saved_keyboard_semaphore
+    LDY #&00
+    JSR osbyte                      \ OSBYTE
+    LDA #&E9
+    LDX saved_sysvia_irq_mask
+    LDY #&00
+    JSR osbyte                      \ OSBYTE
+    SEI
+    LDA saved_sysvia_ier_bits
+    ORA #&80
+    STA sysvia_ier
+    STZ irq_owned                   \ 65C02 opcode
+    CLI
+.leave_give_irq_back
+    JMP clear_title_screen
+
+.saved_sysvia_ier_bits
+    EQUB &00
+.saved_sysvia_irq_mask
+    EQUB &00
+.saved_keyboard_semaphore
+    EQUB &00
