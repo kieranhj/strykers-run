@@ -19,7 +19,8 @@
 \ Records are per screen: index = slot + 64 * screen. Screen 0 is main RAM, screen 1 the Master's
 \ shadow RAM, at the same addresses (&4000-&7FFF); the vsync interrupt shows each in turn.
 
-REN_BASE    = &B000 + PAD_START     \ workspace above the code, not in the file
+REN_BASE    = &B600 + PAD_START     \ workspace above the code and data (DATA1 ASSERTs it), to &C000;
+                                    \ not in the file
 rec_type    = REN_BASE + &000       \ movers_type_and_colour as drawn
 rec_frame   = REN_BASE + &080       \ movers_frame_and_flip
 rec_xl      = REN_BASE + &100       \ movers_x_low
@@ -55,22 +56,50 @@ MAX_BLOCK   = &2A0                  \ more than any mover's save block: 656 byte
 \ =============================================================================================
 .history_push
 {
+    \ layer 3 (D): the column into its slot, 8 bytes a time. (Not cleared after: while the
+    \ player moves, update_screen pushes every pass and the column is rebuilt every other one.)
     LDX hist_next
-    BNE copy_to_slot1
-    LDY #200
-.copy0
-    LDA column_buffer - 1,Y
-    STA hist0 - 1,Y
-    DEY
-    BNE copy0
-    BEQ header                      \ always
-.copy_to_slot1
-    LDY #200
-.copy1
-    LDA column_buffer - 1,Y
-    STA hist1 - 1,Y
-    DEY
-    BNE copy1
+    LDA hist_dst_hi,X
+    STA dst1 + 2
+    STA dst2 + 2
+    STA dst3 + 2
+    STA dst4 + 2
+    STA dst5 + 2
+    STA dst6 + 2
+    STA dst7 + 2
+    STA dst8 + 2
+    LDX #200
+.copy
+    LDA column_buffer - 1,X
+.dst1
+    STA hist0 - 1,X                 \ self-modified: hist0 or hist1
+    LDA column_buffer - 2,X
+.dst2
+    STA hist0 - 2,X                 \ self-modified: hist0 or hist1
+    LDA column_buffer - 3,X
+.dst3
+    STA hist0 - 3,X                 \ self-modified: hist0 or hist1
+    LDA column_buffer - 4,X
+.dst4
+    STA hist0 - 4,X                 \ self-modified: hist0 or hist1
+    LDA column_buffer - 5,X
+.dst5
+    STA hist0 - 5,X                 \ self-modified: hist0 or hist1
+    LDA column_buffer - 6,X
+.dst6
+    STA hist0 - 6,X                 \ self-modified: hist0 or hist1
+    LDA column_buffer - 7,X
+.dst7
+    STA hist0 - 7,X                 \ self-modified: hist0 or hist1
+    LDA column_buffer - 8,X
+.dst8
+    STA hist0 - 8,X                 \ self-modified: hist0 or hist1
+    TXA
+    SEC
+    SBC #8
+    TAX
+    BNE copy
+    LDX hist_next
 .header                             \ X = the slot
     LDA edge_screen_address_low
     STA hist_edge_lo,X
@@ -793,6 +822,10 @@ INCLUDE "lives_digits.6502"
 .done
     RTS
 }
+.hist_dst_hi                         \ history_push's operands' high byte, by slot
+    EQUB HI(hist0 - 8), HI(hist1 - 8)
+ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1) AND LO(hist0) = LO(hist1)
+ASSERT HI(column_buffer - 8) = HI(column_buffer - 1)
 .hist_src_hi
     EQUB HI(hist0 - 1), HI(hist1 - 1)
 ASSERT LO(hist0 - 1) = LO(hist1 - 1)

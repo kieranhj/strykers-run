@@ -101,7 +101,8 @@ the save arena (main and shadow, one per screen); ANDY `&8000-&8FFF` holds 53 sp
 while the renderer draws. The keyboard read, PRNG and `pass_start`
 are in `&31xx`, with 517 bytes free up to `&33FF`; everything from `&3400` stays where the original
 had it (BUGS #1, #2). The interrupt's variables are below `&3000` (the renderer draws with ACCCON's
-X bit set when the target is shadow). Bank 4: the renderer `&9000-`, then its sprites and tables to `&AE11`; workspace `&B000-&BAFF`.
+X bit set when the target is shadow). Bank 4: the renderer `&9000-`, then its sprites and tables (below `&B600`, ASSERTed: BUGS #6);
+workspace `&B600-&BEFF`.
 Bank 5 grows only at its end (its music is page-aligned). In play the game's `irq1_handler` owns
 vsync and flips the two screens (main and shadow, both `&4000-&7FFF`); on the front end the MOS
 has vsync and only main is used (decisions 14, 23).

@@ -62,3 +62,17 @@ wrong screen, and stray writes. The layer 1 front-end checks did not look at tha
 returning OSBYTE 19's X and Y. Checked by `tools/frontend.mjs`: the game over screen, hashed as
 `text_screen` finishes it, is `1754be00fa0ba297` in the byte-identical build and in layer 2, and
 was `ea8f2e8221426d18` in layer 1.
+
+## 6. Bank 4's last sprites under the renderer's records (layer 3, `52b97c7` to `9debfee`; fixed)
+
+Found 2026-10-16 by a 5,000-pass screen lockstep: the frames of two builds that differed only in
+how `history_push` copies parted at pass 4,139, at a soldier-type mover on the right edge. The
+lives table (`52b97c7`) took bank 4's contents past `&B000`, the start of the renderer's
+workspace: `DATA1` ended at `&B0E9`, then `&B128`, so the last ~230-300 bytes of the straight sprite
+data in bank 4 lay under `rec_type` and `rec_frame`, which the renderer writes as it draws. Those
+sprites drew as garbage once overwritten; where they ended depended on the code before them, so
+two builds disagreed. The WIP published from `9debfee` has it. The check guarded only the
+renderer's own variables (`render_end <= REN_BASE`), not the data after them. Fixed by moving the
+workspace up to `&B600` (to `&BEFF`; `&BFFF` in the relocation builds) and ASSERTing that bank 4's
+contents end below it. Checked: the frames of the fixed build and of `678ea21` (the last commit
+before the overrun) identical over 2 x 6,000 passes.

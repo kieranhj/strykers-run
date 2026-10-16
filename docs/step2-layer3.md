@@ -18,7 +18,8 @@ Same game in each (keys by pass, `tools/passbench.mjs`, seed 1, passes 500-2000,
 | + E, the 50 Hz sound driver (`828ec7a`) | 21.59 | 92,652 |
 | + the pass lock not waiting (decision 26) | 23.38 | 85,535 |
 | + D: the column write unrolled, the lives digit from a table | 23.86 | 83,832 |
-| + the sprite loops decide per cell, not per byte, where a column ends | **24.00** | 83,350 |
+| + the sprite loops decide per cell, not per byte, where a column ends | 24.00 | 83,350 |
+| + D: the scroll's column building; BUGS #6 fixed | **24.11** | 82,948 |
 
 Frame-timed play (`tools/profile.mjs`, `tools/speed.mjs`; these press keys by frame, so each
 build plays a slightly different game and the numbers move a few percent with it):
@@ -109,6 +110,25 @@ reach, would show blank where `plot_lives` read past the font.) Same game: 23.86
 **The sprite byte loops** decide once a cell, not once a byte, where the column ends: a cell it
 carries on past runs to line 0 on `DEY`/`BPL` alone, the last stops on `CPY`; 4-7 cycles a byte
 less, drawing and restoring. Proved byte for byte against the previous commit (2 x 3,000 passes).
+
+**Running is the costliest steady state** (measured 2026-10-16, `tools/passbench.mjs --hold`,
+600 passes each). Holding RIGHT: 23.43 passes/s, 104 of 600 passes over 2 fields; jumping on the
+spot: 24.73; ducking: 25.04 (every pass in 2 fields). What a running pass adds is the scroll: the
+logic costs ~22k against ~12.6k standing, the column built (~15k a scroll, every other pass)
+before the renderer writes it into each screen. Jumping while running *feels* faster because it
+is: the view moves 0.65-0.67 columns a pass jumping and 0.46 running - in the control too (278
+and 390 columns over the same 600 passes), so it is the original's design, not the frame rate.
+(At the original's ~16 passes/s running moved 7.7 columns a second; now 10.9.)
+
+**D, the scroll's column building**: the scenery unpacker passes over runs that cannot change the
+buffer (mask `&FF`, pixel 0) and fills those that replace it (mask 0), 3.0k to 2.1k a pass
+running; the column buffer is cleared 8 bytes a time, and copied into the history 8 at a time;
+`calculate_screen_addresses_for_movers_on_edge` passes over movers whose x high byte cannot put
+their edge on the screen's (1.2k to 0.66k). Each leaves the registers, flags and zero page the
+logic reads as the original did: the first versions of the clear and of the clear-run skip
+returned with the carry flag different, and moving the clear into `history_push` broke the
+passes where the player moves without the column being rebuilt (it pushes every pass). Proved by
+the frames against `678ea21` and the state against the control (BUGS #6 below came out of it).
 
 ## Checks
 

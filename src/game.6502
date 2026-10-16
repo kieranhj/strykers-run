@@ -1953,11 +1953,29 @@ ENDIF
     LDA (mask_table_address),Y      \ if adding scenery
 \ #     also     LDA #&ff                                             # if adding movers
     STA scenery_mask
+    \ Step 2 (layer 3, D): a run that cannot change the buffer (mask &FF, pixel 0) is passed
+    \ over, and one that replaces it (mask 0) is a fill; X, end_of_run_offset, scenery_mask
+    \ and the pixel are left as the loop leaves them.
+    INC A                           \ 65C02 opcode: mask &FF?
+    BNE run_not_clear
+    LDA scenery_pixel_value
+    BNE run_not_clear
+    TXA                             \ a clear run: only the offset moves
+    CLC
+    ADC end_of_run_offset
+    STA end_of_run_offset
+    TAX
+    SEC                             \ C as the loop's last CPX leaves it
+    LDY scenery_data_offset
+    BNE unpack_scenery_loop         \ always
+.run_not_clear
     TXA
     CLC
     ADC end_of_run_offset
     LDX end_of_run_offset
     STA end_of_run_offset
+    LDA scenery_mask
+    BEQ unpack_scenery_fill
 .unpack_scenery_run_loop
     LDA column_buffer,X
     AND &A7
@@ -1968,14 +1986,35 @@ ENDIF
     BNE unpack_scenery_run_loop
     LDY scenery_data_offset
     BNE unpack_scenery_loop         \ Always branche
+.unpack_scenery_fill                \ step 2: mask 0, the run is the pixel
+    LDA pixel
+.unpack_scenery_fill_loop
+    STA column_buffer,X
+    INX
+    CPX end_of_run_offset
+    BNE unpack_scenery_fill_loop
+    LDY scenery_data_offset
+    BNE unpack_scenery_loop         \ Always branches
 
 .initialise_column_buffer
-    LDA #&00
-    LDX #&C8
+    PHP                             \ step 2 (layer 3, D): 8 bytes a time; the flags as the
+    LDX #&C8                        \ original's loop left them (C and V untouched)
 .initialise_column_buffer_loop
-    STA column_buffer - 1,X
-    DEX
+    STZ column_buffer - 1,X
+    STZ column_buffer - 2,X
+    STZ column_buffer - 3,X
+    STZ column_buffer - 4,X
+    STZ column_buffer - 5,X
+    STZ column_buffer - 6,X
+    STZ column_buffer - 7,X
+    STZ column_buffer - 8,X
+    TXA
+    SEC
+    SBC #8
+    TAX
     BNE initialise_column_buffer_loop
+    PLP
+    LDA #&00                        \ A = X = 0, Z set, N clear
     RTS
 
 .get_scenery_address_for_layer_Y
@@ -2083,7 +2122,23 @@ ENDIF
 .calculate_screen_addresses_for_movers_on_edge
     LDY #&00                        \ MOVER_FIRST                               # Bug: player is never on edge, so should be &01
 .calculate_screen_addresses_for_movers_on_edge_loop
+    \ Step 2 (layer 3, D): a mover whose x high byte cannot put its edge on the screen's
+    \ (equal for the right edge; equal or one less for the left, the width being under 256)
+    \ is passed over without the type lookup - except the last, whose &D0, mover_width and
+    \ registers are what the routine leaves
+    CPY #&21
+    BEQ edge_in_full
+    LDA movers_x_high,Y
+    CMP edge_x_high
+    BEQ edge_in_full
+    LDX &CF
+    BNE edge_next                   \ the right edge: x itself
+    INC A                           \ 65C02 opcode
+    CMP edge_x_high
+    BNE edge_next
+.edge_in_full
     JSR calculate_screen_addresses_for_mover_on_edge
+.edge_next
     INY
     CPY #&22                        \ MOVER_LAST + 1                        *** Enhanced version adds tank
     BCC calculate_screen_addresses_for_movers_on_edge_loop
