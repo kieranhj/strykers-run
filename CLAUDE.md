@@ -81,6 +81,8 @@ disassembly's `actually`/`also` notes say what an operand really is.
 - `tools/shadowaudit.mjs DISC` - what the renderer reads in `&3000-&3FFF` with ACCCON's X bit set, against what play writes there
 - `tools/passbench.mjs DISC [DISC2 ...]` - speed on the same game whatever the build's speed (keys by pass, as passlock): compare builds with this, not the frame-timed tools
 - `tools/passcost.mjs DISC [FROM] [FRAMES] [--right]`, `tools/passhist.mjs` - a pass's cycles by phase; each pass's work against the bytes it drew
+- `tools/helilock.mjs CONTROL TEST [PASSES] [VARIANT]` - two builds in step through a helicopter flight (board, fly, shot down), state and newest frame every pass; passlock's scripts never board one
+- `tools/worldcheck.mjs DISC` - the renderer's world position of each record against the mover's x/y (BUGS #7)
 - `tools/zplive.mjs DISC` - the zero-page bytes the logic reads first after a render (what `restore_game_zp` must keep)
 - `tools/sprites.py stats|emit|straight` - sprite sizes, save block sizes, and the generated sprite sources
 - `tools/sfxcapture.mjs DISC OUT [--pairs]` - each sound effect's chip writes by MOS tick; `--pairs`, an effect over another
@@ -102,7 +104,7 @@ while the renderer draws. The keyboard read, PRNG and `pass_start`
 are in `&31xx`, with 517 bytes free up to `&33FF`; everything from `&3400` stays where the original
 had it (BUGS #1, #2). The interrupt's variables are below `&3000` (the renderer draws with ACCCON's
 X bit set when the target is shadow). Bank 4: the renderer `&9000-`, then its sprites and tables (below `&B600`, ASSERTed: BUGS #6);
-workspace `&B600-&BEFF`.
+workspace `&B400-&BEFF`.
 Bank 5 grows only at its end (its music is page-aligned). In play the game's `irq1_handler` owns
 vsync and flips the two screens (main and shadow, both `&4000-&7FFF`); on the front end the MOS
 has vsync and only main is used (decisions 14, 23).

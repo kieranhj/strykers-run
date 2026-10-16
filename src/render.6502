@@ -19,7 +19,7 @@
 \ Records are per screen: index = slot + 64 * screen. Screen 0 is main RAM, screen 1 the Master's
 \ shadow RAM, at the same addresses (&4000-&7FFF); the vsync interrupt shows each in turn.
 
-REN_BASE    = &B600 + PAD_START     \ workspace above the code and data (DATA1 ASSERTs it), to &C000;
+REN_BASE    = &B400 + PAD_START     \ workspace above the code and data (DATA1 ASSERTs it), to &C000;
                                     \ not in the file
 rec_type    = REN_BASE + &000       \ movers_type_and_colour as drawn
 rec_frame   = REN_BASE + &080       \ movers_frame_and_flip
@@ -35,7 +35,10 @@ save_start_hi = REN_BASE + &680     \ save block in that screen's save_arena (st
 save_end_lo = REN_BASE + &700
 save_end_hi = REN_BASE + &780
 zp_save     = REN_BASE + &800       \ the game's zero page, kept while the renderer draws
-ASSERT zp_save + &100 <= &C000
+rec_wxl     = REN_BASE + &900       \ per record: where it was drawn, in the world - its column
+rec_wxh     = REN_BASE + &980       \ and its y, from the screen address it was drawn at, not
+rec_wy      = REN_BASE + &A00       \ movers_x/y (BUGS #7): world_of_address
+ASSERT zp_save + &100 <= &C000 AND rec_wy + &80 <= &C000
 
 MOVER_SLOTS = &22                   \ MOVER_LAST + 1
 save_ptr    = &9C                   \ zero page, free since layer 2 (&9C/&9D)
@@ -372,9 +375,9 @@ IF DEBUG_FULLREDRAW
 ENDIF
     JSR record_differs              \ (keeps X, Y)
     BNE stale
-    LDA rec_xl,Y
+    LDA rec_wxl,Y                   \ where it was drawn (BUGS #7)
     STA span_x_lo
-    LDA rec_xh,Y
+    LDA rec_wxh,Y
     STA span_x_hi
     LDA rec_type,Y
     JSR width_of_type_A
@@ -1075,11 +1078,11 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     LDA rec_type,Y
     AND #&7F
     STA list_type
-    LDA rec_xl,Y
+    LDA rec_wxl,Y                   \ where it was drawn (BUGS #7)
     STA list_x_lo
-    LDA rec_xh,Y
+    LDA rec_wxh,Y
     STA list_x_hi
-    LDA rec_y,Y
+    LDA rec_wy,Y
     JMP list_finish
 }
 
@@ -1093,11 +1096,15 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     LDA movers_type_and_colour,Y
     AND #&7F
     STA list_type
-    LDA movers_x_low,Y
+    LDA movers_screen_address_low,Y \ where it will be drawn (BUGS #7), in the logic's view
+    LDX movers_screen_address_high,Y
+    JSR world_of_address
+    LDA wa_x_lo
     STA list_x_lo
-    LDA movers_x_high,Y
+    LDA wa_x_hi
     STA list_x_hi
-    LDA movers_y,Y
+    LDX list_n
+    LDA wa_y
 }
     \ falls through
 .list_finish                        \ A = y; list_type, list_x: entry X's rectangle
@@ -1979,7 +1986,89 @@ pix_operand_2 = * + 1
     STA rec_sl,Y
     LDA movers_screen_address_high,X
     STA rec_sh,Y
+    STY rl_index                    \ and where that is in the world (BUGS #7): the view in
+    LDA movers_screen_address_low,X \ zero page is this screen's now
+    PHA
+    LDA movers_screen_address_high,X
+    TAX
+    PLA
+    JSR world_of_address
+    LDY rl_index
+    LDA wa_x_lo
+    STA rec_wxl,Y
+    LDA wa_x_hi
+    STA rec_wxh,Y
+    LDA wa_y
+    STA rec_wy,Y
     RTS
+
+\ world_of_address: AX = a screen address; wa_x (16 bits) and wa_y = the world column and the y
+\ (movers_y's sense: &C7 at the top row) of that byte, by the view in zero page (its screen
+\ start and viewport_left). A character row is &280 bytes: the row is guessed from the offset's
+\ high byte (wa_rows_guess, out by at most one) and settled against wa_rows_base.
+.world_of_address
+{
+    SEC
+    SBC screen_start_address_low
+    STA wa_off
+    TXA
+    SBC screen_start_address_high
+    AND #&3F                        \ round the 16K screen
+    STA wa_off + 1
+    TAX
+    LDY wa_rows_guess,X
+    LDA wa_off                      \ at or past the next row's start: that row
+    CMP wa_rows_base_lo + 1,Y
+    LDA wa_off + 1
+    SBC wa_rows_base_hi + 1,Y
+    BCC row_known
+    INY
+.row_known
+    LDA wa_off                      \ the column: (offset - the row's start) / 8
+    SEC
+    SBC wa_rows_base_lo,Y
+    STA wa_t
+    LDA wa_off + 1
+    SBC wa_rows_base_hi,Y
+    LSR A
+    ROR wa_t
+    LSR A
+    ROR wa_t
+    LSR A
+    ROR wa_t
+    LDA wa_t
+    CLC
+    ADC viewport_left_low
+    STA wa_x_lo
+    LDA viewport_left_high
+    ADC #0
+    STA wa_x_hi
+    TYA                             \ the line from the top: row * 8 + the line in the cell
+    ASL A
+    ASL A
+    ASL A
+    STA wa_t
+    LDA wa_off
+    AND #&07
+    ORA wa_t
+    EOR #&FF                        \ y = &C7 - that
+    SEC
+    ADC #&C7
+    STA wa_y
+    RTS
+}
+.wa_rows_guess                      \ by the offset's high byte h: floor(h * 256 / &280)
+FOR h = 0..63
+    EQUB (h * 256) DIV &280
+NEXT
+.wa_rows_base_lo                    \ the start of character row k: k * &280
+FOR k = 0..26
+    EQUB LO(k * &280)
+NEXT
+.wa_rows_base_hi
+FOR k = 0..26
+    EQUB HI(k * &280)
+NEXT
 
 \ ---- the renderer's variables (bank 4 is RAM) ----------------------------------------------
 .back           EQUB 0              \ the screen being drawn: 0 main, 1 shadow
@@ -2049,6 +2138,12 @@ pix_operand_2 = * + 1
 .list_y1        SKIP MOVER_SLOTS + 1
 .list_y2        SKIP MOVER_SLOTS + 1
 .dm_slot        EQUB 0
+.rl_index       EQUB 0
+.wa_off         EQUB 0, 0
+.wa_t           EQUB 0
+.wa_x_lo        EQUB 0
+.wa_x_hi        EQUB 0
+.wa_y           EQUB 0
 .dm_index       EQUB 0
 .dm_typecol     EQUB 0
 .dm_type        EQUB 0

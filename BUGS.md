@@ -76,3 +76,22 @@ renderer's own variables (`render_end <= REN_BASE`), not the data after them. Fi
 workspace up to `&B600` (to `&BEFF`; `&BFFF` in the relocation builds) and ASSERTing that bank 4's
 contents end below it. Checked: the frames of the fixed build and of `678ea21` (the last commit
 before the overrun) identical over 2 x 6,000 passes.
+
+## 7. A shot-down helicopter's explosion left on one screen (layer 2 and 3; fixed)
+
+Seen by KC 2026-10-16 on b2: the explosion of the helicopter he was flying stayed drawn on one of
+the two screens, flickering. `kill_player_helicopter` turns the player's bullet and grenade slots
+(&11, &0C) into the explosion with `use_player_position_for_mover_Y`, which copies the player's x
+and screen address but not its y - and gives &0C a screen address 6 columns right of its x. So
+the slots are drawn where their x and y are not (measured in `tools/helilock.mjs`: the wreck at
+y 124, explosion &11 drawn over it with y 0, &0C drawn 6 columns right at y 115). The renderer
+worked out what overlaps what from x, y and the type's size; with the explosion "on the ground",
+the wreck could stay put while the explosion came off and on beside it, and when the explosion
+ended, the wreck's save block - taken with explosion pixels under it - put them back. Fixed by
+placing each record where it was drawn: `world_of_address` turns the screen address into the
+world column and y (by the view it was drawn in), for the overlap rectangles and the scroll zone.
+For every other mover the two agree (`tools/worldcheck.mjs`: 6,119 records, none differing).
+`tools/helilock.mjs` boards a helicopter, flies until it is shot down and compares two builds
+every pass; it did not catch the original case (the wreck changed every pass there), but runs
+the fixed build's flights identical to its `DEBUG_FULLREDRAW` twin, and the state through a
+flight identical to the control's.
