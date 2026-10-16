@@ -1,0 +1,1084 @@
+\ render.6502 - step 2 layer 2: the renderer. Runs in sideways RAM bank 4, after the bank's
+\ sprite data (bank 4 is paged whenever movers are drawn, so plot_mover can be called from here;
+\ src/game.6502's render_pass and render_start page it in and jump here).
+\
+\ The game's logic no longer draws (decision 20): plot_mover's own calls work everything out but
+\ write nothing, the player's save-under is gone from the logic, and the scroll hands its new edge
+\ column here (history_push) instead of writing it. Once a pass's logic is done, render brings a
+\ screen up to date from what it RECORDS that screen shows:
+\   1. which movers are stale there: drawn in another state than the live one, or overlapping a
+\      column the scroll is about to write or leave, or the lives digit about to be redrawn
+\   2. the player (masked, so opaque, and drawn last) comes off first if it changed, the screen
+\      scrolled, or a mover overlapping it is to be redrawn: its save-under goes back
+\   3. the stale movers are erased - drawn again by EOR from their record, the record copied into
+\      the live slot for the call
+\   4. the scroll: each edge column this screen has not had, oldest first, with the screen start,
+\      viewport and lives digit that went with it
+\   5. every live mover on screen that the screen does not show is drawn, and recorded
+\   6. the player: its save-under taken, then drawn with its mask
+\ Records are per screen: index = slot + 64 * screen. Screen 0 is main RAM, screen 1 the Master's
+\ shadow RAM, at the same addresses (&4000-&7FFF); the vsync interrupt shows each in turn.
+
+REN_BASE    = &B000 + PAD_START     \ workspace above the code, not in the file
+rec_type    = REN_BASE + &000       \ movers_type_and_colour as drawn
+rec_frame   = REN_BASE + &080       \ movers_frame_and_flip
+rec_xl      = REN_BASE + &100       \ movers_x_low
+rec_xh      = REN_BASE + &180       \ movers_x_high; &FF = nothing drawn
+rec_y       = REN_BASE + &200       \ movers_y
+rec_sl      = REN_BASE + &280       \ movers_screen_address_low
+rec_sh      = REN_BASE + &300       \ movers_screen_address_high
+hist0       = REN_BASE + &400       \ the edge column history: two columns of 200 bytes
+hist1       = REN_BASE + &500
+save0       = REN_BASE + &600       \ the player's save-under, screen 0 (up to 512 bytes)
+save1       = REN_BASE + &800       \ screen 1
+zp_save     = REN_BASE + &A00       \ the game's zero page, kept while the renderer draws
+ASSERT zp_save + &100 <= &C000
+
+MOVER_SLOTS = &22                   \ MOVER_LAST + 1
+save_ptr    = &9C                   \ zero page, free since layer 2 (&9C/&9D)
+
+\ =============================================================================================
+\ history_push: the scroll has built a new edge column in column_buffer (update_screen pages
+\ bank 4 and jumps here). Keep it, with the view it belongs to, for each screen to apply.
+\ =============================================================================================
+.history_push
+{
+    LDX hist_next
+    BNE copy_to_slot1
+    LDY #200
+.copy0
+    LDA column_buffer - 1,Y
+    STA hist0 - 1,Y
+    DEY
+    BNE copy0
+    BEQ header                      \ always
+.copy_to_slot1
+    LDY #200
+.copy1
+    LDA column_buffer - 1,Y
+    STA hist1 - 1,Y
+    DEY
+    BNE copy1
+.header                             \ X = the slot
+    LDA edge_screen_address_low
+    STA hist_edge_lo,X
+    LDA edge_screen_address_high
+    STA hist_edge_hi,X
+    LDA screen_start_address_low
+    STA hist_ss_lo,X
+    LDA screen_start_address_high
+    STA hist_ss_hi,X
+    LDA crtc_start_address_low
+    STA hist_crtc_lo,X
+    LDA crtc_start_address_high
+    STA hist_crtc_hi,X
+    LDA viewport_left_low
+    STA hist_vl_lo,X
+    LDA viewport_left_high
+    STA hist_vl_hi,X
+    LDA viewport_right_low
+    STA hist_vr_lo,X
+    LDA viewport_right_high
+    STA hist_vr_hi,X
+    \ the direction: viewport_left moved by +1 (right) or -1 (left) since the last push
+    LDA viewport_left_low
+    SEC
+    SBC last_vl_lo
+    TAY
+    LDA viewport_left_high
+    SBC last_vl_hi
+    BNE went_left
+    CPY #1
+    BEQ went_right
+.went_left
+    LDA #&FF
+    BNE set_dir                     \ always
+.went_right
+    LDA #1
+.set_dir
+    STA hist_dir,X
+    LDA viewport_left_low
+    STA last_vl_lo
+    LDA viewport_left_high
+    STA last_vl_hi
+    INC hist_seq
+    LDA hist_seq
+    STA hist_seqs,X
+    TXA
+    EOR #1
+    STA hist_next
+    RTS
+}
+
+\ =============================================================================================
+\ render_reset: a game has started (render_start in src/game.6502). scroll_into_world has written the scenery into the screen;
+\ nothing else is drawn there yet.
+\ =============================================================================================
+.render_reset
+{
+    LDX #127
+    LDA #&FF
+.clear_records
+    STA rec_xh,X
+    DEX
+    BPL clear_records
+    LDX #1
+.each_screen
+    LDA hist_seq
+    STA buf_seq,X
+    LDA #&FF
+    STA buf_lives,X
+    JSR view_to_buffer
+    DEX
+    BPL each_screen
+    LDA viewport_left_low
+    STA last_vl_lo
+    LDA viewport_left_high
+    STA last_vl_hi
+    STZ flip_pending
+    STZ shown_screen
+    \ the shadow screen starts as a copy of main, and shadow &3000-&3FFF as a copy of the code
+    \ and data there: the renderer runs the plotters with the CPU seeing shadow RAM
+    LDA acccon
+    AND #&FA                        \ X = 0, D = 0: main, for the CPU and the video
+    STA acccon
+    STA acc_main
+    ORA #&04
+    STA acc_shadow
+    STZ save_ptr
+    LDA #&30
+    STA save_ptr + 1
+    LDY #0
+.copy
+    LDA (save_ptr),Y
+    LDX acc_shadow
+    STX acccon
+    STA (save_ptr),Y
+    LDX acc_main
+    STX acccon
+    INY
+    BNE copy
+    INC save_ptr + 1
+    BPL copy                        \ up to &7FFF
+    RTS
+}
+
+\ ---- the view: the zero-page values the plotter and the lives read ---------------------------
+.view_to_buffer                     \ X = screen: the live view becomes that screen's
+    LDA screen_start_address_low
+    STA buf_ss_lo,X
+    LDA screen_start_address_high
+    STA buf_ss_hi,X
+    LDA crtc_start_address_low
+    STA buf_crtc_lo,X
+    LDA crtc_start_address_high
+    STA buf_crtc_hi,X
+    LDA viewport_left_low
+    STA buf_vl_lo,X
+    LDA viewport_left_high
+    STA buf_vl_hi,X
+    LDA viewport_right_low
+    STA buf_vr_lo,X
+    LDA viewport_right_high
+    STA buf_vr_hi,X
+    RTS
+
+.buffer_to_view                     \ X = screen: that screen's view becomes the live one
+    LDA buf_ss_lo,X
+    STA screen_start_address_low
+    LDA buf_ss_hi,X
+    STA screen_start_address_high
+    LDA buf_crtc_lo,X
+    STA crtc_start_address_low
+    LDA buf_crtc_hi,X
+    STA crtc_start_address_high
+    LDA buf_vl_lo,X
+    STA viewport_left_low
+    LDA buf_vl_hi,X
+    STA viewport_left_high
+    LDA buf_vr_lo,X
+    STA viewport_right_low
+    LDA buf_vr_hi,X
+    STA viewport_right_high
+    RTS
+
+.history_to_view                    \ X = history slot: the view after that scroll becomes live
+    LDA hist_ss_lo,X
+    STA screen_start_address_low
+    LDA hist_ss_hi,X
+    STA screen_start_address_high
+    LDA hist_crtc_lo,X
+    STA crtc_start_address_low
+    LDA hist_crtc_hi,X
+    STA crtc_start_address_high
+    LDA hist_vl_lo,X
+    STA viewport_left_low
+    LDA hist_vl_hi,X
+    STA viewport_left_high
+    LDA hist_vr_lo,X
+    STA viewport_right_low
+    LDA hist_vr_hi,X
+    STA viewport_right_high
+    RTS
+
+\ =============================================================================================
+\ render: bring screen `back` up to date with the live game state
+\ =============================================================================================
+.render
+{
+    JSR save_game_zp
+    LDA shown_screen                \ draw into the screen not being shown
+    EOR #1
+    STA back
+    BEQ set_boff
+    LDA #64
+.set_boff
+    STA boff
+    JSR cpu_sees_back               \ ACCCON X: &3000-&7FFF is that screen's RAM
+    LDX #2                          \ the logic's current view goes in slot 2 of buf_*
+    JSR view_to_buffer
+
+    \ ---- the scrolls this screen has not had: 0, 1 or 2, oldest first ----
+    LDX back
+    LDA hist_seq
+    SEC
+    SBC buf_seq,X
+    STA pending_n
+    LDA hist_next
+    EOR #1
+    STA pending_slot + 1            \ the newest
+    LDX pending_n
+    CPX #2
+    BNE one_or_none
+    LDA hist_next                   \ two: the older is the slot to be written next
+    STA pending_slot
+    JMP zones
+.one_or_none
+    STA pending_slot                \ one: only the newest
+.zones
+    \ ---- the zone: the columns the scroll writes or leaves, and the lives digit's ----
+    STZ zone_n
+    LDX pending_n
+    BEQ no_scroll_zone
+    LDY #0                          \ Y = which pending entry
+    CPX #2
+    BEQ add_entries
+    INY                             \ one pending: it is pending_slot + 1 as well as + 0
+.add_entries
+    LDX pending_slot,Y
+    JSR add_scroll_zone
+    INY
+    CPY #2
+    BNE add_entries
+.no_scroll_zone
+    \ the lives digit is redrawn if the screen scrolls or the count changed: the four columns
+    \ from the left edge, at the view it ends up with (and at the first scroll's, if two)
+    STZ lives_redraw
+    LDX back
+    LDA buf_lives,X
+    CMP lives
+    BNE redraw_lives
+    LDA pending_n
+    BEQ lives_done
+.redraw_lives
+    DEC lives_redraw                \ &FF
+    LDA buf_vl_lo + 2
+    LDX buf_vl_hi + 2
+    JSR add_lives_zone
+    LDA pending_n
+    CMP #2
+    BNE lives_done
+    LDX pending_slot
+    LDA hist_vl_lo,X
+    PHA
+    LDA hist_vl_hi,X
+    TAX
+    PLA
+    JSR add_lives_zone
+.lives_done
+
+    \ ---- 1. which movers are stale on this screen ----
+    LDA #1
+    STA ren_i
+.classify
+    LDX ren_i
+    STZ need,X
+    TXA
+    CLC
+    ADC boff
+    TAY
+    LDA rec_xh,Y
+    CMP #&FF
+    BEQ classified                  \ nothing drawn
+    JSR record_differs
+    BNE stale
+    LDA rec_xl,Y
+    STA span_x_lo
+    LDA rec_xh,Y
+    STA span_x_hi
+    LDA rec_type,Y
+    JSR width_of_type_A
+    JSR span_in_zone
+    BCC classified
+.stale
+    LDX ren_i
+    LDA #&80
+    STA need,X
+.classified
+    INC ren_i
+    LDA ren_i
+    CMP #MOVER_SLOTS
+    BNE classify
+
+    \ ---- 2. the player ----
+    JSR player_needs_redrawing      \ C set: it does
+    BCC player_stays
+    LDY boff
+    LDA rec_xh,Y
+    CMP #&FF
+    BEQ player_stays                \ (it is redrawn below anyway: not drawn)
+    JSR restore_save_under
+    LDY boff
+    LDA #&FF
+    STA rec_xh,Y
+.player_stays
+
+    \ ---- 3. erase the stale movers, at this screen's old view ----
+    LDX back
+    JSR buffer_to_view
+    LDA #1
+    STA ren_i
+.erase
+    LDX ren_i
+    LDA need,X
+    BPL not_stale
+    TXA
+    CLC
+    ADC boff
+    TAY
+    JSR swap_record_in
+    LDA #&80
+    STA drawing
+    LDY ren_i
+    JSR plot_mover                  \ EOR the recorded image off
+    STZ drawing
+    LDX ren_i
+    JSR swap_record_out
+    LDA ren_i
+    CLC
+    ADC boff
+    TAY
+    LDA #&FF
+    STA rec_xh,Y
+.not_stale
+    INC ren_i
+    LDA ren_i
+    CMP #MOVER_SLOTS
+    BNE erase
+
+    \ ---- 4. the scroll, oldest column first, each with its view and the lives digit ----
+    LDY #0
+    LDA pending_n
+    BEQ scrolled
+    CMP #2
+    BEQ apply_entries
+    INY
+.apply_entries
+    STY ren_k
+    LDX pending_slot,Y
+    JSR write_column
+    LDY ren_k
+    LDX pending_slot,Y
+    JSR history_to_view
+    LDA #&80
+    STA drawing
+    JSR plot_lives
+    STZ drawing
+    LDX back
+    LDA lives
+    STA buf_lives,X
+    LDY ren_k
+    LDX pending_slot,Y
+    LDA hist_seqs,X
+    LDX back
+    STA buf_seq,X
+    LDY ren_k
+    INY
+    CPY #2
+    BNE apply_entries
+.scrolled
+    LDX #2                          \ the logic's view again; it is this screen's now
+    JSR buffer_to_view
+    LDX back
+    JSR view_to_buffer
+    LDA buf_lives,X
+    CMP lives
+    BEQ lives_drawn
+    LDA #&80
+    STA drawing
+    JSR plot_lives
+    STZ drawing
+    LDX back
+    LDA lives
+    STA buf_lives,X
+.lives_drawn
+
+    \ ---- 5. draw every live mover on screen that this screen does not show ----
+    LDA #1
+    STA ren_i
+.draw
+    LDA ren_i
+    CLC
+    ADC boff
+    TAY
+    LDA rec_xh,Y
+    CMP #&FF
+    BNE drawn                       \ still shown, unchanged
+    LDY ren_i
+    LDA movers_x_high,Y
+    BMI drawn                       \ no mover in the slot
+    JSR get_mover_Y_x
+    LDA movers_type_and_colour,Y
+    AND #&7F
+    TAX
+    JSR check_if_mover_is_on_screen \ carry set if not
+    BCS drawn
+    LDA #&80
+    STA drawing
+    LDY ren_i
+    JSR plot_mover
+    STZ drawing
+    LDX ren_i
+    TXA
+    CLC
+    ADC boff
+    TAY
+    JSR record_live
+.drawn
+    INC ren_i
+    LDA ren_i
+    CMP #MOVER_SLOTS
+    BNE draw
+
+    \ ---- 6. the player ----
+    LDY boff
+    LDA rec_xh,Y
+    CMP #&FF
+    BNE player_done
+    JSR take_save_under
+    LDA #&80
+    STA drawing
+    LDY #0                          \ MOVER_PLAYER: plot_mover masks it
+    JSR plot_mover
+    STZ drawing
+    LDX #0
+    LDY boff
+    JSR record_live
+.player_done
+    LDA back                        \ for the vsync interrupt to show, at the pass lock's field
+    STA flip_screen
+    LDA crtc_start_address_high
+    STA flip_crtc_hi
+    LDA crtc_start_address_low
+    STA flip_crtc_lo
+    JSR cpu_sees_main
+    JMP restore_game_zp
+}
+
+\ ---- ACCCON's X bit: which RAM the CPU sees at &3000-&7FFF (D, which the video shows, is the
+\ vsync interrupt's). Read, change, write with interrupts off: the interrupt writes ACCCON too.
+.cpu_sees_back
+    LDA back
+    BEQ cpu_sees_main
+    SEI
+    LDA acccon
+    ORA #&04
+    BNE set_acccon                  \ always
+.cpu_sees_main
+    SEI
+    LDA acccon
+    AND #&FB
+.set_acccon
+    STA acccon
+    CLI
+    RTS
+
+\ ---- render_to_main: the game is over (or observer mode left): the newest frame on the main
+\ screen, shown, so the game over text and the title go where the original put them.
+.render_to_main
+{
+.wait_for_flip
+    BIT flip_pending                \ a flip still to come happens first
+    BMI wait_for_flip
+    LDA shown_screen
+    BEQ done                        \ main is shown, and newest
+    JSR render                      \ draws into main, the hidden one
+    SEI
+    LDX #&0C                        \ R12/R13 now: the text follows at once
+    STX crtc_reg
+    LDA crtc_start_address_high
+    STA crtc_data
+    INX
+    STX crtc_reg
+    LDA crtc_start_address_low
+    STA crtc_data
+    LDA acccon
+    AND #&FE                        \ D = 0: the video shows main
+    STA acccon
+    STZ shown_screen
+    STZ flip_pending
+    CLI
+.done
+    RTS
+}
+
+\ ---- the game's zero page ----------------------------------------------------------------
+\ The plotter's scratch bytes are also the logic's variables (delta_high is frame_and_flip,
+\ screen_address is threshold...), and the original's logic reads, at the start of a pass, what
+\ its own last drawing left there. So whatever the renderer's drawing does to zero page is
+\ undone: &00-&D1 and &F8/&F9, the game's, except what the vsync interrupt counts meanwhile
+\ (field_count &90, game_over_cooldown &96). &D2-&FF other than &F8/&F9 is the MOS's.
+.save_game_zp
+{
+    LDX #&D1
+.each
+    LDA &00,X
+    STA zp_save,X
+    DEX
+    CPX #&FF
+    BNE each
+    LDA &F8
+    STA zp_save + &F8
+    LDA &F9
+    STA zp_save + &F9
+    RTS
+}
+
+.restore_game_zp
+{
+    LDX #&D1
+.each
+    CPX #field_count
+    BEQ skip
+    CPX #game_over_cooldown
+    BEQ skip
+    LDA zp_save,X
+    STA &00,X
+.skip
+    DEX
+    CPX #&FF
+    BNE each
+    LDA zp_save + &F8
+    STA &F8
+    LDA zp_save + &F9
+    STA &F9
+    RTS
+}
+
+\ ---- write_column: X = history slot. The original update_screen's loop, from the history ------
+.write_column
+{
+    LDA hist_edge_lo,X
+    STA edge_screen_address_low
+    LDA hist_edge_hi,X
+    STA edge_screen_address_high
+    LDA hist_src_hi,X
+    STA column_source + 2
+    LDY #&00
+    LDX #&C8
+.loop
+.column_source
+    LDA hist0 - 1,X                 \ self-modified: hist0 - 1 or hist1 - 1
+    STA (edge_screen_address),Y
+    INY
+    CPY #&08
+    BEQ next_group
+.next_row
+    DEX
+    BNE loop
+    RTS
+.next_group
+    PHX
+    LDA edge_screen_address_low
+    LDX edge_screen_address_high
+    LDY #&02                        \ &0280: down a group
+    JSR add_delta_to_screen_address_in_AX
+    STX edge_screen_address_high
+    STA edge_screen_address_low
+    PLX
+    LDY #&00
+    BEQ next_row                    \ always
+}
+.hist_src_hi
+    EQUB HI(hist0 - 1), HI(hist1 - 1)
+ASSERT LO(hist0 - 1) = LO(hist1 - 1)
+
+\ ---- the zone ---------------------------------------------------------------------------------
+\ add_scroll_zone: X = history slot. A right scroll writes the column at the new right edge and
+\ leaves the one at the old left edge (whose memory the new column reuses, a row up); a left
+\ scroll the mirror image.
+.add_scroll_zone
+{
+    LDA hist_dir,X
+    BMI left
+    LDA hist_vr_lo,X                \ right: arriving = new viewport_right
+    STA zone_tmp_lo
+    LDA hist_vr_hi,X
+    STA zone_tmp_hi
+    JSR add_zone_column
+    LDA hist_vl_lo,X                \ leaving = new viewport_left - 1
+    SEC
+    SBC #1
+    STA zone_tmp_lo
+    LDA hist_vl_hi,X
+    SBC #0
+    STA zone_tmp_hi
+    JMP add_zone_column
+.left
+    LDA hist_vl_lo,X                \ left: arriving = new viewport_left
+    STA zone_tmp_lo
+    LDA hist_vl_hi,X
+    STA zone_tmp_hi
+    JSR add_zone_column
+    LDA hist_vr_lo,X                \ leaving = new viewport_right + 1
+    CLC
+    ADC #1
+    STA zone_tmp_lo
+    LDA hist_vr_hi,X
+    ADC #0
+    STA zone_tmp_hi
+    JMP add_zone_column
+}
+
+\ add_lives_zone: A/X = a viewport_left (low/high); the four columns the lives digit covers
+.add_lives_zone
+{
+    STA zone_tmp_lo
+    STX zone_tmp_hi
+    LDA #4
+    STA zone_count
+.each
+    JSR add_zone_column
+    INC zone_tmp_lo
+    BNE same_page
+    INC zone_tmp_hi
+.same_page
+    DEC zone_count
+    BNE each
+    RTS
+}
+
+.add_zone_column                    \ zone_tmp -> the list; keeps X and Y
+{
+    PHX
+    LDX zone_n
+    LDA zone_tmp_lo
+    STA zone_lo,X
+    LDA zone_tmp_hi
+    STA zone_hi,X
+    INC zone_n
+    PLX
+    RTS
+}
+
+\ span_in_zone: does [span_x - 1, span_x + A + 1] hold a zone column? C set if so. Keeps Y.
+.span_in_zone
+{
+    CLC
+    ADC #2
+    STA span_w2
+    LDX zone_n
+    BEQ none
+.each
+    DEX
+    LDA zone_lo,X                   \ d = column - span_x + 1
+    SEC
+    SBC span_x_lo
+    STA span_d
+    LDA zone_hi,X
+    SBC span_x_hi
+    STA span_d + 1
+    LDA span_d
+    CLC
+    ADC #1
+    STA span_d
+    LDA span_d + 1
+    ADC #0
+    BNE next                        \ outside: negative or too far
+    LDA span_w2
+    CMP span_d
+    BCS hit                         \ d <= width + 2
+.next
+    TXA
+    BNE each
+.none
+    CLC
+    RTS
+.hit
+    SEC
+    RTS
+}
+
+.width_of_type_A                    \ A = movers_type_and_colour -> A = width; keeps Y
+    AND #&7F
+    TAX
+    LDA mover_types_width_table,X
+    RTS
+
+\ ---- the player ---------------------------------------------------------------------------
+\ player_needs_redrawing: C set if the player must come off and go back on: it is not drawn, or
+\ drawn in another state, or the screen scrolls, or a mover overlapping it is redrawn.
+.player_needs_redrawing
+{
+    LDY boff
+    LDA rec_xh,Y
+    CMP #&FF
+    BEQ yes
+    LDX #0
+    JSR record_differs
+    BNE yes
+    LDA pending_n
+    BNE yes
+    \ the player's span, live (and recorded: they are the same here)
+    LDA movers_x_low
+    STA player_x_lo
+    LDA movers_x_high
+    STA player_x_hi
+    LDA movers_type_and_colour
+    JSR width_of_type_A
+    STA player_w
+    LDA #1
+    STA ren_j
+.each
+    LDX ren_j
+    LDA ren_j
+    CLC
+    ADC boff
+    TAY
+    LDA need,X                      \ erased this pass: its recorded span
+    BPL not_erased
+    LDA rec_xl,Y
+    STA span_x_lo
+    LDA rec_xh,Y
+    STA span_x_hi
+    LDA rec_type,Y
+    JSR width_of_type_A
+    JSR overlaps_player
+    BCS yes
+    LDX ren_j
+    BCC to_be_drawn                 \ always
+.not_erased
+    LDA rec_xh,Y
+    CMP #&FF
+    BNE next                        \ shown and unchanged: not redrawn
+.to_be_drawn
+    LDA movers_x_high,X             \ drawn this pass, if live: its live span
+    BMI next
+    STA span_x_hi
+    LDA movers_x_low,X
+    STA span_x_lo
+    LDA movers_type_and_colour,X
+    JSR width_of_type_A
+    JSR overlaps_player
+    BCS yes
+.next
+    INC ren_j
+    LDA ren_j
+    CMP #MOVER_SLOTS
+    BNE each
+    CLC
+    RTS
+.yes
+    SEC
+    RTS
+}
+
+\ overlaps_player: [span_x - 1, span_x + A + 1] against [player_x - 1, player_x + player_w + 1]:
+\ d = span_x - player_x + A + 2 must lie in 0 .. A + player_w + 4. C set if they overlap.
+.overlaps_player
+{
+    STA span_w                      \ the mover's width
+    CLC
+    ADC player_w
+    ADC #4
+    STA span_w2                     \ the limit
+    LDA span_x_lo
+    SEC
+    SBC player_x_lo
+    STA span_d
+    LDA span_x_hi
+    SBC player_x_hi
+    STA span_d + 1
+    LDA span_d
+    CLC
+    ADC span_w
+    STA span_d
+    LDA span_d + 1
+    ADC #0
+    STA span_d + 1
+    LDA span_d
+    CLC
+    ADC #2
+    STA span_d
+    LDA span_d + 1
+    ADC #0
+    BNE no
+    LDA span_w2
+    CMP span_d
+    RTS                             \ C set if d <= limit
+.no
+    CLC
+    RTS
+}
+
+\ The save-under: the original's rectangle - width + 1 columns by height + 1 rows from the
+\ player's screen address, upwards (src/game.6502 had it as a circular buffer patched at the
+\ edges; here it is taken whole, per screen).
+.take_save_under
+{
+    LDX movers_type_and_colour
+    LDA mover_types_width_table,X
+    INC A
+    STA rect_w
+    LDA mover_types_height_table,X
+    INC A
+    STA rect_h
+    LDX back
+    STA buf_save_h,X
+    LDA rect_w
+    STA buf_save_w,X
+    LDA movers_screen_address_low
+    STA buf_save_lo,X
+    LDA movers_screen_address_high
+    STA buf_save_hi,X
+    STZ rect_restore
+    JMP rect_copy
+}
+
+.restore_save_under
+{
+    LDX back
+    LDA buf_save_w,X
+    STA rect_w
+    LDA buf_save_h,X
+    STA rect_h
+    LDA #&80
+    STA rect_restore
+}
+    \ falls through
+.rect_copy                          \ X = screen; rect_w, rect_h, rect_restore (bit 7: put back)
+{
+    LDA buf_save_lo,X
+    STA rect_row_lo
+    LDA buf_save_hi,X
+    STA rect_row_hi
+    LDA #LO(save0)
+    STA save_ptr
+    LDA save_base_hi,X
+    STA save_ptr + 1
+.row
+    LDA rect_w
+    STA rect_cols
+    LDA rect_row_lo
+    STA screen_address_low
+    LDA rect_row_hi
+    STA screen_address_high
+.column
+    BIT rect_restore
+    BMI put_back
+    LDA (screen_address)
+    STA (save_ptr)
+    BRA moved_byte
+.put_back
+    LDA (save_ptr)
+    STA (screen_address)
+.moved_byte
+    INC save_ptr
+    BNE same_page
+    INC save_ptr + 1
+.same_page
+    LDA screen_address_low          \ right a column, round the 16K screen
+    CLC
+    ADC #&08
+    STA screen_address_low
+    BCC next_column
+    INC screen_address_high
+    BPL next_column
+    LDA #&40
+    STA screen_address_high
+.next_column
+    DEC rect_cols
+    BNE column
+    LDA rect_row_lo                 \ up a row
+    LDX rect_row_hi
+    LDY #&01
+    JSR subtract_Y_rows_from_screen_address_in_AX
+    STA rect_row_lo
+    STX rect_row_hi
+    DEC rect_h
+    BNE row
+    RTS
+}
+.save_base_hi
+    EQUB HI(save0), HI(save1)
+ASSERT LO(save0) = 0 AND LO(save1) = 0
+
+\ ---- records -----------------------------------------------------------------------------
+\ X = slot (the live tables), Y = slot + boff (the records)
+.record_differs                     \ Z clear if the record and the live slot differ; keeps X, Y
+{
+    LDA rec_type,Y
+    CMP movers_type_and_colour,X
+    BNE out
+    LDA rec_frame,Y
+    CMP movers_frame_and_flip,X
+    BNE out
+    LDA rec_xl,Y
+    CMP movers_x_low,X
+    BNE out
+    LDA rec_xh,Y
+    CMP movers_x_high,X
+    BNE out
+    LDA rec_y,Y
+    CMP movers_y,X
+    BNE out
+    LDA rec_sl,Y
+    CMP movers_screen_address_low,X
+    BNE out
+    LDA rec_sh,Y
+    CMP movers_screen_address_high,X
+.out
+    RTS
+}
+
+.record_live                        \ the live slot is now what this screen shows
+    LDA movers_type_and_colour,X
+    STA rec_type,Y
+    LDA movers_frame_and_flip,X
+    STA rec_frame,Y
+    LDA movers_x_low,X
+    STA rec_xl,Y
+    LDA movers_x_high,X
+    STA rec_xh,Y
+    LDA movers_y,X
+    STA rec_y,Y
+    LDA movers_screen_address_low,X
+    STA rec_sl,Y
+    LDA movers_screen_address_high,X
+    STA rec_sh,Y
+    RTS
+
+.swap_record_in                     \ the record into the live slot, the live values kept
+    LDA movers_type_and_colour,X
+    STA swap_keep + 0
+    LDA rec_type,Y
+    STA movers_type_and_colour,X
+    LDA movers_frame_and_flip,X
+    STA swap_keep + 1
+    LDA rec_frame,Y
+    STA movers_frame_and_flip,X
+    LDA movers_x_low,X
+    STA swap_keep + 2
+    LDA rec_xl,Y
+    STA movers_x_low,X
+    LDA movers_x_high,X
+    STA swap_keep + 3
+    LDA rec_xh,Y
+    STA movers_x_high,X
+    LDA movers_y,X
+    STA swap_keep + 4
+    LDA rec_y,Y
+    STA movers_y,X
+    LDA movers_screen_address_low,X
+    STA swap_keep + 5
+    LDA rec_sl,Y
+    STA movers_screen_address_low,X
+    LDA movers_screen_address_high,X
+    STA swap_keep + 6
+    LDA rec_sh,Y
+    STA movers_screen_address_high,X
+    RTS
+
+.swap_record_out                    \ X = slot: the live values back
+    LDA swap_keep + 0
+    STA movers_type_and_colour,X
+    LDA swap_keep + 1
+    STA movers_frame_and_flip,X
+    LDA swap_keep + 2
+    STA movers_x_low,X
+    LDA swap_keep + 3
+    STA movers_x_high,X
+    LDA swap_keep + 4
+    STA movers_y,X
+    LDA swap_keep + 5
+    STA movers_screen_address_low,X
+    LDA swap_keep + 6
+    STA movers_screen_address_high,X
+    RTS
+
+\ ---- the renderer's variables (bank 4 is RAM) ----------------------------------------------
+.back           EQUB 0              \ the screen being drawn: 0 main, 1 shadow
+.acc_main       EQUB 0              \ ACCCON with the CPU on main RAM, and on shadow
+.acc_shadow     EQUB 0
+.boff           EQUB 0              \ 64 * back
+.hist_next      EQUB 0              \ the history slot written next
+.hist_seq       EQUB 0              \ pushes so far
+.last_vl_lo     EQUB 0
+.last_vl_hi     EQUB 0
+.hist_edge_lo   EQUB 0, 0
+.hist_edge_hi   EQUB 0, 0
+.hist_ss_lo     EQUB 0, 0
+.hist_ss_hi     EQUB 0, 0
+.hist_crtc_lo   EQUB 0, 0
+.hist_crtc_hi   EQUB 0, 0
+.hist_vl_lo     EQUB 0, 0
+.hist_vl_hi     EQUB 0, 0
+.hist_vr_lo     EQUB 0, 0
+.hist_vr_hi     EQUB 0, 0
+.hist_dir       EQUB 0, 0
+.hist_seqs      EQUB 0, 0
+\ per screen (0, 1), and slot 2 for the logic's live view while a screen is drawn
+.buf_seq        EQUB 0, 0
+.buf_lives      EQUB 0, 0
+.buf_ss_lo      EQUB 0, 0, 0
+.buf_ss_hi      EQUB 0, 0, 0
+.buf_crtc_lo    EQUB 0, 0, 0
+.buf_crtc_hi    EQUB 0, 0, 0
+.buf_vl_lo      EQUB 0, 0, 0
+.buf_vl_hi      EQUB 0, 0, 0
+.buf_vr_lo      EQUB 0, 0, 0
+.buf_vr_hi      EQUB 0, 0, 0
+.buf_save_lo    EQUB 0, 0
+.buf_save_hi    EQUB 0, 0
+.buf_save_w     EQUB 0, 0
+.buf_save_h     EQUB 0, 0
+.pending_n      EQUB 0
+.pending_slot   EQUB 0, 0
+.lives_redraw   EQUB 0
+.zone_n         EQUB 0
+.zone_lo        SKIP 12
+.zone_hi        SKIP 12
+.zone_tmp_lo    EQUB 0
+.zone_tmp_hi    EQUB 0
+.zone_count     EQUB 0
+.span_x_lo      EQUB 0
+.span_x_hi      EQUB 0
+.span_w         EQUB 0
+.span_w2        EQUB 0
+.span_d         EQUB 0, 0
+.player_x_lo    EQUB 0
+.player_x_hi    EQUB 0
+.player_w       EQUB 0
+.ren_i          EQUB 0
+.ren_j          EQUB 0
+.ren_k          EQUB 0
+.need           SKIP MOVER_SLOTS
+.swap_keep      SKIP 7
+.rect_w         EQUB 0
+.rect_h         EQUB 0
+.rect_cols      EQUB 0
+.rect_restore   EQUB 0
+.rect_row_lo    EQUB 0
+.rect_row_hi    EQUB 0
+.render_end
+ASSERT render_end <= REN_BASE

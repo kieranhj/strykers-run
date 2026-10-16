@@ -49,3 +49,16 @@ mover whose last part is wider than a column, or which is clipped, the erase lea
 and `move_mover_right`/`left` start from there. So the soldier skips forward. Fixed (KC: let it
 go, decision 13's policy) by reloading the mover's x after the erase; in layer 2 the logic no
 longer draws, so the cause goes too. After the fix, 8,569 of 8,569 moves start from the real x.
+
+## 5. Layer 1's vsync wait lost OSBYTE 19's registers: the game over text was garbage (fixed in layer 2)
+
+Found 2026-10-16 in layer 2, when the second game would not start: `text_screen` had written into
+the renderer's code in bank 4. `text_screen` keeps its text's low byte in Y across
+`reset_screen_scroll` (which leaves Y = `&FF`) and `clear_screen`, whose `wait_for_vsync_2242` was
+OSBYTE 19 - and MOS 3.20's OSBYTE 19 falls out of its wait into `LDY &0301,X : LDA &0300,X : TAX`
+(`&F0FF`), so it returns Y = `&0400`'s 0 there. Layer 1 replaced OSBYTE 19 with a wait on
+`field_count` that kept Y, so the game over and completion text was read from `&FF` bytes on: the
+wrong screen, and stray writes. The layer 1 front-end checks did not look at that screen. Fixed by
+returning OSBYTE 19's X and Y. Checked by `tools/frontend.mjs`: the game over screen, hashed as
+`text_screen` finishes it, is `1754be00fa0ba297` in the byte-identical build and in layer 2, and
+was `ea8f2e8221426d18` in layer 1.

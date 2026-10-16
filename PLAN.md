@@ -40,17 +40,18 @@ Left for later (KC): the MOS out of the interrupt entirely, with the game's own 
 CPU, ~6.8% of it sound); then the front end owned too (its music events, `&EC` key reads,
 OSBYTE 19 and OSBYTE &81 scans).
 
-## Layer 2 - double buffering in shadow RAM
-- [ ] Screens at &4000-&7FFF in main and shadow (same addresses: the wrap code is unchanged);
-      &3000-&3FFF mirrored into shadow at start-up, its 33 written bytes moved below &3000
-- [ ] Per buffer: a record of what was EOR-plotted (address, type, frame/flip, clip), the
-      player's save-under, the scroll position; new edge columns plotted into both
-- [ ] Flip (ACCCON D, R12/R13) in the vsync IRQ; every raster wait deleted
-- [ ] Verified by a buffer oracle (screen against a fresh redraw) and on b2/beebjit
+## Layer 2 - double buffering in shadow RAM: DONE in jsbeeb 2026-10-16 (`docs/step2-layer2.md`)
+Decisions 20-23. The logic no longer draws; a renderer in bank 4 keeps per-screen records and
+draws the hidden screen; the vsync interrupt flips main/shadow at the pass lock's field; every
+raster wait is gone. Pass lockstep against the single-screen control: game state identical,
+shown screen byte-identical on all but 8 of 42,000 passes. Slower: 11.6 passes/s in the town,
+10.3 scrolling (layer 1: 17.8, 16.6).
+- [ ] b2 and real hardware (KC): the flip and the X bit are jsbeeb-only so far
 
 ## Layer 3 - fast enough
-- [ ] Profile; speed up `unpack_column_of_sprite`, collisions, player buffering; the game's own
-      sound driver in place of the MOS's (layer 1, KC: probably 50 Hz)
+- [ ] Profile; speed up `unpack_column_of_sprite`, collisions; layer 2's overheads (the player's
+      save-under copied whole, the renderer's zero-page save, the logic's sprite walk); the game's
+      own sound driver in place of the MOS's (layer 1, KC: probably 50 Hz)
 - [ ] Budget: half an original pass of work, plus double-buffer overhead, under 39,936 cycles.
       Report before layer 4; if it cannot fit, bring the numbers and the options
 

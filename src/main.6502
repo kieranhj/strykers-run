@@ -88,6 +88,7 @@ ENDSECTION
 SECTION DATA1, org = &8000, load = &FFFF1900, exec = &FFFF1900, filename = "DATA1", cmos = TRUE
     SKIP PAD_START
     INCLUDE "bank4.6502"
+    INCLUDE "render.6502"           \ step 2 layer 2: the renderer, after the sprite data
     SKIP PAD_END
 ENDSECTION
 

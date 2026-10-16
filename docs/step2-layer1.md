@@ -1,5 +1,10 @@
 # Step 2, layer 1: own the interrupt, lock the pass to vsync
 
+**Corrected 2026-10-16 (layer 2):** the field-count wait that replaced OSBYTE 19 did not return
+OSBYTE 19's X and Y, and the game over and completion text depended on Y (BUGS #5); the front-end
+checks below did not look at that screen. Fixed in layer 2. Decision 19's delay was removed again
+when the split became steady (decision 22).
+
 Done 2026-10-16. Every number here was measured on **jsbeeb 2.5.0, Master 128 (MOS 3.20, Acorn
 1770 DFS)**, through the headless harnesses in `tools/`, on 2026-10-16. "Before" is the
 byte-identical build (tag `step1-identical`, built from 762a0d2's source), "after" is this

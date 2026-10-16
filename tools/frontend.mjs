@@ -5,7 +5,8 @@
 // On a Master: the title; the instructions (3, then three keys); define controls (2) with Q W E
 // R T Y U I for up, down, right, left, fire, grenade, enter, pause, checked in the `keys` table;
 // a game (1) in which E must move the player right and RIGHT must not; pause (I) and unpause;
-// ESCAPE with the score poked to 020000, so the game over goes through the high score name entry
+// ESCAPE with the score poked to 020000 (the game over screen's hash printed, to compare between
+// builds), so the game over goes through the high score name entry
 // (A, B, RETURN); the music (4) and sound (5) toggles; a second game; ESCAPE again. Saves
 // build/<PREFIX>-<step>.png (default PREFIX "frontend") and prints one line per check. Where the
 // build has layer 1's irq_owned, it also checks the MOS state handed over and back: the keyboard
@@ -30,13 +31,30 @@ const K = {
 };
 const s = await bootMaster(MachineSession, disc);
 const cpu = s._machine.processor;
-const rd = (a, n = 1) => [...s.readMemory(a, n)];
+const rd = (a, n = 1) => [...s.readMemory(a, n, { shadow: false })];   // main RAM: the renderer may have the CPU on shadow
 const run = (n) => s.runFrames(n);
 const press = async (k, hold = 10, after = 40) => { s.keyDownRaw(K[k]); await run(hold); s.keyUpRaw(K[k]); await run(after); };
 let step = 0, fails = 0;
 const shot = async (name) => writeFileSync(`build/${PREFIX}-${String(++step).padStart(2, "0")}-${name}.png`, await s.screenshotActive({ scale: 1 }));
-const check = (what, ok, detail = "") => { console.log(`${ok ? "ok  " : "FAIL"} ${what}${detail ? ": " + detail : ""}`); if (!ok) fails++; };
+const check = (what, ok, detail = "") => { console.log(`${ok ? "ok  " : "FAIL"} ${what}${detail ? ": " + detail : ""}`); if (!ok) { fails++; pcReport = true; } };
+let pcReport = false;
 let inLoop = 0;
+const pcs = new Map();
+const trail = [];
+let brkSeen = null, codeWrite = null;
+const renLo = syms.history_push, renHi = syms.back;
+let watchCode = false;
+const smc = syms["write_column.column_source"] + 2;
+cpu.debugWrite.add((a, v) => { if (watchCode && !codeWrite && a !== smc && a >= renLo && a < renHi && (cpu.romsel & 15) === 4 && !(cpu.acccon & 0)) codeWrite = { a, v, pc: cpu.pc, trail: trail.slice(-25), ss: s.readMemory(0, 2), tsa: s.readMemory(0xce, 2) }; return false; });
+cpu.debugInstruction.add((pc, op) => {
+    if (pcReport) pcs.set(pc, (pcs.get(pc) || 0) + 1);
+    if (pc < 0xc000) { const n = near(pc); if (!/^(plot_character|set_pixel_value|not_next_byte|add_delta|get_screen_address_delta|skip_wraparound)/.test(n) && trail[trail.length - 1] !== n) { trail.push(n); if (trail.length > 30) trail.shift(); } }
+    if (op === 0x00 && pc < 0xc000 && !brkSeen) brkSeen = { pc, romsel: cpu.romsel & 15, acccon: cpu.acccon, trail: trail.slice() };
+    return false;
+});
+const symAt = {}; for (const [k, v] of Object.entries(syms)) (symAt[v] ||= k);
+const near = (pc) => { for (let a = pc; a > pc - 0x300; a--) if (symAt[a] !== undefined) return `${symAt[a]}+${pc - a}`; return "&" + pc.toString(16); };
+async function reportPcs() { if (!pcReport) return; pcs.clear(); await run(3); console.log("  where: " + [...pcs.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([pc, n]) => `${near(pc)} (&${pc.toString(16)}, romsel ${cpu.romsel & 15}):${n}`).join("  ")); pcReport = false; }
 // The title alternates its options with the high score table and only takes 1 from the options.
 const startGame = async () => { for (let i = 0; i < 8; i++) { const n = inLoop; await press("K1", 40, 260); if (inLoop > n) return true; } return false; };
 cpu.debugInstruction.add((pc) => { if (pc === syms.main_game_loop) inLoop++; return false; });
@@ -50,6 +68,7 @@ const x = () => rd(syms.movers_x_high)[0] * 256 + rd(syms.movers_x_low)[0];
 await run(BOOT_FRAMES); s.keyUpRaw(K.SHIFT);              // SHIFT held through the BREAK boots the disc
 await run(2100 - BOOT_FRAMES);
 const boot = mosState();
+watchCode = true;
 await shot("title");
 check("title: main_game_loop not entered", inLoop === 0);
 
@@ -82,8 +101,17 @@ const p1 = inLoop; await run(100);
 check("unpause", inLoop > p1, `${inLoop - p1} passes`);
 
 // a score that ranks: 020000, in the game's font offsets (offsets_to_numbers_table)
-s.writeMemory(syms.game_over_text + 20, [0x6c, 0x78, 0x6c, 0x6c, 0x6c, 0x6c]);
+s.writeMemory(syms.game_over_text + 20, [0x6c, 0x78, 0x6c, 0x6c, 0x6c, 0x6c], { shadow: false });
+// the game over text, as text_screen finishes it (its delay loop): compare the hash between builds
+const { createHash } = await import("node:crypto");
+let gameOverScreen = null;
+const gameOverHook = cpu.debugInstruction.add((pc) => {
+    if (pc === syms.delay_loop && !gameOverScreen) gameOverScreen = { bytes: Buffer.from(s.readMemory(0x4000, 0x4000, { shadow: false })), shown: cpu.acccon & 1 };
+    return false;
+});
 await press("ESCAPE", 10, 300); await shot("game-over-name-entry");
+gameOverHook.remove();
+check("game over text drawn", !!gameOverScreen, gameOverScreen ? `main &4000-&7FFF sha1 ${createHash("sha1").update(gameOverScreen.bytes).digest("hex").slice(0, 16)}, shown ${gameOverScreen.shown ? "shadow" : "main"}` : "never");
 const back = mosState();
 if (layer1) check("title again: MOS state as before the game",
     back.owned === 0 && back.sem === boot.sem && back.mask === boot.mask && (back.ier & 0x13) === (boot.ier & 0x13),
@@ -102,6 +130,9 @@ await press("K5", 10, 100); await shot("sound-toggled");
 await startGame(); await run(100); await shot("game-2");
 const again = mosState();
 check("game 2 started", inLoop > l0, `${inLoop - l0} passes`);
+await reportPcs();
+if (codeWrite) console.log(`  first write into the renderer's code: &${codeWrite.a.toString(16)} = &${codeWrite.v.toString(16)} at ${near(codeWrite.pc)}; ss ${codeWrite.ss} text_screen_address ${codeWrite.tsa}; before: ${codeWrite.trail.join(" ")}`);
+if (brkSeen) console.log(`  BRK at ${near(brkSeen.pc)} (&${brkSeen.pc.toString(16)}) romsel ${brkSeen.romsel} acccon &${brkSeen.acccon.toString(16)}; before: ${brkSeen.trail.join(" ")}`);
 if (layer1) check("game 2: irq_owned &FF, &0242 0", again.owned === 0xff && again.sem === 0, JSON.stringify(again));
 await press("ESCAPE", 10, 400); await shot("title-3");
 if (layer1) check("title 3: handed back", mosState().owned === 0, JSON.stringify(mosState()));

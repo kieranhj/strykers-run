@@ -52,6 +52,7 @@ addresses from there (`python tools/listing.py symbols build/strykers.symbols.js
 | `zp.6502` | zero-page names (several per address: the game reuses zero page) and fixed workspace |
 | `os.6502` | MOS calls, vectors, hardware registers |
 | `lib/boot_stamp.6502` | the kit's stamp macros |
+| `render.6502` | step 2 layer 2: the renderer (sideways bank 4, after its sprite data): per-screen records, the edge column history, the player's save-under, the double buffer |
 | `lib/keydown.6502` | the kit's `keydown_int`, forked (step 2 layer 1): the keyboard read straight off the System VIA |
 
 `game.6502` and `bank*.6502` were generated once by `tools/disasm2baron.py` from
@@ -74,6 +75,9 @@ disassembly's `actually`/`also` notes say what an operand really is.
 - `tools/frontend.mjs DISC` - title, instructions, define controls, pause, high score entry, toggles, two games: 14 checks, plus the MOS state handed over and back
 - `tools/split.mjs DISC FROM FRAMES`, `tools/splitscroll.mjs DISC` - when the palette writes land after vsync, every field / on scrolling fields
 - `tools/soundfx.mjs DISC OUT.json` - each sound effect's SN76489 writes, for comparing two builds
+- `tools/passlock.mjs CONTROL TEST [PASSES] [SEED] [--screen]` - two builds in step by pass (same keys per pass), game state compared every pass, and the shown screen (`--trace`, `--dump`, `WATCH=` to chase a difference). Layer 2's oracle: build both `-Shift 256 -ShiftEnd` so the ground pattern is fixed
+- `tools/shadowaudit.mjs DISC` - what the renderer reads in `&3000-&3FFF` with ACCCON's X bit set, against what play writes there
+- Harnesses must read `&3000-&7FFF` with `{ shadow: false }` (or `true`): the renderer may have the CPU on shadow RAM
 
 ## Memory (MGAME, as the reference lays it out)
 
@@ -82,8 +86,11 @@ disassembly's `actually`/`also` notes say what an operand really is.
 code and data; `&4000-&46FF` start-up code, then the screen `&4000-&7FFF` (16K, MODE 2,
 hardware-scrolled by the CRTC). Bank 5 `&8000-&83FF` is the player buffer.
 
-Step 2 additions: zero page `&90` (`field_count`), `&92`/`&93` (the PRNG); `&33B9-&33FF` (the
-standard version's dead table) holds layer 1's keyboard read, PRNG and two variables, padded so
-everything from `&3400` stays put, 3 bytes free (2026-10-16); bank 5 grows only at its end
-(`&A3FA-&A463`), because its music is page-aligned. In play the game's `irq1_handler` owns vsync
-(`irq_owned` = `&FF`); on the front end the MOS has it (decision 14).
+Step 2 additions: zero page `&90` (`field_count`), `&92`/`&93` (the PRNG), `&9B` (`drawing`),
+`&9C/&9D` (the sprite walk's and the renderer's pointer). The keyboard read, PRNG and `pass_start`
+are in `&31xx`, with 517 bytes free up to `&33FF`; everything from `&3400` stays where the original
+had it (BUGS #1, #2). The interrupt's variables are below `&3000` (the renderer draws with ACCCON's
+X bit set when the target is shadow). Bank 4: the renderer `&9782-`, workspace `&B000-&BAFF`.
+Bank 5 grows only at its end (its music is page-aligned). In play the game's `irq1_handler` owns
+vsync and flips the two screens (main and shadow, both `&4000-&7FFF`); on the front end the MOS
+has vsync and only main is used (decisions 14, 23).

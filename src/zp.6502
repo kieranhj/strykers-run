@@ -78,10 +78,9 @@ channel_one_envelope                         = &99
 high_score_music_notes_remaining             = &99
 x_edge_size_and_direction                    = &99
 y_edge_size_and_direction                    = &9A
-buffer_x_origin                              = &9B
-buffer_y_origin                              = &9C
-player_mover_width                           = &9D
-player_mover_height                          = &9E
+drawing                                      = &9B      \ step 2 layer 2: bit 7 set while the renderer draws
+walk_ptr                                     = &9C      \ step 2 layer 2: walk_sprite_columns (&9C/&9D)
+\ &9C-&9E were the original's player save-under origins and size; render.6502 also uses &9C/&9D
 top_palette_value                            = &9F
 firing_frame                                 = &A0
 firing_mover_type                            = &A1
@@ -173,7 +172,5 @@ irq_accumulator                              = &FC
 \ ---- fixed workspace (not part of any file) ----
 column_buffer                                = &0300
 movers_helicopter_fuel_high                  = &0960
-player_buffer                                = &8000      \ bank 5 &8000-&83FF: what is under the player
-player_x_edge_buffer                         = player_buffer + &200
-player_y_edge_buffer                         = &8300
+\ bank 5 &8000-&83FF held the player's save-under and its edge buffers; free since layer 2
 os_rom                                       = &C000

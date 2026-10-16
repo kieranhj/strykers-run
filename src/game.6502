@@ -1686,11 +1686,14 @@
     RTS
 
 .update_screen
-.wait_for_timer_1b7c
-    LDA usrvia_t2ch                 \ User VIA timer 2 counter MSB
-    CMP #&C8
-    BCS update_screen               \ Wait for raster to be at approximately ground level
-.update_screen_without_delay
+    \ Step 2 (layer 2): the new edge column is the renderer's, which writes it into each screen
+    \ in turn (render.6502 history_push). The original waited for the beam to reach the ground,
+    \ then wrote the CRTC start and the column into the screen being shown.
+    LDA #&04
+    STA os_ram_copy_of_currently_selected_rom
+    STA romsel                      \ Paged ROM latch
+    JMP history_push
+.update_screen_without_delay        \ the original's, still used to build the screen at the start
     LDX #&0C                        \ R12: Displayed screen start address register (high)
     STX crtc_reg                    \ video register number
     LDA crtc_start_address_high
@@ -2180,6 +2183,10 @@ ENDIF
     STX mover_x_low
     LDY sprite_data_offset
     INY
+    BIT drawing                     \ Step 2 (layer 2): the game's own calls walk on, not draw
+    BMI next_column_drawn
+    JMP walk_column
+.next_column_drawn
     JMP unpack_column_of_sprite
 
 .get_mover_type_and_colour
@@ -2277,10 +2284,51 @@ ENDIF
     ORA #&80
     STA mask_table_address_low
     LDY #&01
+    \ Step 2 (layer 2): only the renderer draws. The game's own calls still work out the
+    \ sprite and the address, and walk the sprite as the plotter would, but write nothing.
+    BIT drawing
+    BMI draw_sprite
+    JSR walk_column
+    BRA skip_unpacking              \ 65C02 opcode
+.draw_sprite
     JSR unpack_column_of_sprite
+.skip_unpacking
     LDA #&40
     STA pixel_table_address_low
 .leave_1f08
+    RTS
+
+\ Step 2 (layer 2): unpack_column_of_sprite without the drawing, for the game's own calls.
+\ The original's logic reads what the plotter leaves behind - mover_x_low stepped on a column
+\ at a time, delta_low/delta_high (also frame_and_flip, target...) and screen_address from the
+\ column step, sprite_data_offset, the sprite pointer - so this follows the plotter's own path
+\ through the run-length data, entry by entry, and shares consider_plotting_next_column_of_mover
+\ with it (whose next_column comes back here while drawing is off). Only the row loop, which
+\ writes the screen and its own operands, is left out.
+.walk_column
+    LDA (unpack_column_of_sprite + 1),Y
+    TAX
+    BEQ walk_end_of_column
+    BPL walk_positive
+    ASL A                           \ 1x...... run length 1 or 3: one byte
+    BRA walk_run                    \ 65C02 opcode
+.walk_positive
+    ASL A
+    BMI walk_run                    \ 01...... run length 2: one byte
+    INY                             \ 00...... the run length is the next byte
+.walk_run
+    INY
+    STY sprite_data_offset
+    BNE walk_column                 \ always (the original: LDY sprite_data_offset : BNE)
+.walk_end_of_column
+    INY
+    LDA (unpack_column_of_sprite + 1),Y
+    BMI walk_consider_next_column
+.walk_to_next_column
+    JMP consider_plotting_next_column_of_mover
+.walk_consider_next_column
+    LDA pixel_table_address_low     \ zero if flipped
+    BEQ walk_to_next_column
     RTS
 
 .get_mover_sprite_and_screen_addresses    \ # Called with X = mover type
@@ -2335,61 +2383,20 @@ ENDIF
     RTS                             \ Leave with carry set if mover_x >= viewport_left
 
 .add_movers_to_column_buffer
-    LDA #&04                        \ ***
-    STA os_ram_copy_of_currently_selected_rom\ ***
-    STA romsel                      \ Paged ROM latch                      ***
+    \ Step 2 (layer 2): the edge column is scenery only; the renderer draws the movers that
+    \ overlap it. What the original's loop left behind is set as it left it (the bank, the
+    \ column plotter's mask opcode, the unflipped pixel table, mover_to_update past the last).
+    LDA #&04
+    STA os_ram_copy_of_currently_selected_rom
+    STA romsel                      \ Paged ROM latch
     LDA #&A9                        \ LDA #&ff                                  # Plot without mask
     STA plot_scenery_mask_opcode
     LDA #&FF
     STA plot_scenery_mask_opcode + 1
-    LDY #&01                        \ MOVER_FIRST + 1
-    STY mover_to_update
-.add_movers_to_column_buffer_loop
-    LDY mover_to_update
-    JSR get_mover_type_and_colour   \ Returns A = mover type
-    JSR check_if_mover_is_on_edge   \ Returns carry set if mover is on edge
-    BCC consider_next_mover_1fcd
-    LDA mover_y
-    JSR add_column_of_sprite_to_column_buffer\ Add first part of mover (e.g. player's legs)
-    JSR get_mover_x_and_y
-    LDX &7A
-    LDA mover_types_parts,X         \ ***
-    CMP #&02                        \ ***
-    BCS consider_next_mover_1fcd    \ Finish if the mover only uses one sprite
-    LDA mover_y
-    LDA movers_frame_and_flip,Y
-    AND #&3F
-    ADC mover_types_second_sprite_offset,X
-    TAX
-    LDA mover_y
-    ADC sprites_y_offset,X
-    STA y_offset
-    LDA &7A
-    CLC
-    ADC #&1C                        \ *** Use mover types &14 - &37 for second part of mover
-    TAX
-    JSR calculate_sprite_address_for_mover_on_edge
-    LDA y_offset
-    JSR add_column_of_sprite_to_column_buffer\ Add second part of mover (e.g. player's torso)
-    JSR get_mover_x_and_y
-    LDX &7A
-    LDA mover_types_parts,X         \ ***
-    BNE consider_next_mover_1fcd    \ *** Finish if the mover only uses two sprites
-    LDA mover_types_third_sprite,X
-    TAX
-    LDA movers_frame_and_flip,Y
-    JSR calculate_sprite_address_for_mover_on_edge_from_sprite
-    LDA y_offset
-    CLC
-    ADC #&08
-    JSR add_column_of_sprite_to_column_buffer\ Add third part of mover (e.g. player's head)
-.consider_next_mover_1fcd
     LDA #&40
-    STA pixel_table_address_low     \ Set to &40 to use unflipped pixel table by default
-    INC mover_to_update
-    LDY mover_to_update
-    CPY #&22                        \ MOVER_LAST + 1                        *** Enhanced version adds tank
-    BCC add_movers_to_column_buffer_loop
+    STA pixel_table_address_low
+    LDA #&22                        \ MOVER_LAST + 1
+    STA mover_to_update
     RTS
 
 .get_mover_x_and_y
@@ -2535,10 +2542,12 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     RTS
 
 .completion_screen
+    JSR render_finish               \ Step 2 (layer 2): the text goes on the main screen, up to date
     LDY #LO(completion_screen_text) \ &22c9 = completion_screen_text
     LDX #HI(completion_screen_text)
     JSR text_screen
 .game_over_screen
+    JSR render_finish               \ Step 2 (layer 2): as completion_screen
     LDY #LO(game_over_text)         \ &3359 = game_over_text
     LDX #HI(game_over_text)
     JSR text_screen
@@ -2553,6 +2562,7 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     STA romsel                      \ Paged ROM latch                      ***
     JSR title_screen                       \ ***
 .start_game
+    STZ drawing                     \ Step 2 (layer 2): the game's own plot calls draw nothing
     LDA #&01                        \ ***
     STA top_palette_value           \ *** Set colour 0 to cyan
     LDX #&17                        \ MOVER_FIRST_ALLY_HELICOPTER - 1           # Remove all movers except for ally helicopters
@@ -2620,7 +2630,8 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     LDY #&00                        \ MOVER_PLAYER
     JSR plot_mover
     JSR plot_lives
-    LDA observer_mode               \ *** Non-zero if observer mode
+    JSR render_start                \ Step 2 (layer 2): the renderer starts from the scenery alone
+    LDA observer_mode              \ *** Non-zero if observer mode
     BEQ main_game_loop              \ ***
     LDA #&05                        \ ***
     STA unused_variable             \ *** Unused variable
@@ -2633,7 +2644,7 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     INC movers_x_high               \ ***
 .skip_overflow_217e    \ ***
     JSR scroll_screen_right         \ ***
-    JSR update_screen               \ ***
+    JSR update_screen_observer      \ *** (step 2 layer 2: was JSR update_screen)
     BRA observer_mode_loop          \ *** 65C02 opcode
 .not_scrolling_right    \ ***
     LDX #&E6                        \ LEFT                                  ***
@@ -2646,7 +2657,7 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     DEC movers_x_high               \ ***
 .skip_underflow_219a    \ ***
     JSR scroll_screen_left          \ ***
-    JSR update_screen               \ ***
+    JSR update_screen_observer      \ *** (step 2 layer 2: was JSR update_screen)
     BRA observer_mode_loop          \ *** 65C02 opcode
 .not_scrolling_left    \ ***
     LDX #&8F                        \ ESCAPE                                ***
@@ -2654,6 +2665,7 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     BNE observer_mode_loop          \ ***
     LDA #&00                        \ ***
     STA observer_mode               \ ***
+    JSR render_finish               \ step 2 layer 2: the main screen, up to date
     JMP to_title_screen             \ ***
 .observer_mode    \ ***
     EQUB &00    \ ***
@@ -2735,15 +2747,14 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
 .wait_for_field_count_2242          \ fields itself, as OSBYTE 19 hangs once the MOS is kept
     CMP field_count                 \ from vsync in play
     BEQ wait_for_field_count_2242
-    \ Step 2 (decision 19): OSBYTE 19 returned ~170 cycles later than this (the MOS's own vsync
-    \ work and the OSBYTE exit), and the User VIA timers restarted below are the raster clock
-    \ and the palette split. 176 cycles keep both where the original put them on scrolling
-    \ fields. In place of the original's LDA #0 : STA usrvia_ier below, which changed nothing.
-    LDX #35                         \ 2 + 35 * 5 - 1 = 176 cycles
-.delay_as_osbyte_19
-    DEX
-    BNE delay_as_osbyte_19
-    LDA sysvia_acr                  \ System VIA auxiliary control register***
+    \ What OSBYTE 19 returns, which callers rely on: MOS 3.20 falls out of its wait into
+    \ LDY &0301,X : LDA &0300,X : TAX (&F0FF, read 2026-10-16), and text_screen then indexes
+    \ its text with that Y (&FF from reset_screen_scroll gives Y = &0400's 0). Missing from
+    \ layer 1, whose game over and completion text was read from the wrong place (BUGS #5).
+    LDY &0301,X
+    LDA &0300,X
+    TAX
+    LDA sysvia_acr                 \ System VIA auxiliary control register***
     AND #&DF                        \ *** Set System VIA timer 2 to one-shot mode
     STA usrvia_acr                  \ User VIA auxiliary control register  ***
     LDA #&20                        \ *** Enable System VIA timer 2 interrupts
@@ -2754,6 +2765,8 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     LDA usrvia_acr                  \ User VIA auxiliary control register  ***
     AND #&3F                        \ *** Set User VIA timer 1 to one-shot mode
     STA usrvia_acr                  \ User VIA auxiliary control register  ***
+    LDA #&00                        \ *** Do nothing
+    STA usrvia_ier                  \ User VIA interrupt enable register   ***
     LDA #&00                        \ ***
     STA usrvia_t1cl                 \ User VIA timer 1 counter LSB         ***
     LDA #&29                        \ ***
@@ -3434,7 +3447,7 @@ move_mover_routine_address_high = * + 2
     BPL not_scrolling
     LDA x_delta
     BEQ not_scrolling
-    JSR wait_for_vsync_2242
+    \ Step 2 (layer 2): the original waited for vsync here, to move the screen start between frames
     JSR unbuffer_player
     JSR update_screen
     JSR plot_lives
@@ -3571,6 +3584,8 @@ move_mover_routine_address_high = * + 2
 \ pass is a whole number of fields and starts at a vsync. pass_start needs no initialising:
 \ a stale value costs at most the first pass one or two fields.
 .wait_for_timer_281a
+    JSR render_pass                 \ Step 2 (layer 2): draw this pass into the hidden screen
+    SEI                             \ the field chosen and the flip armed before a vsync can pass
     LDA field_count
     TAX
     SEC
@@ -3578,9 +3593,15 @@ move_mover_routine_address_high = * + 2
     CMP #&02
     INX
     TXA                             \ A = the next field
-    BCS wait_for_pass_slot          \ overran: end at the next field
+    BCS set_pass_slot_end           \ overran: end at the next field
     LDA pass_start
     ADC #&02                        \ (C clear) on time: end at the slot's end
+.set_pass_slot_end
+    STA flip_target                 \ layer 2: the vsync interrupt shows the new screen then
+    LDA #&80
+    STA flip_pending
+    CLI
+    LDA flip_target
 .wait_for_pass_slot
     CMP field_count
     BNE wait_for_pass_slot
@@ -4225,367 +4246,21 @@ ENDIF
     CLC
     RTS
 
+\ Step 2 (layer 2): the player's save-under (a circular buffer in bank 5, patched edge by
+\ edge as the player moved) is the renderer's now, one per screen (src/render.6502). The
+\ game's calls to it do nothing.
 .get_player_screen_address
-    LDA movers_screen_address_low
-    LDX movers_screen_address_high
-    STA player_screen_address_low
-    STX player_screen_address_high
-    RTS                             \ *** Standard version gets buffer address as well
-
-.set_buffering_or_unbuffering
-    LDY #&03
-.set_buffering_or_unbuffering_loop
-    LDA buffer_or_unbuffer_code,X
-    STA buffer_or_unbuffer_player_column_loop,Y
-    DEX
-    DEY
-    BPL set_buffering_or_unbuffering_loop
-    RTS
-
 .buffer_player
-    STZ buffer_x_origin             \ *** 65C02 opcode
-    STZ buffer_y_origin             \ *** 65C02 opcode
-    JSR get_player_screen_address
-    LDX #&07                        \ Use buffering code
-    BNE buffer_or_unbuffer_player   \ Always branches
 .unbuffer_player_getting_addresses
-    JSR get_player_screen_address
 .unbuffer_player
-    LDX #&03                        \ Use unbuffering code
-.buffer_or_unbuffer_player
-    JSR set_buffering_or_unbuffering
-    JSR calculate_player_width_and_height\ ***
-    LDA player_mover_height         \ ***
-    STA rows_remaining              \ ***
-    LDA buffer_y_origin             \ ***
-    STA unused_0076 + 1             \ ***
-    LDX player_mover_width          \ ***
-    JSR multiply_A_by_X_2f1e        \ ***
-    LDA result_low                  \ ***
-    STA &89                         \ ***
-    LDA result_high                 \ ***
-    ORA #HI(player_buffer)                        \ in bank 5                 ***
-    STA &8A                         \ ***
-.buffer_or_unbuffer_player_row_loop
-    LDY player_screen_address_low
-    LDA player_screen_address_high
-    STA screen_address_high
-    LDA player_mover_width          \ ***
-    STA &7A
-    STY screen_address_low          \ ***
-    LDY buffer_x_origin             \ ***
-.buffer_or_unbuffer_player_column_loop
-    LDA (&89),Y                     \ if unbuffering
-\ #     also     LDA (&ce) ; screen_address                       *** # 65C02 opcode; if buffering
-    STA (screen_address)            \ *** 65C02 opcode; if unbuffering
-\ #     also     STA (&89,Y) ; buffer_address                         # if buffering
-    LDA screen_address_low          \ ***
-    CLC
-    ADC #&08
-    STA screen_address_low          \ ***
-    BCC skip_page_screen
-    INC screen_address_high
-    BPL skip_wraparound_screen
-    LDA #&40
-    STA screen_address_high
-.skip_wraparound_screen
-.skip_page_screen
-    INY                             \ ***
-    CPY player_mover_width          \ ***
-    BCC skip_wraparound_width_2cc6  \ ***
-    LDY #&00                        \ ***
-.skip_wraparound_width_2cc6
-    DEC &7A
-    BNE buffer_or_unbuffer_player_column_loop
-    LDA player_screen_address_low
-    LDX player_screen_address_high
-    LDY #&01
-    JSR subtract_Y_rows_from_screen_address_in_AX
-    STA player_screen_address_low
-    STX player_screen_address_high
-    LDA &89                         \ ***
-    CLC                             \ ***
-    ADC player_mover_width          \ ***
-    STA &89                         \ ***
-    BCC skip_page_2ce2              \ ***
-    INC &8A                         \ ***
-.skip_page_2ce2    \ ***
-    INC unused_0076 + 1             \ ***
-    LDA unused_0076 + 1             \ ***
-    CMP player_mover_height         \ ***
-    BCC skip_wraparound_height_2cf2 \ ***
-    STZ &89                         \ *** 65C02 opcode
-    LDA #HI(player_buffer)                        \ in bank 5                 ***
-    STA &8A                         \ ***
-    STZ unused_0076 + 1             \ *** 65C02 opcode
-.skip_wraparound_height_2cf2    \ ***
-    DEC rows_remaining
-    BNE buffer_or_unbuffer_player_row_loop
+.buffer_player_edges
+.update_player_buffer
     RTS
 
 .check_if_player_is_on_ground
     LDA movers_y
     CMP #&18
     RTS
-
-.buffer_or_unbuffer_code    \ # Copied, not executed
-    LDA (&89),Y                     \ &03 : unbuffer (copy from buffer to screen)
-    STA (screen_address)            \ *** 65C02 opcode
-\ ;                                                                   # &07 : buffer (copy from screen to buffer)
-    LDA (screen_address)            \ *** 65C02 opcode
-    STA (&89),Y
-
-.buffer_player_x_edge    \ *** # &2d05 - &2ea7 is extra code
-    LDA player_mover_height
-    STA rows_remaining
-    STZ buffer_offset               \ 65C02 opcode
-.buffer_player_x_edge_loop
-    LDY buffer_offset
-    LDA (screen_address)            \ 65C02 opcode
-    STA player_x_edge_buffer,Y
-    INY
-    STY buffer_offset
-    LDX screen_address_high
-    LDA screen_address_low
-    LDY #&01
-    JSR subtract_Y_rows_from_screen_address_in_AX
-    STX screen_address_high
-    STA screen_address_low
-    DEC rows_remaining
-    BNE buffer_player_x_edge_loop
-    RTS
-
-.buffer_player_y_edge
-    STZ buffer_offset               \ 65C02 opcode
-.buffer_player_y_edge_row_loop
-    STA player_edge_screen_address_low
-    STX player_edge_screen_address_high
-    LDA player_mover_width
-    STA &79
-.buffer_player_y_edge_column_loop
-    LDY buffer_offset
-    LDA (screen_address)            \ 65C02 opcode
-    STA player_y_edge_buffer,Y
-    INY
-    STY buffer_offset
-    LDX screen_address_high
-    LDA screen_address_low
-    LDY #&00                        \ &0008                                     # Move right a column
-    JSR add_delta_to_screen_address_in_AX
-    STX screen_address_high
-    STA screen_address_low
-    DEC &79
-    BNE buffer_player_y_edge_column_loop
-    LDX player_edge_screen_address_high
-    LDA player_edge_screen_address_low
-    LDY #&01
-    JSR subtract_Y_rows_from_screen_address_in_AX
-    STX screen_address_high
-    STA screen_address_low
-    DEC unused_0076 + 1
-    BNE buffer_player_y_edge_row_loop
-    RTS
-
-.buffer_player_edges
-    JSR calculate_player_width_and_height
-    LDA player_mover_width
-    DEC A                           \ 65C02 opcode
-    STA &79
-    LDA x_edge_size_and_direction
-    AND #&7F
-    BEQ skip_buffering_vertical_edge\ If the player is moving horizontally,
-    LDA movers_screen_address_low
-    LDX movers_screen_address_high
-    LDY x_edge_size_and_direction
-    BMI not_right_edge
-.is_right_edge_2d76
-.calculate_right_edge_loop
-    LDY #&00
-    JSR add_delta_to_screen_address_in_AX
-    DEC &79
-    BNE calculate_right_edge_loop
-.not_right_edge
-    STA screen_address_low
-    STX screen_address_high
-    JSR buffer_player_x_edge        \ Buffer left or right edge behind player
-.skip_buffering_vertical_edge
-    LDA y_edge_size_and_direction
-    AND #&7F
-    BEQ leave_2dab                  \ If the player is moving vertically,
-    STA unused_0076 + 1
-    LDA player_mover_height
-    SEC
-    SBC unused_0076 + 1
-    STA &CC
-    LDA movers_screen_address_low
-    LDX movers_screen_address_high
-    LDY y_edge_size_and_direction
-    BMI not_top_edge
-.is_top_edge
-    LDY &CC
-    JSR subtract_Y_rows_from_screen_address_in_AX
-.not_top_edge
-    STA screen_address_low
-    STX screen_address_high
-    JSR buffer_player_y_edge        \ Buffer top or bottom edge behind player
-.leave_2dab
-    RTS
-
-.calculate_player_width_and_height
-    LDA #&05                        \ Use &8000 - &83ff of bank 5 for player buffers
-    STA os_ram_copy_of_currently_selected_rom
-    STA romsel                      \ Paged ROM latch
-    LDX movers_type_and_colour
-    LDA mover_types_width_table,X
-    INC A                           \ 65C02 opcode
-    STA player_mover_width
-    LDA mover_types_height_table,X
-    INC A                           \ 65C02 opcode
-    STA player_mover_height
-    RTS
-
-.update_player_buffer
-    JSR calculate_player_width_and_height
-    LDA x_edge_size_and_direction
-    AND #&7F
-    BEQ consider_updating_y_edge
-    LDY x_edge_size_and_direction
-    BMI is_moving_left_2df3
-.is_moving_right_2dd0
-    JSR move_right_in_buffer
-    JSR consider_updating_y_edge
-    JSR move_left_in_buffer
-    JSR update_x_edge_of_player_buffer
-.move_right_in_buffer
-    LDA buffer_x_origin
-    INC A                           \ 65C02 opcode
-    CMP player_mover_width
-    BCC skip_wraparound_right
-    LDA #&00
-.skip_wraparound_right
-    STA buffer_x_origin
-    RTS
-.move_left_in_buffer
-    LDA buffer_x_origin
-    DEC A                           \ 65C02 opcode
-    BPL skip_wraparound_left
-    LDA player_mover_width
-    DEC A                           \ 65C02 opcode
-.skip_wraparound_left
-    STA buffer_x_origin
-    RTS
-.is_moving_left_2df3
-    JSR move_left_in_buffer
-    JSR consider_updating_y_edge
-    JMP update_x_edge_of_player_buffer
-.consider_updating_y_edge
-    LDA y_edge_size_and_direction
-    AND #&7F
-    BEQ leave_2e18
-    STA unused_0076 + 1
-    LDY y_edge_size_and_direction
-    BMI unbuffer_bottom_edge
-.unbuffer_top_edge
-    JSR update_y_edge_of_player_buffer
-    LDA buffer_y_origin
-    CLC
-    ADC unused_0076 + 1
-    CMP player_mover_height
-    BCC skip_wraparound_top
-    SBC player_mover_height
-.skip_wraparound_top
-    STA buffer_y_origin
-.leave_2e18
-    RTS
-.unbuffer_bottom_edge
-    LDA buffer_y_origin
-    SEC
-    SBC unused_0076 + 1
-    BCS skip_wraparound_bottom
-    ADC player_mover_height
-.skip_wraparound_bottom
-    STA buffer_y_origin
-    JMP update_y_edge_of_player_buffer
-
-.update_x_edge_of_player_buffer
-    JSR calculate_buffer_address
-    LDA player_mover_height
-    STA rows_remaining
-    LDY buffer_x_origin
-    LDX #&00
-.update_x_edge_of_player_buffer_loop
-    LDA player_x_edge_buffer,X
-    STA (&C5),Y
-    INX
-    LDA &C5
-    CLC
-    ADC player_mover_width
-    BCC skip_page_2e41
-    INC &C6
-.skip_page_2e41
-    STA &C5
-    INC &CD
-    LDA &CD
-    CMP player_mover_height
-    BCC skip_wraparound_2e53
-    STZ &CD                         \ 65C02 opcode
-    STZ &C5                         \ 65C02 opcode
-    LDA #HI(player_buffer)                        \ in bank 5
-    STA &C6
-.skip_wraparound_2e53
-    DEC rows_remaining
-    BNE update_x_edge_of_player_buffer_loop
-    RTS
-
-.calculate_buffer_address
-    LDA player_mover_width
-    LDX buffer_y_origin
-    STX &CD
-    JSR multiply_A_by_X_2f1e
-    LDA result_high
-    ORA #HI(player_buffer)                        \ in bank 5
-    STA result_high
-    RTS
-
-.update_y_edge_of_player_buffer
-    JSR calculate_buffer_address
-    LDA unused_0076 + 1
-    STA rows_remaining
-    LDX #&00
-.update_y_edge_of_player_buffer_row_loop
-    LDY buffer_x_origin
-    LDA player_mover_width
-    STA buffer_x
-.update_y_edge_of_player_buffer_column_loop
-    LDA player_y_edge_buffer,X
-    STA (&C5),Y
-    INX
-    INY
-    CPY player_mover_width
-    BCC skip_wraparound_width_2e84
-    LDY #&00
-.skip_wraparound_width_2e84
-    DEC buffer_x
-    BNE update_y_edge_of_player_buffer_column_loop
-    LDA &C5
-    CLC
-    ADC player_mover_width
-    BCC skip_page_2e91
-    INC &C6
-.skip_page_2e91
-    STA &C5
-    INC &CD
-    LDA &CD
-    CMP player_mover_height
-    BCC skip_wraparound_height_2ea3
-    STZ &CD                         \ 65C02 opcode
-    STZ &C5                         \ 65C02 opcode
-    LDA #HI(player_buffer)                        \ in bank 5
-    STA &C6
-.skip_wraparound_height_2ea3
-    DEC rows_remaining
-    BNE update_y_edge_of_player_buffer_row_loop
-    RTS                             \ *** &2ea7 is end of extra code
 
 .clear_screen
     LDA #&01                        \ Set colour 0 to cyan
@@ -4616,11 +4291,13 @@ ENDIF
     LDA usrvia_ifr                  \ User VIA interrupt flag register
     AND #&C0                        \ &40 set if timer 1 interrupt
     CMP #&C0
-    BNE leave_irq1_handler
+    BNE to_leave_irq1_handler
     LDA usrvia_t1cl                 \ User VIA timer 1 counter LSB
     LDA bottom_palette_value
     STA ula_palette                 \ video ULA palette register
     BRA leave_irq1_handler_owned    \ Step 2 (decision 15): the MOS only offered this to the ROMs
+.to_leave_irq1_handler              \ (step 2 layer 2: the flip put leave_irq1_handler out of reach)
+    JMP leave_irq1_handler
 .not_vsync_2ee3
     LDA usrvia_acr                  \ User VIA auxiliary control register
     AND #&DF                        \ Set User VIA timer 2 to one-shot mode
@@ -4645,6 +4322,29 @@ ENDIF
     \ Step 2 (decision 14): count fields, and in play keep vsync from the MOS. On the title
     \ (irq_owned clear) the MOS acknowledges it as before: OSBYTE 19 and its events need it.
     INC field_count
+    \ Step 2 (layer 2): at the field the pass lock chose, show the screen the renderer finished:
+    \ its CRTC start and ACCCON's D bit, both in vertical blanking, for the next frame.
+    BIT flip_pending
+    BPL no_flip
+    LDA field_count
+    CMP flip_target
+    BNE no_flip
+    LDA #&0C                        \ R12: Displayed screen start address register (high)
+    STA crtc_reg
+    LDA flip_crtc_hi
+    STA crtc_data
+    LDA #&0D                        \ R13
+    STA crtc_reg
+    LDA flip_crtc_lo
+    STA crtc_data
+    LDA acccon
+    AND #&FE
+    ORA flip_screen
+    STA acccon                      \ D: which RAM the video shows
+    LDA flip_screen
+    STA shown_screen
+    STZ flip_pending                \ 65C02 opcode
+.no_flip
     BIT irq_owned
     BPL leave_irq1_handler
     LDA #&02                        \ acknowledge CA1 (vsync) ourselves
@@ -4664,6 +4364,25 @@ ENDIF
 previous_irq1_vector_low = * + 1
     JMP &FFFF
 \ #     actually JMP previous_irq1_vector
+
+\ The interrupt's variables, below &3000: the renderer draws into the shadow screen with
+\ ACCCON's X bit set, when &3000-&7FFF is shadow RAM to the CPU too, and an interrupt can come
+\ in the middle of it (step 2 layer 2).
+.irq_owned                          \ decision 14: &FF in play (vsync kept from the MOS), 0 on the title
+    EQUB &00
+.flip_pending                       \ layer 2: bit 7 set - show flip_screen at field flip_target
+    EQUB &00
+.flip_target
+    EQUB &00
+.flip_screen                        \ 0 main, 1 shadow: ACCCON's D bit
+    EQUB &00
+.flip_crtc_hi                       \ its CRTC start (R12, R13)
+    EQUB &00
+.flip_crtc_lo
+    EQUB &00
+.shown_screen                       \ the screen being shown
+    EQUB &00
+ASSERT shown_screen < &3000
 
 .multiply_A_by_X_2f1e
     STA multiplicand
@@ -4691,18 +4410,9 @@ previous_irq1_vector_low = * + 1
     RTS
 
 .check_if_raster_is_in_mover
-    LDA usrvia_t2ch                 \ User VIA timer 2 counter MSB
-    EOR #&FF
-    STA threshold
-    LDA movers_raster_y,Y
-    CMP threshold
-    BCS check_if_raster_is_in_mover + 22
-    ADC #&08
-    CMP threshold
-    BCC check_if_raster_is_in_mover + 22
+    \ Step 2 (layer 2): the original waited until the beam had just passed the mover before
+    \ redrawing it on the screen being shown. The renderer draws into the hidden screen.
     CLC                             \ Leave with carry clear to indicate raster not in mover
-    RTS
-    SEC                             \ Leave with carry set to indicate raster in mover
     RTS
 
 .keys
@@ -5181,6 +4891,8 @@ previous_irq1_vector_low = * + 1
     RTS
 
 .plot_lives
+    BIT drawing                     \ Step 2 (layer 2): only the renderer draws the lives
+    BPL leave_plot_lives
     LDA screen_start_address_low
     STA text_screen_address_low
     LDA screen_start_address_high
@@ -5198,6 +4910,7 @@ previous_irq1_vector_low = * + 1
     STA (text_screen_address),Y
     DEY
     BPL plot_lives_blank_loop
+.leave_plot_lives
     RTS
 
 .plot_character    \ # Called with A = font offset for characte
@@ -5405,8 +5118,26 @@ previous_irq1_vector_low = * + 1
     STA rnd_seed_high               \ x ^= x << 8
     RTS
 
-.irq_owned                          \ decision 14: &FF in play (vsync kept from the MOS), 0 on the title
-    EQUB &00
+\ Step 2 (layer 2): into the renderer, in bank 4 (src/render.6502)
+.render_pass                        \ the end of a pass: bring the hidden screen up to date
+    LDA #&04
+    STA os_ram_copy_of_currently_selected_rom
+    STA romsel                      \ Paged ROM latch
+    JMP render
+.render_finish                      \ the game is over: the newest frame shown, on the main screen
+    LDA #&04
+    STA os_ram_copy_of_currently_selected_rom
+    STA romsel                      \ Paged ROM latch
+    JMP render_to_main
+.update_screen_observer             \ observer mode has no pass: scroll, draw and show
+    JSR update_screen
+    JMP wait_for_timer_281a
+.render_start                       \ a game has started: nothing drawn but the scenery
+    LDA #&04
+    STA os_ram_copy_of_currently_selected_rom
+    STA romsel                      \ Paged ROM latch
+    JMP render_reset
+
 .pass_start                         \ decision 18: field_count when this pass's slot began
     EQUB &00
 
