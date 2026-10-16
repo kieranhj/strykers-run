@@ -25,9 +25,9 @@ build plays a slightly different game and the numbers move a few percent with it
 
 | | Layer 2 (`63892d7`) | Layer 3 now |
 |---|---|---|
-| frames 4000-5000 (town), passes/s | 11.57 | **23.89** (2 fields: 427, 3: 50) |
-| frames 16000-17000 (`DEBUG_LIVES`), passes/s | 16.58 | **24.34** |
-| `tools/speed.mjs` (RIGHT held), passes/s | 10.25 | **23.32** |
+| frames 4000-5000 (town), passes/s | 11.57 | **24.14** (2 fields or fewer: 448, 3: 34) |
+| frames 16000-17000 (`DEBUG_LIVES`), passes/s | 16.58 | **24.74** (2 or fewer: 472, 3: 22) |
+| `tools/speed.mjs` (RIGHT held), passes/s | 10.25 | **24.39** |
 
 Where a pass's time went before E and decision 26 (frames 4000-5000, `tools/passcost.mjs`): waiting for the pass's slot
 25%; drawing sprites (`draw_column`) 16%; the interrupts (nearly all the MOS's 100 Hz sound tick)
@@ -132,6 +132,10 @@ less, drawing and restoring. Proved byte for byte against the previous commit (2
 
 ## Measured and set aside
 
+- **A room check by mover type** (each type's largest save block, so the arena fills further
+  before compacting): every frame identical, but 23.96 passes/s against 24.00 - compacting less
+  often moves more when it does. Reverted.
+
 - **An exact copy of the MOS's sound**: `tools/sfxcapture.mjs --pairs` shows it is stateful: in
   38 of 48 cases an effect started over another on its channel leaves the chip in a different
   state from the same effect started from silence (pitch and amplitude carry on). Its tick costs
@@ -142,7 +146,10 @@ less, drawing and restoring. Proved byte for byte against the previous commit (2
 
 ## Next
 
-- D: the landscape column (build into the history slot, unrolled write, the lives digit).
-- The sprite loops' remaining overhead per column; the renderer's `mark_to_draw` and
-  `close_over_overlaps` (~5k a pass together).
+- The passes still over 2 fields (about 1 in 9 on the benchmark) are the ones that redraw the
+  most: 400-500 bytes. What is left per byte and per column in the sprite loops, the renderer's
+  bookkeeping (`mark_to_draw`, `close_over_overlaps`, ~4.5k a pass), the collisions (~4.8k).
+
+- D's rest: building the column (`add_column_of_scenery_to_column_buffer`, `history_push`, the
+  edge movers' addresses: ~4.5k on a scrolling pass).
 - A test with helicopters: none of the lockstep runs boarded one (`passesInHelicopter` 0).
