@@ -61,6 +61,9 @@ async function start(disc) {
         const c = s.elapsedCycles;
         if (c === m.lastStop) return false;          // resuming from the stop: already counted
         m.passes++;
+        // the fuel table's entries hold what !BOOT left (its stamp, which names the debug flags)
+        // until a helicopter is added: the same in both machines from the first pass
+        if (m.passes === 1) s.writeMemory(0x0960, new Array(0x22).fill(0));
         if (m.passes >= m.target) { m.lastStop = c; return true; }
         return false;
     });
@@ -72,10 +75,14 @@ async function start(disc) {
     s.releaseAllKeys();
     return m;
 }
+// false if the machine makes no pass in 1,500 fields: the game has left its main loop for good
+// (the world completed: its screen waits for a key the pass script never presses)
 async function toPass(m, n) {
     m.target = n;
-    while (m.passes < n) await m.s.runFor(400000);
+    for (let i = 0; m.passes < n; i++) { if (i === 150) return false; await m.s.runFor(400000); }
+    return true;
 }
+let stalledAt = null;
 function state(m) {
     const { s, syms } = m;
     const rd = (a, n) => [...s.readMemory(a, n, { shadow: false })];
@@ -142,7 +149,14 @@ if (WATCH) {
     B.cpu.debugWrite.add((a, v) => { if (watching() && a === WATCH && (B.cpu.acccon & 4)) console.log(`  pass ${B.passes} write &${a.toString(16)} = ${v.toString(16)} X=${(B.cpu.acccon >> 2) & 1} ren_i=${B.s.readMemory(B.syms.ren_i, 1, { bank: 4 })[0]} back=${B.s.readMemory(B.syms.back, 1, { bank: 4 })[0]} :: ${trail.join(" > ")}`); return false; });
 }
 for (let p = 1; p <= PASSES; p++) {
-    await toPass(A, p); await toPass(B, p);
+    const okA = await toPass(A, p), okB = await toPass(B, p);
+    if (!okA || !okB) {
+        // both must stall together: one alone is a difference
+        if (okA !== okB) { console.log(JSON.stringify({ firstDifference: p, what: okA ? "test made no pass" : "control made no pass" })); process.exit(1); }
+        const v = state(A).viewport_left;
+        console.log(`pass ${p}: both stopped making passes (viewport ${v[1] * 256 + v[0]}): compared to pass ${p - 1}`);
+        stalledAt = p; break;
+    }
     if (TRACE && p === TRACE - 1) { traces.push(arm(A), arm(B)); A.tracing = B.tracing = true; }
     if (TRACE && p === TRACE) {
         A.tracing = B.tracing = false;
@@ -199,7 +213,7 @@ for (let p = 1; p <= PASSES; p++) {
     if (p % 500 === 0) console.log(`pass ${p}: state identical` + (SCREEN ? `, screen bytes differing this pass ${screenDiffs[screenDiffs.length - 1]}` : ""));
 }
 const end = state(A);
-const out = { passes: PASSES, identical: true, viewportLeft: end.viewport_left[1] * 256 + end.viewport_left[0], lives: end.lives[0], passesInHelicopter: inHelicopter, score: end.score.map((d) => d.toString(16)).join(" ") };
+const out = { passes: stalledAt ? stalledAt - 1 : PASSES, stalledAt, identical: true, viewportLeft: end.viewport_left[1] * 256 + end.viewport_left[0], lives: end.lives[0], passesInHelicopter: inHelicopter, score: end.score.map((d) => d.toString(16)).join(" ") };
 if (SCREEN) {
     out.screenPassesIdentical = screenDiffs.filter((d) => d === 0).length;
     out.screenMaxDiff = Math.max(...screenDiffs);

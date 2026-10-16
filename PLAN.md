@@ -48,10 +48,14 @@ shown screen byte-identical on all but 8 of 42,000 passes. Slower: 11.6 passes/s
 10.3 scrolling (layer 1: 17.8, 16.6).
 - [ ] b2 and real hardware (KC): the flip and the X bit are jsbeeb-only so far
 
-## Layer 3 - fast enough
-- [ ] Profile; speed up `unpack_column_of_sprite`, collisions; layer 2's overheads (the player's
-      save-under copied whole, the renderer's zero-page save, the logic's sprite walk); the game's
-      own sound driver in place of the MOS's (layer 1, KC: probably 50 Hz)
+## Layer 3 - fast enough (in progress: `docs/step2-layer3.md`, analysis `docs/step2-layer3-analysis.md`)
+- [x] Profile and options (KC: all of A, B+C, D, E; A1)
+- [x] C: the logic's sprite walk from a column table
+- [x] A: masked sprites over save blocks (decision 24); B: the zero-page save cut to what the
+      logic reads; the collision and target searches reject far movers early. 20.55 passes/s
+      on the same game as layer 2's control (17.79); identical state over 24,000 passes
+- [ ] D: the landscape column; E: our own sound driver (exact to MOS 3.20, KC: 50 Hz)
+- [ ] The sprite loops' per-column overhead; the renderer's bookkeeping; a helicopter test
 - [ ] Budget: half an original pass of work, plus double-buffer overhead, under 39,936 cycles.
       Report before layer 4; if it cannot fit, bring the numbers and the options
 

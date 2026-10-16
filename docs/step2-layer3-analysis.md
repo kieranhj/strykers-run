@@ -159,3 +159,7 @@ Possible but not needed for A-E, and costly:
 - The world is one continuous scroll with no natural pause except a death.
 
 Worth keeping in mind if A2's full set of variants, or more scenery detail, is ever wanted.
+
+In the back pocket (KC, 2026-10-16): stream from the disc without DFS, driving the 1770 floppy
+controller directly, as 1942-beeb does. The enhanced version is Master only, so the controller
+is known, and a sector read under our own interrupt handler need not block whole fields.

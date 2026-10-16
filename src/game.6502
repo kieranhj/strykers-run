@@ -686,319 +686,319 @@
 
 \ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 .unflipped_mover_sprite_addresses_low_table
-    EQUB LO(mover_sprite_00)                        \ &00
-    EQUB LO(mover_sprite_01)                        \ &01
-    EQUB LO(mover_sprite_02)                        \ &02
-    EQUB LO(mover_sprite_03)                        \ &03
-    EQUB LO(mover_sprite_04)                        \ &04
-    EQUB LO(mover_sprite_05)                        \ &05
-    EQUB LO(mover_sprite_06)                        \ &06
-    EQUB LO(mover_sprite_07)                        \ &07
-    EQUB LO(mover_sprite_08)                        \ &08
-    EQUB LO(mover_sprite_09)                        \ &09
-    EQUB LO(mover_sprite_0a)                        \ &0A
-    EQUB LO(mover_sprite_0b)                        \ &0B
-    EQUB LO(mover_sprite_0c)                        \ &0C
-    EQUB LO(mover_sprite_0d)                        \ &0D
-    EQUB LO(mover_sprite_0e)                        \ &0E
-    EQUB LO(mover_sprite_0f)                        \ &0F
-    EQUB LO(mover_sprite_10)                        \ &10
-    EQUB LO(mover_sprite_11)                        \ &11
-    EQUB LO(mover_sprite_12)                        \ &12
-    EQUB LO(mover_sprite_13)                        \ &13
-    EQUB LO(mover_sprite_14)                        \ &14
-    EQUB LO(mover_sprite_15)                        \ &15
-    EQUB LO(mover_sprite_16)                        \ &16
-    EQUB LO(mover_sprite_17)                        \ &17
-    EQUB LO(mover_sprite_18)                        \ &18
-    EQUB LO(mover_sprite_19)                        \ &19
-    EQUB LO(mover_sprite_1a)                        \ &1A
-    EQUB LO(mover_sprite_1b)                        \ &1B
-    EQUB LO(mover_sprite_1c)                        \ &1C
-    EQUB LO(mover_sprite_1d)                        \ &1D
-    EQUB LO(mover_sprite_1e)                        \ &1E
-    EQUB LO(mover_sprite_1f)                        \ &1F
-    EQUB LO(mover_sprite_20)                        \ &20
-    EQUB LO(mover_sprite_21)                        \ &21
-    EQUB LO(mover_sprite_22)                        \ &22
-    EQUB LO(mover_sprite_23)                        \ &23
-    EQUB LO(mover_sprite_24)                        \ &24
-    EQUB LO(mover_sprite_25)                        \ &25
-    EQUB LO(mover_sprite_26)                        \ &26
-    EQUB LO(mover_sprite_27)                        \ &27
-    EQUB LO(mover_sprite_28)                        \ &28
-    EQUB LO(mover_sprite_29)                        \ &29
-    EQUB LO(mover_sprite_2a)                        \ &2A
-    EQUB LO(mover_sprite_2b)                        \ &2B
-    EQUB LO(mover_sprite_2c)                        \ &2C
-    EQUB LO(mover_sprite_2d)                        \ &2D
-    EQUB LO(mover_sprite_2e)                        \ &2E
+    EQUB LO(dummy_sprite)                        \ &00
+    EQUB LO(dummy_sprite)                        \ &01
+    EQUB LO(dummy_sprite)                        \ &02
+    EQUB LO(dummy_sprite)                        \ &03
+    EQUB LO(dummy_sprite)                        \ &04
+    EQUB LO(dummy_sprite)                        \ &05
+    EQUB LO(dummy_sprite)                        \ &06
+    EQUB LO(dummy_sprite)                        \ &07
+    EQUB LO(dummy_sprite)                        \ &08
+    EQUB LO(dummy_sprite)                        \ &09
+    EQUB LO(dummy_sprite)                        \ &0A
+    EQUB LO(dummy_sprite)                        \ &0B
+    EQUB LO(dummy_sprite)                        \ &0C
+    EQUB LO(dummy_sprite)                        \ &0D
+    EQUB LO(dummy_sprite)                        \ &0E
+    EQUB LO(dummy_sprite)                        \ &0F
+    EQUB LO(dummy_sprite)                        \ &10
+    EQUB LO(dummy_sprite)                        \ &11
+    EQUB LO(dummy_sprite)                        \ &12
+    EQUB LO(dummy_sprite)                        \ &13
+    EQUB LO(dummy_sprite)                        \ &14
+    EQUB LO(dummy_sprite)                        \ &15
+    EQUB LO(dummy_sprite)                        \ &16
+    EQUB LO(dummy_sprite)                        \ &17
+    EQUB LO(dummy_sprite)                        \ &18
+    EQUB LO(dummy_sprite)                        \ &19
+    EQUB LO(dummy_sprite)                        \ &1A
+    EQUB LO(dummy_sprite)                        \ &1B
+    EQUB LO(dummy_sprite)                        \ &1C
+    EQUB LO(dummy_sprite)                        \ &1D
+    EQUB LO(dummy_sprite)                        \ &1E
+    EQUB LO(dummy_sprite)                        \ &1F
+    EQUB LO(dummy_sprite)                        \ &20
+    EQUB LO(dummy_sprite)                        \ &21
+    EQUB LO(dummy_sprite)                        \ &22
+    EQUB LO(dummy_sprite)                        \ &23
+    EQUB LO(dummy_sprite)                        \ &24
+    EQUB LO(dummy_sprite)                        \ &25
+    EQUB LO(dummy_sprite)                        \ &26
+    EQUB LO(dummy_sprite)                        \ &27
+    EQUB LO(dummy_sprite)                        \ &28
+    EQUB LO(dummy_sprite)                        \ &29
+    EQUB LO(dummy_sprite)                        \ &2A
+    EQUB LO(dummy_sprite)                        \ &2B
+    EQUB LO(dummy_sprite)                        \ &2C
+    EQUB LO(dummy_sprite)                        \ &2D
+    EQUB LO(dummy_sprite)                        \ &2E
     EQUB &00                                        \ &2F: unused entry (&3500 is not a sprite)
     EQUB LO(unused_3400)                            \ &30
     EQUB LO(unused_3400)                            \ &31
     EQUB &00                                        \ &32: unused entry (&3300 is not a sprite)
-    EQUB LO(mover_sprite_33)                        \ &33
-    EQUB LO(mover_sprite_34)                        \ &34
-    EQUB LO(mover_sprite_35)                        \ &35
+    EQUB LO(dummy_sprite)                        \ &33
+    EQUB LO(dummy_sprite)                        \ &34
+    EQUB LO(dummy_sprite)                        \ &35
     EQUB &00                                        \ &36: unused entry (&0000 is not a sprite)
-    EQUB LO(mover_sprite_37)                        \ &37
-    EQUB LO(mover_sprite_38)                        \ &38
-    EQUB LO(mover_sprite_39)                        \ &39
-    EQUB LO(mover_sprite_3a)                        \ &3A
-    EQUB LO(mover_sprite_3b)                        \ &3B
-    EQUB LO(mover_sprite_3c)                        \ &3C
-    EQUB LO(mover_sprite_3d)                        \ &3D
-    EQUB LO(mover_sprite_3e)                        \ &3E
-    EQUB LO(mover_sprite_3f)                        \ &3F
-    EQUB LO(mover_sprite_40)                        \ &40
-    EQUB LO(mover_sprite_41)                        \ &41
-    EQUB LO(mover_sprite_42)                        \ &42
-    EQUB LO(mover_sprite_43)                        \ &43
-    EQUB LO(mover_sprite_44)                        \ &44
-    EQUB LO(mover_sprite_45)                        \ &45
-    EQUB LO(mover_sprite_46)                        \ &46
-    EQUB LO(mover_sprite_47)                        \ &47
-    EQUB LO(mover_sprite_48)                        \ &48
-    EQUB LO(mover_sprite_49)                        \ &49
-    EQUB LO(mover_sprite_4a)                        \ &4A
-    EQUB LO(mover_sprite_4b)                        \ &4B
+    EQUB LO(dummy_sprite)                        \ &37
+    EQUB LO(dummy_sprite)                        \ &38
+    EQUB LO(dummy_sprite)                        \ &39
+    EQUB LO(dummy_sprite)                        \ &3A
+    EQUB LO(dummy_sprite)                        \ &3B
+    EQUB LO(dummy_sprite)                        \ &3C
+    EQUB LO(dummy_sprite)                        \ &3D
+    EQUB LO(dummy_sprite)                        \ &3E
+    EQUB LO(dummy_sprite)                        \ &3F
+    EQUB LO(dummy_sprite)                        \ &40
+    EQUB LO(dummy_sprite)                        \ &41
+    EQUB LO(dummy_sprite)                        \ &42
+    EQUB LO(dummy_sprite)                        \ &43
+    EQUB LO(dummy_sprite)                        \ &44
+    EQUB LO(dummy_sprite)                        \ &45
+    EQUB LO(dummy_sprite)                        \ &46
+    EQUB LO(dummy_sprite)                        \ &47
+    EQUB LO(dummy_sprite)                        \ &48
+    EQUB LO(dummy_sprite)                        \ &49
+    EQUB LO(dummy_sprite)                        \ &4A
+    EQUB LO(dummy_sprite)                        \ &4B
 
 \ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 .unflipped_mover_sprite_addresses_high_table
-    EQUB HI(mover_sprite_00)                        \ &00
-    EQUB HI(mover_sprite_01)                        \ &01
-    EQUB HI(mover_sprite_02)                        \ &02
-    EQUB HI(mover_sprite_03)                        \ &03
-    EQUB HI(mover_sprite_04)                        \ &04
-    EQUB HI(mover_sprite_05)                        \ &05
-    EQUB HI(mover_sprite_06)                        \ &06
-    EQUB HI(mover_sprite_07)                        \ &07
-    EQUB HI(mover_sprite_08)                        \ &08
-    EQUB HI(mover_sprite_09)                        \ &09
-    EQUB HI(mover_sprite_0a)                        \ &0A
-    EQUB HI(mover_sprite_0b)                        \ &0B
-    EQUB HI(mover_sprite_0c)                        \ &0C
-    EQUB HI(mover_sprite_0d)                        \ &0D
-    EQUB HI(mover_sprite_0e)                        \ &0E
-    EQUB HI(mover_sprite_0f)                        \ &0F
-    EQUB HI(mover_sprite_10)                        \ &10
-    EQUB HI(mover_sprite_11)                        \ &11
-    EQUB HI(mover_sprite_12)                        \ &12
-    EQUB HI(mover_sprite_13)                        \ &13
-    EQUB HI(mover_sprite_14)                        \ &14
-    EQUB HI(mover_sprite_15)                        \ &15
-    EQUB HI(mover_sprite_16)                        \ &16
-    EQUB HI(mover_sprite_17)                        \ &17
-    EQUB HI(mover_sprite_18)                        \ &18
-    EQUB HI(mover_sprite_19)                        \ &19
-    EQUB HI(mover_sprite_1a)                        \ &1A
-    EQUB HI(mover_sprite_1b)                        \ &1B
-    EQUB HI(mover_sprite_1c)                        \ &1C
-    EQUB HI(mover_sprite_1d)                        \ &1D
-    EQUB HI(mover_sprite_1e)                        \ &1E
-    EQUB HI(mover_sprite_1f)                        \ &1F
-    EQUB HI(mover_sprite_20)                        \ &20
-    EQUB HI(mover_sprite_21)                        \ &21
-    EQUB HI(mover_sprite_22)                        \ &22
-    EQUB HI(mover_sprite_23)                        \ &23
-    EQUB HI(mover_sprite_24)                        \ &24
-    EQUB HI(mover_sprite_25)                        \ &25
-    EQUB HI(mover_sprite_26)                        \ &26
-    EQUB HI(mover_sprite_27)                        \ &27
-    EQUB HI(mover_sprite_28)                        \ &28
-    EQUB HI(mover_sprite_29)                        \ &29
-    EQUB HI(mover_sprite_2a)                        \ &2A
-    EQUB HI(mover_sprite_2b)                        \ &2B
-    EQUB HI(mover_sprite_2c)                        \ &2C
-    EQUB HI(mover_sprite_2d)                        \ &2D
-    EQUB HI(mover_sprite_2e)                        \ &2E
+    EQUB HI(dummy_sprite)                        \ &00
+    EQUB HI(dummy_sprite)                        \ &01
+    EQUB HI(dummy_sprite)                        \ &02
+    EQUB HI(dummy_sprite)                        \ &03
+    EQUB HI(dummy_sprite)                        \ &04
+    EQUB HI(dummy_sprite)                        \ &05
+    EQUB HI(dummy_sprite)                        \ &06
+    EQUB HI(dummy_sprite)                        \ &07
+    EQUB HI(dummy_sprite)                        \ &08
+    EQUB HI(dummy_sprite)                        \ &09
+    EQUB HI(dummy_sprite)                        \ &0A
+    EQUB HI(dummy_sprite)                        \ &0B
+    EQUB HI(dummy_sprite)                        \ &0C
+    EQUB HI(dummy_sprite)                        \ &0D
+    EQUB HI(dummy_sprite)                        \ &0E
+    EQUB HI(dummy_sprite)                        \ &0F
+    EQUB HI(dummy_sprite)                        \ &10
+    EQUB HI(dummy_sprite)                        \ &11
+    EQUB HI(dummy_sprite)                        \ &12
+    EQUB HI(dummy_sprite)                        \ &13
+    EQUB HI(dummy_sprite)                        \ &14
+    EQUB HI(dummy_sprite)                        \ &15
+    EQUB HI(dummy_sprite)                        \ &16
+    EQUB HI(dummy_sprite)                        \ &17
+    EQUB HI(dummy_sprite)                        \ &18
+    EQUB HI(dummy_sprite)                        \ &19
+    EQUB HI(dummy_sprite)                        \ &1A
+    EQUB HI(dummy_sprite)                        \ &1B
+    EQUB HI(dummy_sprite)                        \ &1C
+    EQUB HI(dummy_sprite)                        \ &1D
+    EQUB HI(dummy_sprite)                        \ &1E
+    EQUB HI(dummy_sprite)                        \ &1F
+    EQUB HI(dummy_sprite)                        \ &20
+    EQUB HI(dummy_sprite)                        \ &21
+    EQUB HI(dummy_sprite)                        \ &22
+    EQUB HI(dummy_sprite)                        \ &23
+    EQUB HI(dummy_sprite)                        \ &24
+    EQUB HI(dummy_sprite)                        \ &25
+    EQUB HI(dummy_sprite)                        \ &26
+    EQUB HI(dummy_sprite)                        \ &27
+    EQUB HI(dummy_sprite)                        \ &28
+    EQUB HI(dummy_sprite)                        \ &29
+    EQUB HI(dummy_sprite)                        \ &2A
+    EQUB HI(dummy_sprite)                        \ &2B
+    EQUB HI(dummy_sprite)                        \ &2C
+    EQUB HI(dummy_sprite)                        \ &2D
+    EQUB HI(dummy_sprite)                        \ &2E
     EQUB &35                                        \ &2F: unused entry (&3500 is not a sprite)
     EQUB HI(unused_3400)                            \ &30
     EQUB HI(unused_3400)                            \ &31
     EQUB &33                                        \ &32: unused entry (&3300 is not a sprite)
-    EQUB HI(mover_sprite_33)                        \ &33
-    EQUB HI(mover_sprite_34)                        \ &34
-    EQUB HI(mover_sprite_35)                        \ &35
+    EQUB HI(dummy_sprite)                        \ &33
+    EQUB HI(dummy_sprite)                        \ &34
+    EQUB HI(dummy_sprite)                        \ &35
     EQUB &00                                        \ &36: unused entry (&0000 is not a sprite)
-    EQUB HI(mover_sprite_37)                        \ &37
-    EQUB HI(mover_sprite_38)                        \ &38
-    EQUB HI(mover_sprite_39)                        \ &39
-    EQUB HI(mover_sprite_3a)                        \ &3A
-    EQUB HI(mover_sprite_3b)                        \ &3B
-    EQUB HI(mover_sprite_3c)                        \ &3C
-    EQUB HI(mover_sprite_3d)                        \ &3D
-    EQUB HI(mover_sprite_3e)                        \ &3E
-    EQUB HI(mover_sprite_3f)                        \ &3F
-    EQUB HI(mover_sprite_40)                        \ &40
-    EQUB HI(mover_sprite_41)                        \ &41
-    EQUB HI(mover_sprite_42)                        \ &42
-    EQUB HI(mover_sprite_43)                        \ &43
-    EQUB HI(mover_sprite_44)                        \ &44
-    EQUB HI(mover_sprite_45)                        \ &45
-    EQUB HI(mover_sprite_46)                        \ &46
-    EQUB HI(mover_sprite_47)                        \ &47
-    EQUB HI(mover_sprite_48)                        \ &48
-    EQUB HI(mover_sprite_49)                        \ &49
-    EQUB HI(mover_sprite_4a)                        \ &4A
-    EQUB HI(mover_sprite_4b)                        \ &4B
+    EQUB HI(dummy_sprite)                        \ &37
+    EQUB HI(dummy_sprite)                        \ &38
+    EQUB HI(dummy_sprite)                        \ &39
+    EQUB HI(dummy_sprite)                        \ &3A
+    EQUB HI(dummy_sprite)                        \ &3B
+    EQUB HI(dummy_sprite)                        \ &3C
+    EQUB HI(dummy_sprite)                        \ &3D
+    EQUB HI(dummy_sprite)                        \ &3E
+    EQUB HI(dummy_sprite)                        \ &3F
+    EQUB HI(dummy_sprite)                        \ &40
+    EQUB HI(dummy_sprite)                        \ &41
+    EQUB HI(dummy_sprite)                        \ &42
+    EQUB HI(dummy_sprite)                        \ &43
+    EQUB HI(dummy_sprite)                        \ &44
+    EQUB HI(dummy_sprite)                        \ &45
+    EQUB HI(dummy_sprite)                        \ &46
+    EQUB HI(dummy_sprite)                        \ &47
+    EQUB HI(dummy_sprite)                        \ &48
+    EQUB HI(dummy_sprite)                        \ &49
+    EQUB HI(dummy_sprite)                        \ &4A
+    EQUB HI(dummy_sprite)                        \ &4B
 
 \ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 .flipped_mover_sprite_addresses_high_table
-    EQUB HI(mover_sprite_00 + 32)                   \ &00
-    EQUB HI(mover_sprite_01 + 48)                   \ &01
-    EQUB HI(mover_sprite_02 + 50)                   \ &02
-    EQUB HI(mover_sprite_03 + 49)                   \ &03
-    EQUB HI(mover_sprite_04 + 47)                   \ &04
-    EQUB HI(mover_sprite_05 + 40)                   \ &05
-    EQUB HI(mover_sprite_06 + 44)                   \ &06
-    EQUB HI(mover_sprite_07 + 46)                   \ &07
-    EQUB HI(mover_sprite_08 + 38)                   \ &08
-    EQUB HI(mover_sprite_09 + 35)                   \ &09
-    EQUB HI(mover_sprite_0a + 38)                   \ &0A
-    EQUB HI(mover_sprite_0b + 42)                   \ &0B
-    EQUB HI(mover_sprite_0c + 34)                   \ &0C
-    EQUB HI(mover_sprite_0d + 37)                   \ &0D
-    EQUB HI(mover_sprite_0e + 42)                   \ &0E
-    EQUB HI(mover_sprite_0f + 45)                   \ &0F
-    EQUB HI(mover_sprite_10 + 43)                   \ &10
-    EQUB HI(mover_sprite_11 + 161)                  \ &11
-    EQUB HI(mover_sprite_12 + 188)                  \ &12
-    EQUB HI(mover_sprite_13 + 169)                  \ &13
-    EQUB HI(mover_sprite_14 + 161)                  \ &14
-    EQUB HI(mover_sprite_15 + 202)                  \ &15
-    EQUB HI(mover_sprite_16 + 66)                   \ &16
-    EQUB HI(mover_sprite_17 + 50)                   \ &17
-    EQUB HI(mover_sprite_18 + 30)                   \ &18
-    EQUB HI(mover_sprite_19 + 40)                   \ &19
-    EQUB HI(mover_sprite_1a + 40)                   \ &1A
-    EQUB HI(mover_sprite_1b + 40)                   \ &1B
-    EQUB HI(mover_sprite_1c + 31)                   \ &1C
-    EQUB HI(mover_sprite_1d + 37)                   \ &1D
-    EQUB HI(mover_sprite_1e + 42)                   \ &1E
-    EQUB HI(mover_sprite_1f + 47)                   \ &1F
-    EQUB HI(mover_sprite_20 + 35)                   \ &20
-    EQUB HI(mover_sprite_21 + 102)                  \ &21
-    EQUB HI(mover_sprite_22 + 98)                   \ &22
-    EQUB HI(mover_sprite_23 + 90)                   \ &23
-    EQUB HI(mover_sprite_24 + 60)                   \ &24
-    EQUB HI(mover_sprite_25 + 47)                   \ &25
-    EQUB HI(mover_sprite_26 + 56)                   \ &26
-    EQUB HI(mover_sprite_27 + 86)                   \ &27
-    EQUB HI(mover_sprite_28 + 85)                   \ &28
-    EQUB HI(mover_sprite_29 + 35)                   \ &29
-    EQUB HI(mover_sprite_2a + 10)                   \ &2A
-    EQUB HI(mover_sprite_2b + 13)                   \ &2B
-    EQUB HI(mover_sprite_2c + 20)                   \ &2C
-    EQUB HI(mover_sprite_2d + 53)                   \ &2D
-    EQUB HI(mover_sprite_2e + 18)                   \ &2E
+    EQUB HI(dummy_sprite)                   \ &00
+    EQUB HI(dummy_sprite)                   \ &01
+    EQUB HI(dummy_sprite)                   \ &02
+    EQUB HI(dummy_sprite)                   \ &03
+    EQUB HI(dummy_sprite)                   \ &04
+    EQUB HI(dummy_sprite)                   \ &05
+    EQUB HI(dummy_sprite)                   \ &06
+    EQUB HI(dummy_sprite)                   \ &07
+    EQUB HI(dummy_sprite)                   \ &08
+    EQUB HI(dummy_sprite)                   \ &09
+    EQUB HI(dummy_sprite)                   \ &0A
+    EQUB HI(dummy_sprite)                   \ &0B
+    EQUB HI(dummy_sprite)                   \ &0C
+    EQUB HI(dummy_sprite)                   \ &0D
+    EQUB HI(dummy_sprite)                   \ &0E
+    EQUB HI(dummy_sprite)                   \ &0F
+    EQUB HI(dummy_sprite)                   \ &10
+    EQUB HI(dummy_sprite)                  \ &11
+    EQUB HI(dummy_sprite)                  \ &12
+    EQUB HI(dummy_sprite)                  \ &13
+    EQUB HI(dummy_sprite)                  \ &14
+    EQUB HI(dummy_sprite)                  \ &15
+    EQUB HI(dummy_sprite)                   \ &16
+    EQUB HI(dummy_sprite)                   \ &17
+    EQUB HI(dummy_sprite)                   \ &18
+    EQUB HI(dummy_sprite)                   \ &19
+    EQUB HI(dummy_sprite)                   \ &1A
+    EQUB HI(dummy_sprite)                   \ &1B
+    EQUB HI(dummy_sprite)                   \ &1C
+    EQUB HI(dummy_sprite)                   \ &1D
+    EQUB HI(dummy_sprite)                   \ &1E
+    EQUB HI(dummy_sprite)                   \ &1F
+    EQUB HI(dummy_sprite)                   \ &20
+    EQUB HI(dummy_sprite)                  \ &21
+    EQUB HI(dummy_sprite)                   \ &22
+    EQUB HI(dummy_sprite)                   \ &23
+    EQUB HI(dummy_sprite)                   \ &24
+    EQUB HI(dummy_sprite)                   \ &25
+    EQUB HI(dummy_sprite)                   \ &26
+    EQUB HI(dummy_sprite)                   \ &27
+    EQUB HI(dummy_sprite)                   \ &28
+    EQUB HI(dummy_sprite)                   \ &29
+    EQUB HI(dummy_sprite)                   \ &2A
+    EQUB HI(dummy_sprite)                   \ &2B
+    EQUB HI(dummy_sprite)                   \ &2C
+    EQUB HI(dummy_sprite)                   \ &2D
+    EQUB HI(dummy_sprite)                   \ &2E
     EQUB &35                                        \ &2F: unused entry (&3500 is not a sprite)
     EQUB HI(unused_3400 + 256)                      \ &30
     EQUB HI(unused_3400)                            \ &31
     EQUB &34                                        \ &32: unused entry (&3400 is not a sprite)
-    EQUB HI(mover_sprite_33 + 57)                   \ &33
-    EQUB HI(mover_sprite_34 + 87)                   \ &34
-    EQUB HI(mover_sprite_35 + 71)                   \ &35
+    EQUB HI(dummy_sprite)                   \ &33
+    EQUB HI(dummy_sprite)                   \ &34
+    EQUB HI(dummy_sprite)                   \ &35
     EQUB &00                                        \ &36: unused entry (&0000 is not a sprite)
-    EQUB HI(mover_sprite_37 + 140)                  \ &37
-    EQUB HI(mover_sprite_38 + 12)                   \ &38
-    EQUB HI(mover_sprite_39 + 66)                   \ &39
-    EQUB HI(mover_sprite_3a + 72)                   \ &3A
-    EQUB HI(mover_sprite_3b + 73)                   \ &3B
-    EQUB HI(mover_sprite_3c + 170)                  \ &3C
-    EQUB HI(mover_sprite_3d + 157)                  \ &3D
-    EQUB HI(mover_sprite_3e + 162)                  \ &3E
-    EQUB HI(mover_sprite_3f + 148)                  \ &3F
-    EQUB HI(mover_sprite_40 + 176)                  \ &40
-    EQUB HI(mover_sprite_41 + 158)                  \ &41
-    EQUB HI(mover_sprite_42 + 57)                   \ &42
-    EQUB HI(mover_sprite_43 + 158)                  \ &43
-    EQUB HI(mover_sprite_44 + 174)                  \ &44
-    EQUB HI(mover_sprite_45 + 170)                  \ &45
-    EQUB HI(mover_sprite_46 + 166)                  \ &46
-    EQUB HI(mover_sprite_47 + 183)                  \ &47
-    EQUB HI(mover_sprite_48 + 164)                  \ &48
-    EQUB HI(mover_sprite_49 + 170)                  \ &49
-    EQUB HI(mover_sprite_4a + 178)                  \ &4A
-    EQUB HI(mover_sprite_4b + 10)                   \ &4B
+    EQUB HI(dummy_sprite)                  \ &37
+    EQUB HI(dummy_sprite)                   \ &38
+    EQUB HI(dummy_sprite)                   \ &39
+    EQUB HI(dummy_sprite)                   \ &3A
+    EQUB HI(dummy_sprite)                   \ &3B
+    EQUB HI(dummy_sprite)                  \ &3C
+    EQUB HI(dummy_sprite)                  \ &3D
+    EQUB HI(dummy_sprite)                  \ &3E
+    EQUB HI(dummy_sprite)                  \ &3F
+    EQUB HI(dummy_sprite)                  \ &40
+    EQUB HI(dummy_sprite)                  \ &41
+    EQUB HI(dummy_sprite)                   \ &42
+    EQUB HI(dummy_sprite)                  \ &43
+    EQUB HI(dummy_sprite)                  \ &44
+    EQUB HI(dummy_sprite)                  \ &45
+    EQUB HI(dummy_sprite)                  \ &46
+    EQUB HI(dummy_sprite)                  \ &47
+    EQUB HI(dummy_sprite)                  \ &48
+    EQUB HI(dummy_sprite)                  \ &49
+    EQUB HI(dummy_sprite)                  \ &4A
+    EQUB HI(dummy_sprite)                   \ &4B
 
 \ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 .flipped_mover_sprite_addresses_low_table
-    EQUB LO(mover_sprite_00 + 32)                   \ &00
-    EQUB LO(mover_sprite_01 + 48)                   \ &01
-    EQUB LO(mover_sprite_02 + 50)                   \ &02
-    EQUB LO(mover_sprite_03 + 49)                   \ &03
-    EQUB LO(mover_sprite_04 + 47)                   \ &04
-    EQUB LO(mover_sprite_05 + 40)                   \ &05
-    EQUB LO(mover_sprite_06 + 44)                   \ &06
-    EQUB LO(mover_sprite_07 + 46)                   \ &07
-    EQUB LO(mover_sprite_08 + 38)                   \ &08
-    EQUB LO(mover_sprite_09 + 35)                   \ &09
-    EQUB LO(mover_sprite_0a + 38)                   \ &0A
-    EQUB LO(mover_sprite_0b + 42)                   \ &0B
-    EQUB LO(mover_sprite_0c + 34)                   \ &0C
-    EQUB LO(mover_sprite_0d + 37)                   \ &0D
-    EQUB LO(mover_sprite_0e + 42)                   \ &0E
-    EQUB LO(mover_sprite_0f + 45)                   \ &0F
-    EQUB LO(mover_sprite_10 + 43)                   \ &10
-    EQUB LO(mover_sprite_11 + 161)                  \ &11
-    EQUB LO(mover_sprite_12 + 188)                  \ &12
-    EQUB LO(mover_sprite_13 + 169)                  \ &13
-    EQUB LO(mover_sprite_14 + 161)                  \ &14
-    EQUB LO(mover_sprite_15 + 202)                  \ &15
-    EQUB LO(mover_sprite_16 + 66)                   \ &16
-    EQUB LO(mover_sprite_17 + 50)                   \ &17
-    EQUB LO(mover_sprite_18 + 30)                   \ &18
-    EQUB LO(mover_sprite_19 + 40)                   \ &19
-    EQUB LO(mover_sprite_1a + 40)                   \ &1A
-    EQUB LO(mover_sprite_1b + 40)                   \ &1B
-    EQUB LO(mover_sprite_1c + 31)                   \ &1C
-    EQUB LO(mover_sprite_1d + 37)                   \ &1D
-    EQUB LO(mover_sprite_1e + 42)                   \ &1E
-    EQUB LO(mover_sprite_1f + 47)                   \ &1F
-    EQUB LO(mover_sprite_20 + 35)                   \ &20
-    EQUB LO(mover_sprite_21 + 102)                  \ &21
-    EQUB LO(mover_sprite_22 + 98)                   \ &22
-    EQUB LO(mover_sprite_23 + 90)                   \ &23
-    EQUB LO(mover_sprite_24 + 60)                   \ &24
-    EQUB LO(mover_sprite_25 + 47)                   \ &25
-    EQUB LO(mover_sprite_26 + 56)                   \ &26
-    EQUB LO(mover_sprite_27 + 86)                   \ &27
-    EQUB LO(mover_sprite_28 + 85)                   \ &28
-    EQUB LO(mover_sprite_29 + 35)                   \ &29
-    EQUB LO(mover_sprite_2a + 10)                   \ &2A
-    EQUB LO(mover_sprite_2b + 13)                   \ &2B
-    EQUB LO(mover_sprite_2c + 20)                   \ &2C
-    EQUB LO(mover_sprite_2d + 53)                   \ &2D
-    EQUB LO(mover_sprite_2e + 18)                   \ &2E
+    EQUB LO(dummy_sprite)                   \ &00
+    EQUB LO(dummy_sprite)                   \ &01
+    EQUB LO(dummy_sprite)                   \ &02
+    EQUB LO(dummy_sprite)                   \ &03
+    EQUB LO(dummy_sprite)                   \ &04
+    EQUB LO(dummy_sprite)                   \ &05
+    EQUB LO(dummy_sprite)                   \ &06
+    EQUB LO(dummy_sprite)                   \ &07
+    EQUB LO(dummy_sprite)                   \ &08
+    EQUB LO(dummy_sprite)                   \ &09
+    EQUB LO(dummy_sprite)                   \ &0A
+    EQUB LO(dummy_sprite)                   \ &0B
+    EQUB LO(dummy_sprite)                   \ &0C
+    EQUB LO(dummy_sprite)                   \ &0D
+    EQUB LO(dummy_sprite)                   \ &0E
+    EQUB LO(dummy_sprite)                   \ &0F
+    EQUB LO(dummy_sprite)                   \ &10
+    EQUB LO(dummy_sprite)                  \ &11
+    EQUB LO(dummy_sprite)                  \ &12
+    EQUB LO(dummy_sprite)                  \ &13
+    EQUB LO(dummy_sprite)                  \ &14
+    EQUB LO(dummy_sprite)                  \ &15
+    EQUB LO(dummy_sprite)                   \ &16
+    EQUB LO(dummy_sprite)                   \ &17
+    EQUB LO(dummy_sprite)                   \ &18
+    EQUB LO(dummy_sprite)                   \ &19
+    EQUB LO(dummy_sprite)                   \ &1A
+    EQUB LO(dummy_sprite)                   \ &1B
+    EQUB LO(dummy_sprite)                   \ &1C
+    EQUB LO(dummy_sprite)                   \ &1D
+    EQUB LO(dummy_sprite)                   \ &1E
+    EQUB LO(dummy_sprite)                   \ &1F
+    EQUB LO(dummy_sprite)                   \ &20
+    EQUB LO(dummy_sprite)                  \ &21
+    EQUB LO(dummy_sprite)                   \ &22
+    EQUB LO(dummy_sprite)                   \ &23
+    EQUB LO(dummy_sprite)                   \ &24
+    EQUB LO(dummy_sprite)                   \ &25
+    EQUB LO(dummy_sprite)                   \ &26
+    EQUB LO(dummy_sprite)                   \ &27
+    EQUB LO(dummy_sprite)                   \ &28
+    EQUB LO(dummy_sprite)                   \ &29
+    EQUB LO(dummy_sprite)                   \ &2A
+    EQUB LO(dummy_sprite)                   \ &2B
+    EQUB LO(dummy_sprite)                   \ &2C
+    EQUB LO(dummy_sprite)                   \ &2D
+    EQUB LO(dummy_sprite)                   \ &2E
     EQUB &00                                        \ &2F: unused entry (&3500 is not a sprite)
     EQUB LO(unused_3400 + 256)                      \ &30
     EQUB LO(unused_3400)                            \ &31
     EQUB &00                                        \ &32: unused entry (&3400 is not a sprite)
-    EQUB LO(mover_sprite_33 + 57)                   \ &33
-    EQUB LO(mover_sprite_34 + 87)                   \ &34
-    EQUB LO(mover_sprite_35 + 71)                   \ &35
+    EQUB LO(dummy_sprite)                   \ &33
+    EQUB LO(dummy_sprite)                   \ &34
+    EQUB LO(dummy_sprite)                   \ &35
     EQUB &00                                        \ &36: unused entry (&0000 is not a sprite)
-    EQUB LO(mover_sprite_37 + 140)                  \ &37
-    EQUB LO(mover_sprite_38 + 12)                   \ &38
-    EQUB LO(mover_sprite_39 + 66)                   \ &39
-    EQUB LO(mover_sprite_3a + 72)                   \ &3A
-    EQUB LO(mover_sprite_3b + 73)                   \ &3B
-    EQUB LO(mover_sprite_3c + 170)                  \ &3C
-    EQUB LO(mover_sprite_3d + 157)                  \ &3D
-    EQUB LO(mover_sprite_3e + 162)                  \ &3E
-    EQUB LO(mover_sprite_3f + 148)                  \ &3F
-    EQUB LO(mover_sprite_40 + 176)                  \ &40
-    EQUB LO(mover_sprite_41 + 158)                  \ &41
-    EQUB LO(mover_sprite_42 + 57)                   \ &42
-    EQUB LO(mover_sprite_43 + 158)                  \ &43
-    EQUB LO(mover_sprite_44 + 174)                  \ &44
-    EQUB LO(mover_sprite_45 + 170)                  \ &45
-    EQUB LO(mover_sprite_46 + 166)                  \ &46
-    EQUB LO(mover_sprite_47 + 183)                  \ &47
-    EQUB LO(mover_sprite_48 + 164)                  \ &48
-    EQUB LO(mover_sprite_49 + 170)                  \ &49
-    EQUB LO(mover_sprite_4a + 178)                  \ &4A
-    EQUB LO(mover_sprite_4b + 10)                   \ &4B
+    EQUB LO(dummy_sprite)                  \ &37
+    EQUB LO(dummy_sprite)                   \ &38
+    EQUB LO(dummy_sprite)                   \ &39
+    EQUB LO(dummy_sprite)                   \ &3A
+    EQUB LO(dummy_sprite)                   \ &3B
+    EQUB LO(dummy_sprite)                  \ &3C
+    EQUB LO(dummy_sprite)                  \ &3D
+    EQUB LO(dummy_sprite)                  \ &3E
+    EQUB LO(dummy_sprite)                  \ &3F
+    EQUB LO(dummy_sprite)                  \ &40
+    EQUB LO(dummy_sprite)                  \ &41
+    EQUB LO(dummy_sprite)                   \ &42
+    EQUB LO(dummy_sprite)                  \ &43
+    EQUB LO(dummy_sprite)                  \ &44
+    EQUB LO(dummy_sprite)                  \ &45
+    EQUB LO(dummy_sprite)                  \ &46
+    EQUB LO(dummy_sprite)                  \ &47
+    EQUB LO(dummy_sprite)                  \ &48
+    EQUB LO(dummy_sprite)                  \ &49
+    EQUB LO(dummy_sprite)                  \ &4A
+    EQUB LO(dummy_sprite)                   \ &4B
 
 \ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 .movers_type_and_colour
@@ -2283,10 +2283,10 @@ ENDIF
     \ Step 2 (layer 2): only the renderer draws. The game's own calls still work out the
     \ sprite and the address, and walk the sprite as the plotter would, but write nothing.
     BIT drawing
-    BMI draw_sprite
+    BMI unpack_sprite
     JSR walk_column
     BRA skip_unpacking              \ 65C02 opcode
-.draw_sprite
+.unpack_sprite
     JSR unpack_column_of_sprite
 .skip_unpacking
     LDA #&40
@@ -3683,8 +3683,26 @@ move_mover_routine_address_high = * + 2
     LDX first_mover
 .check_for_mover_collision_with_range_of_movers
 .check_for_mover_collision_with_range_of_movers_loop
+    \ Step 2 (layer 3): a mover a whole 256 columns or more right or left of the range cannot
+    \ collide, and is passed over without check_for_mover_collision_with_mover_X looking up its
+    \ type, width and height - except in the last two checks: the last one that runs (the last
+    \ is skipped if it is mover_to_update) leaves A, Y, &78 and &7A as the original did.
+    TXA
+    CLC
+    SBC last_mover                  \ X - last_mover - 1: the checks left after this one
+    CMP #&02
+    BCC check_in_full
+    LDA movers_x_high,X
+    CMP mover_x_max_high
+    BEQ check_in_full
+    BCS check_next_mover            \ starts right of the range
+    INC A                           \ 65C02 opcode
+    CMP &C5
+    BCC check_next_mover            \ ends left of it (the width is under 256)
+.check_in_full
     JSR check_for_mover_collision_with_mover_X
     BCS leave_2865                  \ Leave with carry set to indicate collision, X = mover
+.check_next_mover
     DEX
     CPX last_mover
     BNE check_for_mover_collision_with_range_of_movers_loop
@@ -4039,6 +4057,16 @@ ENDIF
 .check_for_collision_with_friends
     LDX #&0B                        \ MOVER_LAST_ENEMY_HELICOPTER
 .check_for_collision_with_non_bullet_movers_loop
+    CPX #&02                        \ step 2 (layer 3): a mover 256 columns or more right
+    BCC friends_in_full                  \ or left of the range is passed over, except in the last
+    LDA movers_x_high,X             \ two checks (see check_for_mover_collision_with_range_of_movers)
+    CMP mover_x_max_high
+    BEQ friends_in_full
+    BCS consider_next_mover_2abe
+    INC A                           \ 65C02 opcode
+    CMP &C5
+    BCC consider_next_mover_2abe
+.friends_in_full
     JSR check_for_mover_collision_with_mover_X
     BCC consider_next_mover_2abe
     JSR check_if_friendly           \ Returns carry set if friendly
@@ -4080,6 +4108,16 @@ ENDIF
     STX unfriendly_targets_found
     LDX #&0B                        \ MOVER_LAST_ENEMY_HELICOPTER
 .search_for_target_loop
+    CPX #&02                        \ step 2 (layer 3): a mover 256 columns or more right
+    BCC search_in_full                  \ or left of the range is passed over, except in the last
+    LDA movers_x_high,X             \ two checks (see check_for_mover_collision_with_range_of_movers)
+    CMP mover_x_max_high
+    BEQ search_in_full
+    BCS consider_next_enemy
+    INC A                           \ 65C02 opcode
+    CMP &C5
+    BCC consider_next_enemy
+.search_in_full
     JSR check_for_mover_collision_with_mover_X\ Returns carry set if collision, i.e. mover in range
     BCC consider_next_enemy
     JSR check_if_friendly           \ *** Returns carry set if friendly
@@ -5196,314 +5234,23 @@ ELSE
     EQUB &00, &00, &13, &F4, &20, &53, &41, &56
 ENDIF
 
-IF SHIFT = 0
     INCLUDE "font.6502"
-ENDIF
 
-.mover_sprite_15    \ (SPRITE_HELICOPTER_WITH_SOLIDER)
-    EQUB &00, &12, &00, &BC, &EC, &BD, &BC, &00, &08, &BC, &06, &00, &07, &14, &05, &00
-    EQUB &A8, &9C, &BF, &AE, &BC, &00, &0E, &BC, &94, &C0, &94, &BC, &AC, &6E, &BF, &7E
-    EQUB &FD, &04, &2C, &BC, &BF, &8C, &BC, &00, &12, &BC, &80, &A8, &94, &BC, &BD, &9D
-    EQUB &9C, &BD, &BC, &7D, &BF, &BD, &04, &3E, &5C, &BC, &8C, &AE, &BC, &00, &16, &BC
-    EQUB &94, &A9, &83, &96, &7D, &BE, &BF, &BD, &BE, &BF, &BD, &BE, &BD, &7F, &7E, &BF
-    EQUB &BD, &BC, &9D, &BC, &00, &17, &BC, &A8, &96, &BC, &05, &3E, &BC, &AD, &BC, &B9
-    EQUB &B3, &BC, &BF, &BC, &4F, &AD, &BE, &BC, &BF, &BC, &00, &16, &A8, &40, &BC, &BF
-    EQUB &BC, &DE, &BC, &8F, &BC, &8F, &BC, &E8, &BC, &9E, &A8, &80, &BC, &BF, &BC, &00
-    EQUB &15, &C0, &BC, &AE, &BC, &8C, &BC, &94, &FC, &8F, &BC, &7D, &6C, &FD, &AC, &8C
-    EQUB &BC, &00, &12, &94, &40, &BC, &9D, &BC, &4C, &6E, &BF, &BC, &8F, &7C, &07, &38
-    EQUB &9C, &A8, &00, &11, &BC, &40, &BC, &BE, &BF, &6E, &8C, &5C, &BC, &AD, &BC, &B8
-    EQUB &F0, &A0, &80, &90, &B4, &A8, &00, &14, &BC, &94, &A8, &80, &BC, &04, &0C, &BC
-    EQUB &B0, &78, &A8, &60, &80, &90, &94, &B4, &A8, &00, &13, &A8, &94, &C0, &68, &5C
-    EQUB &BC, &06, &34, &68, &00, &8B
+\ Step 2 (layer 3, option A): the run-length mover sprites that lay here are gone; the masked
+\ renderer draws from src/sprite_straight.6502 and src/sprite_andy.6502, and the logic's own
+\ plot calls, which only compute, are pointed at dummy_sprite (every column empty), so their
+\ clipping loops end at once. What it reads does not matter to the logic: only &0005/&0006,
+\ the ground's pattern (BUGS #1).
+.dummy_sprite
+    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00
+    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00
 
-.mover_sprite_2e    \ (SPRITE_MINE)
-    EQUB &00, &BC, &BD, &94, &00, &05, &BC, &8C, &AE, &BD, &94, &00, &07, &BC, &4C, &BE
-    EQUB &A8, &00, &06, &BC, &9C, &A8, &00, &85
-
-.mover_sprite_2d    \ (SPRITE_TORSO_WITH_BAZOOKA)
-    EQUB &00, &06, &00, &05, &14, &00, &06, &BC, &05, &2C, &BC, &8F, &9B, &B3, &00, &09
-    EQUB &BC, &9C, &6C, &8C, &5C, &AD, &73, &00, &09, &BC, &9C, &BC, &5C, &73, &BC, &B3
-    EQUB &A2, &00, &0A, &C0, &94, &AD, &79, &9E, &8F, &85, &94, &00, &0A, &04, &00, &68
-    EQUB &BC, &4F, &AD, &94, &00, &09, &06, &00, &BC, &DE, &BC, &00, &87
-
-.mover_sprite_2c    \ (SPRITE_BOMB)
-    EQUB &00, &94, &AC, &94, &BD, &94, &00, &07, &94, &6C, &BD, &94, &00, &06, &A8, &9C
-    EQUB &9D, &BE, &A8, &00, &07, &40, &A8, &00, &84
-
-.mover_sprite_2b    \ (SPRITE_GRENADE)
-    EQUB &00, &80, &94, &7D, &94, &00, &06, &A8, &9C, &4C, &BE, &A8, &00, &07, &40, &68
-    EQUB &00, &84
-
-.mover_sprite_2a    \ (SPRITE_BULLET)
-    EQUB &00, &BC, &A9, &BC, &00, &05, &BC, &83, &BC, &00, &05, &E8, &00, &83
-
-.mover_sprite_29    \ (SPRITE_EXPLOSION_FIVE)
-    EQUB &00, &00, &02, &08, &00, &94, &00, &05, &05, &00, &54, &A9, &83, &BC, &94, &00
-    EQUB &09, &04, &00, &A8, &56, &4B, &83, &96, &A8, &00, &0A, &06, &00, &68, &96, &A8
-    EQUB &00, &07, &00, &02, &00, &82
-
-.mover_sprite_28    \ (SPRITE_EXPLOSION_FOUR)
-    EQUB &00, &05, &00, &94, &80, &94, &80, &94, &BD, &54, &00, &0B, &40, &94, &BC, &BD
-    EQUB &7C, &BE, &A8, &80, &BC, &7E, &BC, &00, &0D, &94, &BD, &BC, &BE, &BC, &96, &83
-    EQUB &A9, &94, &A9, &83, &96, &A8, &BE, &A8, &00, &11, &BC, &BD, &BC, &D6, &8B, &8F
-    EQUB &8B, &83, &BC, &54, &BC, &BD, &94, &00, &0F, &80, &BC, &BE, &A8, &40, &A8, &BC
-    EQUB &83, &BC, &56, &BC, &7D, &94, &00, &0F, &C0, &BC, &BD, &94, &BC, &BF, &BC, &BD
-    EQUB &BC, &A8, &BE, &68, &00, &0E, &04, &00, &A8, &40, &A8, &80, &A8, &00, &89
-
-.mover_sprite_27    \ (SPRITE_EXPLOSION_THREE)
-    EQUB &00, &05, &00, &94, &80, &94, &80, &94, &BD, &54, &00, &0B, &40, &94, &7D, &BF
-    EQUB &BD, &BF, &BC, &7E, &7F, &BC, &00, &0C, &94, &BD, &7F, &BE, &BC, &69, &94, &A9
-    EQUB &94, &BC, &BF, &BE, &BD, &94, &00, &10, &BC, &BD, &BF, &BD, &BC, &80, &BC, &96
-    EQUB &8F, &87, &A9, &BC, &7E, &BD, &BC, &00, &11, &80, &BC, &BF, &7D, &BC, &95, &BC
-    EQUB &96, &7C, &BD, &BE, &BF, &BD, &94, &00, &10, &40, &A8, &BE, &7F, &BE, &BF, &BE
-    EQUB &BF, &BE, &A8, &BE, &68, &00, &0E, &04, &00, &68, &80, &A8, &80, &A8, &00, &89
-
-.mover_sprite_26    \ (SPRITE_EXPLOSION_TWO)
-    EQUB &00, &00, &02, &04, &00, &D4, &FD, &54, &00, &07, &40, &94, &BC, &7F, &BE, &A8
-    EQUB &7E, &BF, &BE, &BD, &BC, &00, &0D, &80, &A8, &BE, &BF, &7D, &94, &80, &94, &BD
-    EQUB &7F, &BC, &00, &0D, &40, &A8, &BC, &FF, &BD, &FF, &BD, &BE, &A8, &00, &0B, &C0
-    EQUB &68, &BE, &BC, &BF, &BC, &BE, &68, &00, &0A, &07, &00, &A8, &00, &85
-
-.mover_sprite_25    \ (SPRITE_EXPLOSION_ONE)
-    EQUB &00, &00, &02, &08, &00, &54, &00, &05, &04, &00, &94, &FD, &7F, &BC, &94, &00
-    EQUB &09, &C0, &BC, &BE, &BF, &BE, &68, &BE, &BF, &BD, &BC, &00, &0C, &C0, &BC, &7E
-    EQUB &BF, &7D, &BF, &BE, &BD, &BC, &00, &0B, &06, &00, &68, &BC, &BE, &68, &00, &08
-    EQUB &00, &82
-
-.mover_sprite_24    \ (SPRITE_SKELETON_FOUR)
-    EQUB &00, &94, &7D, &94, &80, &54, &00, &07, &94, &BD, &BE, &BF, &BD, &7E, &BC, &54
-    EQUB &00, &0A, &A8, &BE, &BD, &BC, &BD, &BC, &BF, &BD, &7F, &BD, &94, &00, &0D, &BC
-    EQUB &BF, &BD, &BC, &BE, &BC, &BF, &BD, &7F, &BE, &A8, &00, &0D, &A8, &BE, &BD, &7E
-    EQUB &BC, &04, &28, &00, &09, &A8, &BE, &BD, &BF, &BE, &A8, &00, &08, &A8, &7E, &A8
-    EQUB &00, &85
-
-.mover_sprite_23    \ (SPRITE_SKELETON_THREE)
-    EQUB &00, &0C, &00, &54, &7D, &94, &00, &07, &94, &BD, &94, &BD, &54, &04, &00, &94
-    EQUB &BD, &BF, &BE, &BC, &A8, &54, &00, &10, &BC, &BE, &BD, &BC, &7E, &BD, &BC, &94
-    EQUB &BD, &94, &BC, &BD, &BC, &BF, &BD, &7F, &BD, &94, &00, &14, &94, &BD, &BC, &94
-    EQUB &7D, &BC, &BF, &BC, &BE, &A8, &BE, &BC, &7F, &BD, &7F, &BE, &A8, &00, &13, &BC
-    EQUB &BE, &BD, &BF, &BE, &68, &BE, &BC, &BF, &7C, &BE, &BF, &BD, &BC, &68, &00, &11
-    EQUB &40, &68, &05, &00, &BC, &BD, &BF, &BC, &68, &00, &0B, &08, &00, &A8, &7E, &A8
-    EQUB &00, &87
-
-.mover_sprite_22    \ (SPRITE_SKELETON_TWO)
-    EQUB &00, &0C, &00, &94, &FD, &94, &00, &07, &94, &BD, &54, &7D, &54, &05, &00, &BC
-    EQUB &BD, &BF, &BE, &A8, &05, &14, &00, &10, &BC, &BE, &BD, &94, &68, &7E, &7D, &80
-    EQUB &54, &BD, &BC, &7D, &BC, &BF, &BD, &7F, &BD, &BC, &00, &14, &94, &BD, &BC, &40
-    EQUB &D4, &BC, &7D, &BF, &BD, &BF, &BD, &BF, &BC, &BE, &BF, &BD, &7F, &BE, &BC, &00
-    EQUB &15, &BC, &BE, &BC, &7D, &FE, &BD, &BC, &A8, &BE, &BC, &BF, &BC, &BF, &BC, &BF
-    EQUB &BC, &E8, &40, &00, &14, &40, &04, &28, &40, &A8, &80, &A8, &7E, &7D, &BC, &94
-    EQUB &A8, &00, &0E, &0D, &00, &68, &7E, &A8, &00, &87
-
-.mover_sprite_21    \ (SPRITE_SKELETON_ONE)
-    EQUB &00, &0E, &00, &54, &00, &05, &94, &BD, &94, &C0, &54, &05, &00, &A8, &7E, &04
-    EQUB &3D, &94, &00, &0E, &BC, &BE, &04, &3D, &7E, &FD, &54, &80, &54, &BD, &BC, &BD
-    EQUB &BC, &BF, &BC, &54, &BD, &BC, &7D, &94, &00, &16, &94, &BD, &BC, &E8, &54, &E8
-    EQUB &BE, &BF, &BD, &BF, &BD, &BF, &BD, &BF, &BD, &BF, &BC, &BF, &BC, &BF, &BE, &FF
-    EQUB &BC, &00, &19, &BC, &BE, &04, &3D, &7E, &FD, &BF, &AA, &BC, &BE, &BC, &BF, &BC
-    EQUB &BF, &BC, &BF, &BE, &68, &04, &3E, &A8, &00, &17, &40, &04, &28, &40, &05, &28
-    EQUB &7E, &05, &3D, &BE, &A8, &00, &0D, &0F, &00, &05, &28, &00, &86
-
-.mover_sprite_20    \ (SPRITE_TROOPER_HEAD)
-    EQUB &00, &00, &02, &94, &BC, &A9, &6C, &A9, &BC, &94, &00, &09, &BC, &4C, &5C, &4C
-    EQUB &BC, &00, &07, &BC, &8C, &9C, &8C, &BC, &8C, &9C, &BC, &00, &0A, &80, &06, &28
-    EQUB &00, &05, &00, &02, &00, &82
-
-.mover_sprite_1f    \ (SPRITE_TORSO_WITH_PISTOL_EIGHT)
-    EQUB &00, &00, &02, &BC, &6C, &BC, &EC, &BC, &00, &07, &BC, &9C, &B9, &B3, &B6, &9C
-    EQUB &4C, &00, &09, &BC, &73, &6D, &5C, &B9, &00, &07, &A8, &BC, &8F, &9E, &BC, &68
-    EQUB &B6, &B9, &BC, &B9, &94, &00, &0D, &80, &E8, &04, &00, &A8, &F6, &A8, &00, &09
-    EQUB &00, &82
-
-.mover_sprite_1e    \ (SPRITE_TORSO_WITH_PISTOL_SEVEN)
-    EQUB &00, &00, &02, &94, &6C, &7C, &6C, &94, &00, &07, &8C, &9C, &AC, &4C, &9C, &4C
-    EQUB &00, &08, &5C, &BC, &9C, &B3, &B9, &BC, &9C, &00, &09, &C0, &A8, &BC, &73, &8F
-    EQUB &AD, &94, &00, &09, &05, &00, &E8, &5E, &A8, &00, &07, &00, &82
-
-.mover_sprite_1d    \ (SPRITE_TORSO_WITH_PISTOL_SIX)
-    EQUB &00, &C0, &D4, &00, &04, &6C, &BC, &CC, &AC, &94, &00, &07, &8C, &BC, &73, &BC
-    EQUB &9C, &4C, &00, &08, &BC, &73, &6D, &5C, &A8, &00, &07, &BC, &AD, &8F, &9E, &A8
-    EQUB &00, &07, &80, &68, &00, &04, &00, &82
-
-.mover_sprite_1c    \ (SPRITE_LEGS_TEN)
-    EQUB &00, &00, &02, &94, &BC, &69, &BC, &94, &40, &54, &00, &09, &BC, &83, &96, &BC
-    EQUB &4C, &6C, &4C, &00, &09, &05, &28, &BC, &DC, &A8, &00, &07, &00, &02, &00, &02
-    EQUB &00, &82
-
-.mover_sprite_1b    \ (SPRITE_LEGS_NINE)
-    EQUB &00, &00, &02, &94, &BC, &69, &94, &C0, &54, &00, &08, &BC, &83, &96, &AC, &8C
-    EQUB &AC, &94, &BC, &4C, &00, &0B, &BC, &A9, &BC, &AC, &5C, &CC, &9C, &00, &09, &68
-    EQUB &80, &A8, &5C, &BC, &68, &00, &08, &00, &02, &00, &82
-
-.mover_sprite_1a    \ (SPRITE_LEGS_EIGHT)
-    EQUB &00, &00, &02, &40, &54, &04, &00, &94, &00, &07, &80, &BC, &56, &AC, &54, &BC
-    EQUB &8C, &00, &09, &94, &A9, &83, &96, &6C, &BC, &4C, &00, &09, &BC, &96, &A8, &5C
-    EQUB &CC, &BC, &00, &08, &05, &00, &E8, &00, &05, &00, &82
-
-.mover_sprite_19    \ (SPRITE_ROTORS_FOUR)
-    EQUB &00, &00, &02, &00, &02, &00, &02, &40, &54, &00, &04, &40, &BC, &AB, &BC, &00
-    EQUB &06, &ED, &83, &BC, &00, &05, &FE, &83, &BC, &00, &05, &40, &BC, &97, &BC, &00
-    EQUB &06, &C0, &68, &00, &04, &00, &02, &00, &02, &00, &82
-
-.mover_sprite_18    \ (SPRITE_ROTORS_THREE)
-    EQUB &00, &00, &02, &00, &02, &00, &02, &00, &02, &00, &02, &6D, &BC, &BD, &94, &00
-    EQUB &06, &5E, &BC, &BE, &BC, &00, &06, &00, &02, &00, &02, &00, &02, &00, &02, &00
-    EQUB &82
-
-.mover_sprite_17    \ (SPRITE_ROTORS_TWO)
-    EQUB &00, &00, &02, &00, &02, &40, &54, &00, &04, &40, &BC, &BF, &BC, &00, &06, &40
-    EQUB &BC, &83, &BC, &00, &06, &6D, &9F, &83, &BC, &00, &06, &7E, &AD, &83, &BC, &00
-    EQUB &06, &40, &BC, &83, &BC, &00, &06, &40, &BC, &BF, &BC, &00, &06, &C0, &68, &00
-    EQUB &04, &00, &02, &00, &82
-
-.mover_sprite_16    \ (SPRITE_ROTORS_ONE)
-    EQUB &00, &40, &BC, &BD, &94, &00, &06, &40, &BC, &BF, &BC, &00, &06, &40, &BC, &AB
-    EQUB &BC, &00, &06, &40, &BC, &83, &BC, &00, &06, &40, &BC, &83, &BC, &00, &06, &7D
-    EQUB &BE, &83, &BC, &00, &06, &5E, &AD, &83, &BC, &00, &06, &40, &BC, &83, &BC, &00
-    EQUB &06, &40, &BC, &83, &BC, &00, &06, &40, &BC, &97, &BC, &00, &06, &40, &BC, &BF
-    EQUB &BC, &00, &06, &40, &A8, &BE, &BC, &00, &86
-
-.mover_sprite_14    \ (SPRITE_RED_HELICOPTER_BODY)
-    EQUB &00, &0D, &00, &A8, &BC, &E9, &D4, &69, &BC, &00, &0A, &0F, &00, &A8, &96, &83
-    EQUB &9E, &8B, &83, &96, &A8, &00, &0C, &0A, &00, &BC, &A9, &6D, &BC, &69, &83, &BC
-    EQUB &83, &BC, &00, &0D, &94, &06, &00, &D4, &BC, &83, &4F, &BC, &C3, &BC, &83, &BC
-    EQUB &00, &0E, &BC, &04, &00, &94, &7C, &43, &BC, &96, &5E, &BC, &E8, &BC, &83, &BC
-    EQUB &AD, &94, &00, &12, &BC, &94, &80, &94, &A9, &43, &BC, &43, &BC, &54, &05, &00
-    EQUB &BC, &83, &BC, &8F, &A8, &00, &13, &BC, &80, &A8, &BC, &C3, &BC, &AD, &BC, &B8
-    EQUB &B0, &07, &38, &B0, &BC, &9E, &00, &11, &BC, &40, &BC, &C3, &BC, &8F, &BC, &05
-    EQUB &30, &A0, &80, &90, &B0, &B4, &A8, &00, &11, &BC, &40, &BC, &C3, &BC, &9E, &BC
-    EQUB &B0, &60, &80, &50, &B0, &B4, &A8, &00, &10, &BC, &94, &A8, &BC, &C3, &BC, &B0
-    EQUB &A0, &50, &B0, &74, &68, &00, &0E, &BC, &40, &A8, &BC, &43, &BC, &B0, &74, &68
-    EQUB &00, &0B, &A8, &94, &40, &A8, &56, &BC, &A8, &00, &89
-
-.mover_sprite_13    \ (SPRITE_BLUE_SPACESHIP)
-    EQUB &00, &94, &04, &00, &D4, &FC, &78, &BC, &78, &BC, &80, &BC, &69, &BC, &00, &0F
-    EQUB &BC, &40, &54, &BC, &56, &7C, &A9, &70, &BC, &A9, &7C, &94, &BC, &56, &BC, &00
-    EQUB &11, &BC, &A8, &94, &BC, &83, &7C, &B0, &7C, &83, &70, &BC, &83, &7C, &B4, &BC
-    EQUB &70, &BC, &00, &13, &BC, &80, &94, &BC, &96, &7C, &B0, &7C, &83, &70, &FC, &40
-    EQUB &BC, &74, &BC, &00, &11, &BC, &A8, &80, &BC, &83, &7C, &B0, &7C, &83, &70, &BC
-    EQUB &A8, &40, &BF, &BC, &00, &11, &BC, &40, &BC, &83, &7C, &B0, &7C, &83, &70, &BC
-    EQUB &40, &BF, &94, &A8, &00, &10, &C0, &BC, &96, &7C, &B0, &7C, &83, &70, &BC, &80
-    EQUB &BF, &94, &A8, &00, &0F, &05, &00, &A8, &BC, &B0, &7C, &83, &B0, &BC, &80, &BF
-    EQUB &94, &A8, &00, &0F, &94, &C0, &94, &A8, &BC, &B4, &7C, &83, &B0, &BC, &BF, &94
-    EQUB &A8, &00, &0F, &BC, &80, &94, &A8, &C0, &FC, &83, &B0, &BC, &94, &A8, &00, &0D
-    EQUB &BC, &A8, &06, &00, &7C, &83, &B4, &BC, &00, &0A, &A8, &94, &07, &00, &A8, &96
-    EQUB &BC, &00, &89
-
-.mover_sprite_12    \ (SPRITE_HELICOPTER_WITH_MISSILE)
-    EQUB &00, &0F, &00, &A8, &BC, &BD, &6C, &BC, &00, &09, &BC, &05, &00, &94, &6D, &BC
-    EQUB &6D, &94, &04, &00, &BC, &AE, &9D, &BC, &00, &10, &BC, &A8, &94, &04, &00, &A8
-    EQUB &9E, &B9, &9E, &A8, &80, &54, &6C, &BC, &9D, &BF, &BC, &00, &13, &BC, &40, &A8
-    EQUB &94, &C0, &BC, &B3, &FC, &7E, &BF, &8C, &BC, &7F, &BC, &00, &10, &BC, &A8, &94
-    EQUB &80, &94, &BC, &94, &AC, &BC, &B3, &BC, &9C, &4C, &BC, &7F, &BD, &AE, &8C, &BC
-    EQUB &00, &15, &A8, &94, &80, &BC, &BF, &AE, &8C, &9D, &BC, &B3, &BC, &BF, &BD, &9C
-    EQUB &BC, &7E, &DC, &BC, &00, &14, &C0, &BC, &CC, &BE, &AD, &A7, &AD, &7E, &B8, &04
-    EQUB &30, &A0, &B0, &BC, &00, &10, &BC, &80, &94, &A8, &BC, &BE, &7F, &BD, &9E, &BD
-    EQUB &BC, &04, &30, &A0, &80, &90, &BC, &00, &13, &BC, &A8, &80, &BC, &4C, &AC, &BE
-    EQUB &AE, &BD, &BF, &BC, &70, &A0, &80, &90, &B4, &A8, &00, &13, &A8, &94, &80, &A8
-    EQUB &9C, &8C, &AE, &BF, &BD, &9C, &8C, &BC, &B0, &80, &90, &B4, &A8, &00, &13, &05
-    EQUB &00, &BC, &AD, &BC, &A8, &BC, &9D, &BC, &B0, &B4, &A8, &00, &0E, &05, &00, &BC
-    EQUB &9E, &BC, &80, &A8, &7E, &A8, &00, &8B
-
-.mover_sprite_10    \ (SPRITE_TORSO_WITH_RIFLE_ONE)
-    EQUB &00, &00, &02, &BC, &AC, &BC, &04, &2C, &94, &00, &08, &BC, &AC, &4C, &AD, &9C
-    EQUB &4C, &00, &08, &BC, &9C, &99, &B9, &8F, &5C, &A8, &00, &09, &BC, &9E, &76, &8F
-    EQUB &9E, &A8, &00, &08, &A8, &9E, &76, &8F, &AD, &94, &00, &08, &04, &00, &68, &00
-    EQUB &85
-
-.mover_sprite_0f    \ (SPRITE_TORSO_WITH_PISTOL_FIVE)
-    EQUB &00, &00, &02, &BC, &06, &2C, &BC, &00, &06, &BC, &8C, &9C, &AC, &4C, &9C, &8C
-    EQUB &00, &09, &68, &BC, &9C, &B3, &B9, &9C, &BC, &00, &09, &40, &A8, &B6, &BC, &B6
-    EQUB &B9, &B3, &8F, &BC, &00, &0B, &05, &00, &68, &BC, &9E, &BC, &00, &08, &00, &82
-
-.mover_sprite_0e    \ (SPRITE_OFFICER_HEAD)
-    EQUB &00, &00, &02, &54, &BC, &A9, &BC, &AC, &54, &00, &08, &BC, &B9, &B3, &B9, &96
-    EQUB &A9, &9C, &8C, &6C, &94, &00, &0C, &BC, &76, &B3, &BE, &BC, &96, &A9, &9C, &5E
-    EQUB &BC, &00, &0C, &C0, &68, &40, &68, &00, &06, &00, &02, &00, &82
-
-.mover_sprite_0d    \ (SPRITE_LEGS_SEVEN)
-    EQUB &00, &00, &02, &BC, &E9, &BC, &AC, &40, &00, &07, &BC, &96, &6C, &4C, &40, &00
-    EQUB &07, &BC, &69, &5C, &AC, &40, &00, &07, &BC, &83, &96, &BC, &9C, &8C, &BC, &00
-    EQUB &09, &E8, &80, &68, &00, &05, &00, &82
-
-.mover_sprite_0c    \ (SPRITE_SOLDIER_HEAD)
-    EQUB &00, &00, &02, &94, &BC, &04, &2C, &BC, &94, &00, &08, &BC, &5C, &B9, &9C, &4C
-    EQUB &BC, &00, &08, &BC, &76, &B3, &BE, &AC, &9C, &BC, &00, &09, &40, &05, &28, &00
-    EQUB &05, &00, &02, &00, &82
-
-.mover_sprite_0b    \ (SPRITE_TORSO_WITH_RIFLE_ZERO)
-    EQUB &00, &00, &02, &BC, &06, &2C, &BC, &00, &06, &BC, &8C, &9C, &AC, &4C, &9C, &8C
-    EQUB &00, &09, &7C, &9C, &4C, &BC, &9E, &8F, &00, &08, &40, &A8, &BC, &8D, &73, &4F
-    EQUB &94, &00, &09, &C0, &94, &AD, &79, &8F, &BC, &00, &08, &04, &00, &68, &BC, &5E
-    EQUB &A8, &00, &88
-
-.mover_sprite_0a    \ (SPRITE_LEGS_SIX)
-    EQUB &00, &00, &02, &BC, &69, &BC, &6C, &94, &7C, &EC, &00, &09, &BC, &96, &7C, &5C
-    EQUB &CC, &5C, &8C, &00, &09, &BC, &43, &BC, &4C, &EC, &5C, &A8, &00, &09, &BC, &96
-    EQUB &BC, &07, &28, &00, &07, &00, &02, &00, &82
-
-.mover_sprite_09    \ (SPRITE_PLAYER_HEAD)
-    EQUB &00, &00, &02, &94, &BC, &04, &2C, &BC, &94, &00, &08, &BC, &8C, &9C, &6D, &9C
-    EQUB &8C, &BC, &00, &09, &BC, &9C, &BC, &9E, &8F, &9E, &BC, &A8, &00, &0A, &C0, &E8
-    EQUB &00, &04, &00, &02, &00, &82
-
-.mover_sprite_08    \ (SPRITE_TORSO_WITH_PISTOL_FOUR)
-    EQUB &00, &00, &02, &BC, &6C, &BC, &EC, &BC, &00, &07, &BC, &9C, &B9, &B3, &B6, &9C
-    EQUB &4C, &00, &09, &BC, &73, &6D, &5C, &BC, &00, &07, &A8, &BC, &8F, &9E, &BC, &76
-    EQUB &BC, &00, &09, &80, &E8, &00, &04, &00, &82
-
-.mover_sprite_07    \ (SPRITE_TORSO_WITH_PISTOL_THREE)
-    EQUB &00, &C0, &04, &14, &00, &05, &FC, &B9, &B3, &A6, &AC, &BC, &00, &08, &BC, &73
-    EQUB &A7, &AD, &9C, &4C, &00, &08, &BC, &AD, &8F, &9E, &BC, &99, &B9, &BC, &00, &0A
-    EQUB &E8, &80, &A8, &BC, &B6, &73, &BC, &00, &09, &06, &00, &04, &28, &00, &06, &00
-    EQUB &82
-
-.mover_sprite_06    \ (SPRITE_TORSO_WITH_PISTOL_TWO)
-    EQUB &00, &C0, &04, &14, &00, &05, &BC, &EC, &4C, &AC, &BC, &00, &07, &BC, &CC, &9C
-    EQUB &AC, &4C, &00, &07, &BC, &5C, &BC, &59, &9C, &BC, &00, &08, &C0, &68, &76, &B3
-    EQUB &9B, &8F, &AD, &94, &00, &0A, &07, &00, &E8, &5E, &A8, &00, &07, &00, &82
-
-.mover_sprite_05    \ (SPRITE_TORSO_WITH_PISTOL_ONE)
-    EQUB &00, &00, &02, &BC, &06, &2C, &BC, &00, &06, &BC, &8C, &9C, &B9, &4C, &9C, &8C
-    EQUB &00, &09, &7C, &73, &9C, &BC, &9C, &A8, &00, &08, &80, &A8, &BC, &73, &8F, &BC
-    EQUB &00, &08, &40, &68, &BC, &9E, &BC, &00, &07, &00, &82
-
-.mover_sprite_04    \ (SPRITE_LEGS_FIVE)
-    EQUB &00, &40, &94, &BC, &E9, &BC, &00, &07, &40, &BC, &83, &96, &AC, &8C, &AC, &7C
-    EQUB &00, &0A, &40, &68, &7C, &5C, &AC, &8C, &00, &08, &54, &BC, &6C, &CC, &5C, &00
-    EQUB &07, &BC, &83, &A9, &BC, &9C, &BC, &E8, &00, &09, &A8, &BC, &56, &BC, &00, &06
-    EQUB &00, &82
-
-.mover_sprite_03    \ (SPRITE_LEGS_FOUR)
-    EQUB &00, &94, &BC, &E9, &BC, &94, &00, &07, &BC, &83, &96, &BC, &AC, &8C, &6C, &7C
-    EQUB &AC, &00, &0B, &68, &04, &3C, &5C, &BC, &4C, &00, &08, &40, &BC, &43, &BC, &8C
-    EQUB &AC, &4C, &9C, &00, &0A, &40, &BC, &96, &BC, &A8, &BC, &5C, &BC, &A8, &00, &0B
-    EQUB &00, &02, &00, &82
-
-.mover_sprite_02    \ (SPRITE_LEGS_THREE)
-    EQUB &00, &40, &94, &E9, &BC, &94, &00, &07, &80, &BC, &83, &96, &6C, &8C, &7C, &AC
-    EQUB &00, &0A, &80, &E8, &BC, &9C, &8C, &AC, &4C, &00, &09, &54, &BC, &6C, &8C, &AC
-    EQUB &5C, &BC, &00, &09, &BC, &83, &A9, &BC, &9C, &BC, &68, &00, &09, &A8, &BC, &56
-    EQUB &BC, &00, &06, &00, &82
-
-.mover_sprite_01    \ (SPRITE_LEGS_TWO)
-    EQUB &00, &94, &BC, &E9, &BC, &94, &00, &07, &BC, &83, &96, &BC, &AC, &8C, &6C, &7C
-    EQUB &AC, &00, &0B, &68, &04, &3C, &9C, &04, &0C, &00, &08, &40, &BC, &43, &BC, &8C
-    EQUB &EC, &9C, &00, &09, &40, &BC, &96, &BC, &A8, &BC, &5C, &BC, &A8, &00, &0B, &00
-    EQUB &02, &00, &82
-
-.mover_sprite_00    \ (SPRITE_LEGS_ONE)
-    EQUB &00, &00, &02, &07, &14, &80, &94, &BC, &6C, &00, &08, &BC, &43, &BC, &CC, &6C
-    EQUB &CC, &00, &08, &BC, &96, &BC, &E8, &BC, &DC, &BC, &A8, &00, &0A, &00, &02, &00
-    EQUB &02, &00, &82
-
-IF SHIFT
-    \ Relocation test builds only: unpacking mover_sprite_00 can run past its end (BUGS.md #2),
-    \ into the screen at &4000 in the shipping layout; give it the same fixed bytes to read in
-    \ the control and the shifted build.
-    INCLUDE "font.6502"
-ENDIF
-
+\ The renderer's save-unders, one area per screen: the renderer draws with ACCCON's X bit set
+\ for the shadow screen, so these same addresses are main RAM for screen 0 and shadow RAM for
+\ screen 1 (render.6502).
+.save_arena
+    SKIP (&4000 - GAME_DOWN) - *
+save_arena_end = *
 
 .resident_end         \ everything above is in memory for the whole game; the screen starts at &4000
     ASSERT resident_end <= &4000, "resident code and data overrun the screen by ", resident_end - &4000, " bytes"
@@ -5680,6 +5427,22 @@ ENDSECTION
     STA usrvia_t1ch                 \ User VIA timer 1 counter MSB
     LDA #&01                        \ Set colour 0 to cyan
     STA ula_palette                 \ video ULA palette register
+    \ Step 2 layer 3: ANDY's sprites, from bank 5 (ROMSEL &85: ANDY at &8000-&8FFF, bank 5 above)
+    LDA #&85
+    STA romsel                      \ Paged ROM latch
+    LDY #&00
+.copy_andy_loop
+copy_andy_source = * + 1
+    LDA andy_load,Y
+copy_andy_target = * + 1
+    STA &8000,Y
+    INY
+    BNE copy_andy_loop
+    INC copy_andy_source + 1
+    INC copy_andy_target + 1
+    LDA copy_andy_target + 1
+    CMP #&90
+    BNE copy_andy_loop
     LDA #&04
     STA romsel                      \ Paged ROM latch
     STA os_ram_copy_of_currently_selected_rom
