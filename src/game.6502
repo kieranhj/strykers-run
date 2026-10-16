@@ -1073,6 +1073,7 @@
     EQUB &68, &00, &25, &00, &00, &00, &25, &00    \ &30
 
 \ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+MOVER_WIDEST = &0B                  \ step 2 (layer 3): the largest entry below (the collision searches' early test)
 .mover_types_width_table
     EQUB &06, &06, &06, &06, &06, &0B, &0B, &0B, &0B, &09, &09, &0B, &0B, &06, &06, &02    \ &00
     EQUB &02, &03, &02, &03, &0B, &0B, &0B, &0B, &0B, &0B, &0B, &02    \ &10
@@ -3737,7 +3738,7 @@ move_mover_routine_address_high = * + 2
     LDX first_mover
 .check_for_mover_collision_with_range_of_movers
 .check_for_mover_collision_with_range_of_movers_loop
-    \ Step 2 (layer 3): a mover a whole 256 columns or more right or left of the range cannot
+    \ Step 2 (layer 3): a mover right of the range, or left of it even at the widest type, cannot
     \ collide, and is passed over without check_for_mover_collision_with_mover_X looking up its
     \ type, width and height - except in the last two checks: the last one that runs (the last
     \ is skipped if it is mover_to_update) leaves A, Y, &78 and &7A as the original did.
@@ -3746,13 +3747,22 @@ move_mover_routine_address_high = * + 2
     SBC last_mover                  \ X - last_mover - 1: the checks left after this one
     CMP #&02
     BCC check_in_full
+    LDA mover_x_max_low             \ right of the range: x > the range's right (the original's
+    CMP movers_x_low,X              \ own first test)
+    LDA mover_x_max_high
+    SBC movers_x_high,X
+    BCC check_next_mover
+    LDA movers_x_low,X              \ left of it even at the widest type: x + &0B < its left
+    CLC
+    ADC #MOVER_WIDEST
+    TAY
     LDA movers_x_high,X
-    CMP mover_x_max_high
-    BEQ check_in_full
-    BCS check_next_mover            \ starts right of the range
-    INC A                           \ 65C02 opcode
+    ADC #0
     CMP &C5
-    BCC check_next_mover            \ ends left of it (the width is under 256)
+    BCC check_next_mover
+    BNE check_in_full
+    CPY mover_x_low
+    BCC check_next_mover
 .check_in_full
     JSR check_for_mover_collision_with_mover_X
     BCS leave_2865                  \ Leave with carry set to indicate collision, X = mover
@@ -4111,14 +4121,23 @@ ENDIF
 .check_for_collision_with_friends
     LDX #&0B                        \ MOVER_LAST_ENEMY_HELICOPTER
 .check_for_collision_with_non_bullet_movers_loop
-    CPX #&02                        \ step 2 (layer 3): a mover 256 columns or more right
-    BCC friends_in_full                  \ or left of the range is passed over, except in the last
-    LDA movers_x_high,X             \ two checks (see check_for_mover_collision_with_range_of_movers)
-    CMP mover_x_max_high
-    BEQ friends_in_full
-    BCS consider_next_mover_2abe
-    INC A                           \ 65C02 opcode
+    CPX #&02                        \ step 2 (layer 3): a mover that cannot be in range is passed
+    BCC friends_in_full                  \ over, except in the last two checks
+    LDA mover_x_max_low             \ right of the range: x > the range's right (the original's
+    CMP movers_x_low,X              \ own first test)
+    LDA mover_x_max_high
+    SBC movers_x_high,X
+    BCC consider_next_mover_2abe
+    LDA movers_x_low,X              \ left of it even at the widest type: x + &0B < its left
+    CLC
+    ADC #MOVER_WIDEST
+    TAY
+    LDA movers_x_high,X
+    ADC #0
     CMP &C5
+    BCC consider_next_mover_2abe
+    BNE friends_in_full
+    CPY mover_x_low
     BCC consider_next_mover_2abe
 .friends_in_full
     JSR check_for_mover_collision_with_mover_X
@@ -4162,14 +4181,23 @@ ENDIF
     STX unfriendly_targets_found
     LDX #&0B                        \ MOVER_LAST_ENEMY_HELICOPTER
 .search_for_target_loop
-    CPX #&02                        \ step 2 (layer 3): a mover 256 columns or more right
-    BCC search_in_full                  \ or left of the range is passed over, except in the last
-    LDA movers_x_high,X             \ two checks (see check_for_mover_collision_with_range_of_movers)
-    CMP mover_x_max_high
-    BEQ search_in_full
-    BCS consider_next_enemy
-    INC A                           \ 65C02 opcode
+    CPX #&02                        \ step 2 (layer 3): a mover that cannot be in range is passed
+    BCC search_in_full                  \ over, except in the last two checks
+    LDA mover_x_max_low             \ right of the range: x > the range's right (the original's
+    CMP movers_x_low,X              \ own first test)
+    LDA mover_x_max_high
+    SBC movers_x_high,X
+    BCC consider_next_enemy
+    LDA movers_x_low,X              \ left of it even at the widest type: x + &0B < its left
+    CLC
+    ADC #MOVER_WIDEST
+    TAY
+    LDA movers_x_high,X
+    ADC #0
     CMP &C5
+    BCC consider_next_enemy
+    BNE search_in_full
+    CPY mover_x_low
     BCC consider_next_enemy
 .search_in_full
     JSR check_for_mover_collision_with_mover_X\ Returns carry set if collision, i.e. mover in range
@@ -4202,9 +4230,13 @@ ENDIF
     STX target
 .consider_next_enemy
     DEX
-    BPL search_for_target_loop
+    BMI search_done                 \ step 2: the loop grew past a branch's reach
+    JMP search_for_target_loop
+.search_done
     LDX target
-    BPL check_if_friendly           \ Leave with carry clear if unfriendly target found
+    BMI no_target                   \ step 2: out of a branch's reach too
+    JMP check_if_friendly           \ Leave with carry clear if unfriendly target found
+.no_target
     SEC                             \ Leave with carry set to indicate no target found
     RTS
 

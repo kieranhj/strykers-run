@@ -50,7 +50,6 @@ stop_y      = &C6                   \ the Y a segment's byte loop stops at
 col_ptr     = &C7                   \ the sprite column being drawn (&C7/&C8)
 top         = &C9                   \ the save block's end while drawing; restore_block's walk (&C9/&CA)
 rows_left   = &CB                   \ a column's rows still to do
-nxt         = &CC                   \ the sprite's next column (&CC/&CD)
 MAX_BLOCK   = &2A0                  \ more than any mover's save block: 656 bytes at most (tools/sprites.py stats)
 
 \ =============================================================================================
@@ -1424,6 +1423,15 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     STA col_ptr
     LDA sprite_column_count,X
     STA ds_c                        \ columns left
+    STZ ds_clip                     \ 65C02 opcode: whether any column can be clipped: not if
+    LDA dm_jmin                     \ jmin is 0 and jmax n - 1 or more
+    BNE clips
+    LDA dm_jmax
+    CMP ds_c
+    BCS no_clip
+.clips
+    DEC ds_clip                     \ &FF
+.no_clip
     LDA dm_scr_lo                   \ the part's bottom, raised once
     LDX dm_scr_hi
     LDY ds_raise
@@ -1450,26 +1458,31 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
 .flipped_in_ring
     STA ds_addr_hi
 .each
-    LDY #1
+    LDY #0
+    LDA (col_ptr),Y                 \ the first row drawn
+    STA ds_fr
+    INY
     LDA (col_ptr),Y                 \ the count
     STA rows_left
-    CLC                             \ the next column: 2 + count bytes on
-    ADC #2
+    SEC                             \ col_ptr on to the next column: 2 + count bytes (draw_column
+    ADC #1                          \ finds this column's data back from there)
     ADC col_ptr
-    STA nxt
-    LDA col_ptr + 1
-    ADC #0
-    STA nxt + 1
+    STA col_ptr
+    BCC on_same_page
+    INC col_ptr + 1
+.on_same_page
     LDA rows_left
     BEQ next                        \ an empty column
+    BIT ds_clip
+    BPL visible
     LDA ds_j
     CMP dm_jmin
     BCC next                        \ left of the viewport
     LDA dm_jmax
     CMP ds_j
     BCC next                        \ right of it
-    DEY
-    LDA (col_ptr),Y                 \ the first row drawn: the bottom raised that many rows
+.visible
+    LDA ds_fr                       \ the bottom raised by the first row drawn
     BEQ raised
     STA ds_fr
     LDA ds_addr_lo
@@ -1493,10 +1506,6 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
 .draw
     JSR draw_column
 .next
-    LDA nxt
-    STA col_ptr
-    LDA nxt + 1
-    STA col_ptr + 1
     DEC ds_c
     BEQ done
     BIT dm_flip                     \ the next column's bottom
@@ -1535,7 +1544,7 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
 }
 
 \ draw_column: AX = the column's lowest byte drawn; rows_left bytes from the column at col_ptr
-\ (its data from col_ptr + 2, top-down; nxt is the next column), upwards. Y = the line in the
+\ (its data from 2 bytes in, top-down; col_ptr is already the next column), upwards. Y = the line in the
 \ character cell indexes the screen (s_ptr = the cell), the data and the save block together;
 \ each cell has 8 bytes of the save block (the lines it does not draw are left unused), so
 \ moving up a cell is the data 8 back, the save block 8 on and the screen a character row
@@ -1553,12 +1562,12 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     AND #&07
     TAY                             \ Y = the line
     \ the data: the byte for line Y of the first cell is data[count - 1 - (line - Y)], so
-    \ d_ptr = col_ptr + 2 + count - 1 - line = nxt - 1 - line = nxt + (line EOR &FF) - &100
+    \ d_ptr = the column + 2 + count - 1 - line = col_ptr - 1 - line = col_ptr + (line EOR &FF) - &100
     EOR #&FF
     CLC
-    ADC nxt
+    ADC col_ptr
     STA d_ptr
-    LDA nxt + 1
+    LDA col_ptr + 1
     ADC #&FF
     STA d_ptr + 1
     LDA top
@@ -2160,6 +2169,7 @@ NEXT
 .ds_addr_lo     EQUB 0
 .ds_addr_hi     EQUB 0
 .ds_fr          EQUB 0
+.ds_clip        EQUB 0
 .dc_count       EQUB 0
 .dc_addr_lo     EQUB 0
 .dc_addr_hi     EQUB 0
