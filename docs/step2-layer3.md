@@ -2,9 +2,9 @@
 
 2026-10-16. Measured on **jsbeeb 2.5.0, Master 128 (MOS 3.20)** with the harnesses in `tools/`.
 **Not yet seen on b2 or real hardware.** The analysis and the options KC chose (all of A, B+C, D,
-E; A1 index bytes) are in `docs/step2-layer3-analysis.md`. Done so far: C, A, B, and parts of the
-renderer's and the logic's overheads. Still to do: D (the landscape column) and E (our own sound
-driver), and the rest of the list at the end.
+E; A1 index bytes) are in `docs/step2-layer3-analysis.md`. Done so far: C, A, B, parts of the
+renderer's and the logic's overheads, and E (our own sound driver). Still to do: D (the landscape
+column), and the rest of the list at the end.
 
 ## Result so far
 
@@ -73,6 +73,19 @@ for the first; the same results, proved by the lockstep.
 
 **The renderer's loops** walk a list of the slots that are shown or live, not all 34.
 
+**E - our own sound driver** (decision 25, KC: approximate is fine, and reusable). First tried:
+calling the MOS's own tick (`&F416`) twice from the vsync interrupt, exact by construction, saved
+only the MOS's dispatch (20.55 to 20.79 passes/s). Then `src/lib/sfx50.6502`: each effect a few
+ramps (period and amplitude stepping linearly over N fields, 6 bytes a ramp; the game's eight
+take 158 bytes), fitted by `tools/sfx50.py` to the MOS's playing of each, captured by
+`tools/sfxcapture.mjs` (kept as `tools/sfx-mos320.json`). Two of them are silent tone sweeps
+that set the pitch of the explosions' noise (noise mode 7 takes tone 2's period). `play_sound`
+posts effect + 1 by chip channel in `sfx_request` (below `&3000`); the vsync interrupt pages bank
+5 in (restoring ROMSEL from `&F4`, which every bank switch in play writes first) and runs the
+driver. Compared field by field (`tools/soundfx.mjs`): within a step or two of period and
+amplitude, sometimes half a field apart. Interrupts: 10.9% of the CPU to 2.2% (765 cycles a field,
+frames 4000-5000). Same game: 21.59 passes/s.
+
 ## Checks
 
 - `tools/passlock.mjs` against layer 2's control, game state every pass: identical over
@@ -95,19 +108,17 @@ for the first; the same results, proved by the lockstep.
 
 ## Measured and set aside
 
-- **E by playing captured scripts**: `tools/sfxcapture.mjs --pairs` shows the MOS's sound is
-  stateful: in 38 of 48 cases an effect started over another on its channel leaves the chip in a
-  different state from the same effect started from silence (pitch and amplitude carry on). An
-  exact driver means doing what MOS 3.20's envelope code does, tick for tick. Its tick costs
-  1,200-2,200 cycles, twice a field, nearly all in the sound code (`&F4xx-&F6xx`), and sound is
-  playing most of the time in play, so skipping idle ticks would save little.
+- **An exact copy of the MOS's sound**: `tools/sfxcapture.mjs --pairs` shows it is stateful: in
+  38 of 48 cases an effect started over another on its channel leaves the chip in a different
+  state from the same effect started from silence (pitch and amplitude carry on). Its tick costs
+  1,200-2,200 cycles, twice a field, nearly all in the sound code (`&F4xx-&F6xx`). KC: not needed;
+  the effects are approximated (above).
 - **Skipping fully transparent bytes**: 679 of 6,486 sprite bytes; a test on every byte costs
   about what the skipped ones save.
 
 ## Next
 
 - D: the landscape column (build into the history slot, unrolled write, the lives digit).
-- E: our own sound driver, exact to MOS 3.20's envelopes (KC: 50 Hz is fine).
 - The sprite loops' remaining overhead per column; the renderer's `mark_to_draw` and
   `close_over_overlaps` (~5k a pass together).
 - A test with helicopters: none of the lockstep runs boarded one (`passesInHelicopter` 0).

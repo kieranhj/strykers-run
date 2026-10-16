@@ -1,0 +1,220 @@
+\ sfx50.6502 - a small 50 Hz sound effect driver for the SN76489 (step 2 layer 3, decision 25).
+\
+\ Call sfx_tick once a field (from the vsync interrupt, interrupts off). An effect is a list of
+\ ramps, made by tools/sfx50.py: over N fields the channel's period (or noise control) and its
+\ amplitude each change by a fixed step a field. 6 bytes a ramp:
+\   N (0: the end - the channel is silenced), period low, period high, period step (signed),
+\   amplitude * 16 + 8, amplitude step (signed, sixteenths)
+\ and tables sfx_effect_lo / sfx_effect_hi of their addresses.
+\
+\ To start effect E on chip channel C (0-2 tone, 3 noise), from anywhere: STA E + 1 into
+\ sfx_request + C. The driver takes it at its next tick, replacing what the channel was playing.
+\ sfx_request (4 bytes) is the caller's, somewhere the interrupt always sees; everything else
+\ is here. sfx_silence stops all four channels and forgets them.
+\
+\ The chip is written as the MOS writes it: System VIA port A all outputs, the byte, then the
+\ addressable latch's line 0 (the chip's write enable) low and high again, with the MOS's delays.
+\ Interrupts must be off (sfx_tick runs in the interrupt; sfx_silence turns them off itself).
+\ Needs sysvia_ddra, sysvia_ora_nh, sysvia_orb (os.6502) and a 65C02 (STZ, BRA, INC A).
+
+.sfx_tick
+{
+    LDX #3
+.channel
+    LDA sfx_request,X
+    BEQ no_request
+    STZ sfx_request,X               \ (a request in between these two is lost: the next replaces it)
+    DEC A
+    TAY
+    LDA sfx_effect_lo,Y
+    STA sfx_ptr_lo,X
+    LDA sfx_effect_hi,Y
+    STA sfx_ptr_hi,X
+    LDA #&FF                        \ the noise control is written when it changes: not yet
+    STA sfx_noise_written,X
+    JSR sfx_next_ramp
+.no_request
+    LDA sfx_n,X
+    BEQ next
+    JSR sfx_output
+    LDA sfx_dp,X                    \ the period steps (16 bits, the step sign-extended)
+    CLC
+    ADC sfx_p_lo,X
+    STA sfx_p_lo,X
+    LDA sfx_dp,X
+    BPL up
+    LDA #&FF
+    BNE add_high                    \ always
+.up
+    LDA #0
+.add_high
+    ADC sfx_p_hi,X
+    STA sfx_p_hi,X
+    LDA sfx_dv,X                    \ the amplitude steps, kept between 0 and 15
+    BMI down
+    CLC
+    ADC sfx_v,X
+    BCC v_known
+    LDA #&F8
+    BNE v_known                     \ always
+.down
+    CLC
+    ADC sfx_v,X
+    BCS v_known
+    LDA #0
+.v_known
+    STA sfx_v,X
+    DEC sfx_n,X
+    BNE next
+    JSR sfx_next_ramp
+.next
+    DEX
+    BPL channel
+    RTS
+}
+
+\ X = channel: its next ramp, from sfx_ptr; at the end, the channel is silenced.
+.sfx_next_ramp
+{
+    LDA sfx_ptr_lo,X
+    STA ramp + 1
+    LDA sfx_ptr_hi,X
+    STA ramp + 2
+    LDY #0
+    JSR ramp
+    BEQ ended
+    STA sfx_n,X
+    INY
+    JSR ramp
+    STA sfx_p_lo,X
+    INY
+    JSR ramp
+    STA sfx_p_hi,X
+    INY
+    JSR ramp
+    STA sfx_dp,X
+    INY
+    JSR ramp
+    STA sfx_v,X
+    INY
+    JSR ramp
+    STA sfx_dv,X
+    LDA sfx_ptr_lo,X
+    CLC
+    ADC #6
+    STA sfx_ptr_lo,X
+    BCC same_page
+    INC sfx_ptr_hi,X
+.same_page
+    RTS
+.ended
+    STZ sfx_n,X
+    LDA sfx_channel_bits,X
+    ORA #&9F                        \ attenuation 15: off
+    JMP sfx_write
+.ramp
+    LDA &FFFF,Y                     \ self-modified: this ramp
+    RTS
+}
+
+\ X = channel: its period (or noise control) and amplitude to the chip.
+.sfx_output
+{
+    CPX #3
+    BEQ noise
+    LDA sfx_p_lo,X                  \ tone: the latch byte with the period's low 4 bits...
+    AND #&0F
+    ORA sfx_channel_bits,X
+    JSR sfx_write
+    LDA sfx_p_hi,X                  \ ...then its high 6 bits: the period >> 4
+    STA sfx_t
+    LDA sfx_p_lo,X
+    LDY #4
+.shift
+    LSR sfx_t
+    ROR A
+    DEY
+    BNE shift
+    AND #&3F
+    JSR sfx_write
+    BRA amplitude                   \ 65C02 opcode
+.noise
+    LDA sfx_p_lo,X                  \ noise: only when it changes (writing it restarts the noise)
+    AND #&07
+    CMP sfx_noise_written,X
+    BEQ amplitude
+    STA sfx_noise_written,X
+    ORA #&E0
+    JSR sfx_write
+.amplitude
+    LDA sfx_v,X
+    LSR A
+    LSR A
+    LSR A
+    LSR A
+    EOR #&0F                        \ the chip takes attenuation
+    ORA #&10
+    ORA sfx_channel_bits,X
+}
+    \ falls through
+\ A to the chip, as MOS 3.20 writes it (&F5E6). Keeps X.
+.sfx_write
+{
+    LDY #&FF
+    STY sysvia_ddra
+    STA sysvia_ora_nh
+    INY
+    STY sysvia_orb                  \ latch line 0 low: write enable
+    LDY #2
+.wait_low
+    DEY
+    BNE wait_low
+    LDY #&08
+    STY sysvia_orb                  \ and high again
+    LDY #4
+.wait_high
+    DEY
+    BNE wait_high
+    RTS
+}
+
+\ All four channels off, and forgotten (requests too).
+.sfx_silence
+{
+    PHP
+    SEI
+    LDX #3
+.each
+    STZ sfx_request,X
+    STZ sfx_n,X
+    LDA sfx_channel_bits,X
+    ORA #&9F
+    JSR sfx_write
+    DEX
+    BPL each
+    PLP
+    RTS
+}
+
+.sfx_channel_bits                   \ the chip's channel in a latch byte: tone 0-2, noise
+    EQUB &80, &A0, &C0, &E0
+.sfx_ptr_lo
+    SKIP 4
+.sfx_ptr_hi
+    SKIP 4
+.sfx_n
+    EQUB 0, 0, 0, 0
+.sfx_p_lo
+    SKIP 4
+.sfx_p_hi
+    SKIP 4
+.sfx_dp
+    SKIP 4
+.sfx_v
+    SKIP 4
+.sfx_dv
+    SKIP 4
+.sfx_noise_written
+    SKIP 4
+.sfx_t
+    SKIP 1

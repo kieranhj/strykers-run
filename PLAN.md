@@ -54,7 +54,8 @@ shown screen byte-identical on all but 8 of 42,000 passes. Slower: 11.6 passes/s
 - [x] A: masked sprites over save blocks (decision 24); B: the zero-page save cut to what the
       logic reads; the collision and target searches reject far movers early. 20.55 passes/s
       on the same game as layer 2's control (17.79); identical state over 24,000 passes
-- [ ] D: the landscape column; E: our own sound driver (exact to MOS 3.20, KC: 50 Hz)
+- [x] E: our own 50 Hz sound effect driver, `src/lib/sfx50.6502` (decision 25)
+- [ ] D: the landscape column
 - [ ] The sprite loops' per-column overhead; the renderer's bookkeeping; a helicopter test
 - [ ] Budget: half an original pass of work, plus double-buffer overhead, under 39,936 cycles.
       Report before layer 4; if it cannot fit, bring the numbers and the options

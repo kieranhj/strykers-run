@@ -4370,7 +4370,7 @@ ENDIF
     LDA usrvia_t1cl                 \ User VIA timer 1 counter LSB
     LDA bottom_palette_value
     STA ula_palette                 \ video ULA palette register
-    BRA leave_irq1_handler_owned    \ Step 2 (decision 15): the MOS only offered this to the ROMs
+    JMP leave_irq1_handler_owned    \ Step 2 (decision 15): the MOS only offered this to the ROMs
 .to_leave_irq1_handler              \ (step 2 layer 2: the flip put leave_irq1_handler out of reach)
     JMP leave_irq1_handler
 .not_vsync_2ee3
@@ -4424,6 +4424,16 @@ ENDIF
     BPL leave_irq1_handler
     LDA #&02                        \ acknowledge CA1 (vsync) ourselves
     STA sysvia_ifr                  \ System VIA interrupt flag register
+    \ Step 2 (layer 3, decision 25): the sound effects, a step a field (src/lib/sfx50.6502, in
+    \ bank 5); the MOS's 100 Hz tick is off in play. Whatever is paged comes back: every bank
+    \ switch in play writes &F4 before ROMSEL, so &F4 is right whenever this can come in.
+    LDA os_ram_copy_of_currently_selected_rom
+    PHA
+    LDA #&05
+    STA romsel
+    JSR sfx_tick
+    PLA
+    STA romsel
 .leave_irq1_handler_owned           \ serviced here: back to the interrupted code, not the MOS
     PLA
     STA irq_accumulator
@@ -4431,7 +4441,7 @@ ENDIF
     PLX
     LDA irq_accumulator             \ the interrupted A, which the MOS's IRQ entry saved
     RTI
-.leave_irq1_handler                 \ anything else (in play, only System VIA T1: the MOS's sound)
+.leave_irq1_handler                 \ anything else (in play, nothing: the MOS's tick is off)
     PLA                             \ ***
     STA irq_accumulator             \ ***
     PLY                             \ *** 65C02 opcode
@@ -4445,6 +4455,8 @@ previous_irq1_vector_low = * + 1
 \ in the middle of it (step 2 layer 2).
 .irq_owned                          \ decision 14: &FF in play (vsync kept from the MOS), 0 on the title
     EQUB &00
+.sfx_request                        \ decision 25: effect + 1 to start, by chip channel (0-2 tone, 3 noise)
+    EQUB 0, 0, 0, 0
 .flip_pending                       \ layer 2: bit 7 set - show flip_screen at field flip_target
     EQUB &00
 .flip_target
@@ -4529,6 +4541,21 @@ ASSERT shown_screen < &3000
 .play_sound
     LDY sound_muted                 \ ***
     BNE leave_2f89                  \ ***
+    BIT irq_owned                   \ step 2 (decision 25): in play, src/lib/sfx50.6502 plays it
+    BPL play_sound_with_the_mos
+    TAY                             \ A = the effect's SOUND block, 8 bytes each
+    LDA sound_data_0880,Y
+    AND #&03                        \ SOUND channel C is the chip's tone 3 - C, and 0 the noise
+    EOR #&03                        \ (3 here): C EOR 3 is both
+    TAX
+    TYA
+    LSR A
+    LSR A
+    LSR A
+    INC A                           \ 65C02 opcode: effect + 1
+    STA sfx_request,X
+    RTS
+.play_sound_with_the_mos
     ASSERT (LO(sound_data_0880) AND &3F) = 0   \ ORA builds the parameter block's address
     ORA #LO(sound_data_0880)
     TAX

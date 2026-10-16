@@ -2426,8 +2426,9 @@ text_colour = * + 1
 \ ---- Step 2, layer 1: the interrupt during play (decisions 14-17) ----------------------------
 \ The title, high scores, instructions and define controls run under the MOS as the original
 \ did (their music is MOS interval-timer events, their keys the MOS's &EC, and OSBYTE 19). In
-\ play, irq1_handler keeps vsync and User VIA T1 from the MOS, and the MOS keeps only System
-\ VIA T1, its 100 Hz tick, for the OSWORD 7 sound. Both calls run with bank 5 paged in.
+\ play, irq1_handler keeps vsync and User VIA T1 from the MOS, and System VIA T1, its 100 Hz
+\ tick, is off: the game's effects are src/lib/sfx50.6502's, run at vsync (decision 25). Both
+\ calls run with bank 5 paged in.
 
 RND_SEED = &7A31                    \ decision 17: every game starts the generator here
 
@@ -2440,11 +2441,13 @@ RND_SEED = &7A31                    \ decision 17: every game starts the generat
     LDA #HI(RND_SEED)
     STA rnd_seed_high
     SEI
-    LDA sysvia_ier                  \ the MOS's keyboard (CA2) and ADC (CB1) enables, for later
-    AND #&11
+    LDA sysvia_ier                  \ the MOS's keyboard (CA2), ADC (CB1) and 100 Hz tick (T1)
+    AND #&51                        \ enables, for later
     STA saved_sysvia_ier_bits
-    LDA #&11                        \ CA2 and CB1 off: in play the keyboard is read direct
-    STA sysvia_ier                  \ (decision 16) and the ADC is unused
+    LDA #&51                        \ CA2 and CB1 off: in play the keyboard is read direct
+    STA sysvia_ier                  \ (decision 16) and the ADC is unused; T1 off: irq1_handler
+                                    \ plays the effects at vsync (decision 25)
+    JSR sfx_silence                 \ the MOS's notes stop where they are: silence them
     LDA #&FF
     STA irq_owned                   \ vsync is ours from the next one
     LDA field_count
@@ -2481,6 +2484,7 @@ RND_SEED = &7A31                    \ decision 17: every game starts the generat
     ORA #&80
     STA sysvia_ier
     STZ irq_owned                   \ 65C02 opcode
+    JSR sfx_silence                 \ and ours: the MOS has the chip back
     CLI
 .leave_give_irq_back
     JMP clear_title_screen
