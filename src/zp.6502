@@ -79,7 +79,8 @@ high_score_music_notes_remaining             = &99
 x_edge_size_and_direction                    = &99
 y_edge_size_and_direction                    = &9A
 drawing                                      = &9B      \ step 2 layer 2: bit 7 set while the renderer draws
-walk_ptr                                     = &9C      \ step 2 layer 2: walk_sprite_columns (&9C/&9D)
+walk_ptr                                     = &9C      \ step 2: walk_column's scratch (&9C/&9D)
+plot_sprite                                  = &9E      \ step 2 layer 3: the sprite plot_mover is drawing
 \ &9C-&9E were the original's player save-under origins and size; render.6502 also uses &9C/&9D
 top_palette_value                            = &9F
 firing_frame                                 = &A0

@@ -2183,10 +2183,6 @@ ENDIF
     STX mover_x_low
     LDY sprite_data_offset
     INY
-    BIT drawing                     \ Step 2 (layer 2): the game's own calls walk on, not draw
-    BMI next_column_drawn
-    JMP walk_column
-.next_column_drawn
     JMP unpack_column_of_sprite
 
 .get_mover_type_and_colour
@@ -2298,37 +2294,77 @@ ENDIF
 .leave_1f08
     RTS
 
-\ Step 2 (layer 2): unpack_column_of_sprite without the drawing, for the game's own calls.
-\ The original's logic reads what the plotter leaves behind - mover_x_low stepped on a column
-\ at a time, delta_low/delta_high (also frame_and_flip, target...) and screen_address from the
-\ column step, sprite_data_offset, the sprite pointer - so this follows the plotter's own path
-\ through the run-length data, entry by entry, and shares consider_plotting_next_column_of_mover
-\ with it (whose next_column comes back here while drawing is off). Only the row loop, which
-\ writes the screen and its own operands, is left out.
+\ Step 2 (layer 2, then layer 3 option C): what unpack_column_of_sprite leaves behind, for the
+\ game's own calls, which no longer draw. The original's logic reads it: mover_x_low, stepped on
+\ a column at a time and stopped at viewport_right's low byte (update_mover's patrol turn
+\ compares it with a limit); delta_low/delta_high (delta_high is also frame_and_flip) and
+\ screen_address, from each column step. With n the sprite's columns from where drawing starts
+\ (sprite_column_count less those clipped at the left) and d = viewport_right_low - mover_x_low:
+\ mover_x_low moves on min(n - 1, d) columns; there are min(n - 1, d + 1) column steps, or
+\ min(n, d + 1) flipped (a flipped sprite steps after its last column too, finding no more).
+\ Layer 2 walked the run-length data to the same end: the pass lockstep proves the two equal.
+walk_n = walk_ptr                   \ scratch (zero page, not read by the logic)
+walk_d = walk_ptr + 1
 .walk_column
-    LDA (unpack_column_of_sprite + 1),Y
-    TAX
-    BEQ walk_end_of_column
-    BPL walk_positive
-    ASL A                           \ 1x...... run length 1 or 3: one byte
-    BRA walk_run                    \ 65C02 opcode
-.walk_positive
+    LDY mover
+    LDA mover_x_low
+    SEC
+    SBC movers_x_low,Y              \ columns clipped at the left
+    STA walk_n
+    LDX plot_sprite
+    LDA sprite_column_count,X       \ (bank 4, which plot_mover pages in)
+    SEC
+    SBC walk_n
+    STA walk_n                      \ n: columns from here
+    LDA viewport_right_low
+    SEC
+    SBC mover_x_low
+    STA walk_d                      \ d (low bytes, as the plotter compares them)
+    LDX walk_n
+    DEX                             \ n - 1
+    CPX walk_d
+    BCC moved_on
+    LDX walk_d
+.moved_on
+    TXA
+    CLC
+    ADC mover_x_low
+    STA mover_x_low                 \ + min(n - 1, d)
+    LDX walk_n                      \ the steps: n flipped, n - 1 not...
+    LDA pixel_table_address_low
+    BEQ steps_limited               \ zero if flipped
+    DEX
+.steps_limited
+    LDA walk_d                      \ ...but no more than d + 1
+    CLC
+    ADC #&01
+    BCS steps_known                 \ d = 255: d + 1 is no limit
+    STA walk_d
+    CPX walk_d
+    BCC steps_known
+    LDX walk_d
+.steps_known
+    TXA
+    BEQ walked                      \ no column steps: nothing more changed
+    ASL A                           \ 8 * steps (at most 13 columns)
     ASL A
-    BMI walk_run                    \ 01...... run length 2: one byte
-    INY                             \ 00...... the run length is the next byte
-.walk_run
-    INY
-    STY sprite_data_offset
-    BNE walk_column                 \ always (the original: LDY sprite_data_offset : BNE)
-.walk_end_of_column
-    INY
-    LDA (unpack_column_of_sprite + 1),Y
-    BMI walk_consider_next_column
-.walk_to_next_column
-    JMP consider_plotting_next_column_of_mover
-.walk_consider_next_column
-    LDA pixel_table_address_low     \ zero if flipped
-    BEQ walk_to_next_column
+    ASL A
+    CLC
+    ADC screen_address_low
+    STA screen_address_low
+    STA unpack_run_loop + 7
+    LDA screen_address_high
+    ADC #&00
+    BPL screen_in_range
+    SEC                             \ round the 16K screen, as add_delta_to_screen_address_in_AX
+    SBC #&40
+.screen_in_range
+    STA screen_address_high
+    STA unpack_run_loop + 8
+    LDA #&08                        \ the column step's delta (deltas_*_table[0])
+    STA delta_low
+    STZ delta_high                  \ 65C02 opcode
+.walked
     RTS
 
 .get_mover_sprite_and_screen_addresses    \ # Called with X = mover type
@@ -2337,6 +2373,7 @@ ENDIF
     LDY mover
     JSR get_mover_Y_sprite          \ Returns X = sprite, A = frame and flip
 .get_sprite_and_screen_addresses_for_frame_A
+    STX plot_sprite                 \ Step 2 (layer 3): the sprite, for walk_column (flags kept)
     BMI is_flipped_1f25
 .is_unflipped_1f14
     LDY unflipped_mover_sprite_addresses_low_table,X
