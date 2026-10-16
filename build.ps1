@@ -58,7 +58,10 @@ try {
     "Built  build\$stem.ssd"
     (Get-FileHash "build\$stem.ssd" -Algorithm SHA256).Hash.ToLower() | ForEach-Object { "       sha256 $_" }
 
-    if (-not $NoCompare -and -not $Shift -and -not $Define) {
+    $reference = 'reference\sth\StrykersRun.ssd'
+    if (-not $NoCompare -and -not $Shift -and -not $Define -and -not (Test-Path $reference)) {
+        "       (no ${reference}: not compared - README.md says where it comes from)"
+    } elseif (-not $NoCompare -and -not $Shift -and -not $Define) {
         & python tools\compare.py "build\$stem.ssd"
         if ($LASTEXITCODE -ne 0) { throw 'the build is not byte-identical to the reference (use -NoCompare once that is intended)' }
     }
