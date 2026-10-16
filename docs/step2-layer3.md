@@ -19,7 +19,9 @@ Same game in each (keys by pass, `tools/passbench.mjs`, seed 1, passes 500-2000,
 | + the pass lock not waiting (decision 26) | 23.38 | 85,535 |
 | + D: the column write unrolled, the lives digit from a table | 23.86 | 83,832 |
 | + the sprite loops decide per cell, not per byte, where a column ends | 24.00 | 83,350 |
-| + D: the scroll's column building; BUGS #6 fixed | **24.11** | 82,948 |
+| + D: the scroll's column building; BUGS #6 fixed | 24.11 | 82,948 |
+| + records first, restored a part at a time (`53076ff`) | 24.21 | 82,627 |
+| + the sprite column walk and draw merged (late passes, item 2) | **24.40** | 81,958 |
 
 Frame-timed play (`tools/profile.mjs`, `tools/speed.mjs`; these press keys by frame, so each
 build plays a slightly different game and the numbers move a few percent with it):
@@ -130,6 +132,29 @@ returned with the carry flag different, and moving the clear into `history_push`
 passes where the player moves without the column being rebuilt (it pushes every pass). Proved by
 the frames against `678ea21` and the state against the control (BUGS #6 below came out of it).
 
+**The late passes** (brief `docs/briefs/step2-layer3-late-passes.md`; measured 2026-10-17,
+`tools/passbench.mjs --detail`, `-Shift 256 -ShiftEnd -Define DEBUG_LIVES`). Passes whose work
+is over 2 fields (79,872 cycles), and by how much:
+
+| | seed 1, passes 500-2000 | holding RIGHT, passes 50-650 |
+|---|---|---|
+| before (`53076ff`) | 24.21/s; 298 late: 0-5k 98, 5-10k 48, 10-15k 44, 15-20k 28, 20-30k 46, 30-40k 22, 40k+ 12 | 23.72/s; 187 late: 62, 31, 28, 18, 38, 10, 0 |
+| the column walk and draw merged | 24.40/s; 228 late: 59, 46, 40, 24, 43, 9, 7 | 23.96/s; 151 late: 45, 34, 16, 19, 36, 1, 0 |
+
+- **The sprite column walk and draw merged** (`ren_draw_sprite` sets up a part and falls into
+  `draw_column`, which loops over its columns): no call a column; the column's bottom kept as
+  its character cell (`b_ptr`, zero page) with the part's line in the cell, so the first row is
+  reached by moving the screen pointer alone (a cell at a time) instead of `raise_address`; each
+  column's record (count - 1, address) goes 8 bytes after the previous column's last cell, so
+  one pointer add a column (+11 to the first cell) replaces two (the record's +3 and the next
+  record's +8), in `restore_block` too; the cell test folds in the "exactly fills the cell"
+  case, so a full cell no longer tests for the column's end after it. The clip test works from
+  the columns left (`ds_c`) and runs only for parts that can clip. Late-pass profile:
+  `draw_column` + `ren_draw_sprite` + `raise_address` 29.1k to 27.9k, `restore_block` 13.7k to
+  13.4k a late pass (more bytes drawn in the late set: 385 against 369). Proved: frames identical
+  to `678ea21` over 2 x 6,000 passes and to `DEBUG_FULLREDRAW` over 6,000 and a helicopter
+  flight; state identical to the control over 3 x 6,000 and a flight; front end 15/15.
+
 ## Checks
 
 - `tools/passlock.mjs` against layer 2's control, game state every pass: identical over
@@ -163,6 +188,19 @@ the frames against `678ea21` and the state against the control (BUGS #6 below ca
   the effects are approximated (above).
 - **Skipping fully transparent bytes**: 679 of 6,486 sprite bytes; a test on every byte costs
   about what the skipped ones save.
+
+- **Building the next scroll column on the pass that does not scroll** (item 1 of the late-pass
+  brief). Measured 2026-10-17, holding RIGHT, 278 scrolls: a scroll costs 10.0k, of which the
+  column's pixels are 5.1k (the clear 1.3k, the scenery unpack 3.2k, the ground 0.65k) and the
+  rest is state - the 8 layers' walk (`find_end_of_column_loop` alone 1.1k), the viewport, the
+  edge movers. The pixels depend on that state as the scroll leaves it, so building them a pass
+  early means running the scroll's state changes on a copy (~5k) besides the pixels, plus saving
+  and restoring that state: ~10.5k on the pass before, to save ~4.8k on the scroll pass. Applied
+  to the measured passes (each scroll pass less 4.8k, the pass before it more 10.5k): seed 1,
+  298 late passes to 305; holding RIGHT, 187 to 185. Even at no cost beyond the pixels the gain
+  is 298 to 259. Not built. (The brief's other note, that `update_screen` pushes the same
+  column twice while the player moves: it does not now - 278 pushes for 278 scrolls holding
+  RIGHT, 400 for 400 on seed 1, none with the view of the push before.)
 
 ## Next
 

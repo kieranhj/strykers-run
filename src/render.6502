@@ -48,8 +48,10 @@ s_ptr       = &C2                   \ the screen's character cell, (s_ptr),Y
 v_ptr       = &C4                   \ the save block, (v_ptr),Y
 stop_y      = &C6                   \ the Y a segment's byte loop stops at
 col_ptr     = &C7                   \ the sprite column being drawn (&C7/&C8)
-top         = &C9                   \ the save block's end while drawing; restore_block's walk (&C9/&CA)
-rows_left   = &CB                   \ a column's rows still to do
+b_ptr       = &C9                   \ the cell of a sprite column's bottom (&C9/&CA)
+rows_m1     = &CB                   \ a column's rows still to do, less 1
+ds_c        = &CC                   \ a part's columns left
+ds_line     = &CD                   \ the line in the cell of a part's bottom
 MAX_BLOCK   = &2A0                  \ more than any mover's save block: 656 bytes at most (tools/sprites.py stats)
 
 \ =============================================================================================
@@ -1259,43 +1261,48 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
 .room
     LDX back
     LDY dm_index
-    LDA arena_top_lo,X
-    STA save_start_lo,Y
-    STA top
-    STA mark_part.base_lo
+    LDA arena_top_lo,X              \ the block starts at the arena's top: its header there,
+    STA save_start_lo,Y             \ where parts 2 and 3 start (0: none)
     STA mark_part.header_lo
+    SEC                             \ v_ptr = the start - 4: the first column's record goes at
+    SBC #4                          \ v_ptr + 8, after the header (draw_column)
+    STA v_ptr
     LDA arena_top_hi,X
     STA save_start_hi,Y
-    STA top + 1
-    STA mark_part.base_hi
     STA mark_part.header_lo + 1
-    LDA top                         \ the block's header: where parts 2 and 3 start (0: none)
+    SBC #0
+    STA v_ptr + 1
+    LDA v_ptr                       \ mark_part's base: the start - 8
+    SEC
+    SBC #4
+    STA mark_part.base_lo
+    LDA v_ptr + 1
+    SBC #0
+    STA mark_part.base_hi
+    LDA arena_top_lo,X
     CLC
     ADC #1
     STA mark_part.header_hi
-    LDA top + 1
+    LDA arena_top_hi,X
     ADC #0
     STA mark_part.header_hi + 1
     LDA #0
-    LDY #3
+    LDY #7
 .no_parts
-    STA (top),Y
+    STA (v_ptr),Y                   \ the header, at v_ptr + 4 to + 7
     DEY
-    BPL no_parts
-    LDA top
-    CLC
-    ADC #4
-    STA top
-    BCC header_same_page
-    INC top + 1
-.header_same_page
-    JSR draw_mover                  \ (draw_column moves top on)
-    LDX back
+    CPY #4
+    BCS no_parts
+    JSR draw_mover                  \ (draw_column moves v_ptr on)
+    LDX back                        \ the block ends after the last cell: v_ptr + 8
     LDY dm_index
-    LDA top
+    LDA v_ptr
+    CLC
+    ADC #8
     STA arena_top_lo,X
     STA save_end_lo,Y
-    LDA top + 1
+    LDA v_ptr + 1
+    ADC #0
     STA arena_top_hi,X
     STA save_end_hi,Y
     LDX dm_slot
@@ -1304,8 +1311,9 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     RTS
 }
 
-\ mark_part2, mark_part3: the part about to be drawn starts here (top), as an offset from the
-\ block's start, into the block's header (put_on set the operands). Keeps A, X, Y.
+\ mark_part2, mark_part3: the part about to be drawn starts at v_ptr + 8 (its first record),
+\ as an offset from the block's start (base = the start - 8), into the block's header (put_on
+\ set the operands). Keeps A, X, Y.
 .mark_part2
     PHY
     LDY #0
@@ -1316,13 +1324,13 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
 .mark_part
 {
     PHA
-    LDA top
+    LDA v_ptr
     SEC
 base_lo = * + 1
-    SBC #0                          \ self-modified: the block's start
+    SBC #0                          \ self-modified: the block's start - 8
 header_lo = * + 1
     STA &FFFF,Y                     \ self-modified: the header
-    LDA top + 1
+    LDA v_ptr + 1
 base_hi = * + 1
     SBC #0
 header_hi = * + 1
@@ -1465,7 +1473,9 @@ header_hi = * + 1
 \ ren_draw_sprite: A = sprite, Y = rows it is raised. Each visible column of its straight data:
 \ the first row drawn and the count, then the indices top-down. Flipped, column c of n is
 \ drawn at j = n - 1 - c, as the plotter walks a flipped sprite's columns backwards. The
-\ column's bottom steps 8 bytes a column (back 8 when flipped), round the 16K screen.
+\ column's bottom steps 8 bytes a column (back 8 when flipped), round the 16K screen; its line
+\ in the character cell is the same for every column of the part (ds_line), so draw_column
+\ keeps the bottom's cell (b_ptr) and raises from there.
 .ren_draw_sprite
 {
     STY ds_raise
@@ -1479,6 +1489,7 @@ header_hi = * + 1
     STA col_ptr
     LDA sprite_column_count,X
     STA ds_c                        \ columns left
+    STA ds_n
     STZ ds_clip                     \ 65C02 opcode: whether any column can be clipped: not if
     LDA dm_jmin                     \ jmin is 0 and jmax n - 1 or more
     BNE clips
@@ -1492,140 +1503,137 @@ header_hi = * + 1
     LDX dm_scr_hi
     LDY ds_raise
     JSR raise_address
-    STA ds_addr_lo
-    STX ds_addr_hi
-    STZ ds_j                        \ 65C02 opcode: unflipped, j from 0 up
+    TAY
+    AND #&07
+    STA ds_line
+    TYA
+    AND #&F8
+    STA b_ptr
+    STX b_ptr + 1
     BIT dm_flip
-    BPL each
-    LDA ds_c                        \ flipped: j from n - 1 down, the bottom 8 * (n - 1) on
+    BPL draw_column
+    LDA ds_c                        \ flipped: the bottom 8 * (n - 1) on
     DEC A                           \ 65C02 opcode
-    STA ds_j
     ASL A
     ASL A
     ASL A
     CLC
-    ADC ds_addr_lo
-    STA ds_addr_lo
-    LDA ds_addr_hi
+    ADC b_ptr
+    STA b_ptr
+    LDA b_ptr + 1
     ADC #0
     BPL flipped_in_ring
     SEC
     SBC #&40
 .flipped_in_ring
-    STA ds_addr_hi
+    STA b_ptr + 1
+}
+    \ falls through
+\ draw_column: the part's columns from col_ptr, ds_c of them, each from its bottom's cell
+\ b_ptr raised by its first row. Y = the line in the character cell indexes the screen (s_ptr =
+\ the cell), the data and the save block together; each cell has 8 bytes of the save block (the
+\ lines it does not draw are left unused), so moving up a cell is the data 8 back, the save
+\ block 8 on and the screen a character row (&280) up. Saves each screen byte, then writes
+\ (byte AND mask) EOR pixel, as the plotter does with the player. Each column's record (count
+\ - 1, the lowest byte's address) goes 8 bytes after the last cell before it (v_ptr + 8: v_ptr
+\ is that cell's base), its cells after the record; restore_block walks them the same way.
+.draw_column
+{
+    BRA each                        \ 65C02 opcode
+.empty
+    LDA col_ptr                     \ an empty column: 2 bytes
+    CLC
+    ADC #2
+    STA col_ptr
+    BCC to_next
+    INC col_ptr + 1
+.to_next
+    JMP next
+.clip_test                          \ j = n - c unflipped, c - 1 flipped (c = columns left)
+    LDA ds_c
+    BIT dm_flip
+    BMI flipped_j
+    LDA ds_n
+    SEC
+    SBC ds_c
+    BRA have_j                      \ 65C02 opcode
+.flipped_j
+    DEC A                           \ 65C02 opcode
+.have_j
+    CMP dm_jmin
+    BCC to_next                     \ left of the viewport
+    STA ds_j
+    LDA dm_jmax
+    CMP ds_j
+    BCS visible                     \ not right of it
+    JMP next
 .each
-    LDY #0
+    LDY #1
+    LDA (col_ptr),Y                 \ the count
+    BEQ empty
+    STA rows_m1
+    DEY
     LDA (col_ptr),Y                 \ the first row drawn
     STA ds_fr
-    INY
-    LDA (col_ptr),Y                 \ the count
-    STA rows_left
-    SEC                             \ col_ptr on to the next column: 2 + count bytes (draw_column
-    ADC #1                          \ finds this column's data back from there)
+    LDA rows_m1                     \ col_ptr on to the next column: 2 + count bytes (the data
+    SEC                             \ is found back from there)
+    ADC #1
     ADC col_ptr
     STA col_ptr
     BCC on_same_page
     INC col_ptr + 1
 .on_same_page
-    LDA rows_left
-    BEQ next                        \ an empty column
     BIT ds_clip
-    BPL visible
-    LDA ds_j
-    CMP dm_jmin
-    BCC next                        \ left of the viewport
-    LDA dm_jmax
-    CMP ds_j
-    BCC next                        \ right of it
+    BMI clip_test
 .visible
-    LDA ds_fr                       \ the bottom raised by the first row drawn
-    BEQ raised
-    STA ds_fr
-    LDA ds_addr_lo
-    AND #&07
-    CMP ds_fr
-    BCC other_cell
-    LDA ds_addr_lo                  \ in the same cell
-    SEC
+    LDA b_ptr                       \ the cell of the column's bottom...
+    STA s_ptr
+    LDA b_ptr + 1
+    STA s_ptr + 1
+    LDA ds_line                     \ ...raised by the first row drawn: line - first row, and a
+    SEC                             \ cell up for each 8 below 0
     SBC ds_fr
-    LDX ds_addr_hi
-    BRA draw                        \ 65C02 opcode
-.other_cell
-    LDA ds_addr_lo
-    LDX ds_addr_hi
-    LDY ds_fr
-    JSR raise_address
-    BRA draw                        \ 65C02 opcode
-.raised
-    LDA ds_addr_lo
-    LDX ds_addr_hi
-.draw
-    JSR draw_column
-.next
-    DEC ds_c
-    BEQ done
-    BIT dm_flip                     \ the next column's bottom
-    BMI step_back
-    INC ds_j
-    LDA ds_addr_lo
+    BCS raised
+.up_cell
+    TAX
+    LDA s_ptr
+    SEC
+    SBC #&80
+    STA s_ptr
+    LDA s_ptr + 1
+    SBC #&02
+    CMP #&40
+    BCS up_in_ring
+    ADC #&40
+.up_in_ring
+    STA s_ptr + 1
+    TXA
     CLC
     ADC #8
-    STA ds_addr_lo
-    BCC to_each
-    LDA ds_addr_hi
-    INC A                           \ 65C02 opcode
-    BPL forward_in_ring
-    LDA #&40
-.forward_in_ring
-    STA ds_addr_hi
-    JMP each
-.step_back
-    DEC ds_j
-    LDA ds_addr_lo
-    SEC
-    SBC #8
-    STA ds_addr_lo
-    BCS to_each
-    LDA ds_addr_hi
-    DEC A                           \ 65C02 opcode
-    CMP #&40
-    BCS back_in_ring
-    LDA #&7F
-.back_in_ring
-    STA ds_addr_hi
-.to_each
-    JMP each
-.done
-    RTS
-}
-
-\ draw_column: AX = the column's lowest byte drawn; rows_left bytes from the column at col_ptr
-\ (its data from 2 bytes in, top-down; col_ptr is already the next column), upwards. Y = the line in the
-\ character cell indexes the screen (s_ptr = the cell), the data and the save block together;
-\ each cell has 8 bytes of the save block (the lines it does not draw are left unused), so
-\ moving up a cell is the data 8 back, the save block 8 on and the screen a character row
-\ (&280) up. Saves each screen byte, then writes (byte AND mask) EOR pixel, as the plotter does
-\ with the player. After the column's cells, its record: their length, the count, the address.
-.draw_column
-{
-    STX s_ptr + 1
-    LDY #1                          \ the column's record first: count, address low, high
-    STA (top),Y
+    BCC up_cell
+.raised                             \ A = the line of the lowest byte drawn
     TAX
+    ORA s_ptr                       \ the record: count - 1, the address
+    LDY #9
+    STA (v_ptr),Y
     INY
     LDA s_ptr + 1
-    STA (top),Y
-    LDY #0
-    LDA rows_left
-    STA (top),Y
-    TXA
-    AND #&F8
-    STA s_ptr
-    TXA
-    AND #&07
-    TAY                             \ Y = the line
+    STA (v_ptr),Y
+    DEC rows_m1
+    LDA rows_m1
+    LDY #8
+    STA (v_ptr),Y
+    LDA v_ptr                       \ the cells after it
+    CLC
+    ADC #11
+    STA v_ptr
+    BCC save_on_page
+    INC v_ptr + 1
+.save_on_page
     \ the data: the byte for line Y of the first cell is data[count - 1 - (line - Y)], so
     \ d_ptr = the column + 2 + count - 1 - line = col_ptr - 1 - line = col_ptr + (line EOR &FF) - &100
+    TXA
+    TAY                             \ Y = the line
     EOR #&FF
     CLC
     ADC col_ptr
@@ -1633,20 +1641,13 @@ header_hi = * + 1
     LDA col_ptr + 1
     ADC #&FF
     STA d_ptr + 1
-    LDA top                         \ the cells after the record
-    CLC
-    ADC #3
-    STA v_ptr
-    LDA top + 1
-    ADC #0
-    STA v_ptr + 1
 .cell                               \ Y = the line it starts on: does the column end in this cell?
     TYA
     SEC
-    SBC rows_left                   \ line - rows left
-    BCS last_cell                   \ 0 or more: it ends here, above line 0
-    EOR #&FF                        \ no: rows left after this cell, rows - line - 1
-    STA rows_left
+    SBC rows_m1                     \ line - (rows left - 1)
+    BCS last_cell                   \ 0 or more: it ends here
+    EOR #&FF                        \ no: rows left after this cell, less 1: rows - line - 2
+    STA rows_m1
 .byte                               \ down to line 0
     LDA (d_ptr),Y                   \ the pixel/mask index
     TAX
@@ -1659,8 +1660,6 @@ pix_operand = * + 1
     STA (s_ptr),Y
     DEY
     BPL byte
-    LDA rows_left
-    BEQ column_done
     LDA d_ptr                       \ the next cell: the data 8 back...
     SEC
     SBC #8
@@ -1688,8 +1687,9 @@ pix_operand = * + 1
     STA s_ptr + 1
     LDY #7                          \ ...from its bottom line
     BRA cell                        \ 65C02 opcode
-.last_cell
-    STA stop_y                      \ the line below the last one drawn
+.last_cell                          \ A = line - rows left + 1: the last line drawn
+    DEC A                           \ 65C02 opcode: the line below it
+    STA stop_y
 .part_byte
     LDA (d_ptr),Y
     TAX
@@ -1703,14 +1703,39 @@ pix_operand_2 = * + 1
     DEY
     CPY stop_y
     BNE part_byte
-.column_done
-    LDA v_ptr                       \ the next column's record after this one's last cell
+.next                               \ v_ptr: this column's last cell (the next record 8 on)
+    DEC ds_c
+    BEQ done
+    BIT dm_flip                     \ the next column's bottom
+    BMI step_back
+    LDA b_ptr
     CLC
     ADC #8
-    STA top
-    LDA v_ptr + 1
-    ADC #0
-    STA top + 1
+    STA b_ptr
+    BCC to_each
+    LDA b_ptr + 1
+    INC A                           \ 65C02 opcode
+    BPL forward_in_ring
+    LDA #&40
+.forward_in_ring
+    STA b_ptr + 1
+    JMP each
+.step_back
+    LDA b_ptr
+    SEC
+    SBC #8
+    STA b_ptr
+    BCS to_each
+    LDA b_ptr + 1
+    DEC A                           \ 65C02 opcode
+    CMP #&40
+    BCS back_in_ring
+    LDA #&7F
+.back_in_ring
+    STA b_ptr + 1
+.to_each
+    JMP each
+.done
     RTS
 }
 
@@ -1772,91 +1797,99 @@ pix_operand_2 = * + 1
 \ ---- taking a mover off ------------------------------------------------------------------
 \ restore_block: Y = slot + boff. Its save block, a part at a time from the last (parts of one
 \ mover can overlap, so the bytes the later part saved go back first); within a part, its columns
-\ in any order (they never overlap): each record (count, address) and the cells after it, put
-\ back on the screen as draw_column took them. Frees the block, popping the arena if it was
-\ the last.
+\ in any order (they never overlap): each record (count - 1, address) and the cells after it, put
+\ back on the screen as draw_column took them, walked as draw_column wrote them (v_ptr the last
+\ cell before, the record at v_ptr + 8). Frees the block, popping the arena if it was the last.
 .restore_block
 {
     STY rb_index
     LDA save_start_lo,Y             \ the header: where parts 2 and 3 start
-    STA top
+    STA v_ptr
     LDA save_start_hi,Y
-    STA top + 1
+    STA v_ptr + 1
     LDY #3
 .header
-    LDA (top),Y
+    LDA (v_ptr),Y
     STA rb_part2,Y
     DEY
     BPL header
-    LDY rb_index
+    LDY rb_index                    \ the walk ends when v_ptr + 8 is the block's end
     LDA save_end_lo,Y
+    SEC
+    SBC #8
     STA rb_end
     LDA save_end_hi,Y
+    SBC #0
     STA rb_end + 1
     LDX #2                          \ part 3, then part 2: from its start to rb_end
 .each_part
     LDA rb_part2,X
     ORA rb_part2 + 1,X
     BEQ no_part
-    LDY rb_index
+    LDY rb_index                    \ v_ptr = its start - 8
     LDA save_start_lo,Y
     CLC
     ADC rb_part2,X
-    STA top
+    STA rb_p8
     LDA save_start_hi,Y
     ADC rb_part2 + 1,X
-    STA top + 1
+    STA rb_p8 + 1
+    LDA rb_p8
+    SEC
+    SBC #8
+    STA rb_p8
+    STA v_ptr
+    LDA rb_p8 + 1
+    SBC #0
+    STA rb_p8 + 1
+    STA v_ptr + 1
     PHX
     JSR columns
     PLX
-    LDY rb_index                    \ the part before ends where this one starts
-    LDA save_start_lo,Y
-    CLC
-    ADC rb_part2,X
+    LDA rb_p8                       \ the part before ends where this one starts
     STA rb_end
-    LDA save_start_hi,Y
-    ADC rb_part2 + 1,X
+    LDA rb_p8 + 1
     STA rb_end + 1
 .no_part
     DEX
     DEX
     BPL each_part
-    LDY rb_index                    \ part 1: after the header
+    LDY rb_index                    \ part 1: after the header, v_ptr = the start + 4 - 8
     LDA save_start_lo,Y
-    CLC
-    ADC #4
-    STA top
+    SEC
+    SBC #4
+    STA v_ptr
     LDA save_start_hi,Y
-    ADC #0
-    STA top + 1
+    SBC #0
+    STA v_ptr + 1
     JSR columns
     LDY rb_index
     JMP blocks_done
-.columns                            \ the columns from top to rb_end
-    LDA top
+.columns                            \ the columns from v_ptr + 8 to rb_end + 8
+    LDA v_ptr
     CMP rb_end
     BNE more
-    LDA top + 1
+    LDA v_ptr + 1
     CMP rb_end + 1
     BNE more
     RTS
 .more
-    LDY #2                          \ the record
-    LDA (top),Y
+    LDY #10                         \ the record
+    LDA (v_ptr),Y
     STA s_ptr + 1
     DEY
-    LDA (top),Y
+    LDA (v_ptr),Y
     TAX                             \ the address's low byte
     DEY
-    LDA (top),Y
-    STA rows_left
-    LDA top                         \ the cells after it
+    LDA (v_ptr),Y
+    STA rows_m1                     \ count - 1
+    LDA v_ptr                       \ the cells after it
     CLC
-    ADC #3
+    ADC #11
     STA v_ptr
-    LDA top + 1
-    ADC #0
-    STA v_ptr + 1
+    BCC cells_on_page
+    INC v_ptr + 1
+.cells_on_page
     TXA
     AND #&F8
     STA s_ptr
@@ -1866,17 +1899,15 @@ pix_operand_2 = * + 1
 .cell                               \ as draw_column: does the column end in this cell?
     TYA
     SEC
-    SBC rows_left
+    SBC rows_m1
     BCS last_cell
     EOR #&FF
-    STA rows_left
+    STA rows_m1
 .byte
     LDA (v_ptr),Y
     STA (s_ptr),Y
     DEY
     BPL byte
-    LDA rows_left
-    BEQ column_done
     LDA v_ptr                       \ the next cell: the save block 8 on...
     CLC
     ADC #8
@@ -1898,6 +1929,7 @@ pix_operand_2 = * + 1
     LDY #7
     BRA cell                        \ 65C02 opcode
 .last_cell
+    DEC A                           \ 65C02 opcode
     STA stop_y
 .part_byte
     LDA (v_ptr),Y
@@ -1905,14 +1937,6 @@ pix_operand_2 = * + 1
     DEY
     CPY stop_y
     BNE part_byte
-.column_done
-    LDA v_ptr                       \ the next record after this column's last cell
-    CLC
-    ADC #8
-    STA top
-    LDA v_ptr + 1
-    ADC #0
-    STA top + 1
     JMP columns
 .blocks_done
     LDX back                        \ the block is free; the arena shrinks if it was the last
@@ -2253,13 +2277,10 @@ NEXT
 .dm_jmax        EQUB 0
 .dm_raise       EQUB 0
 .ds_raise       EQUB 0
-.ds_c           EQUB 0
+.ds_n           EQUB 0
 .ds_j           EQUB 0
-.ds_addr_lo     EQUB 0
-.ds_addr_hi     EQUB 0
 .ds_fr          EQUB 0
 .ds_clip        EQUB 0
-.seg_line       EQUB 0
 .ra_rows        EQUB 0
 .ra_lo          EQUB 0
 .ra_hi          EQUB 0
@@ -2267,6 +2288,7 @@ NEXT
 .rb_part2       EQUB 0, 0           \ the header: part 2's start, part 3's (offsets)
 .rb_part3       EQUB 0, 0
 .rb_end         EQUB 0, 0
+.rb_p8          EQUB 0, 0
 .cp_cursor_lo   EQUB 0
 .cp_cursor_hi   EQUB 0
 .cp_best        EQUB 0
