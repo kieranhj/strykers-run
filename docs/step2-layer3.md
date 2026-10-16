@@ -16,7 +16,8 @@ Same game in each (keys by pass, `tools/passbench.mjs`, seed 1, passes 500-2000,
 | Layer 2's control (`0a078b8`: one screen, EOR sprites) | 17.79 | 112,407 |
 | A, B, C and the searches (`2e0fedc`) | 20.55 | 97,337 |
 | + E, the 50 Hz sound driver (`828ec7a`) | 21.59 | 92,652 |
-| + the pass lock not waiting (decision 26) | **23.38** | 85,535 |
+| + the pass lock not waiting (decision 26) | 23.38 | 85,535 |
+| + D: the column write unrolled, the lives digit from a table | **23.86** | 83,832 |
 
 Frame-timed play (`tools/profile.mjs`, `tools/speed.mjs`; these press keys by frame, so each
 build plays a slightly different game and the numbers move a few percent with it):
@@ -95,6 +96,14 @@ as soon as the frame is rendered and its flip armed; only the next render waits 
 still change at a vsync, at least 2 fields apart. Same game: 21.59 to 23.38 passes/s; fields
 between passes (`field_count` at `main_game_loop`, no longer whole slots): 1 or 2 for 1,239 of
 1,500, 3 for 252, 4 for 9.
+
+**D, the scroll's column and the lives digit** (part). `write_column` writes its 200 bytes a
+character row at a time, unrolled (5.7k to 3.0k a pass with RIGHT held); the renderer writes the
+lives digit from a table of the bytes `plot_lives` leaves (`src/lives_digits.6502`, from
+`tools/livesdigits.py`: both pixels of every byte are written, so they do not depend on the
+screen), 1.8k to ~0.5k a call. Both proved byte for byte: the shown frames of the previous commit
+and this one identical over 2 x 3,000 passes. (Counts of 10 or more, which the game does not
+reach, would show blank where `plot_lives` read past the font.) Same game: 23.86 passes/s.
 
 ## Checks
 

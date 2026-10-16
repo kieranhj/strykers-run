@@ -399,10 +399,7 @@ ENDIF
     LDY ren_k
     LDX pending_slot,Y
     JSR history_to_view
-    LDA #&80
-    STA drawing
-    JSR plot_lives
-    STZ drawing
+    JSR ren_plot_lives
     LDX back
     LDA lives
     STA buf_lives,X
@@ -423,10 +420,7 @@ ENDIF
     LDA buf_lives,X
     CMP lives
     BEQ lives_drawn
-    LDA #&80
-    STA drawing
-    JSR plot_lives
-    STZ drawing
+    JSR ren_plot_lives
     LDX back
     LDA lives
     STA buf_lives,X
@@ -671,43 +665,138 @@ ENDIF
     STA &F9
     RTS
 
-\ ---- write_column: X = history slot. The original update_screen's loop, from the history ------
+\ ---- ren_plot_lives: the lives digit at the screen start, as plot_lives leaves it (its bytes do
+\ not depend on what was there: src/lives_digits.6502, from tools/livesdigits.py) -------------
+.ren_plot_lives
+{
+    LDA lives                       \ d_ptr = lives_digits + 32 * (lives AND 15)
+    AND #&0F
+    STA d_ptr + 1
+    LDA #0
+    LSR d_ptr + 1
+    ROR A
+    LSR d_ptr + 1
+    ROR A
+    LSR d_ptr + 1
+    ROR A
+    CLC
+    ADC #LO(lives_digits)
+    STA d_ptr
+    LDA d_ptr + 1
+    ADC #HI(lives_digits)
+    STA d_ptr + 1
+    LDA screen_start_address_low
+    STA s_ptr
+    LDA screen_start_address_high
+    STA s_ptr + 1
+    LDX #4                          \ 4 byte columns of 8 rows
+.column
+    LDY #7
+.row
+    LDA (d_ptr),Y
+    STA (s_ptr),Y
+    DEY
+    BPL row
+    LDA d_ptr
+    CLC
+    ADC #8
+    STA d_ptr
+    BCC data_same_page
+    INC d_ptr + 1
+.data_same_page
+    LDA s_ptr                       \ the next cell across, round the 16K screen
+    CLC
+    ADC #8
+    STA s_ptr
+    BCC screen_same_page
+    LDA s_ptr + 1
+    INC A                           \ 65C02 opcode
+    BPL in_ring
+    LDA #&40
+.in_ring
+    STA s_ptr + 1
+.screen_same_page
+    DEX
+    BNE column
+    RTS
+}
+INCLUDE "lives_digits.6502"
+
+\ ---- write_column: X = history slot. The original update_screen's loop, from the history:
+\ 200 bytes down the column, a character row (8 bytes) at a time, unrolled (layer 3, D) -----
 .write_column
 {
     LDA hist_edge_lo,X
     STA edge_screen_address_low
     LDA hist_edge_hi,X
     STA edge_screen_address_high
-    LDA hist_src_hi,X
-    STA column_source + 2
-    LDY #&00
-    LDX #&C8
-.loop
-.column_source
-    LDA hist0 - 1,X                 \ self-modified: hist0 - 1 or hist1 - 1
+    LDA hist_src_hi,X               \ the slot: the 8 operands' high byte
+    STA src0 + 2
+    STA src1 + 2
+    STA src2 + 2
+    STA src3 + 2
+    STA src4 + 2
+    STA src5 + 2
+    STA src6 + 2
+    STA src7 + 2
+    LDX #&C8                        \ the history's bytes from the top: X - 1 - line
+.group
+    LDY #0
+.src0
+    LDA hist0 - 1 - 0,X             \ self-modified: hist0 or hist1
     STA (edge_screen_address),Y
     INY
-    CPY #&08
-    BEQ next_group
-.next_row
-    DEX
-    BNE loop
-    RTS
-.next_group
-    PHX
-    LDA edge_screen_address_low
-    LDX edge_screen_address_high
-    LDY #&02                        \ &0280: down a group
-    JSR add_delta_to_screen_address_in_AX
-    STX edge_screen_address_high
+.src1
+    LDA hist0 - 1 - 1,X             \ self-modified: hist0 or hist1
+    STA (edge_screen_address),Y
+    INY
+.src2
+    LDA hist0 - 1 - 2,X             \ self-modified: hist0 or hist1
+    STA (edge_screen_address),Y
+    INY
+.src3
+    LDA hist0 - 1 - 3,X             \ self-modified: hist0 or hist1
+    STA (edge_screen_address),Y
+    INY
+.src4
+    LDA hist0 - 1 - 4,X             \ self-modified: hist0 or hist1
+    STA (edge_screen_address),Y
+    INY
+.src5
+    LDA hist0 - 1 - 5,X             \ self-modified: hist0 or hist1
+    STA (edge_screen_address),Y
+    INY
+.src6
+    LDA hist0 - 1 - 6,X             \ self-modified: hist0 or hist1
+    STA (edge_screen_address),Y
+    INY
+.src7
+    LDA hist0 - 1 - 7,X             \ self-modified: hist0 or hist1
+    STA (edge_screen_address),Y
+    TXA
+    SEC
+    SBC #8
+    BEQ done
+    TAX
+    LDA edge_screen_address_low     \ down a character row: &280, round the 16K screen
+    CLC
+    ADC #&80
     STA edge_screen_address_low
-    PLX
-    LDY #&00
-    BEQ next_row                    \ always
+    LDA edge_screen_address_high
+    ADC #&02
+    BPL in_ring
+    SEC
+    SBC #&40
+.in_ring
+    STA edge_screen_address_high
+    JMP group
+.done
+    RTS
 }
 .hist_src_hi
     EQUB HI(hist0 - 1), HI(hist1 - 1)
 ASSERT LO(hist0 - 1) = LO(hist1 - 1)
+ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8 operands share a high byte
 
 \ ---- the zone ---------------------------------------------------------------------------------
 \ add_scroll_zone: X = history slot. A right scroll writes the column at the new right edge and
