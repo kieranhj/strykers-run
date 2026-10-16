@@ -74,7 +74,7 @@
     STA font_address_low
     TYA
     CLC
-    ADC #&84
+    ADC #HI(title_screen_font_data)
     STA font_address_high
     LDX #&00
 .plot_title_screen_character_column_loop
@@ -213,8 +213,8 @@ text_colour = * + 1
     STX key_offset
     INX
     STX unused                      \ Unused variable
-    LDX #&8B                        \ &8b91 = = define_controls_text
-    LDY #&91
+    LDX #HI(define_controls_text)
+    LDY #LO(define_controls_text)
     JSR plot_title_screen_text      \ Write "DEFINE CONTROLS"
     STY text_offset
 .define_controls_loop
@@ -361,7 +361,7 @@ text_colour = * + 1
     CLC
     ADC result_low
     STA name_address_low
-    LDA #&89
+    LDA #HI(high_score_names)
     ADC result_high
     STA name_address_high
     BRA well_done_screen            \ 65C02 opcode
@@ -397,7 +397,7 @@ text_colour = * + 1
     DEY
     BPL wipe_name_loop
     LDX #HI(well_done_text)         \ &8a06 = well_done_text
-    LDY #&06
+    LDY #LO(well_done_text)
     JSR plot_title_screen_text
     LDA #&FF
     STA &7F
@@ -575,7 +575,7 @@ text_colour = * + 1
     STZ scrolltext_buffer_offset    \ 65C02 opcode
     LDA #LO(scrolltext_buffer)      \ &89ee = scrolltext_buffer
     STA text_screen_address_low
-    LDA #&89
+    LDA #HI(scrolltext_buffer)
     STA &CF
     LDA #&3C                        \ CC
     STA text_colour
@@ -591,10 +591,10 @@ text_colour = * + 1
 .skip_page_88a4
     CPX #HI(scrolltext_text + 669)  \ &925e = end_of_scrolltext
     BNE not_end_of_scrolltext
-    CMP #&5E
+    CMP #LO(scrolltext_text + 669)
     BNE not_end_of_scrolltext
     LDX #HI(scrolltext_text)        \ &8fc1 = scrolltext_text
-    LDA #&C1
+    LDA #LO(scrolltext_text)
 .not_end_of_scrolltext
     STX &8A
     STA &89
@@ -823,19 +823,19 @@ text_colour = * + 1
     STA ula_palette                 \ video ULA palette register
     LDA #LO(scrolltext_text)        \ &8fc1 = scrolltext_text
     STA &89
-    LDA #&8F
+    LDA #HI(scrolltext_text)
     STA scrolltext_address_high
     JSR initialise_scrolltext_buffer
     JSR update_scrolltext
     LDA irq1v
     STA previous_irq1_vector_for_title_screen_low
-    LDA &0205
+    LDA irq1v + 1
     STA previous_irq1_vector_for_title_screen_high
     SEI
     LDA #LO(title_screen_irq1_handler)\ &88b5 = title_screen_irq1_handler
     STA irq1v
-    LDA #&88
-    STA &0205
+    LDA #HI(title_screen_irq1_handler)
+    STA irq1v + 1
     CLI
     JSR check_for_high_score        \ Returns carry clear if score ranked
     LDA #&7F
@@ -845,7 +845,7 @@ text_colour = * + 1
     LDA #&7F
     STA title_screen_cooldown
     LDX #HI(title_screen_text)      \ &8a2d = title_screen_text
-    LDY #&2D
+    LDY #LO(title_screen_text)
     JSR plot_title_screen_text
 .title_screen_loop
     LDX #&AD                        \ C                                         # If the C, H, R, I and S keys are pressed,
@@ -942,15 +942,15 @@ text_colour = * + 1
 
 .read_instructions
     LDX #HI(instructions_text_one)  \ &8d90 = instructions_text_one
-    LDY #&90
+    LDY #LO(instructions_text_one)
     JSR plot_title_screen_text
     JSR get_keypress
     LDX #HI(instructions_text_two)  \ &8e80 = instructions_text_two
-    LDY #&80
+    LDY #LO(instructions_text_two)
     JSR plot_title_screen_text
     JSR get_keypress
     LDX #HI(instructions_text_three)\ &8f68 = instructions_text_three
-    LDY #&68
+    LDY #LO(instructions_text_three)
     JSR plot_title_screen_text
     JSR get_keypress
     JMP display_title_screen
@@ -960,7 +960,7 @@ text_colour = * + 1
     LDA previous_irq1_vector_for_title_screen_low
     STA irq1v
     LDA previous_irq1_vector_for_title_screen_high
-    STA &0205
+    STA irq1v + 1
     CLI
     LDA #&0D                        \ Disable event
     LDX #&05                        \ interval timer crossing zero
@@ -2243,15 +2243,15 @@ text_colour = * + 1
     STA music_address_high
     LDA #LO(title_screen_music_event_handler)\ &a305 = title_screen_music_event_handler
     STA evntv
-    LDA #&A3
-    STA event_vector_high
+    LDA #HI(title_screen_music_event_handler)
+    STA evntv + 1
 .enable_interval_timer_events
     LDA #&0E                        \ Enable event
     LDX #&05                        \ interval timer crossing zero
     JSR osbyte                      \ OSBYTE
 .write_timer_block
     LDX #LO(timer_block)            \ &a2b8 = timer_block
-    LDY #&A2
+    LDY #HI(timer_block)
     LDA #&04                        \ Write interval timer
     JMP (wordv)
 .leave_a2e7
@@ -2260,7 +2260,7 @@ text_colour = * + 1
 .start_high_score_music
     LDA music_muted
     BNE leave_a2e7
-    LDA #&00
+    LDA #LO(high_score_music_data)
     STA music_address_low
     LDA #HI(high_score_music_data)  \ &a100 = high_score_music_data
     STA music_address_high
@@ -2268,8 +2268,8 @@ text_colour = * + 1
     STA high_score_music_notes_remaining
     LDA #LO(high_score_music_event_handler)\ &a393 = high_score_music_event_handler
     STA evntv
-    LDA #&A3
-    STA event_vector_high
+    LDA #HI(high_score_music_event_handler)
+    STA evntv + 1
     BNE enable_interval_timer_events\ Always branches
 
 .title_screen_music_event_handler
@@ -2281,12 +2281,13 @@ text_colour = * + 1
     LDA #&F6
     STA timer_block
     LDX music_address_high
-    CPX #&9A
+    ASSERT LO(title_screen_music_data) = 0   \ envelopes change at whole pages into the tune
+    CPX #HI(title_screen_music_data + &700)
     BNE not_envelope_five
     LDA #&05
     STA channel_one_envelope
 .not_envelope_five
-    CPX #&9C
+    CPX #HI(title_screen_music_data + &900)
     BNE not_envelope_one
     LDA #&01
     STA channel_one_envelope
@@ -2344,9 +2345,10 @@ text_colour = * + 1
     BCC not_end_of_title_screen_music
     INC music_address_high
     LDA music_address_high
-    CMP #&A1
+    ASSERT LO(high_score_music_data) = 0     \ the title tune ends where the high score tune starts
+    CMP #HI(high_score_music_data)
     BNE not_end_of_title_screen_music
-    LDA #&95
+    LDA #HI(title_screen_music_data + &200)  \ and loops back to its third page
     STA music_address_high
 .not_end_of_title_screen_music
     PLA
@@ -2376,14 +2378,14 @@ text_colour = * + 1
     CLC
     ADC #&30
     STA sound_data_a280 + 52        \ sound_data + &30 + 4 (pitch)
-    LDX #&A8
+    LDX #LO(sound_data_a280 + &28)
     JSR high_score_play_sound
-    LDX #&B0
+    LDX #LO(sound_data_a280 + &30)
     JSR high_score_play_sound
     LDY #&01
     LDA (music_address),Y
     STA sound_data_a280 + 36        \ sound_data + &20 + 4 (pitch)
-    LDX #&A0
+    LDX #LO(sound_data_a280 + &20)
     JSR high_score_play_sound
     JSR write_timer_block
     LDA music_address_low
@@ -2395,7 +2397,7 @@ text_colour = * + 1
 .skip_page_a3da
     DEC high_score_music_notes_remaining
     BNE not_end_of_high_score_music
-    LDA #&00
+    LDA #LO(high_score_music_data)
     STA music_address_low
     LDA #HI(high_score_music_data)  \ &a100 = high_score_music_data
     STA music_address_high
@@ -2408,11 +2410,12 @@ text_colour = * + 1
     RTS
 
 .title_screen_play_sound
+    ASSERT (LO(sound_data_a280) AND &1F) = 0   \ ORA builds sound_data + Y * 8
     TYA
     ASL A
     ASL A
     ASL A
-    ORA #&80
+    ORA #LO(sound_data_a280)
     TAX
 .high_score_play_sound
     LDA #&07

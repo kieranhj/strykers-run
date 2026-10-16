@@ -402,35 +402,279 @@
 
 \ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 .flipped_scenery_sprite_addresses_low_table
-    EQUB &78, &26, &EA, &BA, &A8, &A5, &90, &EA, &27, &6F, &EA, &54, &9B, &29, &80, &F4    \ &00
-    EQUB &7B, &CE, &65, &3D, &0C, &E4, &9E, &E7, &B3, &03, &BB, &0B, &30, &DD, &A6, &0D    \ &10
-    EQUB &89, &2B, &3E, &83, &76, &62, &69, &D2, &77, &E6, &4B, &7D, &08, &B7, &9D, &72    \ &20
-    EQUB &1F, &C6, &88, &08, &35, &88, &7C, &8D, &20, &99, &D4, &14, &00, &13, &96, &7B    \ &30
-    EQUB &C4, &FF    \ &40
+    EQUB LO(scenery_sprite_00 + 120)                \ &00
+    EQUB LO(scenery_sprite_01 + 147)                \ &01
+    EQUB LO(scenery_sprite_02 + 160)                \ &02
+    EQUB LO(scenery_sprite_03 + 170)                  \ &03
+    EQUB LO(scenery_sprite_04 + 223)                \ &04
+    EQUB LO(scenery_sprite_05 + 237)                \ &05
+    EQUB LO(scenery_sprite_06 + 216)                \ &06
+    EQUB LO(scenery_sprite_07 + 72)                 \ &07
+    EQUB LO(scenery_sprite_08 + 55)                 \ &08
+    EQUB LO(scenery_sprite_09 + 66)                 \ &09
+    EQUB LO(scenery_sprite_0a + 115)                \ &0A
+    EQUB LO(scenery_sprite_0b + 75)                 \ &0B
+    EQUB LO(scenery_sprite_0c + 59)                 \ &0C
+    EQUB LO(scenery_sprite_0d + 136)                \ &0D
+    EQUB LO(scenery_sprite_0e + 72)                 \ &0E
+    EQUB LO(scenery_sprite_0f + 107)                \ &0F
+    EQUB LO(scenery_sprite_10 + 117)                \ &10
+    EQUB LO(scenery_sprite_11 + 71)                 \ &11
+    EQUB LO(scenery_sprite_12 + 138)                \ &12
+    EQUB LO(scenery_sprite_13 + 189)                \ &13
+    EQUB LO(scenery_sprite_14 + 166)                \ &14
+    EQUB LO(scenery_sprite_15 + 206)                \ &15
+    EQUB LO(scenery_sprite_16 + 162)                \ &16
+    EQUB LO(scenery_sprite_17 + 487)                \ &17
+    EQUB LO(scenery_sprite_18 + 191)                \ &18
+    EQUB LO(scenery_sprite_19 + 322)                \ &19
+    EQUB LO(scenery_sprite_1a + 157)                \ &1A
+    EQUB LO(scenery_sprite_1b + 1097)               \ &1B
+    EQUB LO(scenery_sprite_1c + 503)                \ &1C
+    EQUB LO(scenery_sprite_1d + 652)                \ &1D
+    EQUB LO(scenery_sprite_1e + 673)                \ &1E
+    EQUB LO(scenery_sprite_1f + 833)                \ &1F
+    EQUB LO(scenery_sprite_20 + 376)                \ &20
+    EQUB LO(scenery_sprite_21 + 371)                \ &21
+    EQUB LO(scenery_sprite_22 + 244)                \ &22
+    EQUB LO(scenery_sprite_23 + 570)                \ &23
+    EQUB LO(scenery_sprite_24 + 210)                \ &24
+    EQUB LO(scenery_sprite_25 + 739)                \ &25
+    EQUB LO(scenery_sprite_26 + 508)                \ &26
+    EQUB LO(scenery_sprite_27 + 1379)               \ &27
+    EQUB LO(scenery_sprite_28 + 415)                \ &28
+    EQUB LO(scenery_sprite_29 + 572)                \ &29
+    EQUB LO(scenery_sprite_2a + 596)                \ &2A
+    EQUB LO(scenery_sprite_2b + 269)                \ &2B
+    EQUB LO(scenery_sprite_2c + 1130)               \ &2C
+    EQUB LO(scenery_sprite_2d + 424)                \ &2D
+    EQUB LO(scenery_sprite_2e + 170)                \ &2E
+    EQUB LO(scenery_sprite_2f + 198)                \ &2F
+    EQUB LO(scenery_sprite_30 + 287)                \ &30
+    EQUB LO(scenery_sprite_31 + 366)                \ &31
+    EQUB LO(scenery_sprite_32 + 403)                \ &32
+    EQUB LO(scenery_sprite_33 + 844)                \ &33
+    EQUB LO(scenery_sprite_34 + 806)                \ &34
+    EQUB LO(scenery_sprite_35 + 586)                \ &35
+    EQUB LO(scenery_sprite_36 + 1000)               \ &36
+    EQUB LO(scenery_sprite_37 + 2057)               \ &37
+    EQUB LO(scenery_sprite_38 + 366)                \ &38
+    EQUB LO(scenery_sprite_39 + 338)                \ &39
+    EQUB LO(scenery_sprite_3a + 528)                \ &3A
+    EQUB LO(scenery_sprite_3b + 529)                \ &3B
+    EQUB LO(scenery_sprite_3c + 430)                \ &3C
+    EQUB LO(scenery_sprite_3d + 1550)               \ &3D
+    EQUB LO(scenery_sprite_3e + 1638)               \ &3E
+    EQUB LO(scenery_sprite_3f + 1243)               \ &3F
+    EQUB LO(scenery_sprite_40 + 317)                \ &40
+    EQUB LO(scenery_sprite_41 + 278)                \ &41
 
 \ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 .flipped_scenery_sprite_addresses_high_table
-    EQUB &80, &81, &81, &82, &83, &84, &85, &85, &86, &86, &86, &87, &87, &88, &88, &88    \ &00
-    EQUB &89, &89, &8A, &06, &07, &07, &8C, &81, &82, &84, &84, &89, &8B, &8D, &90, &94    \ &10
-    EQUB &95, &97, &98, &9A, &9B, &9E, &A0, &A5, &A7, &A9, &AC, &AD, &B2, &B3, &B4, &B5    \ &20
-    EQUB &81, &82, &84, &88, &8B, &8D, &91, &99, &9B, &9C, &9E, &A1, &A3, &A9, &AF, &B4    \ &30
-    EQUB &B5, &B6    \ &40
+    EQUB HI(scenery_sprite_00 + 120)                \ &00
+    EQUB HI(scenery_sprite_01 + 147)                \ &01
+    EQUB HI(scenery_sprite_02 + 160)                \ &02
+    EQUB HI(scenery_sprite_03 + 170)                  \ &03
+    EQUB HI(scenery_sprite_04 + 223)                \ &04
+    EQUB HI(scenery_sprite_05 + 237)                \ &05
+    EQUB HI(scenery_sprite_06 + 216)                \ &06
+    EQUB HI(scenery_sprite_07 + 72)                 \ &07
+    EQUB HI(scenery_sprite_08 + 55)                 \ &08
+    EQUB HI(scenery_sprite_09 + 66)                 \ &09
+    EQUB HI(scenery_sprite_0a + 115)                \ &0A
+    EQUB HI(scenery_sprite_0b + 75)                 \ &0B
+    EQUB HI(scenery_sprite_0c + 59)                 \ &0C
+    EQUB HI(scenery_sprite_0d + 136)                \ &0D
+    EQUB HI(scenery_sprite_0e + 72)                 \ &0E
+    EQUB HI(scenery_sprite_0f + 107)                \ &0F
+    EQUB HI(scenery_sprite_10 + 117)                \ &10
+    EQUB HI(scenery_sprite_11 + 71)                 \ &11
+    EQUB HI(scenery_sprite_12 + 138)                \ &12
+    EQUB HI(scenery_sprite_13 + 189)                \ &13
+    EQUB HI(scenery_sprite_14 + 166)                \ &14
+    EQUB HI(scenery_sprite_15 + 206)                \ &15
+    EQUB HI(scenery_sprite_16 + 162)                \ &16
+    EQUB HI(scenery_sprite_17 + 487)                \ &17
+    EQUB HI(scenery_sprite_18 + 191)                \ &18
+    EQUB HI(scenery_sprite_19 + 322)                \ &19
+    EQUB HI(scenery_sprite_1a + 157)                \ &1A
+    EQUB HI(scenery_sprite_1b + 1097)               \ &1B
+    EQUB HI(scenery_sprite_1c + 503)                \ &1C
+    EQUB HI(scenery_sprite_1d + 652)                \ &1D
+    EQUB HI(scenery_sprite_1e + 673)                \ &1E
+    EQUB HI(scenery_sprite_1f + 833)                \ &1F
+    EQUB HI(scenery_sprite_20 + 376)                \ &20
+    EQUB HI(scenery_sprite_21 + 371)                \ &21
+    EQUB HI(scenery_sprite_22 + 244)                \ &22
+    EQUB HI(scenery_sprite_23 + 570)                \ &23
+    EQUB HI(scenery_sprite_24 + 210)                \ &24
+    EQUB HI(scenery_sprite_25 + 739)                \ &25
+    EQUB HI(scenery_sprite_26 + 508)                \ &26
+    EQUB HI(scenery_sprite_27 + 1379)               \ &27
+    EQUB HI(scenery_sprite_28 + 415)                \ &28
+    EQUB HI(scenery_sprite_29 + 572)                \ &29
+    EQUB HI(scenery_sprite_2a + 596)                \ &2A
+    EQUB HI(scenery_sprite_2b + 269)                \ &2B
+    EQUB HI(scenery_sprite_2c + 1130)               \ &2C
+    EQUB HI(scenery_sprite_2d + 424)                \ &2D
+    EQUB HI(scenery_sprite_2e + 170)                \ &2E
+    EQUB HI(scenery_sprite_2f + 198)                \ &2F
+    EQUB HI(scenery_sprite_30 + 287)                \ &30
+    EQUB HI(scenery_sprite_31 + 366)                \ &31
+    EQUB HI(scenery_sprite_32 + 403)                \ &32
+    EQUB HI(scenery_sprite_33 + 844)                \ &33
+    EQUB HI(scenery_sprite_34 + 806)                \ &34
+    EQUB HI(scenery_sprite_35 + 586)                \ &35
+    EQUB HI(scenery_sprite_36 + 1000)               \ &36
+    EQUB HI(scenery_sprite_37 + 2057)               \ &37
+    EQUB HI(scenery_sprite_38 + 366)                \ &38
+    EQUB HI(scenery_sprite_39 + 338)                \ &39
+    EQUB HI(scenery_sprite_3a + 528)                \ &3A
+    EQUB HI(scenery_sprite_3b + 529)                \ &3B
+    EQUB HI(scenery_sprite_3c + 430)                \ &3C
+    EQUB HI(scenery_sprite_3d + 1550)               \ &3D
+    EQUB HI(scenery_sprite_3e + 1638)               \ &3E
+    EQUB HI(scenery_sprite_3f + 1243)               \ &3F
+    EQUB HI(scenery_sprite_40 + 317)                \ &40
+    EQUB HI(scenery_sprite_41 + 278)                \ &41
 
 \ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 .unflipped_scenery_sprite_addresses_low_table
-    EQUB &00, &93, &4A, &10, &C9, &B8, &B8, &A2, &F0, &2D, &77, &09, &60, &A1, &38, &89    \ &00
-    EQUB &06, &87, &DB, &80, &66, &16, &FC, &00, &F4, &C1, &1E, &C2, &39, &51, &05, &CC    \ &10
-    EQUB &11, &B8, &4A, &49, &A4, &7F, &6D, &6F, &D8, &AA, &F7, &70, &9E, &0F, &F3, &AC    \ &20
-    EQUB &00, &58, &F5, &BC, &0F, &3E, &94, &84, &B2, &47, &C4, &03, &52, &05, &30, &A0    \ &30
-    EQUB &87, &E9    \ &40
+    EQUB LO(scenery_sprite_00)                      \ &00
+    EQUB LO(scenery_sprite_01)                      \ &01
+    EQUB LO(scenery_sprite_02)                      \ &02
+    EQUB LO(scenery_sprite_03)                        \ &03
+    EQUB LO(scenery_sprite_04)                      \ &04
+    EQUB LO(scenery_sprite_05)                      \ &05
+    EQUB LO(scenery_sprite_06)                      \ &06
+    EQUB LO(scenery_sprite_07)                      \ &07
+    EQUB LO(scenery_sprite_08)                      \ &08
+    EQUB LO(scenery_sprite_09)                      \ &09
+    EQUB LO(scenery_sprite_0a)                      \ &0A
+    EQUB LO(scenery_sprite_0b)                      \ &0B
+    EQUB LO(scenery_sprite_0c)                      \ &0C
+    EQUB LO(scenery_sprite_0d)                      \ &0D
+    EQUB LO(scenery_sprite_0e)                      \ &0E
+    EQUB LO(scenery_sprite_0f)                      \ &0F
+    EQUB LO(scenery_sprite_10)                      \ &10
+    EQUB LO(scenery_sprite_11)                      \ &11
+    EQUB LO(scenery_sprite_12)                      \ &12
+    EQUB LO(scenery_sprite_13)                      \ &13
+    EQUB LO(scenery_sprite_14)                      \ &14
+    EQUB LO(scenery_sprite_15)                      \ &15
+    EQUB LO(scenery_sprite_16)                      \ &16
+    EQUB LO(scenery_sprite_17)                      \ &17
+    EQUB LO(scenery_sprite_18)                      \ &18
+    EQUB LO(scenery_sprite_19)                      \ &19
+    EQUB LO(scenery_sprite_1a)                      \ &1A
+    EQUB LO(scenery_sprite_1b)                      \ &1B
+    EQUB LO(scenery_sprite_1c)                      \ &1C
+    EQUB LO(scenery_sprite_1d)                      \ &1D
+    EQUB LO(scenery_sprite_1e)                      \ &1E
+    EQUB LO(scenery_sprite_1f)                      \ &1F
+    EQUB LO(scenery_sprite_20)                      \ &20
+    EQUB LO(scenery_sprite_21)                      \ &21
+    EQUB LO(scenery_sprite_22)                      \ &22
+    EQUB LO(scenery_sprite_23)                      \ &23
+    EQUB LO(scenery_sprite_24)                      \ &24
+    EQUB LO(scenery_sprite_25)                      \ &25
+    EQUB LO(scenery_sprite_26)                      \ &26
+    EQUB LO(scenery_sprite_27)                      \ &27
+    EQUB LO(scenery_sprite_28)                      \ &28
+    EQUB LO(scenery_sprite_29)                      \ &29
+    EQUB LO(scenery_sprite_2a)                      \ &2A
+    EQUB LO(scenery_sprite_2b)                      \ &2B
+    EQUB LO(scenery_sprite_2c)                      \ &2C
+    EQUB LO(scenery_sprite_2d)                      \ &2D
+    EQUB LO(scenery_sprite_2e)                      \ &2E
+    EQUB LO(scenery_sprite_2f)                      \ &2F
+    EQUB LO(scenery_sprite_30)                      \ &30
+    EQUB LO(scenery_sprite_31)                      \ &31
+    EQUB LO(scenery_sprite_32)                      \ &32
+    EQUB LO(scenery_sprite_33)                      \ &33
+    EQUB LO(scenery_sprite_34)                      \ &34
+    EQUB LO(scenery_sprite_35)                      \ &35
+    EQUB LO(scenery_sprite_36)                      \ &36
+    EQUB LO(scenery_sprite_37)                      \ &37
+    EQUB LO(scenery_sprite_38)                      \ &38
+    EQUB LO(scenery_sprite_39)                      \ &39
+    EQUB LO(scenery_sprite_3a)                      \ &3A
+    EQUB LO(scenery_sprite_3b)                      \ &3B
+    EQUB LO(scenery_sprite_3c)                      \ &3C
+    EQUB LO(scenery_sprite_3d)                      \ &3D
+    EQUB LO(scenery_sprite_3e)                      \ &3E
+    EQUB LO(scenery_sprite_3f)                      \ &3F
+    EQUB LO(scenery_sprite_40)                      \ &40
+    EQUB LO(scenery_sprite_41)                      \ &41
 
 \ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 .unflipped_scenery_sprite_addresses_high_table
-    EQUB &80, &80, &81, &82, &82, &83, &84, &85, &85, &86, &86, &87, &87, &87, &88, &88    \ &00
-    EQUB &89, &89, &89, &05, &06, &07, &8B, &80, &81, &82, &84, &84, &89, &8B, &8E, &90    \ &10
-    EQUB &94, &95, &97, &98, &9A, &9B, &9E, &A0, &A5, &A7, &A9, &AC, &AD, &B2, &B3, &B4    \ &20
-    EQUB &80, &81, &82, &84, &88, &8B, &8D, &91, &99, &9B, &9C, &9F, &A1, &A3, &A9, &AF    \ &30
-    EQUB &B4, &B5    \ &40
+    EQUB HI(scenery_sprite_00)                      \ &00
+    EQUB HI(scenery_sprite_01)                      \ &01
+    EQUB HI(scenery_sprite_02)                      \ &02
+    EQUB HI(scenery_sprite_03)                        \ &03
+    EQUB HI(scenery_sprite_04)                      \ &04
+    EQUB HI(scenery_sprite_05)                      \ &05
+    EQUB HI(scenery_sprite_06)                      \ &06
+    EQUB HI(scenery_sprite_07)                      \ &07
+    EQUB HI(scenery_sprite_08)                      \ &08
+    EQUB HI(scenery_sprite_09)                      \ &09
+    EQUB HI(scenery_sprite_0a)                      \ &0A
+    EQUB HI(scenery_sprite_0b)                      \ &0B
+    EQUB HI(scenery_sprite_0c)                      \ &0C
+    EQUB HI(scenery_sprite_0d)                      \ &0D
+    EQUB HI(scenery_sprite_0e)                      \ &0E
+    EQUB HI(scenery_sprite_0f)                      \ &0F
+    EQUB HI(scenery_sprite_10)                      \ &10
+    EQUB HI(scenery_sprite_11)                      \ &11
+    EQUB HI(scenery_sprite_12)                      \ &12
+    EQUB HI(scenery_sprite_13)                      \ &13
+    EQUB HI(scenery_sprite_14)                      \ &14
+    EQUB HI(scenery_sprite_15)                      \ &15
+    EQUB HI(scenery_sprite_16)                      \ &16
+    EQUB HI(scenery_sprite_17)                      \ &17
+    EQUB HI(scenery_sprite_18)                      \ &18
+    EQUB HI(scenery_sprite_19)                      \ &19
+    EQUB HI(scenery_sprite_1a)                      \ &1A
+    EQUB HI(scenery_sprite_1b)                      \ &1B
+    EQUB HI(scenery_sprite_1c)                      \ &1C
+    EQUB HI(scenery_sprite_1d)                      \ &1D
+    EQUB HI(scenery_sprite_1e)                      \ &1E
+    EQUB HI(scenery_sprite_1f)                      \ &1F
+    EQUB HI(scenery_sprite_20)                      \ &20
+    EQUB HI(scenery_sprite_21)                      \ &21
+    EQUB HI(scenery_sprite_22)                      \ &22
+    EQUB HI(scenery_sprite_23)                      \ &23
+    EQUB HI(scenery_sprite_24)                      \ &24
+    EQUB HI(scenery_sprite_25)                      \ &25
+    EQUB HI(scenery_sprite_26)                      \ &26
+    EQUB HI(scenery_sprite_27)                      \ &27
+    EQUB HI(scenery_sprite_28)                      \ &28
+    EQUB HI(scenery_sprite_29)                      \ &29
+    EQUB HI(scenery_sprite_2a)                      \ &2A
+    EQUB HI(scenery_sprite_2b)                      \ &2B
+    EQUB HI(scenery_sprite_2c)                      \ &2C
+    EQUB HI(scenery_sprite_2d)                      \ &2D
+    EQUB HI(scenery_sprite_2e)                      \ &2E
+    EQUB HI(scenery_sprite_2f)                      \ &2F
+    EQUB HI(scenery_sprite_30)                      \ &30
+    EQUB HI(scenery_sprite_31)                      \ &31
+    EQUB HI(scenery_sprite_32)                      \ &32
+    EQUB HI(scenery_sprite_33)                      \ &33
+    EQUB HI(scenery_sprite_34)                      \ &34
+    EQUB HI(scenery_sprite_35)                      \ &35
+    EQUB HI(scenery_sprite_36)                      \ &36
+    EQUB HI(scenery_sprite_37)                      \ &37
+    EQUB HI(scenery_sprite_38)                      \ &38
+    EQUB HI(scenery_sprite_39)                      \ &39
+    EQUB HI(scenery_sprite_3a)                      \ &3A
+    EQUB HI(scenery_sprite_3b)                      \ &3B
+    EQUB HI(scenery_sprite_3c)                      \ &3C
+    EQUB HI(scenery_sprite_3d)                      \ &3D
+    EQUB HI(scenery_sprite_3e)                      \ &3E
+    EQUB HI(scenery_sprite_3f)                      \ &3F
+    EQUB HI(scenery_sprite_40)                      \ &40
+    EQUB HI(scenery_sprite_41)                      \ &41
 
 \ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 .scenery_sprite_width_table
@@ -442,35 +686,319 @@
 
 \ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 .unflipped_mover_sprite_addresses_low_table
-    EQUB &DD, &AA, &75, &41, &0F, &E4, &B5, &84, &5B, &35, &0C, &D9, &B4, &8C, &5F, &2F    \ &00
-    EQUB &FE, &10, &36, &83, &D8, &B5, &8F, &5A, &39, &0E, &E3, &B8, &96, &6E, &41, &0F    \ &10
-    EQUB &E9, &7C, &12, &B0, &6E, &3C, &FE, &9E, &3F, &19, &0B, &F9, &E0, &A3, &8B, &00    \ &20
-    EQUB &00, &00, &00, &6E, &AA, &06, &00, &57, &E7, &A6, &EE, &3C, &8B, &44, &EB, &95    \ &30
-    EQUB &2C, &E7, &8F, &CB, &73, &2B, &E0, &8E, &4D, &FB, &B0, &73    \ &40
+    EQUB LO(mover_sprite_00)                        \ &00
+    EQUB LO(mover_sprite_01)                        \ &01
+    EQUB LO(mover_sprite_02)                        \ &02
+    EQUB LO(mover_sprite_03)                        \ &03
+    EQUB LO(mover_sprite_04)                        \ &04
+    EQUB LO(mover_sprite_05)                        \ &05
+    EQUB LO(mover_sprite_06)                        \ &06
+    EQUB LO(mover_sprite_07)                        \ &07
+    EQUB LO(mover_sprite_08)                        \ &08
+    EQUB LO(mover_sprite_09)                        \ &09
+    EQUB LO(mover_sprite_0a)                        \ &0A
+    EQUB LO(mover_sprite_0b)                        \ &0B
+    EQUB LO(mover_sprite_0c)                        \ &0C
+    EQUB LO(mover_sprite_0d)                        \ &0D
+    EQUB LO(mover_sprite_0e)                        \ &0E
+    EQUB LO(mover_sprite_0f)                        \ &0F
+    EQUB LO(mover_sprite_10)                        \ &10
+    EQUB LO(mover_sprite_11)                        \ &11
+    EQUB LO(mover_sprite_12)                        \ &12
+    EQUB LO(mover_sprite_13)                        \ &13
+    EQUB LO(mover_sprite_14)                        \ &14
+    EQUB LO(mover_sprite_15)                        \ &15
+    EQUB LO(mover_sprite_16)                        \ &16
+    EQUB LO(mover_sprite_17)                        \ &17
+    EQUB LO(mover_sprite_18)                        \ &18
+    EQUB LO(mover_sprite_19)                        \ &19
+    EQUB LO(mover_sprite_1a)                        \ &1A
+    EQUB LO(mover_sprite_1b)                        \ &1B
+    EQUB LO(mover_sprite_1c)                        \ &1C
+    EQUB LO(mover_sprite_1d)                        \ &1D
+    EQUB LO(mover_sprite_1e)                        \ &1E
+    EQUB LO(mover_sprite_1f)                        \ &1F
+    EQUB LO(mover_sprite_20)                        \ &20
+    EQUB LO(mover_sprite_21)                        \ &21
+    EQUB LO(mover_sprite_22)                        \ &22
+    EQUB LO(mover_sprite_23)                        \ &23
+    EQUB LO(mover_sprite_24)                        \ &24
+    EQUB LO(mover_sprite_25)                        \ &25
+    EQUB LO(mover_sprite_26)                        \ &26
+    EQUB LO(mover_sprite_27)                        \ &27
+    EQUB LO(mover_sprite_28)                        \ &28
+    EQUB LO(mover_sprite_29)                        \ &29
+    EQUB LO(mover_sprite_2a)                        \ &2A
+    EQUB LO(mover_sprite_2b)                        \ &2B
+    EQUB LO(mover_sprite_2c)                        \ &2C
+    EQUB LO(mover_sprite_2d)                        \ &2D
+    EQUB LO(mover_sprite_2e)                        \ &2E
+    EQUB &00                                        \ &2F: unused entry (&3500 is not a sprite)
+    EQUB LO(unused_3400)                            \ &30
+    EQUB LO(unused_3400)                            \ &31
+    EQUB &00                                        \ &32: unused entry (&3300 is not a sprite)
+    EQUB LO(mover_sprite_33)                        \ &33
+    EQUB LO(mover_sprite_34)                        \ &34
+    EQUB LO(mover_sprite_35)                        \ &35
+    EQUB &00                                        \ &36: unused entry (&0000 is not a sprite)
+    EQUB LO(mover_sprite_37)                        \ &37
+    EQUB LO(mover_sprite_38)                        \ &38
+    EQUB LO(mover_sprite_39)                        \ &39
+    EQUB LO(mover_sprite_3a)                        \ &3A
+    EQUB LO(mover_sprite_3b)                        \ &3B
+    EQUB LO(mover_sprite_3c)                        \ &3C
+    EQUB LO(mover_sprite_3d)                        \ &3D
+    EQUB LO(mover_sprite_3e)                        \ &3E
+    EQUB LO(mover_sprite_3f)                        \ &3F
+    EQUB LO(mover_sprite_40)                        \ &40
+    EQUB LO(mover_sprite_41)                        \ &41
+    EQUB LO(mover_sprite_42)                        \ &42
+    EQUB LO(mover_sprite_43)                        \ &43
+    EQUB LO(mover_sprite_44)                        \ &44
+    EQUB LO(mover_sprite_45)                        \ &45
+    EQUB LO(mover_sprite_46)                        \ &46
+    EQUB LO(mover_sprite_47)                        \ &47
+    EQUB LO(mover_sprite_48)                        \ &48
+    EQUB LO(mover_sprite_49)                        \ &49
+    EQUB LO(mover_sprite_4a)                        \ &4A
+    EQUB LO(mover_sprite_4b)                        \ &4B
 
 \ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 .unflipped_mover_sprite_addresses_high_table
-    EQUB &3F, &3F, &3F, &3F, &3F, &3E, &3E, &3E, &3E, &3E, &3E, &3D, &3D, &3D, &3D, &3D    \ &00
-    EQUB &3C, &82, &3C, &3B, &3A, &34, &3A, &3A, &3A, &3A, &39, &39, &39, &39, &39, &39    \ &10
-    EQUB &38, &38, &38, &37, &37, &37, &36, &36, &36, &36, &36, &35, &35, &35, &35, &35    \ &20
-    EQUB &34, &34, &33, &8A, &8A, &8B, &00, &8B, &8B, &8C, &8C, &8D, &8D, &8E, &8E, &8F    \ &30
-    EQUB &90, &90, &91, &91, &92, &93, &93, &94, &95, &95, &96, &97    \ &40
+    EQUB HI(mover_sprite_00)                        \ &00
+    EQUB HI(mover_sprite_01)                        \ &01
+    EQUB HI(mover_sprite_02)                        \ &02
+    EQUB HI(mover_sprite_03)                        \ &03
+    EQUB HI(mover_sprite_04)                        \ &04
+    EQUB HI(mover_sprite_05)                        \ &05
+    EQUB HI(mover_sprite_06)                        \ &06
+    EQUB HI(mover_sprite_07)                        \ &07
+    EQUB HI(mover_sprite_08)                        \ &08
+    EQUB HI(mover_sprite_09)                        \ &09
+    EQUB HI(mover_sprite_0a)                        \ &0A
+    EQUB HI(mover_sprite_0b)                        \ &0B
+    EQUB HI(mover_sprite_0c)                        \ &0C
+    EQUB HI(mover_sprite_0d)                        \ &0D
+    EQUB HI(mover_sprite_0e)                        \ &0E
+    EQUB HI(mover_sprite_0f)                        \ &0F
+    EQUB HI(mover_sprite_10)                        \ &10
+    EQUB HI(mover_sprite_11)                        \ &11
+    EQUB HI(mover_sprite_12)                        \ &12
+    EQUB HI(mover_sprite_13)                        \ &13
+    EQUB HI(mover_sprite_14)                        \ &14
+    EQUB HI(mover_sprite_15)                        \ &15
+    EQUB HI(mover_sprite_16)                        \ &16
+    EQUB HI(mover_sprite_17)                        \ &17
+    EQUB HI(mover_sprite_18)                        \ &18
+    EQUB HI(mover_sprite_19)                        \ &19
+    EQUB HI(mover_sprite_1a)                        \ &1A
+    EQUB HI(mover_sprite_1b)                        \ &1B
+    EQUB HI(mover_sprite_1c)                        \ &1C
+    EQUB HI(mover_sprite_1d)                        \ &1D
+    EQUB HI(mover_sprite_1e)                        \ &1E
+    EQUB HI(mover_sprite_1f)                        \ &1F
+    EQUB HI(mover_sprite_20)                        \ &20
+    EQUB HI(mover_sprite_21)                        \ &21
+    EQUB HI(mover_sprite_22)                        \ &22
+    EQUB HI(mover_sprite_23)                        \ &23
+    EQUB HI(mover_sprite_24)                        \ &24
+    EQUB HI(mover_sprite_25)                        \ &25
+    EQUB HI(mover_sprite_26)                        \ &26
+    EQUB HI(mover_sprite_27)                        \ &27
+    EQUB HI(mover_sprite_28)                        \ &28
+    EQUB HI(mover_sprite_29)                        \ &29
+    EQUB HI(mover_sprite_2a)                        \ &2A
+    EQUB HI(mover_sprite_2b)                        \ &2B
+    EQUB HI(mover_sprite_2c)                        \ &2C
+    EQUB HI(mover_sprite_2d)                        \ &2D
+    EQUB HI(mover_sprite_2e)                        \ &2E
+    EQUB &35                                        \ &2F: unused entry (&3500 is not a sprite)
+    EQUB HI(unused_3400)                            \ &30
+    EQUB HI(unused_3400)                            \ &31
+    EQUB &33                                        \ &32: unused entry (&3300 is not a sprite)
+    EQUB HI(mover_sprite_33)                        \ &33
+    EQUB HI(mover_sprite_34)                        \ &34
+    EQUB HI(mover_sprite_35)                        \ &35
+    EQUB &00                                        \ &36: unused entry (&0000 is not a sprite)
+    EQUB HI(mover_sprite_37)                        \ &37
+    EQUB HI(mover_sprite_38)                        \ &38
+    EQUB HI(mover_sprite_39)                        \ &39
+    EQUB HI(mover_sprite_3a)                        \ &3A
+    EQUB HI(mover_sprite_3b)                        \ &3B
+    EQUB HI(mover_sprite_3c)                        \ &3C
+    EQUB HI(mover_sprite_3d)                        \ &3D
+    EQUB HI(mover_sprite_3e)                        \ &3E
+    EQUB HI(mover_sprite_3f)                        \ &3F
+    EQUB HI(mover_sprite_40)                        \ &40
+    EQUB HI(mover_sprite_41)                        \ &41
+    EQUB HI(mover_sprite_42)                        \ &42
+    EQUB HI(mover_sprite_43)                        \ &43
+    EQUB HI(mover_sprite_44)                        \ &44
+    EQUB HI(mover_sprite_45)                        \ &45
+    EQUB HI(mover_sprite_46)                        \ &46
+    EQUB HI(mover_sprite_47)                        \ &47
+    EQUB HI(mover_sprite_48)                        \ &48
+    EQUB HI(mover_sprite_49)                        \ &49
+    EQUB HI(mover_sprite_4a)                        \ &4A
+    EQUB HI(mover_sprite_4b)                        \ &4B
 
 \ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 .flipped_mover_sprite_addresses_high_table
-    EQUB &3F, &3F, &3F, &3F, &3F, &3F, &3E, &3E, &3E, &3E, &3E, &3E, &3D, &3D, &3D, &3D    \ &00
-    EQUB &3D, &82, &3C, &3C, &3B, &35, &3A, &3A, &3A, &3A, &3A, &39, &39, &39, &39, &39    \ &10
-    EQUB &39, &38, &38, &38, &37, &37, &37, &36, &36, &36, &36, &36, &35, &35, &35, &35    \ &20
-    EQUB &35, &34, &34, &8A, &8B, &8B, &00, &8B, &8B, &8C, &8D, &8D, &8E, &8E, &8F, &90    \ &30
-    EQUB &90, &91, &91, &92, &93, &93, &94, &95, &95, &96, &97, &97    \ &40
+    EQUB HI(mover_sprite_00 + 32)                   \ &00
+    EQUB HI(mover_sprite_01 + 48)                   \ &01
+    EQUB HI(mover_sprite_02 + 50)                   \ &02
+    EQUB HI(mover_sprite_03 + 49)                   \ &03
+    EQUB HI(mover_sprite_04 + 47)                   \ &04
+    EQUB HI(mover_sprite_05 + 40)                   \ &05
+    EQUB HI(mover_sprite_06 + 44)                   \ &06
+    EQUB HI(mover_sprite_07 + 46)                   \ &07
+    EQUB HI(mover_sprite_08 + 38)                   \ &08
+    EQUB HI(mover_sprite_09 + 35)                   \ &09
+    EQUB HI(mover_sprite_0a + 38)                   \ &0A
+    EQUB HI(mover_sprite_0b + 42)                   \ &0B
+    EQUB HI(mover_sprite_0c + 34)                   \ &0C
+    EQUB HI(mover_sprite_0d + 37)                   \ &0D
+    EQUB HI(mover_sprite_0e + 42)                   \ &0E
+    EQUB HI(mover_sprite_0f + 45)                   \ &0F
+    EQUB HI(mover_sprite_10 + 43)                   \ &10
+    EQUB HI(mover_sprite_11 + 161)                  \ &11
+    EQUB HI(mover_sprite_12 + 188)                  \ &12
+    EQUB HI(mover_sprite_13 + 169)                  \ &13
+    EQUB HI(mover_sprite_14 + 161)                  \ &14
+    EQUB HI(mover_sprite_15 + 202)                  \ &15
+    EQUB HI(mover_sprite_16 + 66)                   \ &16
+    EQUB HI(mover_sprite_17 + 50)                   \ &17
+    EQUB HI(mover_sprite_18 + 30)                   \ &18
+    EQUB HI(mover_sprite_19 + 40)                   \ &19
+    EQUB HI(mover_sprite_1a + 40)                   \ &1A
+    EQUB HI(mover_sprite_1b + 40)                   \ &1B
+    EQUB HI(mover_sprite_1c + 31)                   \ &1C
+    EQUB HI(mover_sprite_1d + 37)                   \ &1D
+    EQUB HI(mover_sprite_1e + 42)                   \ &1E
+    EQUB HI(mover_sprite_1f + 47)                   \ &1F
+    EQUB HI(mover_sprite_20 + 35)                   \ &20
+    EQUB HI(mover_sprite_21 + 102)                  \ &21
+    EQUB HI(mover_sprite_22 + 98)                   \ &22
+    EQUB HI(mover_sprite_23 + 90)                   \ &23
+    EQUB HI(mover_sprite_24 + 60)                   \ &24
+    EQUB HI(mover_sprite_25 + 47)                   \ &25
+    EQUB HI(mover_sprite_26 + 56)                   \ &26
+    EQUB HI(mover_sprite_27 + 86)                   \ &27
+    EQUB HI(mover_sprite_28 + 85)                   \ &28
+    EQUB HI(mover_sprite_29 + 35)                   \ &29
+    EQUB HI(mover_sprite_2a + 10)                   \ &2A
+    EQUB HI(mover_sprite_2b + 13)                   \ &2B
+    EQUB HI(mover_sprite_2c + 20)                   \ &2C
+    EQUB HI(mover_sprite_2d + 53)                   \ &2D
+    EQUB HI(mover_sprite_2e + 18)                   \ &2E
+    EQUB &35                                        \ &2F: unused entry (&3500 is not a sprite)
+    EQUB HI(unused_3400 + 256)                      \ &30
+    EQUB HI(unused_3400)                            \ &31
+    EQUB &34                                        \ &32: unused entry (&3400 is not a sprite)
+    EQUB HI(mover_sprite_33 + 57)                   \ &33
+    EQUB HI(mover_sprite_34 + 87)                   \ &34
+    EQUB HI(mover_sprite_35 + 71)                   \ &35
+    EQUB &00                                        \ &36: unused entry (&0000 is not a sprite)
+    EQUB HI(mover_sprite_37 + 140)                  \ &37
+    EQUB HI(mover_sprite_38 + 12)                   \ &38
+    EQUB HI(mover_sprite_39 + 66)                   \ &39
+    EQUB HI(mover_sprite_3a + 72)                   \ &3A
+    EQUB HI(mover_sprite_3b + 73)                   \ &3B
+    EQUB HI(mover_sprite_3c + 170)                  \ &3C
+    EQUB HI(mover_sprite_3d + 157)                  \ &3D
+    EQUB HI(mover_sprite_3e + 162)                  \ &3E
+    EQUB HI(mover_sprite_3f + 148)                  \ &3F
+    EQUB HI(mover_sprite_40 + 176)                  \ &40
+    EQUB HI(mover_sprite_41 + 158)                  \ &41
+    EQUB HI(mover_sprite_42 + 57)                   \ &42
+    EQUB HI(mover_sprite_43 + 158)                  \ &43
+    EQUB HI(mover_sprite_44 + 174)                  \ &44
+    EQUB HI(mover_sprite_45 + 170)                  \ &45
+    EQUB HI(mover_sprite_46 + 166)                  \ &46
+    EQUB HI(mover_sprite_47 + 183)                  \ &47
+    EQUB HI(mover_sprite_48 + 164)                  \ &48
+    EQUB HI(mover_sprite_49 + 170)                  \ &49
+    EQUB HI(mover_sprite_4a + 178)                  \ &4A
+    EQUB HI(mover_sprite_4b + 10)                   \ &4B
 
 \ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 .flipped_mover_sprite_addresses_low_table
-    EQUB &FD, &DA, &A7, &72, &3E, &0C, &E1, &B2, &81, &58, &32, &03, &D6, &B1, &89, &5C    \ &00
-    EQUB &29, &B1, &F2, &2C, &79, &7F, &D1, &8C, &57, &36, &0B, &E0, &B5, &93, &6B, &3E    \ &10
-    EQUB &0C, &E2, &74, &0A, &AA, &6B, &36, &F4, &94, &3C, &15, &06, &F4, &D8, &9D, &00    \ &20
-    EQUB &00, &00, &00, &A7, &01, &4D, &00, &E3, &F3, &E8, &36, &85, &35, &E1, &8D, &29    \ &30
-    EQUB &DC, &85, &C8, &69, &21, &D5, &86, &45, &F1, &A5, &62, &7D    \ &40
+    EQUB LO(mover_sprite_00 + 32)                   \ &00
+    EQUB LO(mover_sprite_01 + 48)                   \ &01
+    EQUB LO(mover_sprite_02 + 50)                   \ &02
+    EQUB LO(mover_sprite_03 + 49)                   \ &03
+    EQUB LO(mover_sprite_04 + 47)                   \ &04
+    EQUB LO(mover_sprite_05 + 40)                   \ &05
+    EQUB LO(mover_sprite_06 + 44)                   \ &06
+    EQUB LO(mover_sprite_07 + 46)                   \ &07
+    EQUB LO(mover_sprite_08 + 38)                   \ &08
+    EQUB LO(mover_sprite_09 + 35)                   \ &09
+    EQUB LO(mover_sprite_0a + 38)                   \ &0A
+    EQUB LO(mover_sprite_0b + 42)                   \ &0B
+    EQUB LO(mover_sprite_0c + 34)                   \ &0C
+    EQUB LO(mover_sprite_0d + 37)                   \ &0D
+    EQUB LO(mover_sprite_0e + 42)                   \ &0E
+    EQUB LO(mover_sprite_0f + 45)                   \ &0F
+    EQUB LO(mover_sprite_10 + 43)                   \ &10
+    EQUB LO(mover_sprite_11 + 161)                  \ &11
+    EQUB LO(mover_sprite_12 + 188)                  \ &12
+    EQUB LO(mover_sprite_13 + 169)                  \ &13
+    EQUB LO(mover_sprite_14 + 161)                  \ &14
+    EQUB LO(mover_sprite_15 + 202)                  \ &15
+    EQUB LO(mover_sprite_16 + 66)                   \ &16
+    EQUB LO(mover_sprite_17 + 50)                   \ &17
+    EQUB LO(mover_sprite_18 + 30)                   \ &18
+    EQUB LO(mover_sprite_19 + 40)                   \ &19
+    EQUB LO(mover_sprite_1a + 40)                   \ &1A
+    EQUB LO(mover_sprite_1b + 40)                   \ &1B
+    EQUB LO(mover_sprite_1c + 31)                   \ &1C
+    EQUB LO(mover_sprite_1d + 37)                   \ &1D
+    EQUB LO(mover_sprite_1e + 42)                   \ &1E
+    EQUB LO(mover_sprite_1f + 47)                   \ &1F
+    EQUB LO(mover_sprite_20 + 35)                   \ &20
+    EQUB LO(mover_sprite_21 + 102)                  \ &21
+    EQUB LO(mover_sprite_22 + 98)                   \ &22
+    EQUB LO(mover_sprite_23 + 90)                   \ &23
+    EQUB LO(mover_sprite_24 + 60)                   \ &24
+    EQUB LO(mover_sprite_25 + 47)                   \ &25
+    EQUB LO(mover_sprite_26 + 56)                   \ &26
+    EQUB LO(mover_sprite_27 + 86)                   \ &27
+    EQUB LO(mover_sprite_28 + 85)                   \ &28
+    EQUB LO(mover_sprite_29 + 35)                   \ &29
+    EQUB LO(mover_sprite_2a + 10)                   \ &2A
+    EQUB LO(mover_sprite_2b + 13)                   \ &2B
+    EQUB LO(mover_sprite_2c + 20)                   \ &2C
+    EQUB LO(mover_sprite_2d + 53)                   \ &2D
+    EQUB LO(mover_sprite_2e + 18)                   \ &2E
+    EQUB &00                                        \ &2F: unused entry (&3500 is not a sprite)
+    EQUB LO(unused_3400 + 256)                      \ &30
+    EQUB LO(unused_3400)                            \ &31
+    EQUB &00                                        \ &32: unused entry (&3400 is not a sprite)
+    EQUB LO(mover_sprite_33 + 57)                   \ &33
+    EQUB LO(mover_sprite_34 + 87)                   \ &34
+    EQUB LO(mover_sprite_35 + 71)                   \ &35
+    EQUB &00                                        \ &36: unused entry (&0000 is not a sprite)
+    EQUB LO(mover_sprite_37 + 140)                  \ &37
+    EQUB LO(mover_sprite_38 + 12)                   \ &38
+    EQUB LO(mover_sprite_39 + 66)                   \ &39
+    EQUB LO(mover_sprite_3a + 72)                   \ &3A
+    EQUB LO(mover_sprite_3b + 73)                   \ &3B
+    EQUB LO(mover_sprite_3c + 170)                  \ &3C
+    EQUB LO(mover_sprite_3d + 157)                  \ &3D
+    EQUB LO(mover_sprite_3e + 162)                  \ &3E
+    EQUB LO(mover_sprite_3f + 148)                  \ &3F
+    EQUB LO(mover_sprite_40 + 176)                  \ &40
+    EQUB LO(mover_sprite_41 + 158)                  \ &41
+    EQUB LO(mover_sprite_42 + 57)                   \ &42
+    EQUB LO(mover_sprite_43 + 158)                  \ &43
+    EQUB LO(mover_sprite_44 + 174)                  \ &44
+    EQUB LO(mover_sprite_45 + 170)                  \ &45
+    EQUB LO(mover_sprite_46 + 166)                  \ &46
+    EQUB LO(mover_sprite_47 + 183)                  \ &47
+    EQUB LO(mover_sprite_48 + 164)                  \ &48
+    EQUB LO(mover_sprite_49 + 170)                  \ &49
+    EQUB LO(mover_sprite_4a + 178)                  \ &4A
+    EQUB LO(mover_sprite_4b + 10)                   \ &4B
 
 \ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 .movers_type_and_colour
@@ -1198,10 +1726,15 @@
 .calculate_sprite_address_for_column_of_scenery
     LDA scenery_layers_flip,Y
     STA pixel_table_address_low
+    \ The flag is the pixel table's low byte (0 flipped, &40 unflipped); its mask table is &80
+    \ above it, all four tables in one page
+    ASSERT flipped_mask_table - flipped_green_pixel_table = &80
+    ASSERT unflipped_mask_table - unflipped_green_pixel_table = &80
+    ASSERT HI(flipped_green_pixel_table) = HI(unflipped_mask_table + &3F)
     CLC
-    ADC #&80                        \ &0480 = flipped_mask_table, &04c0 = unflipped_mask_table
+    ADC #flipped_mask_table - flipped_green_pixel_table
     STA mask_table_address_low
-    LDA #&04
+    LDA #HI(flipped_green_pixel_table)
     STA mask_table_address_high
     STA pixel_table_address_high
     LDA pixel_table_address_low     \ Zero if sprite is flipped
@@ -1254,6 +1787,13 @@
     TAX
     PHA
     JSR multiply_A_by_X_2f1e
+IF SHIFT
+    \ Relocation test builds only: the ground's texture is whatever bytes are at &0000-&001C,
+    \ which include the sprite unpacker's self-modified sprite address (BUGS.md #1), so it
+    \ differs when the sprites move. Read a page that does not (SRRUN's, at &0A00) instead.
+    LDA #&0A
+    STA result_high
+ENDIF
     PLA
     TAX
     LDA column_buffer + 9
@@ -1645,7 +2185,8 @@
 .get_mover_type_and_colour
     LDA #HI(unflipped_green_pixel_table)\ &0440 = unflipped_green_pixel_table
     STA pixel_table_address_high
-    LDA #&40
+    ASSERT LO(unflipped_green_pixel_table) <> 0   \ the low byte doubles as the "not flipped" flag
+    LDA #LO(unflipped_green_pixel_table)
     STA pixel_table_address_low     \ Non-zero to indicate not flipped by default
     LDA movers_type_and_colour,Y    \ Positive if ally, negative if enemy
     BPL not_white
@@ -1995,11 +2536,11 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
 
 .completion_screen
     LDY #LO(completion_screen_text) \ &22c9 = completion_screen_text
-    LDX #&22
+    LDX #HI(completion_screen_text)
     JSR text_screen
 .game_over_screen
     LDY #LO(game_over_text)         \ &3359 = game_over_text
-    LDX #&33
+    LDX #HI(game_over_text)
     JSR text_screen
 .to_title_screen
     JSR reset_screen_scroll         \ ***
@@ -2010,7 +2551,7 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     LDA #&05                        \ ***
     STA os_ram_copy_of_currently_selected_rom\ ***
     STA romsel                      \ Paged ROM latch                      ***
-    JSR &8C22                       \ ***
+    JSR title_screen                       \ ***
 .start_game
     LDA #&01                        \ ***
     STA top_palette_value           \ *** Set colour 0 to cyan
@@ -2255,9 +2796,9 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
 
 \ ;      0  1  2                                                      # &01 : &0fd9 = scenery_data_two
 .initial_scenery_layer_addresses_high    \ # &00 : &0e02 = scenery_data_one
-    EQUB &0E, &0F, &C3, &0E    \ *** # &02 : &c300 = os_rom + &300 (used for mountains)
+    EQUB HI(scenery_data_one), HI(scenery_data_two), &C3, HI(scenery_data_one)
 .initial_scenery_layer_addresses_low    \ # &03 : &0e02 = scenery_data_one (address unused)
-    EQUB &02, &D9, &00, &02    \ *** # Enhanced version has extra layer for clouds
+    EQUB LO(scenery_data_one), LO(scenery_data_two), &00, LO(scenery_data_one)
 
 .completion_screen_text
     EQUB &78, &45    \ at &4578
@@ -3130,9 +3671,9 @@ move_mover_routine_address_high = * + 2
     RTS
 
 .move_mover_routine_addresses_high_table    \ # &00 : &2496 = move_mover_up_and_right
-    EQUB &24, &24, &24, &24    \ # &01 : &249c = move_mover_down_and_right
+    EQUB HI(move_mover_up_and_right), HI(move_mover_down_and_right), HI(move_mover_up_and_left), HI(move_mover_down_and_left)
 .move_mover_routine_addresses_low_table    \ # &02 : &24a2 = move_mover_up_and_left
-    EQUB &96, &9C, &A2, &A8    \ # &03 : &24a8 = move_mover_down_and_left
+    EQUB LO(move_mover_up_and_right), LO(move_mover_down_and_right), LO(move_mover_up_and_left), LO(move_mover_down_and_left)
 
 .set_dying_mover_type
     JSR get_mover_Y_type            \ Returns A = mover type
@@ -3179,7 +3720,11 @@ move_mover_routine_address_high = * + 2
     LDA player_helicopter           \ Zero if player not in helicopter
     BNE kill_player_helicopter
 .kill_player
+IF DEBUG_LIVES
+    LDA #lives                      \ DEBUG_LIVES: the disassembly's infinite lives poke (&2920 = &A9)
+ELSE
     DEC lives
+ENDIF
     PHP                             \ out of lives
     JSR plot_lives
     LDY &87
@@ -3694,7 +4239,7 @@ move_mover_routine_address_high = * + 2
     LDA result_low                  \ ***
     STA &89                         \ ***
     LDA result_high                 \ ***
-    ORA #&80                        \ &8000 = player_buffer                 ***
+    ORA #HI(player_buffer)                        \ in bank 5                 ***
     STA &8A                         \ ***
 .buffer_or_unbuffer_player_row_loop
     LDY player_screen_address_low
@@ -3745,7 +4290,7 @@ move_mover_routine_address_high = * + 2
     CMP player_mover_height         \ ***
     BCC skip_wraparound_height_2cf2 \ ***
     STZ &89                         \ *** 65C02 opcode
-    LDA #&80                        \ &8000 = player_buffer                 ***
+    LDA #HI(player_buffer)                        \ in bank 5                 ***
     STA &8A                         \ ***
     STZ unused_0076 + 1             \ *** 65C02 opcode
 .skip_wraparound_height_2cf2    \ ***
@@ -3960,7 +4505,7 @@ move_mover_routine_address_high = * + 2
     BCC skip_wraparound_2e53
     STZ &CD                         \ 65C02 opcode
     STZ &C5                         \ 65C02 opcode
-    LDA #&80                        \ &8000 = player_buffer
+    LDA #HI(player_buffer)                        \ in bank 5
     STA &C6
 .skip_wraparound_2e53
     DEC rows_remaining
@@ -3973,7 +4518,7 @@ move_mover_routine_address_high = * + 2
     STX &CD
     JSR multiply_A_by_X_2f1e
     LDA result_high
-    ORA #&80                        \ &8000 = player_buffer
+    ORA #HI(player_buffer)                        \ in bank 5
     STA result_high
     RTS
 
@@ -4010,7 +4555,7 @@ move_mover_routine_address_high = * + 2
     BCC skip_wraparound_height_2ea3
     STZ &CD                         \ 65C02 opcode
     STZ &C5                         \ 65C02 opcode
-    LDA #&80                        \ &8000 = player_buffer
+    LDA #HI(player_buffer)                        \ in bank 5
     STA &C6
 .skip_wraparound_height_2ea3
     DEC rows_remaining
@@ -4160,9 +4705,10 @@ previous_irq1_vector_low = * + 1
 .play_sound
     LDY sound_muted                 \ ***
     BNE leave_2f89                  \ ***
-    ORA #&80
+    ASSERT (LO(sound_data_0880) AND &3F) = 0   \ ORA builds the parameter block's address
+    ORA #LO(sound_data_0880)
     TAX
-    LDY #&08
+    LDY #HI(sound_data_0880)
     LDA #&07                        \ Generate a sound
     JMP osword                      \ OSWORD
 
@@ -4837,37 +5383,17 @@ previous_irq1_vector_low = * + 1
 
 .unused_3400    \ # Source code fragment
     EQUB &0D    \ # Start of BASIC program
+IF SHIFT = 0
     EQUB &00, &00, &13, &F4, &20, &53, &41, &56, &45, &22, &53, &4F    \ 0REM SAVE"SO ...
+ELSE
+    \ Relocation test builds: four bytes shorter, for the four the ground texture patch adds
+    \ (add_ground_to_column_buffer), so the resident part still ends where it does.
+    EQUB &00, &00, &13, &F4, &20, &53, &41, &56
+ENDIF
 
-.font_data    \ # start with A, 60 = " ", six bytes per character
-    EQUB &FF, &F9, &19, &19, &FF, &00    \ &00 : "A"
-    EQUB &FF, &F9, &C1, &C1, &C0, &00    \ &06 : "C"
-    EQUB &FF, &F9, &C1, &C3, &FE, &00    \ &0c : "D"
-    EQUB &FF, &F9, &C9, &C9, &C0, &00    \ &12 : "E"
-    EQUB &00, &C1, &FF, &F9, &C1, &00    \ &18 : "I"
-    EQUB &FF, &F8, &0C, &36, &C3, &00    \ &1e : "K"
-    EQUB &FF, &F8, &C0, &C0, &C0, &00    \ &24 : "L"
-    EQUB &FF, &F3, &06, &03, &FF, &00    \ &2a : "M"
-    EQUB &FF, &F9, &01, &01, &FF, &00    \ &30 : "N"
-    EQUB &FF, &F9, &C1, &C1, &FF, &00    \ &36 : "O"
-    EQUB &FF, &F9, &19, &19, &1F, &00    \ &3c : "P"
-    EQUB &FF, &F9, &19, &19, &EF, &00    \ &42 : "R"
-    EQUB &CF, &CD, &C9, &F9, &F8, &00    \ &48 : "S"
-    EQUB &01, &01, &FF, &F9, &01, &00    \ &4e : "T"
-    EQUB &3F, &78, &C0, &60, &3F, &00    \ &54 : "U" or "V"
-    EQUB &3F, &38, &E0, &20, &3F, &00    \ &5a : "Y"
-    EQUB &00, &00, &00, &00, &00, &00    \ &60 : " "
-    EQUB &FF, &F9, &C1, &DB, &F8, &00    \ &66 : "G"
-    EQUB &00, &FE, &F2, &C2, &C2, &FE    \ &6c : "0"
-    EQUB &00, &00, &FE, &F0, &00, &00    \ &72 : "1"
-    EQUB &00, &F2, &F2, &D2, &D2, &DE    \ &78 : "2"
-    EQUB &00, &C0, &D2, &D2, &D2, &FE    \ &7e : "3"
-    EQUB &00, &1E, &10, &FC, &F0, &10    \ &84 : "4"
-    EQUB &00, &DE, &D2, &D2, &D2, &F2    \ &8a : "5"
-    EQUB &00, &FE, &E8, &C8, &C8, &F8    \ &80 : "6"
-    EQUB &00, &02, &C2, &F2, &3E, &0E    \ &96 : "7"
-    EQUB &00, &FE, &F2, &D2, &D2, &FE    \ &9c : "8"
-    EQUB &00, &1E, &12, &12, &F2, &FE    \ &a2 : "9"
+IF SHIFT = 0
+    INCLUDE "font.6502"
+ENDIF
 
 .mover_sprite_15    \ (SPRITE_HELICOPTER_WITH_SOLIDER)
     EQUB &00, &12, &00, &BC, &EC, &BD, &BC, &00, &08, &BC, &06, &00, &07, &14, &05, &00
@@ -5166,6 +5692,16 @@ previous_irq1_vector_low = * + 1
     EQUB &CC, &00, &08, &BC, &96, &BC, &E8, &BC, &DC, &BC, &A8, &00, &0A, &00, &02, &00
     EQUB &02, &00, &82
 
+IF SHIFT
+    \ Relocation test builds only: unpacking mover_sprite_00 can run past its end (BUGS.md #2),
+    \ into the screen at &4000 in the shipping layout; give it the same fixed bytes to read in
+    \ the control and the shifted build.
+    INCLUDE "font.6502"
+ENDIF
+
+
+.resident_end         \ everything above is in memory for the whole game; the screen starts at &4000
+    ASSERT resident_end <= &4000, "resident code and data overrun the screen by ", resident_end - &4000, " bytes"
 
 .moved_0004_load     \ carried in the file at &4000, copied to &0004-&0077 at start-up
 SECTION moved_0004, org = &0004, cmos = TRUE
@@ -5305,13 +5841,13 @@ ENDSECTION
     STA firing_frame
     LDA irq1v
     STA previous_irq1_vector_low
-    LDA &0205
+    LDA irq1v + 1
     STA leave_irq1_handler + 7
     SEI
     LDA #LO(irq1_handler)           \ &2ec2 = irq1_handler
     STA irq1v
-    LDA #&2E
-    STA &0205
+    LDA #HI(irq1_handler)
+    STA irq1v + 1
     CLI
     LDA #&02                        \ Disable v-sync interrupt
     STA sysvia_ier                  \ System VIA interrupt enable register
@@ -5360,18 +5896,18 @@ target_address_high = * + 2
     INC source_address_high
     INC target_address_high
     LDA source_address_high
-    CMP #&46
+    CMP #HI(moved_0400_load + &400)  \ four pages
     BNE move_4200_to_45ff_loop
     LDX #&73
 .move_4000_to_4073_loop    \ # Move &4000 - &4073 to &0004 - &0077
-    LDA unrelocated_unpack_column_of_sprite,X
+    LDA moved_0004_load,X           \ unrelocated_unpack_column_of_sprite
     STA unpack_column_of_sprite,X
     DEX
     BPL move_4000_to_4073_loop
     LDX #&E0
 .move_4600_to_46df_loop    \ # Move &4600 - &46df to &0880 - &095f
-    LDA moved_0400_load + &3FF,X
-    STA &087F,X
+    LDA moved_0880_load - 1,X
+    STA sound_data_0880 - 1,X
     DEX
     BNE move_4600_to_46df_loop
     JMP initialisation

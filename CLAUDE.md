@@ -64,6 +64,9 @@ disassembly's `actually`/`also` notes say what an operand really is.
 - `tools/m6502.py FILE LOAD START [END]` - 65SC12 disassembler for poking at binaries
 - `tools/listing.py`, `tools/dfs.py`, `tools/jsbeeb_src.mjs` - the kit's
 - `tools/disasm2baron.py` - the one-shot converter (audit trail)
+- `tools/playscript.mjs` - the scripted game (boot, start, run/fire/jump); `tools/play.mjs DISC` plays it with screenshots
+- `tools/lockstep.mjs A B [FRAMES]` - two builds on the same input, first frame whose screen differs
+- `tools/tracediff.mjs CONTROL SHIFTED SHIFT [@FRAME]` - the first instruction or screen write that differs, both stopped there (`DUMP=05` shows the bytes at a zero-page pointer)
 
 ## Memory (MGAME, as the reference lays it out)
 

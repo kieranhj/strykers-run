@@ -6,8 +6,29 @@
 \
 \   baron --warn 2 -o build/strykers.ssd --title "STRYKERS RUN" --opt 2 --symbols ... src/main.6502
 
-\ RELEASE is passed on the command line (-D RELEASE=0/1) by build.ps1.
-DEBUG_ANY = 0                   \ the OR of every DEBUG_ flag (none yet)
+\ RELEASE, SHIFT, SHIFT_END and the DEBUG_ flags are -D symbols build.ps1 passes on every build;
+\ a bare invocation must pass them all too.
+\ The relocation test (PLAN.md Phase 2, tools/lockstep.mjs and tools/tracediff.mjs):
+\   -D SHIFT=n        moves the game DOWN n bytes (assembled at &0E00 - n) and each bank's
+\                     contents UP n bytes (padding at the start of the bank)
+\   -D SHIFT_END=1    the control build: the game where it belongs and the banks' padding at
+\                     their ends, where it moves nothing - so both discs have the same files
+\                     at the same sizes and load in exactly the same time
+\ The game moves down, not up, because its resident part already ends at &3FFF, under the
+\ screen. &0D00 is DFS's NMI page and, at &0DF0, the paged ROMs' workspace pointers: free once
+\ the stub has selected *TAPE and (test builds only) taken the ROMs out of the ROM type table.
+\ Test builds also change the two places the original depends on where its data happens to be
+\ (BUGS.md #1, #2), identically in the control and the shifted build. SHIFT=0 is the shipping
+\ build and must stay byte-identical to the reference.
+GAME_DOWN = SHIFT * (1 - SHIFT_END)
+\ The banks move by whole pages only (SHIFT rounded down): their music must stay page-aligned,
+\ which bank5.6502 ASSERTs. So SHIFT=&40 tests the game alone at an odd offset.
+PAD_START = (SHIFT AND &FF00) * (1 - SHIFT_END)
+PAD_END   = (SHIFT AND &FF00) * SHIFT_END
+\ Debug flags, 0 or 1, passed by build.ps1 on EVERY build (Baron cannot default a -D symbol:
+\ DEFINED() is true by the pass that would define it). Every one is stamped into INFO and !BOOT.
+\   DEBUG_LIVES   infinite lives (the scripted relocation test plays further)
+DEBUG_ANY = DEBUG_LIVES         \ the OR of every DEBUG_ flag
 VERSION_LINE = "v0.1"
 INCLUDE "../build/build_time.6502"   \ BUILD_TIME, written by tools/build_stamp.py
 
@@ -19,7 +40,7 @@ INCLUDE "zp.6502"
 \ keeps its workspace) and its last 32 bytes, run at &51E0, copy it down to &0E00.
 \ ---------------------------------------------------------------------------------------------
 GAME_LOAD = &1900
-GAME_ORG  = &0E00
+GAME_ORG  = &0E00 - GAME_DOWN
 
 SECTION MGAME, org = GAME_ORG, load = &FFFF0000 + GAME_LOAD, exec = &FFFF0000 + mgame_relocate, filename = "MGAME", cmos = TRUE
     INCLUDE "game.6502"
@@ -30,6 +51,17 @@ SECTION MGAME, org = GAME_ORG, load = &FFFF0000 + GAME_LOAD, exec = &FFFF0000 + 
     .mgame_relocate
         LDA #&8C                        \ *TAPE: release the disc filing system's workspace
         JSR osbyte
+    IF SHIFT
+        \ Relocation test builds only (control and shifted alike): the shifted game overlays
+        \ &0D00-&0DFF, whose top holds the paged ROMs' workspace pointers, so take every ROM
+        \ out of the MOS's ROM type table and it offers them no service calls.
+        LDX #15
+        LDA #0
+    .mgame_test_no_roms
+        STA os_rom_type_table,X
+        DEX
+        BPL mgame_test_no_roms
+    ENDIF
     .mgame_relocate_page
         LDY #0
     .mgame_relocate_loop
@@ -42,10 +74,11 @@ SECTION MGAME, org = GAME_ORG, load = &FFFF0000 + GAME_LOAD, exec = &FFFF0000 + 
         INC mgame_relocate_src + 1
         INC mgame_relocate_dst + 1
         LDA mgame_relocate_dst + 1
-        CMP #&47                        \ up to &46FF
+        CMP #HI(mgame_end + &FF)        \ up to the end of the file, a whole page at a time
         BNE mgame_relocate_page
         JMP entry_point
     ENDSECTION
+.mgame_end
 ENDSECTION
 
 \ ---------------------------------------------------------------------------------------------
@@ -53,19 +86,27 @@ ENDSECTION
 \ at &8000-&BFFF, so a file that starts higher in the bank (DATA2, at &8400) loads higher.
 \ ---------------------------------------------------------------------------------------------
 SECTION DATA1, org = &8000, load = &FFFF1900, exec = &FFFF1900, filename = "DATA1", cmos = TRUE
+    SKIP PAD_START
     INCLUDE "bank4.6502"
+    SKIP PAD_END
 ENDSECTION
 
 SECTION DATA2, org = &8400, load = &FFFF1D00, exec = &FFFF1D00, filename = "DATA2", cmos = TRUE
+    SKIP PAD_START
     INCLUDE "bank5.6502"
+    SKIP PAD_END
 ENDSECTION
 
 SECTION DATA3, org = &8000, load = &FFFF1900, exec = &FFFF1900, filename = "DATA3", cmos = TRUE
+    SKIP PAD_START
     INCLUDE "bank6.6502"
+    SKIP PAD_END
 ENDSECTION
 
 SECTION DATA4, org = &8000, load = &FFFF1900, exec = &FFFF1D00, filename = "DATA4", cmos = TRUE
+    SKIP PAD_START
     INCLUDE "bank7.6502"
+    SKIP PAD_END
 ENDSECTION
 
 \ ---------------------------------------------------------------------------------------------

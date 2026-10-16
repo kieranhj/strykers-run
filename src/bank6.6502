@@ -56,7 +56,7 @@
     EQUB &0C, &00, &04, &14, &0E, &00, &E8, &94, &7C, &80, &BC, &A8, &BC, &54, &00, &10
     EQUB &0A, &00, &68, &BC, &D4, &80, &13, &14, &E8, &D4, &68, &00, &8D
 
-\ ; scenery_sprite_19 (SCENERY_GUN_ON_PILLBOX)/
+.scenery_sprite_19    \ (SCENERY_GUN_ON_PILLBOX)
     EQUB &00, &BC, &EC, &BC, &AC, &04, &3D, &EC, &7C, &FD, &EC, &BC, &54, &0C, &00, &BC
     EQUB &AC, &7C, &00, &13, &BC, &8C, &9C, &BD, &BE, &BD, &BC, &8C, &AE, &7F, &9C, &AC
     EQUB &8C, &9C, &AC, &BE, &BF, &7D, &9D, &BC, &8C, &BC, &0C, &00, &BC, &8C, &BC, &00
