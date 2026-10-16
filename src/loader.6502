@@ -1,0 +1,120 @@
+\ loader.6502 - the boot: !BOOT, INFO and SRRUN.
+\
+\ The Stairway to Hell disc booted a BASIC menu (LOAD) offering the standard or the enhanced
+\ version; for the enhanced one it did *TV255,1 and *FX200,3 then *RUN SRRUN. This disc is the
+\ enhanced version only (decision 3), so !BOOT does those two things itself, prints the build
+\ stamp and runs SRRUN. SRRUN is the STH file, byte for byte.
+\ INCLUDEd by src/main.6502 outside any section.
+
+\ ---------------------------------------------------------------------------------------------
+\ SRRUN: show the title picture, fill banks 4-7, run the game. Runs at &0A00.
+\ ---------------------------------------------------------------------------------------------
+srrun_bank = &70                \ the bank being filled, 4 to 7
+
+SECTION SRRUN, org = &0A00, load = &FFFF0A00, exec = &FFFF0A00, filename = "SRRUN", cmos = TRUE
+.srrun
+    LDX #LO(srrun_run_screen)
+    LDY #HI(srrun_run_screen)
+    JSR oscli                       \ *RUN SCREEN: the title picture
+    LDA #4
+    STA srrun_bank
+.srrun_load_loop
+    LDX #LO(srrun_load_data)
+    LDY #HI(srrun_load_data)
+    JSR oscli                       \ *LOAD DATAn - each file has its own load address
+    JSR srrun_copy_to_bank
+    INC srrun_load_data_digit       \ DATA1 -> DATA2 -> ...
+    INC srrun_bank
+    LDA srrun_bank
+    CMP #8
+    BNE srrun_load_loop
+    LDX #LO(srrun_run_game)
+    LDY #HI(srrun_run_game)
+    JMP oscli                       \ *RUN MGAME
+
+\ Copy &1900-&58FF to &8000-&BFFF in bank srrun_bank.
+.srrun_copy_to_bank
+    LDA #&19
+    STA srrun_copy_src + 2
+    LDA #&80
+    STA srrun_copy_dst + 2
+    SEI
+    LDA srrun_bank
+    STA romsel
+.srrun_copy_page
+    LDY #0
+.srrun_copy_loop
+srrun_copy_src = *
+    EQUB &B9 : EQUW 0               \ LDA &xx00,Y - absolute; the page is set above
+srrun_copy_dst = *
+    EQUB &99 : EQUW 0               \ STA &xx00,Y
+    INY
+    BNE srrun_copy_loop
+    INC srrun_copy_src + 2
+    INC srrun_copy_dst + 2
+    LDA srrun_copy_dst + 2
+    CMP #&C0
+    BNE srrun_copy_page
+    LDA romsel_copy                 \ give the MOS its ROM back
+    STA romsel
+    CLI
+    RTS
+
+.srrun_run_screen
+    EQUS "RUN SCREEN", 13
+.srrun_load_data
+    EQUS "LOAD DATA"
+srrun_load_data_digit = *
+    EQUS "1", 13
+.srrun_run_game
+    EQUS "RUN MGAME", 13
+ENDSECTION
+
+\ ---------------------------------------------------------------------------------------------
+\ The build stamp (beeb-port-kit's boot_stamp): INFO is a disc file *TYPE reads; !BOOT prints
+\ the same text, then *TV255,1, *FX200,3, *RUN SRRUN.
+\ ---------------------------------------------------------------------------------------------
+INCLUDE "lib/boot_stamp.6502"
+
+BOOT_STAGE = &0900
+INFO_STAGE = &7E00
+
+MACRO BUILD_STAMP
+    BOOT_STAMP_HEAD "Stryker's Run (Enhanced), Master 128"
+    BOOT_STAMP_TIME
+ENDMACRO
+
+SECTION Info, org = INFO_STAGE, guard = INFO_STAGE + 256, filename = "INFO"
+.infofile
+    BUILD_STAMP
+.infofile_end
+ENDSECTION
+
+SECTION Boot, org = BOOT_STAGE, guard = BOOT_STAGE + 256, filename = "!BOOT", exec = &FFFF0000 + bootfile
+.bootfile
+    LDX #0
+.boot_print
+    LDA boot_text,X
+    BEQ boot_printed
+    JSR osasci
+    INX
+    BNE boot_print
+.boot_printed
+    LDA #&90                        \ *TV255,1: display moved up a line, interlace off
+    LDX #255
+    LDY #1
+    JSR osbyte
+    LDA #200                        \ *FX200,3: ESCAPE disabled, memory cleared on BREAK
+    LDX #3
+    LDY #0
+    JSR osbyte
+    LDX #LO(boot_run)
+    LDY #HI(boot_run)
+    JMP oscli
+.boot_text
+    BUILD_STAMP
+    EQUB 0
+.boot_run
+    EQUS "RUN SRRUN", 13
+.bootfile_end
+ENDSECTION

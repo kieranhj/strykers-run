@@ -1,0 +1,7 @@
+build/
+bin/
+local.ps1
+__pycache__/
+*.pyc
+.claude/settings.local.json
+.vscode/

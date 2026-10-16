@@ -1,0 +1,80 @@
+\ os.6502 - the MOS entry points, vectors and hardware registers Stryker's Run touches.
+\
+\ Names follow the beeb-port-kit's lib/beeb.h where it has one. Only what the game, the banks,
+\ the title loader and the loader use is here; tools/disasm2baron.py maps operands onto these.
+
+\ ---- MOS calls ----
+osfind  = &FFCE
+osgbpb  = &FFD1
+osbput  = &FFD4
+osbget  = &FFD7
+osargs  = &FFDA
+osfile  = &FFDD
+osrdch  = &FFE0
+osasci  = &FFE3
+osnewl  = &FFE7
+oswrch  = &FFEE
+osword  = &FFF1
+osbyte  = &FFF4
+oscli   = &FFF7
+
+\ ---- MOS vectors and workspace ----
+userv   = &0200
+brkv    = &0202
+irq1v   = &0204
+irq2v   = &0206
+cliv    = &0208
+bytev   = &020A
+wordv   = &020C
+wrchv   = &020E
+rdchv   = &0210
+filev   = &0212
+evntv   = &0220
+os_ula_control_copy = &0248         \ MOS RAM copy of the video ULA control register
+os_escape_break     = &0258         \ ESCAPE/BREAK effect
+os_break_intercept  = &0287         \ BREAK intercept code (JMP)
+os_rom_type_table   = &02A1         \ paged ROM type table
+romsel_copy = &F4                   \ MOS RAM copy of ROMSEL - written whenever ROMSEL is
+irq_a       = &FC                   \ MOS: A saved on IRQ entry
+
+\ ---- Hardware ----
+crtc_reg    = &FE00                 \ 6845 register select
+crtc_data   = &FE01                 \ 6845 register value
+ula_control = &FE20                 \ video ULA control register
+ula_palette = &FE21                 \ video ULA palette register
+romsel      = &FE30                 \ paged ROM latch
+acccon      = &FE34                 \ Master access control
+
+sysvia_orb  = &FE40                 \ System VIA port B
+sysvia_ora  = &FE41
+sysvia_ddrb = &FE42
+sysvia_ddra = &FE43
+sysvia_t1cl = &FE44
+sysvia_t1ch = &FE45
+sysvia_t1ll = &FE46
+sysvia_t1lh = &FE47
+sysvia_t2cl = &FE48
+sysvia_t2ch = &FE49
+sysvia_sr   = &FE4A
+sysvia_acr  = &FE4B
+sysvia_pcr  = &FE4C
+sysvia_ifr  = &FE4D
+sysvia_ier  = &FE4E
+sysvia_ora_nh = &FE4F
+
+usrvia_orb  = &FE60                 \ User VIA
+usrvia_ora  = &FE61
+usrvia_ddrb = &FE62
+usrvia_ddra = &FE63
+usrvia_t1cl = &FE64
+usrvia_t1ch = &FE65
+usrvia_t1ll = &FE66
+usrvia_t1lh = &FE67
+usrvia_t2cl = &FE68
+usrvia_t2ch = &FE69
+usrvia_sr   = &FE6A
+usrvia_acr  = &FE6B
+usrvia_pcr  = &FE6C
+usrvia_ifr  = &FE6D
+usrvia_ier  = &FE6E
+usrvia_ora_nh = &FE6F

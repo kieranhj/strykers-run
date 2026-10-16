@@ -1,0 +1,82 @@
+\ main.6502 - Stryker's Run (Enhanced), BBC Master 128: the whole disc in one assembly.
+\
+\ One assembly so the game and the four sideways RAM banks can name each other's labels.
+\ Every file the disc holds is a SECTION here. The reference build is the Stairway to Hell
+\ disc (reference/sth/StrykersRun.ssd, decision 1): tools/compare.py checks each file's bytes.
+\
+\   baron --warn 2 -o build/strykers.ssd --title "STRYKERS RUN" --opt 2 --symbols ... src/main.6502
+
+\ RELEASE is passed on the command line (-D RELEASE=0/1) by build.ps1.
+DEBUG_ANY = 0                   \ the OR of every DEBUG_ flag (none yet)
+VERSION_LINE = "v0.1"
+INCLUDE "../build/build_time.6502"   \ BUILD_TIME, written by tools/build_stamp.py
+
+INCLUDE "os.6502"
+INCLUDE "zp.6502"
+
+\ ---------------------------------------------------------------------------------------------
+\ MGAME: the game. Assembled at &0E00; the file loads at &1900 (below which DFS on a Model B
+\ keeps its workspace) and its last 32 bytes, run at &51E0, copy it down to &0E00.
+\ ---------------------------------------------------------------------------------------------
+GAME_LOAD = &1900
+GAME_ORG  = &0E00
+
+SECTION MGAME, org = GAME_ORG, load = &FFFF0000 + GAME_LOAD, exec = &FFFF0000 + mgame_relocate, filename = "MGAME", cmos = TRUE
+    INCLUDE "game.6502"
+
+    \ The copy-down stub (STH's MGAME). Lives at &46E0 in the game's address space, runs at
+    \ &51E0 where the file put it. Copies &1900-&51FF down to &0E00-&46FF, itself included.
+    SECTION mgame_stub, org = * - GAME_ORG + GAME_LOAD, cmos = TRUE
+    .mgame_relocate
+        LDA #&8C                        \ *TAPE: release the disc filing system's workspace
+        JSR osbyte
+    .mgame_relocate_page
+        LDY #0
+    .mgame_relocate_loop
+    mgame_relocate_src = * + 1
+        LDA GAME_LOAD,Y
+    mgame_relocate_dst = * + 1
+        STA GAME_ORG,Y
+        INY
+        BNE mgame_relocate_loop
+        INC mgame_relocate_src + 1
+        INC mgame_relocate_dst + 1
+        LDA mgame_relocate_dst + 1
+        CMP #&47                        \ up to &46FF
+        BNE mgame_relocate_page
+        JMP entry_point
+    ENDSECTION
+ENDSECTION
+
+\ ---------------------------------------------------------------------------------------------
+\ The sideways RAM banks. SRRUN loads each file at &1900 and copies &1900-&58FF into its bank
+\ at &8000-&BFFF, so a file that starts higher in the bank (DATA2, at &8400) loads higher.
+\ ---------------------------------------------------------------------------------------------
+SECTION DATA1, org = &8000, load = &FFFF1900, exec = &FFFF1900, filename = "DATA1", cmos = TRUE
+    INCLUDE "bank4.6502"
+ENDSECTION
+
+SECTION DATA2, org = &8400, load = &FFFF1D00, exec = &FFFF1D00, filename = "DATA2", cmos = TRUE
+    INCLUDE "bank5.6502"
+ENDSECTION
+
+SECTION DATA3, org = &8000, load = &FFFF1900, exec = &FFFF1900, filename = "DATA3", cmos = TRUE
+    INCLUDE "bank6.6502"
+ENDSECTION
+
+SECTION DATA4, org = &8000, load = &FFFF1900, exec = &FFFF1D00, filename = "DATA4", cmos = TRUE
+    INCLUDE "bank7.6502"
+ENDSECTION
+
+\ ---------------------------------------------------------------------------------------------
+\ SCREEN: the title picture, *RUN by SRRUN at &2E71.
+\ ---------------------------------------------------------------------------------------------
+\ Its own scope: it shares many label names with the game's sprite unpacker.
+SECTION SCREEN, org = &2100, load = &FFFF2100, exec = &FFFF0000 + title.title_entry_point, filename = "SCREEN", cmos = TRUE
+.title
+{
+    INCLUDE "title.6502"
+}
+ENDSECTION
+
+INCLUDE "loader.6502"

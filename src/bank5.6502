@@ -1,0 +1,2422 @@
+\ bank5.6502 - sideways RAM bank 5 (DATA2, from &8400): title screen, high scores, music
+\
+\ Created once by tools/disasm2baron.py from reference/strykers-run-enhanced-disassembly.txt
+\ (lines starting "\ " carry the disassembly's annotations). Hand-maintained from here on.
+\ This file is INCLUDEd inside its SECTION by src/main.6502.
+
+\ ; data4
+\ ; FFFF1000 FFFF1000 1FFA                                            # Loaded into bank 5 at &8400 - &a3f9
+
+.title_screen_font_data
+    EQUB &00, &FE, &F2, &C2, &C2, &FE    \ &00 : "0"
+    EQUB &00, &00, &FE, &F0, &00, &00    \ &01 : "1"
+    EQUB &00, &F2, &F2, &D2, &D2, &DE    \ &02 : "2"
+    EQUB &00, &C0, &D2, &D2, &D2, &FE    \ &03 : "3"
+    EQUB &00, &1E, &10, &FC, &F0, &10    \ &04 : "4"
+    EQUB &00, &DE, &D2, &D2, &D2, &F2    \ &05 : "5"
+    EQUB &00, &FE, &E8, &C8, &C8, &F8    \ &06 : "6"
+    EQUB &00, &02, &C2, &F2, &3E, &0E    \ &07 : "7"
+    EQUB &00, &FE, &F2, &D2, &D2, &FE    \ &08 : "8"
+    EQUB &00, &1E, &12, &12, &F2, &FE    \ &09 : "9"
+    EQUB &00, &FF, &F9, &19, &19, &FF    \ &0a : "A"
+    EQUB &00, &FF, &F9, &C9, &CF, &F8    \ &0b : "B"
+    EQUB &00, &FF, &F1, &C1, &C1, &C0    \ &0c : "C"
+    EQUB &00, &FF, &F1, &C1, &C3, &FE    \ &0d : "D"
+    EQUB &00, &FF, &F9, &C9, &C9, &C0    \ &0e : "E"
+    EQUB &00, &FF, &F9, &09, &09, &01    \ &0f : "F"
+    EQUB &00, &FF, &F1, &C1, &CB, &FA    \ &10 : "G"
+    EQUB &00, &FF, &F8, &08, &08, &FF    \ &11 : "H"
+    EQUB &00, &C1, &FF, &F9, &C1, &00    \ &12 : "I"
+    EQUB &00, &E0, &C0, &C0, &F8, &FF    \ &13 : "J"
+    EQUB &00, &FF, &F8, &34, &62, &C1    \ &14 : "K"
+    EQUB &00, &FF, &F8, &C0, &C0, &C0    \ &15 : "L"
+    EQUB &00, &FF, &F3, &06, &03, &FF    \ &16 : "M"
+    EQUB &00, &FF, &F9, &01, &01, &FF    \ &17 : "N"
+    EQUB &00, &FF, &F9, &C1, &C1, &FF    \ &18 : "O"
+    EQUB &00, &FF, &F9, &09, &09, &0F    \ &19 : "P"
+    EQUB &00, &FF, &F9, &C1, &61, &BF    \ &1a : "Q"
+    EQUB &00, &FF, &F9, &09, &39, &CF    \ &1b : "R"
+    EQUB &00, &CF, &C9, &C9, &C9, &F9    \ &1c : "S"
+    EQUB &00, &03, &F3, &FF, &03, &03    \ &1d : "T"
+    EQUB &00, &FF, &F8, &C0, &C0, &FF    \ &1e : "U"
+    EQUB &00, &3F, &78, &E0, &60, &3F    \ &1f : "V"
+    EQUB &00, &7F, &F8, &20, &E0, &7F    \ &20 : "W"
+    EQUB &00, &E7, &3C, &18, &3C, &E7    \ &21 : "X"
+    EQUB &00, &3F, &3C, &F0, &30, &3F    \ &22 : "Y"
+    EQUB &00, &F1, &D9, &CD, &C7, &C3    \ &23 : "Z"
+    EQUB &34, &34, &34, &34, &34, &34    \ &24 : "="
+    EQUB &00, &00, &00, &00, &00, &00    \ &25 : " "
+    EQUB &7E, &C3, &BD, &A5, &C3, &7E    \ &26 : "(c)"
+    EQUB &00, &00, &C0, &C0, &00, &00    \ &27 : "."
+    EQUB &00, &18, &18, &18, &18, &18    \ &28 : "-"
+    EQUB &00, &30, &18, &0C, &18, &30    \ &29 : "^"
+    EQUB &00, &06, &0C, &18, &30, &60    \ &2a : "\"
+    EQUB &00, &6E, &F3, &D9, &CD, &7E    \ &2b : "@"
+    EQUB &00, &FF, &C1, &C1, &C1, &C1    \ &2c : "["
+    EQUB &C0, &C0, &C0, &C0, &C0, &C0    \ &2d : "_"
+    EQUB &00, &00, &36, &76, &00, &00    \ &2e : ";"
+    EQUB &00, &00, &34, &34, &00, &00    \ &2f : ":"
+    EQUB &00, &C1, &C1, &C1, &C1, &FF    \ &30 : "]"
+    EQUB &00, &00, &30, &70, &00, &00    \ &31 : ","
+    EQUB &00, &60, &30, &18, &0C, &06    \ &32 : "/"
+
+.plot_title_screen_character    \ # Called with X = character
+    STA &CD
+    LDA #&06
+    JSR multiply_A_by_X_85ef
+    LDA result_low
+    LDY result_high
+    CLC
+    ADC #LO(title_screen_font_data) \ &8400 = title_screen_font_data
+    BCC skip_page_8543
+    INY
+.skip_page_8543
+    STA font_address_low
+    TYA
+    CLC
+    ADC #&84
+    STA font_address_high
+    LDX #&00
+.plot_title_screen_character_column_loop
+font_address_low = * + 1
+font_address_high = * + 2
+    LDA mover_types_first_sprite_animation_offsets + 26,X
+\ #     actually LDA font_address,X
+    STA &CB
+    LDY #&07
+.plot_title_screen_character_row_loop
+    LDA #&00
+    ROL &CB
+    BCC set_pixel_value_8560
+text_colour = * + 1
+    LDA #&03
+\ #     actually LDA text_colour
+    AND &CD
+.set_pixel_value_8560
+    STA &CA
+    LDA &CD
+    EOR #&FF
+    AND (text_screen_address),Y
+    EOR &CA
+    STA (text_screen_address),Y
+    DEY
+    BPL plot_title_screen_character_row_loop
+    LDA &CD
+    EOR #&FF
+    STA &CD
+    BPL skip_page_8582
+    LDA text_screen_address_low
+    CLC
+    ADC #&08
+    STA text_screen_address_low
+    BCC skip_page_8582
+    INC &CF
+.skip_page_8582
+.not_next_byte_8582
+    INX
+    CPX #&06
+    BNE plot_title_screen_character_column_loop
+    RTS
+
+.clear_title_screen
+    LDA #&13                        \ Wait for vertical retrace
+    JSR osbyte                      \ OSBYTE
+    LDA #&40
+    STA clear_title_screen_loop + 2
+    LDX #&00
+.clear_title_screen_loop    \ # Wipe &4000 - &7fff
+    STZ &4000,X                     \ *** 65C02 opcode
+\ #     actually STZ wipe_address,X
+    INX
+    BNE clear_title_screen_loop
+    INC clear_title_screen_loop + 2
+    BPL clear_title_screen_loop
+    RTS
+
+.clear_part_of_title_screen
+    LDA #&40                        \ ***
+    STA screen_address_high         \ ***
+    STZ screen_address_low          \ *** 65C02 opcode
+    LDY #&00                        \ ***
+    LDA #&00                        \ ***
+.clear_part_of_display_title_screen    \ ***
+    STA (screen_address),Y          \ *** Wipe &4000 - &71ff
+    INY                             \ ***
+    BNE clear_part_of_display_title_screen\ ***
+    INC screen_address_high         \ ***
+    LDX screen_address_high         \ ***
+    CPX #&72                        \ ***
+    BCC clear_part_of_display_title_screen\ ***
+    RTS                             \ ***
+
+.plot_title_screen_text
+    STX text_address_high
+    STY text_address_low
+    JSR clear_part_of_title_screen  \ ***
+    LDY #&00
+.plot_title_screen_text_loop
+    LDA (text_address),Y            \ Get two bytes for screen address
+    STA text_screen_address_low
+    INY
+    LDA (text_address),Y
+    STA &CF
+    INY
+    LDA (text_address),Y            \ Get byte for colour
+    STA text_colour
+    LDA #&AA
+    STA &CD
+    JSR plot_title_screen_text_string_loop
+    INY
+    CMP #&FF                        \ &ff indicates end of text
+    BNE plot_title_screen_text_loop
+    RTS
+.plot_title_screen_text_string_loop
+    INY
+    LDA (&C2),Y                     \ Get byte for character
+    BPL not_end_of_string_85e3      \ &fe indicates end of string, &ff end of text
+    RTS
+.not_end_of_string_85e3
+    STY text_offset
+    TAX
+    LDA &CD
+    JSR plot_title_screen_character
+    LDY text_offset
+    BNE plot_title_screen_text_string_loop\ Always branches
+
+.multiply_A_by_X_85ef
+    STA multiplicand
+    STX multiplier_low
+    LDA #&00
+    STA result_low
+    STA result_high
+    STA multiplier_high
+    LDY #&08
+.multiply_A_by_X_loop_85fd
+    LSR multiplicand
+    BCC consider_next_bit_860e
+    CLC
+    LDA multiplier_low
+    ADC result_low
+    STA result_low
+    LDA multiplier_high
+    ADC result_high
+    STA result_high
+.consider_next_bit_860e
+    ASL multiplier_low
+    ROL multiplier_high
+    DEY
+    BNE multiply_A_by_X_loop_85fd
+    RTS
+
+.define_controls
+    LDX #&00
+    STX key_offset
+    INX
+    STX unused                      \ Unused variable
+    LDX #&8B                        \ &8b91 = = define_controls_text
+    LDY #&91
+    JSR plot_title_screen_text      \ Write "DEFINE CONTROLS"
+    STY text_offset
+.define_controls_loop
+    LDY text_offset
+    JSR plot_title_screen_text_loop \ Write next control
+    STY text_offset
+    JSR get_keypress
+    LDY key_offset
+    CMP #&70                        \ ESCAPE
+    BNE not_escape
+    JMP display_title_screen
+.not_escape
+    STA keycode
+    TAX
+    EOR #&FF
+    STA keys,Y
+    TXA
+    LSR A
+    LSR A
+    LSR A
+    LSR A
+    LDX #&06
+    JSR multiply_A_by_X_85ef
+    LDA keycode
+    SEC
+    SBC result_low
+    TAX                             \ X = keycode - ((keycode DIV 16) * 6)
+    LDA key_translation_table,X
+    BMI is_long_name
+    TAX
+    ASL A
+    BMI is_function_key
+.is_character    \ # &00 - &32 writes character
+    LDA &CD
+    JSR plot_title_screen_character
+    BEQ finished_writing_key        \ Always branches
+.is_function_key    \ # &40 - &49 writes F followed by number
+    STX keycode
+    LDX #&0F                        \ "F"
+    LDA &CD
+    JSR plot_title_screen_character
+    LDA keycode
+    AND #&3F
+    TAX
+    LDA &CD
+    JSR plot_title_screen_character
+    BEQ finished_writing_key        \ Always branches
+.is_long_name    \ # &80 - &ff writes long character name
+    AND #&7F
+    STA keycode
+.write_key_loop
+    LDY keycode
+    LDX key_names,Y
+    BMI finished_writing_key
+    LDA &CD
+    JSR plot_title_screen_character
+    INC keycode
+    BNE write_key_loop
+.finished_writing_key
+    LDY text_offset
+    INC key_offset
+    LDA key_offset
+    CMP #&08
+    BCC define_controls_loop
+
+.get_keypress
+    LDX #&FF                        \ SHIFT                                     # Wait for SHIFT, CTRL and other keys to be released
+    JSR check_for_title_screen_keypress
+    BEQ get_keypress
+    LDX #&FE                        \ CTRL
+    JSR check_for_title_screen_keypress
+    BEQ get_keypress
+    LDA os_most_recently_pressed_key
+    BNE get_keypress
+.get_keypress_loop
+    LDX #&FF                        \ SHIFT
+    JSR check_for_title_screen_keypress
+    BNE not_shift
+    LDA #&00                        \ Return zero to indicate SHIFT pressed
+    RTS
+.not_shift
+    LDX #&FE                        \ CTRL
+    JSR check_for_title_screen_keypress
+    BNE not_ctrl
+    LDA #&01                        \ Return one to indicate CTRL pressed
+    RTS
+.not_ctrl
+    LDA os_most_recently_pressed_key
+    BEQ get_keypress_loop
+    AND #&7F                        \ Return key pressed
+    RTS
+
+.check_for_title_screen_keypress
+    LDY #&FF
+    LDA #&81                        \ Scan for a particular key
+    JSR osbyte                      \ OSBYTE
+    CPX #&FF
+    RTS
+
+.check_for_high_score    \ *** # &86cb - &a3f7 is extra code and data
+    STZ rank                        \ 65C02 opcode
+.check_for_high_score_rank_loop
+    LDA rank
+    LDX #&06
+    JSR multiply_A_by_X_85ef
+    LDX result_low
+    LDY #&00
+.check_for_high_score_digit_loop
+    LDA high_scores,X
+    CMP game_over_text + 20,Y
+    BCC new_high_score
+    BNE consider_next_rank
+    INY
+    INX
+    CPY #&06
+    BCC check_for_high_score_digit_loop
+    BRA consider_next_rank          \ 65C02 opcode
+.new_high_score
+    LDA rank
+    CMP #&07
+    BEQ finished_shuffling_scores
+    LDX #&29                        \ (6 * 7) - 1
+.shuffle_scores_loop
+    LDA high_scores,X
+    STA high_scores + 6,X
+    CPX result_low
+    BEQ finished_shuffling_scores
+    DEX
+    BRA shuffle_scores_loop         \ 65C02 opcode
+.finished_shuffling_scores
+    LDX result_low
+    LDY #&00
+.insert_score_loop
+    LDA game_over_text + 20,Y
+    STA high_scores,X
+    INX
+    INY
+    CPY #&06
+    BCC insert_score_loop
+    LDA #&12
+    LDX rank
+    JSR multiply_A_by_X_85ef
+    LDA #LO(high_score_names)       \ &895c = high_score_names
+    CLC
+    ADC result_low
+    STA name_address_low
+    LDA #&89
+    ADC result_high
+    STA name_address_high
+    BRA well_done_screen            \ 65C02 opcode
+.consider_next_rank
+    INC rank
+    LDA rank
+    CMP #&08
+    BCC check_for_high_score_rank_loop
+    JMP start_title_screen_music    \ Leave with carry set to indicate score didn't rank
+.leave_with_carry_clear_8730
+    JSR start_title_screen_music
+    CLC                             \ Leave with carry clear to indicate score ranked
+    RTS
+
+.well_done_screen
+    JSR start_high_score_music
+    LDA rank
+    CMP #&07
+    BEQ finished_shuffling_names
+    LDX #&7D                        \ (18 * 7) - 1
+.shuffle_names_loop
+    LDA high_score_names,X
+    STA high_score_names + 18,X
+    CPX result_low
+    BEQ finished_shuffling_names
+    DEX
+    BRA shuffle_names_loop          \ 65C02 opcode
+.finished_shuffling_names
+    LDY #&11
+    LDA #&25                        \ " "
+.wipe_name_loop
+    STA (name_address),Y
+    DEY
+    BPL wipe_name_loop
+    LDX #HI(well_done_text)         \ &8a06 = well_done_text
+    LDY #&06
+    JSR plot_title_screen_text
+    LDA #&FF
+    STA &7F
+.enter_name_loop
+    JSR get_keypress
+    CMP #&49                        \ ENTER
+    BEQ leave_with_carry_clear_8730
+    CMP #&59                        \ DELETE
+    BNE not_delete
+.delete_pressed
+    LDA #&25
+    LDX &7F
+    BMI enter_name_loop
+    JSR add_character_to_name
+    LDX &7F
+    DEX
+    CPX #&FE
+    BEQ enter_name_loop
+    STX &7F
+    BRA enter_name_loop             \ 65C02 opcode
+.not_delete
+    STA &CC
+    LSR A
+    LSR A
+    LSR A
+    LSR A
+    LDX #&06
+    JSR multiply_A_by_X_85ef
+    LDA keycode
+    CMP #&62                        \ SPACE
+    BNE not_space
+    LDA #&25                        \ " "
+    BRA consider_adding_character   \ 65C02 opcode
+.not_space
+    SEC
+    SBC result_low
+    TAX
+    LDA key_translation_table,X
+    BMI enter_name_loop
+    TAX
+    ASL A
+    BMI enter_name_loop
+    TXA
+.consider_adding_character
+    LDX &7F
+    INX
+    CPX #&12
+    BCS enter_name_loop
+    STX &7F
+    JSR add_character_to_name
+    BRA enter_name_loop             \ 65C02 opcode
+
+.add_character_to_name
+    PHA
+    LDY &7F
+    STA (name_address),Y
+    LDA #&18
+    JSR multiply_A_by_X_85ef
+    LDA result_low
+    CLC
+    ADC #&E0
+    STA text_screen_address_low
+    LDA result_high
+    ADC #&60
+    STA &CF
+    LDA #&AA
+    PLX                             \ 65C02 opcode
+    JMP plot_title_screen_character
+
+.display_high_scores
+    JSR clear_part_of_title_screen
+    LDA #&42
+    STA &CF
+    STA row_screen_address_high
+    LDA #&90
+    STA text_screen_address_low
+    STA row_screen_address_low
+    STZ score_offset                \ 65C02 opcode
+    STZ &7D                         \ 65C02 opcode
+    LDA #&07
+    STA ranks_remaining
+.display_high_scores_rank_loop
+    LDA #&3C                        \ CC
+    STA text_colour
+    LDA #&05
+    STA unused_0076 + 1
+.write_high_score_loop
+    LDY score_offset
+    LDA high_scores,Y
+    INC score_offset
+    TAX
+    LDA #&AA
+    JSR plot_title_screen_character
+    DEC unused_0076 + 1
+    BPL write_high_score_loop
+    LDX #&27                        \ "."
+    LDA #&AA
+    JSR plot_title_screen_character
+    LDX #&27                        \ "."
+    LDA #&AA
+    JSR plot_title_screen_character
+    LDA #&11
+    STA unused_0076 + 1
+    LDA #&03
+    STA text_colour
+.write_high_score_name_loop
+    LDY &7D
+    LDA high_score_names,Y
+    INC &7D
+    TAX
+    LDA #&AA
+    JSR plot_title_screen_character
+    DEC unused_0076 + 1
+    BPL write_high_score_name_loop
+    LDA row_screen_address_high
+    CLC
+    ADC #&05
+    STA &CF
+    STA row_screen_address_high
+    LDA row_screen_address_low
+    STA text_screen_address_low
+    DEC ranks_remaining
+    BPL display_high_scores_rank_loop
+    RTS
+
+.scroll_scrolltext
+    LDA #&74
+    STA &C6
+    STA &C8
+    LDA #&88                        \ &7488
+    STA source_address_low
+    LDA #&80                        \ &7480
+    STA target_address_low
+    LDX #&4E
+.scroll_scrolltext_column_loop
+    LDY #&07
+.scroll_scrolltext_byte_loop
+    LDA (source_address),Y
+    STA (target_address),Y
+    DEY
+    BPL scroll_scrolltext_byte_loop
+    LDA source_address_low
+    CLC
+    ADC #&08
+    STA source_address_low
+    BCC skip_page_source
+    INC &C6
+.skip_page_source
+    LDA target_address_low
+    CLC
+    ADC #&08
+    STA target_address_low
+    BCC skip_page_targeth
+    INC &C8
+.skip_page_targeth
+    DEX
+    BPL scroll_scrolltext_column_loop
+    RTS
+
+.update_scrolltext
+    JSR scroll_scrolltext
+    LDY scrolltext_buffer_offset
+    LDX #&00
+.copy_column_of_buffer_to_screen_loop
+    LDA scrolltext_buffer,Y
+    STA &76F8,X
+    INY
+    INX
+    CPX #&08
+    BCC copy_column_of_buffer_to_screen_loop
+    STY scrolltext_buffer_offset
+    CPY #&18
+    BCC leave_88b4
+.initialise_scrolltext_buffer
+    STZ scrolltext_buffer_offset    \ 65C02 opcode
+    LDA #LO(scrolltext_buffer)      \ &89ee = scrolltext_buffer
+    STA text_screen_address_low
+    LDA #&89
+    STA &CF
+    LDA #&3C                        \ CC
+    STA text_colour
+    LDA (scrolltext_address)        \ 65C02 opcode
+    TAX
+    LDA #&AA
+    JSR plot_title_screen_character
+    LDA &89
+    LDX &8A
+    INC A                           \ 65C02 opcode
+    BNE skip_page_88a4
+    INX
+.skip_page_88a4
+    CPX #HI(scrolltext_text + 669)  \ &925e = end_of_scrolltext
+    BNE not_end_of_scrolltext
+    CMP #&5E
+    BNE not_end_of_scrolltext
+    LDX #HI(scrolltext_text)        \ &8fc1 = scrolltext_text
+    LDA #&C1
+.not_end_of_scrolltext
+    STX &8A
+    STA &89
+.leave_88b4
+    RTS
+
+.title_screen_irq1_handler
+    PHX                             \ 65C02 opcode
+    PHY                             \ 65C02 opcode
+    LDA irq_accumulator
+    PHA
+    LDA sysvia_ifr                  \ System VIA interrupt flag register
+    AND #&82
+    CMP #&82                        \ &80 set if an interrupt occurred, &02 if v-sync
+    BNE leave_title_screen_irq1_handler
+.is_vsync
+    DEC scrolltext_cooldown
+    BPL leave_title_screen_irq1_handler
+    LDA result_low                  \ Also used for source_address_low
+    PHA
+    LDA result_high                 \ Also used for source_address_high
+    PHA
+    LDA multiplicand                \ Also used for target_address_low
+    PHA
+    LDA multiplier_low              \ Also used for target_address_high
+    PHA
+    LDA &CD
+    PHA
+    LDA &CB
+    PHA
+    LDA &CA
+    PHA
+    LDA text_screen_address_low     \ Also used for screen_address_low
+    PHA
+    LDA &CF                         \ Also used for screen_address_high
+    PHA
+    LDA multiplier_high
+    PHA
+    LDA font_address_low
+    PHA
+    LDA font_address_high
+    PHA
+    LDA text_colour
+    PHA
+    LDA #&03
+    STA scrolltext_cooldown
+    JSR update_scrolltext
+    DEC title_screen_cooldown
+    PLA
+    STA text_colour
+    PLA
+    STA font_address_high
+    PLA
+    STA font_address_low
+    PLA
+    STA multiplier_high
+    PLA
+    STA &CF
+    PLA
+    STA text_screen_address_low
+    PLA
+    STA &CA
+    PLA
+    STA &CB
+    PLA
+    STA &CD
+    PLA
+    STA multiplier_low
+    PLA
+    STA multiplicand
+    PLA
+    STA result_high
+    PLA
+    STA result_low
+.leave_title_screen_irq1_handler
+    PLA
+    STA irq_accumulator
+    PLY                             \ 65C02 opcode
+    PLX                             \ 65C02 opcode
+    JMP (previous_irq1_vector_for_title_screen_low)
+
+.high_scores
+    EQUB &00, &01, &00, &00, &00, &00    \ 010000
+    EQUB &00, &00, &09, &00, &00, &00    \ 009000
+    EQUB &00, &00, &08, &00, &00, &00    \ 008000
+    EQUB &00, &00, &07, &00, &00, &00    \ 007000
+    EQUB &00, &00, &06, &00, &00, &00    \ 006000
+    EQUB &00, &00, &05, &00, &00, &00    \ 005000
+    EQUB &00, &00, &04, &00, &00, &00    \ 004000
+    EQUB &00, &00, &03, &00, &00, &00    \ 003000
+
+.high_score_names
+    EQUB &1C, &1E, &19, &0E, &1B, &12, &18, &1B, &25, &25, &1C, &18, &0F, &1D, &20, &0A, &1B, &0E    \ "SUPERIOR  SOFTWARE"
+    EQUB &1C, &1E, &19, &0E, &1B, &12, &18, &1B, &25, &25, &1C, &18, &0F, &1D, &20, &0A, &1B, &0E    \ "SUPERIOR  SOFTWARE"
+    EQUB &1C, &1E, &19, &0E, &1B, &12, &18, &1B, &25, &25, &1C, &18, &0F, &1D, &20, &0A, &1B, &0E    \ "SUPERIOR  SOFTWARE"
+    EQUB &1C, &1E, &19, &0E, &1B, &12, &18, &1B, &25, &25, &1C, &18, &0F, &1D, &20, &0A, &1B, &0E    \ "SUPERIOR  SOFTWARE"
+    EQUB &1C, &1E, &19, &0E, &1B, &12, &18, &1B, &25, &25, &1C, &18, &0F, &1D, &20, &0A, &1B, &0E    \ "SUPERIOR  SOFTWARE"
+    EQUB &1C, &1E, &19, &0E, &1B, &12, &18, &1B, &25, &25, &1C, &18, &0F, &1D, &20, &0A, &1B, &0E    \ "SUPERIOR  SOFTWARE"
+    EQUB &1C, &1E, &19, &0E, &1B, &12, &18, &1B, &25, &25, &1C, &18, &0F, &1D, &20, &0A, &1B, &0E    \ "SUPERIOR  SOFTWARE"
+    EQUB &1C, &1E, &19, &0E, &1B, &12, &18, &1B, &25, &25, &1C, &18, &0F, &1D, &20, &0A, &1B, &0E    \ "SUPERIOR  SOFTWARE"
+
+.previous_irq1_vector_for_title_screen_low
+    EQUB &00
+.previous_irq1_vector_for_title_screen_high
+    EQUB &00
+
+.scrolltext_buffer
+    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00
+    EQUB &00, &00, &00, &00, &00, &00, &00, &00
+
+.well_done_text
+    EQUB &50, &4D, &03    \ at &4d50, colour &03 (RR)
+    EQUB &20, &0E, &15, &15, &25, &0D, &18, &17, &0E    \ "WELL DONE"
+    EQUB &FE    \ end of string
+    EQUB &C0, &51, &33    \ at &51c0, colour &33 (MM)
+    EQUB &19, &15, &0E, &0A, &1C, &0E, &25, &0E, &17, &1D, &0E, &1B, &25, &22, &18, &1E    \ "PLEASE ENTER YOUR NAME"
+    EQUB &1B, &25, &17, &0A, &16, &0E
+    EQUB &FF    \ end of text
+
+.title_screen_text
+    EQUB &28, &43, &3E    \ at &4328, colour &3e (WC)
+    EQUB &1C, &1D, &1B, &22, &14, &0E, &1B, &1C, &25, &1B, &1E, &17    \ "STRYKERS RUN"
+    EQUB &FE    \ end of string
+    EQUB &A8, &45, &0C    \ at &45a8, colour &0c (GG)
+    EQUB &24, &24, &24, &24, &24, &24, &24, &24, &24, &24, &24, &24    \ "============"
+    EQUB &FE    \ end of string
+    EQUB &E0, &4A, &0F    \ at &4ae0, colour &0f (YY)
+    EQUB &18, &19, &1D, &12, &18, &17, &1C    \ "OPTIONS"
+    EQUB &FE    \ end of string
+    EQUB &90, &4F, &03    \ at &4f90, colour &03 (RR)
+    EQUB &01, &25, &1C, &1D, &0A, &1B, &1D, &25, &10, &0A, &16, &0E    \ "1 START GAME"
+    EQUB &FE    \ end of string
+    EQUB &70, &54, &33    \ at &5470, colour &33 (MM)
+    EQUB &02, &25, &0D, &0E, &0F, &12, &17, &0E, &25, &0C, &18, &17, &1D, &1B, &18, &15    \ "2 DEFINE CONTROLS"
+    EQUB &1C
+    EQUB &FE    \ end of string
+    EQUB &50, &59, &30    \ at &5950, colour &30 (BB)
+    EQUB &03, &25, &1B, &0E, &0A, &0D, &25, &12, &17, &1C, &1D, &1B, &1E, &0C, &1D, &12    \ "3 READ INSTRUCTIONS"
+    EQUB &18, &17, &1C
+    EQUB &FE    \ end of string
+    EQUB &C0, &5E, &3C    \ at &5ec0, colour &3c (CC)
+    EQUB &04, &25, &16, &1E, &1C, &12, &0C, &25, &18, &0F, &0F    \ "4 MUSIC OFF"
+    EQUB &FE    \ end of string
+    EQUB &C0, &63, &03    \ at &63c0, colour &03 (RR)
+    EQUB &05, &25, &1C, &18, &1E, &17, &0D, &25, &18, &0F, &0F    \ "5 SOUND OFF"
+    EQUB &FE    \ end of string
+    EQUB &20, &7C, &3E    \ at &7c20, colour &3e (WC)
+    EQUB &26, &25, &1C, &1E, &19, &0E, &1B, &12, &18, &1B, &25, &1C, &18, &0F, &1D, &20    \ "(c) SUPERIOR SOFTWARE 1986"
+    EQUB &0A, &1B, &0E, &25, &01, &09, &08, &06
+    EQUB &FF    \ end of text
+
+.key_names
+    EQUB &1C, &11, &12, &0F, &1D, &FE    \ &80 : "SHIFT"
+    EQUB &0C, &1D, &1B, &15, &FE    \ &86 : "CTRL"
+    EQUB &15, &0E, &0F, &1D, &25, &0C, &1E, &1B, &1C, &18, &1B, &FE    \ &8b : "LEFT CURSOR"
+    EQUB &0C, &0A, &19, &1C, &25, &15, &18, &0C, &14, &FE    \ &97 : "CAPS LOCK"
+    EQUB &1B, &0E, &1D, &1E, &1B, &17, &FE    \ &a1 : "RETURN"
+    EQUB &1C, &11, &12, &0F, &1D, &25, &15, &18, &0C, &14, &FE    \ &a8 : "SHIFT LOCK"
+    EQUB &0D, &0E, &15, &0E, &1D, &0E, &FE    \ &b3 : "DELETE"
+    EQUB &0D, &18, &20, &17, &25, &0C, &1E, &1B, &1C, &18, &1B, &FE    \ &ba : "DOWN CURSOR"
+    EQUB &1E, &19, &25, &0C, &1E, &1B, &1C, &18, &1B, &FE    \ &c6 : "UP CURSOR"
+    EQUB &1D, &0A, &0B, &FE    \ &d0 : "TAB"
+    EQUB &1C, &19, &0A, &0C, &0E, &FE    \ &d4 : "SPACE"
+    EQUB &0C, &18, &19, &22, &FE    \ &da : "COPY"
+    EQUB &0E, &1C, &0C, &0A, &19, &0E, &FE    \ &df : "ESCAPE"
+    EQUB &1B, &12, &10, &11, &1D, &25, &0C, &1E, &1B, &1C, &18, &1B, &FE    \ &e6 : "RIGHT CURSOR"
+
+\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+.key_translation_table
+    EQUB &80, &86, &00, &00, &00, &00, &00, &00, &00, &00, &1A, &03, &04, &05, &44, &08    \ &00
+    EQUB &47, &28, &29, &8B, &40, &20, &0E, &1D, &07, &12, &09, &00, &2D, &BA, &01, &02    \ &10
+    EQUB &0D, &1B, &06, &1E, &18, &19, &2C, &C6, &97, &0A, &21, &0F, &22, &13, &14, &2B    \ &20
+    EQUB &2F, &A1, &A8, &1C, &0C, &10, &11, &17, &15, &2E, &30, &B3, &D0, &23, &D4, &1F    \ &30
+    EQUB &0B, &16, &31, &27, &32, &DA, &DF, &41, &42, &43, &45, &46, &48, &49, &2A, &E6    \ &40
+
+.define_controls_text
+    EQUB &E0, &42, &03    \ at &42e0, colour &03 (RR)
+    EQUB &0D, &0E, &0F, &12, &17, &0E, &25, &0C, &18, &17, &1D, &1B, &18, &15, &1C    \ "DEFINE CONTROLS"
+    EQUB &FF    \ end of text
+    EQUB &80, &47, &0F    \ at &4780, colour &0f (YY)
+    EQUB &13, &1E, &16, &19, &32, &16, &18, &1F, &0E, &25, &1E, &19, &2F, &25    \ "JUMP/MOVE UP: "
+    EQUB &FF    \ end of text
+    EQUB &80, &4C, &0C    \ at &4c80, colour &0c (GG)
+    EQUB &0D, &1E, &0C, &14, &2F, &25    \ "DUCK: "
+    EQUB &FF    \ end of text
+    EQUB &80, &51, &33    \ at &5180, colour &33 (MM)
+    EQUB &16, &18, &1F, &0E, &25, &1B, &12, &10, &11, &1D, &2F, &25    \ "MOVE RIGHT: "
+    EQUB &FF    \ end of text
+    EQUB &80, &56, &03    \ at &5680, colour &03 (RR)
+    EQUB &16, &18, &1F, &0E, &25, &15, &0E, &0F, &1D, &2F, &25    \ "MOVE LEFT: "
+    EQUB &FF    \ end of text
+    EQUB &80, &5B, &3F    \ at &5b80, colour &3f (WW)
+    EQUB &0F, &12, &1B, &0E, &25, &15, &0A, &1C, &0E, &1B, &2F, &25    \ "FIRE LASER: "
+    EQUB &FF    \ end of text
+    EQUB &80, &60, &03    \ at &6080, colour &03 (RR)
+    EQUB &10, &1B, &0E, &17, &0A, &0D, &0E, &32, &0B, &18, &16, &0B, &2F, &25    \ "GRENADE/BOMB: "
+    EQUB &FF    \ end of text
+    EQUB &80, &65, &0C    \ at &6580, colour &0c (GG)
+    EQUB &0E, &17, &1D, &0E, &1B, &32, &15, &0E, &0A, &1F, &0E, &2F, &25    \ "ENTER/LEAVE: "
+    EQUB &FF    \ end of text
+    EQUB &80, &6A, &3E    \ at &6a80, colour &3e (WC)
+    EQUB &19, &0A, &1E, &1C, &0E, &25, &10, &0A, &16, &0E, &2F, &25    \ "PAUSE GAME: "
+    EQUB &FF    \ end of text
+
+.title_screen
+    JSR clear_title_screen
+    LDA #&0C                        \ R12: Displayed screen start address register (high)
+    STA crtc_reg                    \ video register number
+    LDA #&08
+    STA crtc_data                   \ video register value
+    LDA #&07                        \ R7: Vertical sync position
+    STA crtc_reg                    \ video register number
+    LDA #&20
+    STA crtc_data                   \ video register value
+    LDA #&06                        \ R6: Vertical displayed register
+    STA crtc_reg                    \ video register number
+    LDA #&19
+    STA crtc_data                   \ video register value
+    LDA #&06                        \ MOVER_TYPE_HELICOPTER
+    STA firing_mover_type
+    LDA #&08
+    STA scrolltext_cooldown
+    LDA #&07                        \ Set colour 0 to black
+    STA ula_palette                 \ video ULA palette register
+    LDA #&61                        \ Set colour 6 to cyan
+    STA ula_palette                 \ video ULA palette register
+    LDA #LO(scrolltext_text)        \ &8fc1 = scrolltext_text
+    STA &89
+    LDA #&8F
+    STA scrolltext_address_high
+    JSR initialise_scrolltext_buffer
+    JSR update_scrolltext
+    LDA irq1v
+    STA previous_irq1_vector_for_title_screen_low
+    LDA &0205
+    STA previous_irq1_vector_for_title_screen_high
+    SEI
+    LDA #LO(title_screen_irq1_handler)\ &88b5 = title_screen_irq1_handler
+    STA irq1v
+    LDA #&88
+    STA &0205
+    CLI
+    JSR check_for_high_score        \ Returns carry clear if score ranked
+    LDA #&7F
+    STA title_screen_cooldown
+    BCC high_score_screen
+.display_title_screen
+    LDA #&7F
+    STA title_screen_cooldown
+    LDX #HI(title_screen_text)      \ &8a2d = title_screen_text
+    LDY #&2D
+    JSR plot_title_screen_text
+.title_screen_loop
+    LDX #&AD                        \ C                                         # If the C, H, R, I and S keys are pressed,
+    JSR check_for_title_screen_keypress
+    BNE skip_observer_mode
+    LDX #&AB                        \ H
+    JSR check_for_title_screen_keypress
+    BNE skip_observer_mode
+    LDX #&CC                        \ R
+    JSR check_for_title_screen_keypress
+    BNE skip_observer_mode
+    LDX #&DA                        \ I
+    JSR check_for_title_screen_keypress
+    BNE skip_observer_mode
+    LDX #&AE                        \ S
+    JSR check_for_title_screen_keypress
+    BNE skip_observer_mode
+.enable_observer_mode
+    LDA #&05
+    STA observer_mode               \ Set to non-zero to enable observer mode
+.skip_observer_mode
+    LDA title_screen_cooldown
+    BMI to_high_score_screen
+    LDA os_most_recently_pressed_key
+    CMP #&30                        \ "1"
+    BCC not_one_or_two
+    SEC
+    SBC #&30                        \ "1"
+    BNE not_one
+    JMP prepare_to_start_game
+.not_one
+    CMP #&02                        \ "2"
+    BCS title_screen_loop
+    JSR define_controls
+    BRA display_title_screen        \ 65C02 opcode
+.to_high_score_screen
+    LDA #&50
+    STA title_screen_cooldown
+.high_score_screen
+    JSR display_high_scores
+.high_score_screen_loop
+    LDA title_screen_cooldown
+    BPL high_score_screen_loop
+    BRA display_title_screen        \ 65C02 opcode
+.not_one_or_two
+    CMP #&11                        \ "3"
+    BEQ read_instructions
+    CMP #&13                        \ "5"
+    BEQ toggle_sound
+    CMP #&12                        \ "4"
+    BNE title_screen_loop
+.toggle_music
+    LDA title_screen_text + 115
+    CMP #&17                        \ "F"
+    BEQ enable_music
+.disable_music
+    LDA #&17                        \ "N"
+    STA title_screen_text + 115
+    LDA #&25                        \ " "
+    STA title_screen_text + 116
+    STA music_muted
+    LDA #&0D                        \ Disable event
+    LDX #&05                        \ interval timer crossing zero
+    JSR osbyte                      \ OSBYTE
+    LDA #&0F                        \ Flush buffers
+    LDX #&00                        \ flush all buffers
+    JSR osbyte                      \ OSBYTE
+    JMP display_title_screen
+.enable_music
+    LDA #&0F                        \ "F"
+    STA title_screen_text + 115
+    STA title_screen_text + 116
+    STZ music_muted
+    JSR start_title_screen_music
+    JMP display_title_screen
+
+.toggle_sound
+    LDA title_screen_text + 130
+    CMP #&17
+    BNE disable_sound
+.enable_sound
+    LDA #&0F                        \ "F"
+    STA title_screen_text + 130
+    STA title_screen_text + 131
+    STZ sound_muted                 \ 65C02 opcode
+    JMP display_title_screen
+.disable_sound
+    LDA #&17                        \ "N"
+    STA title_screen_text + 130
+    LDA #&25                        \ "O"
+    STA title_screen_text + 131
+    STA sound_muted
+    JMP display_title_screen
+
+.read_instructions
+    LDX #HI(instructions_text_one)  \ &8d90 = instructions_text_one
+    LDY #&90
+    JSR plot_title_screen_text
+    JSR get_keypress
+    LDX #HI(instructions_text_two)  \ &8e80 = instructions_text_two
+    LDY #&80
+    JSR plot_title_screen_text
+    JSR get_keypress
+    LDX #HI(instructions_text_three)\ &8f68 = instructions_text_three
+    LDY #&68
+    JSR plot_title_screen_text
+    JSR get_keypress
+    JMP display_title_screen
+
+.prepare_to_start_game
+    SEI
+    LDA previous_irq1_vector_for_title_screen_low
+    STA irq1v
+    LDA previous_irq1_vector_for_title_screen_high
+    STA &0205
+    CLI
+    LDA #&0D                        \ Disable event
+    LDX #&05                        \ interval timer crossing zero
+    JSR osbyte                      \ OSBYTE
+    LDA #&0F                        \ Flush buffers
+    LDX #&00                        \ flush all buffers
+    JSR osbyte                      \ OSBYTE
+    LDA #&01                        \ Set colour 0 to cyan
+    STA ula_palette                 \ video ULA palette register
+    LDA #&67                        \ Set colour 6 to black
+    STA ula_palette                 \ video ULA palette register
+    JMP start_game
+
+.instructions_text_one
+    EQUB &00, &43, &03    \ at &4300, colour &03 (RR)
+    EQUB &1D, &11, &0E, &25, &16, &12, &1C, &1C, &12, &18, &17, &2F    \ "THE MISSION:"
+    EQUB &FE    \ end of string
+    EQUB &80, &47, &3C    \ at &4780, colour &3c (CC)
+    EQUB &0A, &25, &20, &0E, &0A, &14, &17, &0E, &1C, &1C, &25, &11, &0A, &1C, &25, &0B    \ "A WEAKNESS HAS BEEN FOUND"
+    EQUB &0E, &0E, &17, &25, &0F, &18, &1E, &17, &0D
+    EQUB &FE    \ end of string
+    EQUB &80, &4C, &3C    \ at &4c80, colour &3c (CC)
+    EQUB &12, &17, &25, &1D, &11, &0E, &25, &0E, &17, &0E, &16, &22, &25, &0D, &0E, &0F    \ "IN THE ENEMY DEFENCES."
+    EQUB &0E, &17, &0C, &0E, &1C, &27
+    EQUB &FE    \ end of string
+    EQUB &80, &51, &3C    \ at &5180, colour &3c (CC)
+    EQUB &1D, &11, &12, &1C, &25, &12, &17, &1D, &0E, &15, &15, &12, &10, &0E, &17, &0C    \ "THIS INTELLIGENCE MUST BE"
+    EQUB &0E, &25, &16, &1E, &1C, &1D, &25, &0B, &0E
+    EQUB &FE    \ end of string
+    EQUB &80, &56, &3C    \ at &5680, colour &3c (CC)
+    EQUB &0C, &18, &17, &1F, &0E, &22, &0E, &0D, &25, &1D, &18, &25, &16, &0A, &12, &17    \ "CONVEYED TO THE MAIN H.Q."
+    EQUB &25, &11, &27, &1A, &27
+    EQUB &FE    \ end of string
+    EQUB &80, &5B, &3C    \ at &5b80, colour &3c (CC)
+    EQUB &12, &16, &16, &0E, &0D, &12, &0A, &1D, &0E, &15, &22, &27, &25, &0B, &0E, &0C    \ "IMMEDIATELY. BECAUSE OF"
+    EQUB &0A, &1E, &1C, &0E, &25, &18, &0F
+    EQUB &FE    \ end of string
+    EQUB &80, &60, &3C    \ at &6080, colour &3c (CC)
+    EQUB &1D, &11, &0E, &25, &17, &0A, &1D, &1E, &1B, &0E, &25, &18, &0F, &25, &1D, &11    \ "THE NATURE OF THE"
+    EQUB &0E
+    EQUB &FE    \ end of string
+    EQUB &80, &65, &3C    \ at &6580, colour &3c (CC)
+    EQUB &12, &17, &0F, &18, &1B, &16, &0A, &1D, &12, &18, &17, &31, &25, &12, &1D, &25    \ "INFORMATION, IT CAN NOT"
+    EQUB &0C, &0A, &17, &17, &18, &1D, &25
+    EQUB &FE    \ end of string
+    EQUB &80, &6A, &3C    \ at &6a80, colour &3c (CC)
+    EQUB &0B, &0E, &25, &1D, &1B, &0A, &17, &1C, &16, &12, &1D, &1D, &0E, &0D, &25, &18    \ "BE TRANSMITTED OVER THE"
+    EQUB &1F, &0E, &1B, &25, &1D, &11, &0E
+    EQUB &FE    \ end of string
+    EQUB &80, &6F, &3C    \ at &6f80, colour &3c (CC)
+    EQUB &0A, &12, &1B, &20, &0A, &1F, &0E, &1C, &27    \ "AIRWAVES."
+    EQUB &FF    \ end of text
+
+.instructions_text_two
+    EQUB &80, &42, &3C    \ at &4280, colour &3c (CC)
+    EQUB &22, &18, &1E, &31, &25, &0C, &18, &16, &16, &0A, &17, &0D, &0E, &1B, &25, &13    \ "YOU, COMMANDER JOHN"
+    EQUB &18, &11, &17
+    EQUB &FE    \ end of string
+    EQUB &80, &47, &3C    \ at &4780, colour &3c (CC)
+    EQUB &1C, &1D, &1B, &22, &14, &0E, &1B, &31, &25, &11, &0A, &1F, &0E, &25, &0B, &0E    \ "STRYKER, HAVE BEEN CHOSEN"
+    EQUB &0E, &17, &25, &0C, &11, &18, &1C, &0E, &17
+    EQUB &FE    \ end of string
+    EQUB &80, &4C, &3C    \ at &4c80, colour &3c (CC)
+    EQUB &0F, &18, &1B, &25, &1D, &11, &12, &1C, &25, &16, &12, &1C, &1C, &12, &18, &17    \ "FOR THIS MISSION. THE MAIN"
+    EQUB &27, &25, &1D, &11, &0E, &25, &16, &0A, &12, &17
+    EQUB &FE    \ end of string
+    EQUB &80, &51, &3C    \ at &5180, colour &3c (CC)
+    EQUB &11, &27, &1A, &27, &25, &11, &18, &20, &0E, &1F, &0E, &1B, &25, &12, &1C, &25    \ "H.Q. HOWEVER IS SEVERAL"
+    EQUB &1C, &0E, &1F, &0E, &1B, &0A, &15
+    EQUB &FE    \ end of string
+    EQUB &80, &56, &3C    \ at &5680, colour &3c (CC)
+    EQUB &16, &12, &15, &0E, &1C, &25, &0A, &20, &0A, &22, &25, &18, &1F, &0E, &1B, &25    \ "MILES AWAY OVER ENEMY"
+    EQUB &0E, &17, &0E, &16, &22
+    EQUB &FE    \ end of string
+    EQUB &80, &5B, &3C    \ at &5b80, colour &3c (CC)
+    EQUB &1D, &0E, &1B, &1B, &12, &1D, &18, &1B, &22, &27    \ "TERRITORY."
+    EQUB &FE    \ end of string
+    EQUB &80, &60, &3C    \ at &6080, colour &3c (CC)
+    EQUB &18, &17, &25, &22, &18, &1E, &1B, &25, &13, &18, &1E, &1B, &17, &0E, &22, &25    \ "ON YOUR JOURNEY YOU CAN"
+    EQUB &22, &18, &1E, &25, &0C, &0A, &17
+    EQUB &FE    \ end of string
+    EQUB &80, &65, &3C    \ at &6580, colour &3c (CC)
+    EQUB &0C, &18, &16, &16, &0A, &17, &0D, &0E, &0E, &1B, &25, &0A, &17, &22, &25, &0A    \ "COMMANDEER ANY AIRCRAFT"
+    EQUB &12, &1B, &0C, &1B, &0A, &0F, &1D
+    EQUB &FE    \ end of string
+    EQUB &80, &6A, &3C    \ at &6a80, colour &3c (CC)
+    EQUB &22, &18, &1E, &25, &16, &0A, &22, &25, &0F, &12, &17, &0D, &25, &0A, &17, &0D    \ "YOU MAY FIND AND USE THEIR"
+    EQUB &25, &1E, &1C, &0E, &25, &1D, &11, &0E, &12, &1B
+    EQUB &FF    \ end of text
+
+.instructions_text_three
+    EQUB &80, &42, &3C    \ at &4280, colour &3c (CC)
+    EQUB &16, &18, &1B, &0E, &25, &19, &18, &20, &0E, &1B, &0F, &1E, &15, &25, &20, &0E    \ "MORE POWERFUL WEAPONRY TO"
+    EQUB &0A, &19, &18, &17, &1B, &22, &25, &1D, &18
+    EQUB &FE    \ end of string
+    EQUB &80, &47, &3C    \ at &4780, colour &3c (CC)
+    EQUB &0A, &12, &0D, &25, &22, &18, &1E, &25, &12, &17, &25, &22, &18, &1E, &1B, &25    \ "AID YOU IN YOUR QUEST."
+    EQUB &1A, &1E, &0E, &1C, &1D, &27
+    EQUB &FE    \ end of string
+    EQUB &40, &52, &0C    \ at &5240, colour &0c (GG)
+    EQUB &10, &18, &18, &0D, &25, &15, &1E, &0C, &14    \ "GOOD LUCK"
+    EQUB &FE    \ end of string
+    EQUB &E0, &56, &03    \ at &56e0, colour &03 (RR)
+    EQUB &0C, &18, &16, &16, &0A, &17, &0D, &0E, &1B, &25, &1C, &1D, &1B, &22, &14, &0E    \ "COMMANDER STRYKER"
+    EQUB &1B
+    EQUB &FF    \ end of text
+
+.scrolltext_text
+    EQUB &10, &0A, &16, &0E, &25, &0D, &0E, &1C, &12, &10, &17, &25, &0A, &17, &0D, &25    \ "GAME DESIGN AND "
+    EQUB &18, &1B, &12, &10, &12, &17, &0A, &15, &25, &12, &0D, &0E, &0A, &1C, &25, &0B    \ "ORIGINAL IDEAS B"
+    EQUB &22, &25, &0C, &27, &1B, &18, &0B, &0E, &1B, &1D, &1C, &25, &0A, &17, &0D, &25    \ "Y C.ROBERTS AND "
+    EQUB &19, &27, &16, &0E, &15, &15, &0E, &1B, &27, &25, &0C, &18, &0D, &12, &17, &10    \ "P.MELLER. CODING"
+    EQUB &25, &0B, &22, &25, &0C, &27, &1B, &18, &0B, &0E, &1B, &1D, &1C, &27, &25, &10    \ " BY C.ROBERTS. G"
+    EQUB &1B, &0A, &19, &11, &12, &0C, &1C, &25, &0D, &0E, &1C, &12, &10, &17, &0E, &0D    \ "RAPHICS DESIGNED"
+    EQUB &25, &0B, &22, &25, &19, &27, &16, &0E, &15, &15, &0E, &1B, &31, &25, &0C, &27    \ " BY P.MELLER, C."
+    EQUB &1B, &18, &0B, &0E, &1B, &1D, &1C, &25, &0A, &17, &0D, &25, &17, &27, &0E, &15    \ "ROBERTS AND N.EL"
+    EQUB &16, &1C, &27, &25, &1C, &18, &1E, &17, &0D, &25, &0E, &0F, &0F, &0E, &0C, &1D    \ "MS. SOUND EFFECT"
+    EQUB &1C, &25, &0A, &17, &0D, &25, &16, &1E, &1C, &12, &0C, &25, &0B, &22, &25, &16    \ "S AND MUSIC BY M"
+    EQUB &1B, &25, &16, &22, &1C, &1D, &0E, &1B, &22, &27, &25, &10, &0E, &17, &0E, &1B    \ "R MYSTERY. GENER"
+    EQUB &0A, &15, &25, &0D, &18, &10, &1C, &0B, &18, &0D, &22, &25, &1C, &27, &0E, &15    \ "AL DOGSBODY S.EL"
+    EQUB &16, &1C, &31, &25, &0A, &1C, &1C, &12, &1C, &1D, &0A, &17, &1D, &25, &0D, &18    \ "MS, ASSISTANT DO"
+    EQUB &10, &1C, &0B, &18, &0D, &22, &25, &1D, &27, &0B, &18, &1E, &0C, &11, &0E, &1B    \ "GSBODY T.BOUCHER"
+    EQUB &27, &25, &10, &0E, &17, &0E, &1B, &0A, &15, &25, &12, &17, &1C, &19, &12, &1B    \ ". GENERAL INSPIR"
+    EQUB &0A, &1D, &12, &18, &17, &25, &0E, &27, &1B, &18, &0B, &0E, &1B, &1D, &1C, &27    \ "ATION E.ROBERTS."
+    EQUB &25, &1D, &11, &12, &1C, &25, &10, &0A, &16, &0E, &25, &1D, &18, &18, &14, &25    \ " THIS GAME TOOK "
+    EQUB &1D, &0E, &17, &25, &16, &18, &17, &1D, &11, &1C, &25, &1D, &18, &25, &20, &1B    \ "TEN MONTHS TO WR"
+    EQUB &12, &1D, &0E, &25, &0A, &17, &0D, &25, &20, &0A, &1C, &25, &0C, &1B, &0E, &0A    \ "ITE AND WAS CREA"
+    EQUB &1D, &0E, &0D, &25, &1D, &18, &25, &0F, &1E, &15, &0F, &12, &15, &25, &0A, &17    \ "TED TO FULFIL AN"
+    EQUB &25, &1E, &17, &1B, &0E, &16, &12, &1D, &1D, &12, &17, &10, &25, &1E, &1B, &10    \ " UNREMITTING URG"
+    EQUB &0E, &25, &1D, &18, &25, &16, &0A, &12, &16, &25, &0A, &17, &0D, &25, &14, &12    \ "E TO MAIM AND KI"
+    EQUB &15, &15, &25, &1D, &11, &12, &17, &10, &1C, &25, &18, &17, &25, &0A, &25, &0C    \ "LL THINGS ON A C"
+    EQUB &18, &16, &19, &1E, &1D, &0E, &1B, &25, &1C, &0C, &1B, &0E, &0E, &17, &27, &25    \ "OMPUTER SCREEN. "
+    EQUB &0D, &1E, &1B, &12, &17, &10, &25, &1D, &11, &0E, &25, &0D, &0E, &1F, &0E, &15    \ "DURING THE DEVEL"
+    EQUB &18, &19, &16, &0E, &17, &1D, &25, &18, &0F, &25, &1D, &11, &12, &1C, &25, &10    \ "OPMENT OF THIS G"
+    EQUB &0A, &16, &0E, &25, &06, &00, &25, &0D, &12, &1C, &14, &1C, &31, &25, &01, &02    \ "AME 60 DISKS, 12"
+    EQUB &05, &04, &25, &1C, &11, &0E, &0E, &1D, &1C, &25, &18, &0F, &25, &19, &0A, &19    \ "54 SHEETS OF PAP"
+    EQUB &0E, &1B, &31, &25, &01, &02, &04, &25, &19, &0E, &17, &1C, &31, &25, &02, &03    \ "ER, 124 PENS, 23"
+    EQUB &25, &1B, &1E, &0B, &0B, &0E, &1B, &1C, &31, &25, &02, &01, &03, &25, &19, &12    \ " RUBBERS, 213 PI"
+    EQUB &23, &23, &0A, &1C, &31, &25, &02, &03, &04, &09, &25, &0C, &0A, &17, &1C, &25    \ "ZZAS, 2349 CANS "
+    EQUB &18, &0F, &25, &0C, &18, &14, &0E, &31, &25, &08, &09, &01, &25, &0B, &12, &10    \ "OF COKE, 891 BIG"
+    EQUB &25, &16, &0A, &0C, &1C, &31, &25, &08, &06, &25, &19, &0A, &0C, &14, &0E, &1D    \ " MACS, 86 PACKET"
+    EQUB &1C, &25, &18, &0F, &25, &0A, &17, &0A, &0D, &12, &17, &31, &25, &03, &07, &02    \ "S OF ANADIN, 372"
+    EQUB &01, &25, &19, &12, &17, &1D, &1C, &25, &18, &0F, &25, &15, &0A, &10, &0E, &1B    \ "1 PINTS OF LAGER"
+    EQUB &31, &25, &02, &25, &0C, &18, &16, &19, &1E, &1D, &0E, &1B, &1C, &31, &25, &03    \ ", 2 COMPUTERS, 3"
+    EQUB &25, &16, &18, &17, &12, &1D, &18, &1B, &1C, &31, &25, &08, &06, &02, &25, &14    \ " MONITORS, 862 K"
+    EQUB &0E, &0B, &0A, &0B, &1C, &31, &25, &03, &04, &09, &01, &25, &19, &18, &1B, &1D    \ "EBABS, 3491 PORT"
+    EQUB &12, &18, &17, &1C, &25, &18, &0F, &25, &0C, &11, &12, &19, &1C, &25, &0A, &17    \ "IONS OF CHIPS AN"
+    EQUB &0D, &25, &02, &05, &06, &09, &25, &19, &0A, &0C, &14, &0E, &1D, &1C, &25, &18    \ "D 2569 PACKETS O"
+    EQUB &0F, &25, &0C, &1B, &12, &1C, &19, &1C, &25, &20, &0E, &1B, &0E, &25, &0D, &0E    \ "F CRISPS WERE DE"
+    EQUB &16, &18, &15, &12, &1C, &11, &0E, &0D, &27, &25, &25, &25, &25, &FF    \ "MOLISHED.    "
+
+.unused_925f    \ # &925f - &92ff is a copy of &1f5f - &1fff
+    EQUB &B2, &60, &A9, &04, &85, &F4, &8D, &30, &FE, &A9, &A9, &8D, &E2, &1C, &A9, &FF
+    EQUB &8D, &E3, &1C, &A0, &01, &84, &03, &A4, &03, &20, &48, &1E, &20, &EC, &1F, &90
+    EQUB &4D, &A5, &F9, &20, &B4, &1C, &20, &DA, &1F, &A6, &7A, &BD, &83, &16, &C9, &02
+    EQUB &B0, &3C, &A5, &F9, &B9, &65, &15, &29, &3F, &7D, &14, &17, &AA, &A5, &F9, &7D
+    EQUB &9F, &18, &85, &78, &A5, &7A, &18, &69, &1C, &AA, &20, &14, &20, &A5, &78, &20
+    EQUB &B4, &1C, &20, &DA, &1F, &A6, &7A, &BD, &83, &16, &D0, &12, &BD, &0F, &17, &AA
+    EQUB &B9, &65, &15, &20, &17, &20, &A5, &78, &18, &69, &08, &20, &B4, &1C, &A9, &40
+    EQUB &85, &B8, &E6, &03, &A4, &03, &C0, &22, &90, &9D, &60, &A4, &03, &B9, &CB, &15
+    EQUB &85, &F9, &B9, &87, &15, &85, &F8, &B9, &A9, &15, &85, &C5, &60, &20, &DA, &1F
+    EQUB &A6, &7A, &A4, &C5, &C4, &B4, &90, &0A, &F0, &02, &18, &60, &A5, &B5, &C5, &F8
+    EQUB &90
+
+\ ;     c0 c2 c3 c1                                                   # &00 = no sound, &ff = silence, otherwise pitch
+.title_screen_music_data
+    EQUB &06, &3D, &3D, &79
+    EQUB &00, &00, &3D, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &04, &00, &3D, &00
+    EQUB &00, &00, &6D, &00
+    EQUB &00, &45, &59, &00
+    EQUB &00, &00, &49, &00
+    EQUB &06, &00, &3D, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &06, &00, &3D, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &04, &49, &3D, &00
+    EQUB &00, &00, &6D, &00
+    EQUB &00, &00, &59, &00
+    EQUB &00, &00, &49, &00
+    EQUB &06, &00, &3D, &00
+    EQUB &00, &00, &3D, &FF
+    EQUB &00, &3D, &3D, &79
+    EQUB &00, &00, &3D, &00
+    EQUB &04, &00, &3D, &81
+    EQUB &00, &00, &6D, &00
+    EQUB &00, &00, &59, &79
+    EQUB &00, &00, &49, &00
+    EQUB &06, &35, &3D, &75
+    EQUB &00, &00, &3D, &FF
+    EQUB &06, &00, &3D, &75
+    EQUB &00, &00, &3D, &6D
+    EQUB &04, &49, &3D, &65
+    EQUB &00, &00, &6D, &00
+    EQUB &00, &00, &59, &59
+    EQUB &00, &00, &29, &00
+    EQUB &06, &2D, &2D, &6D
+    EQUB &00, &00, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &04, &00, &2D, &00
+    EQUB &00, &00, &5D, &00
+    EQUB &00, &00, &49, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &06, &00, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &06, &29, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &04, &00, &2D, &00
+    EQUB &00, &00, &5D, &00
+    EQUB &00, &21, &49, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &06, &00, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &04, &00, &2D, &00
+    EQUB &00, &00, &5D, &00
+    EQUB &00, &00, &49, &00
+    EQUB &00, &00, &3D, &FF
+    EQUB &06, &2D, &2D, &6D
+    EQUB &00, &00, &2D, &00
+    EQUB &06, &00, &2D, &00
+    EQUB &00, &00, &2D, &FF
+    EQUB &04, &29, &2D, &75
+    EQUB &00, &00, &5D, &00
+    EQUB &00, &00, &59, &00
+    EQUB &00, &00, &39, &FF
+    EQUB &06, &3D, &3D, &79
+    EQUB &00, &00, &3D, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &04, &00, &3D, &00
+    EQUB &00, &00, &6D, &00
+    EQUB &00, &45, &59, &00
+    EQUB &00, &00, &49, &00
+    EQUB &06, &00, &3D, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &06, &00, &3D, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &04, &49, &3D, &00
+    EQUB &00, &00, &6D, &00
+    EQUB &00, &00, &59, &00
+    EQUB &00, &00, &49, &00
+    EQUB &06, &00, &3D, &00
+    EQUB &00, &00, &3D, &FF
+    EQUB &00, &3D, &3D, &79
+    EQUB &00, &00, &3D, &00
+    EQUB &04, &00, &3D, &81
+    EQUB &00, &00, &6D, &00
+    EQUB &00, &00, &59, &79
+    EQUB &00, &00, &49, &00
+    EQUB &06, &35, &3D, &75
+    EQUB &00, &00, &3D, &FF
+    EQUB &06, &00, &3D, &75
+    EQUB &00, &00, &3D, &6D
+    EQUB &04, &49, &3D, &65
+    EQUB &00, &00, &6D, &00
+    EQUB &00, &00, &59, &6D
+    EQUB &00, &00, &29, &00
+    EQUB &06, &2D, &2D, &89
+    EQUB &00, &00, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &04, &00, &2D, &00
+    EQUB &00, &00, &5D, &00
+    EQUB &00, &00, &49, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &06, &35, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &06, &00, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &04, &00, &2D, &00
+    EQUB &00, &00, &5D, &00
+    EQUB &00, &00, &49, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &06, &49, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &04, &00, &2D, &00
+    EQUB &00, &00, &5D, &00
+    EQUB &00, &00, &49, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &04, &59, &2D, &00
+    EQUB &04, &00, &2D, &00
+    EQUB &04, &00, &2D, &00
+    EQUB &04, &00, &2D, &00
+    EQUB &04, &51, &2D, &00
+    EQUB &04, &00, &5D, &00
+    EQUB &04, &00, &49, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &06, &21, &5D, &6D
+    EQUB &00, &00, &3D, &00
+    EQUB &00, &19, &5D, &00
+    EQUB &00, &00, &5D, &00
+    EQUB &04, &21, &5D, &5D
+    EQUB &00, &00, &3D, &00
+    EQUB &00, &00, &3D, &65
+    EQUB &00, &00, &5D, &00
+    EQUB &06, &00, &3D, &6D
+    EQUB &00, &00, &5D, &00
+    EQUB &06, &2D, &3D, &79
+    EQUB &00, &00, &5D, &00
+    EQUB &04, &00, &5D, &00
+    EQUB &00, &00, &3D, &FF
+    EQUB &00, &35, &3D, &81
+    EQUB &00, &00, &3D, &00
+    EQUB &06, &3D, &59, &65
+    EQUB &00, &00, &3D, &00
+    EQUB &00, &00, &59, &6D
+    EQUB &00, &00, &59, &00
+    EQUB &04, &00, &59, &65
+    EQUB &00, &FF, &3D, &6D
+    EQUB &00, &3D, &3D, &59
+    EQUB &00, &00, &59, &00
+    EQUB &06, &00, &3D, &65
+    EQUB &00, &00, &59, &00
+    EQUB &06, &35, &3D, &6D
+    EQUB &00, &00, &59, &00
+    EQUB &04, &29, &59, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &00, &21, &3D, &00
+    EQUB &00, &00, &3D, &FF
+    EQUB &06, &21, &5D, &6D
+    EQUB &00, &00, &3D, &00
+    EQUB &00, &19, &5D, &00
+    EQUB &00, &00, &5D, &00
+    EQUB &04, &21, &5D, &5D
+    EQUB &00, &00, &3D, &00
+    EQUB &00, &00, &3D, &65
+    EQUB &00, &00, &5D, &00
+    EQUB &06, &00, &3D, &6D
+    EQUB &00, &00, &5D, &00
+    EQUB &06, &2D, &3D, &79
+    EQUB &00, &00, &5D, &00
+    EQUB &04, &00, &5D, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &00, &35, &3D, &81
+    EQUB &00, &00, &3D, &00
+    EQUB &06, &3D, &59, &89
+    EQUB &00, &00, &3D, &FF
+    EQUB &00, &00, &59, &89
+    EQUB &00, &00, &59, &81
+    EQUB &04, &00, &59, &79
+    EQUB &00, &00, &3D, &00
+    EQUB &00, &00, &3D, &6D
+    EQUB &00, &FF, &59, &00
+    EQUB &06, &3D, &3D, &79
+    EQUB &00, &00, &59, &00
+    EQUB &06, &00, &3D, &00
+    EQUB &00, &FF, &59, &FF
+    EQUB &04, &35, &59, &6D
+    EQUB &00, &00, &3D, &00
+    EQUB &00, &00, &3D, &79
+    EQUB &00, &FF, &3D, &00
+    EQUB &06, &2D, &6D, &89
+    EQUB &00, &00, &3D, &00
+    EQUB &00, &00, &6D, &00
+    EQUB &00, &00, &6D, &00
+    EQUB &04, &00, &6D, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &00, &21, &3D, &00
+    EQUB &00, &00, &6D, &00
+    EQUB &06, &00, &3D, &00
+    EQUB &00, &00, &6D, &00
+    EQUB &06, &00, &3D, &9D
+    EQUB &00, &00, &6D, &95
+    EQUB &04, &29, &6D, &89
+    EQUB &00, &00, &3D, &FF
+    EQUB &00, &00, &3D, &81
+    EQUB &00, &00, &3D, &FF
+    EQUB &06, &00, &6D, &89
+    EQUB &00, &00, &3D, &00
+    EQUB &00, &2D, &6D, &00
+    EQUB &00, &00, &6D, &00
+    EQUB &04, &00, &6D, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &00, &00, &6D, &00
+    EQUB &06, &31, &3D, &6D
+    EQUB &00, &00, &6D, &00
+    EQUB &06, &00, &3D, &00
+    EQUB &00, &FF, &6D, &FF
+    EQUB &04, &31, &6D, &79
+    EQUB &00, &00, &3D, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &00, &FF, &3D, &FF
+    EQUB &06, &35, &65, &89
+    EQUB &00, &00, &35, &00
+    EQUB &00, &00, &65, &00
+    EQUB &00, &00, &65, &00
+    EQUB &04, &00, &65, &00
+    EQUB &00, &00, &35, &00
+    EQUB &00, &00, &35, &00
+    EQUB &00, &00, &65, &00
+    EQUB &06, &00, &35, &00
+    EQUB &00, &00, &65, &FF
+    EQUB &06, &00, &35, &81
+    EQUB &00, &00, &65, &00
+    EQUB &04, &00, &65, &00
+    EQUB &00, &00, &35, &FF
+    EQUB &00, &00, &35, &89
+    EQUB &00, &FF, &35, &FF
+    EQUB &06, &05, &75, &81
+    EQUB &00, &00, &65, &00
+    EQUB &00, &00, &75, &00
+    EQUB &00, &00, &75, &00
+    EQUB &04, &00, &75, &00
+    EQUB &00, &00, &65, &00
+    EQUB &00, &00, &65, &00
+    EQUB &00, &00, &75, &00
+    EQUB &06, &00, &65, &65
+    EQUB &00, &00, &75, &00
+    EQUB &04, &00, &65, &00
+    EQUB &04, &00, &75, &00
+    EQUB &04, &00, &75, &00
+    EQUB &04, &00, &65, &00
+    EQUB &04, &00, &65, &00
+    EQUB &04, &00, &65, &00
+    EQUB &06, &41, &5D, &8D
+    EQUB &00, &00, &2D, &00
+    EQUB &06, &00, &5D, &00
+    EQUB &00, &00, &5D, &00
+    EQUB &04, &00, &5D, &79
+    EQUB &00, &00, &2D, &00
+    EQUB &06, &00, &2D, &85
+    EQUB &00, &00, &5D, &00
+    EQUB &06, &00, &2D, &8D
+    EQUB &00, &00, &5D, &00
+    EQUB &06, &00, &2D, &00
+    EQUB &00, &00, &5D, &00
+    EQUB &04, &00, &5D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &06, &3D, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &06, &00, &5D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &06, &00, &5D, &00
+    EQUB &00, &00, &5D, &FF
+    EQUB &04, &00, &5D, &79
+    EQUB &00, &00, &2D, &00
+    EQUB &06, &00, &2D, &85
+    EQUB &00, &00, &5D, &00
+    EQUB &06, &00, &2D, &8D
+    EQUB &00, &00, &5D, &00
+    EQUB &06, &00, &2D, &00
+    EQUB &00, &00, &5D, &00
+    EQUB &04, &00, &5D, &00
+    EQUB &00, &00, &2D, &FF
+    EQUB &06, &00, &5D, &85
+    EQUB &00, &FF, &5D, &00
+    EQUB &06, &39, &55, &00
+    EQUB &00, &00, &25, &00
+    EQUB &06, &00, &55, &00
+    EQUB &00, &00, &55, &00
+    EQUB &04, &00, &55, &71
+    EQUB &00, &00, &25, &00
+    EQUB &06, &00, &25, &7D
+    EQUB &00, &00, &55, &00
+    EQUB &06, &35, &25, &85
+    EQUB &00, &00, &55, &00
+    EQUB &06, &00, &25, &00
+    EQUB &00, &00, &55, &00
+    EQUB &04, &00, &55, &00
+    EQUB &00, &00, &25, &FF
+    EQUB &06, &00, &25, &81
+    EQUB &00, &00, &25, &00
+    EQUB &06, &00, &51, &00
+    EQUB &00, &00, &21, &00
+    EQUB &06, &00, &51, &00
+    EQUB &00, &00, &51, &00
+    EQUB &04, &00, &51, &6D
+    EQUB &00, &00, &21, &00
+    EQUB &06, &00, &21, &79
+    EQUB &00, &00, &51, &00
+    EQUB &06, &31, &21, &81
+    EQUB &00, &00, &51, &00
+    EQUB &06, &35, &55, &85
+    EQUB &00, &00, &55, &00
+    EQUB &04, &39, &59, &89
+    EQUB &00, &00, &59, &00
+    EQUB &06, &3D, &5D, &00
+    EQUB &00, &00, &5D, &00
+    EQUB &06, &41, &5D, &8D
+    EQUB &00, &00, &2D, &00
+    EQUB &06, &00, &5D, &00
+    EQUB &00, &00, &5D, &00
+    EQUB &04, &00, &5D, &79
+    EQUB &00, &00, &2D, &00
+    EQUB &06, &00, &2D, &85
+    EQUB &00, &00, &5D, &00
+    EQUB &06, &00, &2D, &8D
+    EQUB &00, &00, &5D, &00
+    EQUB &06, &00, &2D, &00
+    EQUB &00, &00, &5D, &00
+    EQUB &04, &00, &5D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &06, &3D, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &06, &00, &5D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &06, &00, &5D, &00
+    EQUB &00, &00, &5D, &00
+    EQUB &04, &00, &5D, &79
+    EQUB &00, &00, &2D, &00
+    EQUB &06, &00, &2D, &85
+    EQUB &00, &00, &5D, &00
+    EQUB &06, &00, &2D, &8D
+    EQUB &00, &00, &5D, &00
+    EQUB &06, &00, &2D, &00
+    EQUB &00, &00, &5D, &00
+    EQUB &04, &00, &5D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &06, &00, &2D, &85
+    EQUB &00, &00, &2D, &00
+    EQUB &06, &39, &55, &00
+    EQUB &00, &00, &25, &00
+    EQUB &06, &00, &55, &00
+    EQUB &00, &00, &55, &00
+    EQUB &04, &00, &55, &71
+    EQUB &00, &00, &25, &00
+    EQUB &06, &00, &25, &7D
+    EQUB &00, &00, &55, &00
+    EQUB &06, &00, &25, &85
+    EQUB &00, &00, &55, &00
+    EQUB &06, &00, &25, &00
+    EQUB &00, &00, &55, &00
+    EQUB &04, &00, &55, &00
+    EQUB &00, &00, &25, &00
+    EQUB &06, &00, &25, &00
+    EQUB &00, &00, &25, &00
+    EQUB &06, &00, &55, &00
+    EQUB &00, &00, &25, &00
+    EQUB &06, &00, &55, &00
+    EQUB &00, &00, &55, &00
+    EQUB &04, &00, &55, &71
+    EQUB &00, &00, &25, &00
+    EQUB &06, &00, &25, &7D
+    EQUB &00, &00, &55, &00
+    EQUB &06, &00, &25, &85
+    EQUB &00, &00, &55, &00
+    EQUB &06, &00, &25, &00
+    EQUB &00, &00, &55, &00
+    EQUB &04, &00, &55, &00
+    EQUB &00, &00, &25, &00
+    EQUB &06, &00, &25, &81
+    EQUB &00, &00, &25, &00
+    EQUB &06, &35, &51, &00
+    EQUB &00, &00, &21, &00
+    EQUB &06, &00, &51, &00
+    EQUB &00, &00, &51, &00
+    EQUB &04, &00, &51, &6D
+    EQUB &00, &00, &21, &00
+    EQUB &06, &00, &21, &79
+    EQUB &00, &00, &51, &00
+    EQUB &06, &00, &21, &81
+    EQUB &00, &00, &51, &00
+    EQUB &06, &00, &21, &00
+    EQUB &00, &00, &51, &00
+    EQUB &04, &00, &51, &00
+    EQUB &00, &00, &21, &00
+    EQUB &06, &31, &21, &00
+    EQUB &00, &00, &21, &00
+    EQUB &06, &00, &51, &00
+    EQUB &00, &00, &21, &00
+    EQUB &06, &00, &51, &00
+    EQUB &00, &00, &51, &00
+    EQUB &04, &00, &51, &6D
+    EQUB &00, &00, &21, &00
+    EQUB &06, &00, &21, &79
+    EQUB &00, &00, &51, &00
+    EQUB &06, &00, &21, &81
+    EQUB &00, &00, &51, &00
+    EQUB &06, &35, &59, &89
+    EQUB &00, &00, &59, &00
+    EQUB &04, &3D, &61, &91
+    EQUB &00, &00, &61, &00
+    EQUB &06, &31, &51, &81
+    EQUB &00, &00, &51, &00
+    EQUB &06, &35, &65, &95
+    EQUB &00, &00, &65, &00
+    EQUB &06, &00, &65, &00
+    EQUB &00, &00, &65, &00
+    EQUB &04, &2D, &5D, &8D
+    EQUB &00, &00, &5D, &00
+    EQUB &06, &00, &5D, &00
+    EQUB &00, &00, &5D, &00
+    EQUB &06, &21, &65, &95
+    EQUB &00, &00, &65, &00
+    EQUB &06, &00, &65, &00
+    EQUB &00, &00, &65, &00
+    EQUB &04, &15, &75, &A5
+    EQUB &00, &00, &75, &00
+    EQUB &06, &00, &75, &00
+    EQUB &00, &00, &75, &00
+    EQUB &06, &05, &35, &79
+    EQUB &00, &00, &00, &00
+    EQUB &06, &00, &00, &00
+    EQUB &00, &00, &00, &00
+    EQUB &04, &FF, &00, &FF
+    EQUB &00, &00, &00, &00
+    EQUB &06, &00, &00, &00
+    EQUB &00, &00, &00, &00
+    EQUB &06, &2D, &49, &6D
+    EQUB &00, &00, &00, &00
+    EQUB &06, &00, &00, &00
+    EQUB &00, &00, &00, &00
+    EQUB &04, &29, &45, &75
+    EQUB &00, &00, &00, &00
+    EQUB &06, &00, &00, &00
+    EQUB &00, &00, &00, &00
+    EQUB &06, &3D, &00, &A0
+    EQUB &00, &FF, &00, &A0
+    EQUB &05, &3D, &00, &A0
+    EQUB &05, &FF, &00, &A0
+    EQUB &04, &00, &00, &A0
+    EQUB &00, &00, &00, &A0
+    EQUB &05, &00, &00, &A0
+    EQUB &05, &00, &00, &A0
+    EQUB &06, &00, &00, &96
+    EQUB &00, &00, &00, &00
+    EQUB &05, &00, &00, &A0
+    EQUB &05, &00, &00, &A0
+    EQUB &04, &00, &00, &96
+    EQUB &00, &00, &00, &A0
+    EQUB &05, &29, &00, &8C
+    EQUB &05, &FF, &00, &8C
+    EQUB &06, &3D, &00, &96
+    EQUB &00, &FF, &00, &96
+    EQUB &05, &3D, &00, &96
+    EQUB &05, &FF, &00, &8C
+    EQUB &04, &00, &00, &8C
+    EQUB &00, &00, &00, &8C
+    EQUB &05, &00, &00, &82
+    EQUB &05, &00, &00, &82
+    EQUB &06, &00, &00, &6E
+    EQUB &00, &00, &00, &00
+    EQUB &05, &00, &00, &8C
+    EQUB &05, &00, &00, &82
+    EQUB &04, &00, &00, &A0
+    EQUB &00, &00, &00, &A0
+    EQUB &05, &00, &00, &A0
+    EQUB &05, &00, &00, &00
+    EQUB &06, &2D, &00, &A0
+    EQUB &00, &FF, &00, &96
+    EQUB &05, &2D, &00, &8C
+    EQUB &05, &FF, &00, &82
+    EQUB &04, &00, &00, &A0
+    EQUB &00, &00, &00, &96
+    EQUB &05, &00, &00, &8C
+    EQUB &05, &00, &00, &82
+    EQUB &06, &00, &00, &78
+    EQUB &00, &00, &00, &78
+    EQUB &05, &00, &00, &82
+    EQUB &05, &00, &00, &82
+    EQUB &04, &00, &00, &8C
+    EQUB &00, &00, &00, &8C
+    EQUB &05, &19, &00, &96
+    EQUB &05, &FF, &00, &96
+    EQUB &06, &2D, &00, &A0
+    EQUB &00, &FF, &00, &00
+    EQUB &05, &2D, &00, &A0
+    EQUB &05, &FF, &00, &00
+    EQUB &04, &00, &00, &A0
+    EQUB &00, &00, &00, &A0
+    EQUB &05, &00, &00, &8C
+    EQUB &05, &00, &00, &00
+    EQUB &06, &00, &00, &A0
+    EQUB &00, &00, &00, &A0
+    EQUB &05, &00, &00, &96
+    EQUB &05, &00, &00, &96
+    EQUB &04, &00, &00, &78
+    EQUB &00, &00, &00, &82
+    EQUB &05, &00, &00, &8C
+    EQUB &05, &00, &00, &96
+    EQUB &06, &3D, &6D, &A0
+    EQUB &00, &FF, &00, &A0
+    EQUB &05, &3D, &6D, &A0
+    EQUB &05, &FF, &00, &A0
+    EQUB &04, &00, &6D, &A0
+    EQUB &00, &00, &00, &A0
+    EQUB &05, &00, &6D, &A0
+    EQUB &05, &00, &6D, &A0
+    EQUB &06, &00, &00, &96
+    EQUB &00, &00, &6D, &00
+    EQUB &05, &00, &00, &A0
+    EQUB &05, &00, &6D, &A0
+    EQUB &04, &00, &6D, &96
+    EQUB &00, &00, &00, &A0
+    EQUB &05, &29, &6D, &8C
+    EQUB &05, &FF, &6D, &00
+    EQUB &06, &3D, &6D, &96
+    EQUB &00, &FF, &00, &96
+    EQUB &05, &3D, &6D, &96
+    EQUB &05, &FF, &00, &8C
+    EQUB &04, &00, &6D, &8C
+    EQUB &00, &00, &00, &8C
+    EQUB &05, &00, &6D, &82
+    EQUB &05, &00, &6D, &82
+    EQUB &06, &00, &00, &6E
+    EQUB &00, &00, &6D, &00
+    EQUB &05, &00, &00, &8C
+    EQUB &05, &00, &6D, &82
+    EQUB &04, &00, &6D, &A0
+    EQUB &00, &00, &00, &A0
+    EQUB &05, &00, &6D, &A0
+    EQUB &05, &00, &6D, &00
+    EQUB &06, &2D, &79, &A0
+    EQUB &00, &FF, &00, &96
+    EQUB &05, &2D, &79, &8C
+    EQUB &05, &FF, &00, &82
+    EQUB &04, &00, &79, &A0
+    EQUB &00, &00, &00, &96
+    EQUB &05, &00, &79, &8C
+    EQUB &05, &00, &79, &82
+    EQUB &06, &00, &00, &78
+    EQUB &00, &00, &79, &78
+    EQUB &05, &00, &00, &82
+    EQUB &05, &00, &79, &82
+    EQUB &04, &00, &79, &8C
+    EQUB &00, &00, &00, &8C
+    EQUB &05, &19, &79, &96
+    EQUB &05, &FF, &79, &96
+    EQUB &06, &2D, &79, &A0
+    EQUB &00, &FF, &00, &00
+    EQUB &05, &2D, &79, &A0
+    EQUB &05, &FF, &00, &00
+    EQUB &04, &00, &79, &A0
+    EQUB &00, &00, &00, &A0
+    EQUB &05, &00, &79, &8C
+    EQUB &05, &00, &79, &00
+    EQUB &06, &00, &00, &A0
+    EQUB &00, &00, &79, &A0
+    EQUB &05, &00, &00, &96
+    EQUB &05, &00, &79, &96
+    EQUB &04, &00, &79, &78
+    EQUB &00, &00, &00, &82
+    EQUB &05, &00, &79, &8C
+    EQUB &05, &00, &79, &00
+    EQUB &06, &21, &6D, &FF
+    EQUB &00, &FF, &00, &00
+    EQUB &05, &21, &6D, &00
+    EQUB &05, &FF, &00, &00
+    EQUB &04, &00, &6D, &00
+    EQUB &00, &00, &00, &00
+    EQUB &05, &00, &6D, &00
+    EQUB &05, &00, &6D, &00
+    EQUB &06, &00, &00, &00
+    EQUB &00, &00, &6D, &00
+    EQUB &05, &2D, &00, &00
+    EQUB &05, &FF, &6D, &00
+    EQUB &04, &00, &6D, &00
+    EQUB &00, &00, &00, &00
+    EQUB &05, &35, &6D, &00
+    EQUB &05, &FF, &6D, &00
+    EQUB &06, &3D, &6D, &00
+    EQUB &00, &FF, &00, &00
+    EQUB &05, &3D, &6D, &00
+    EQUB &05, &FF, &00, &00
+    EQUB &04, &00, &6D, &00
+    EQUB &00, &00, &00, &00
+    EQUB &05, &00, &6D, &00
+    EQUB &05, &00, &6D, &00
+    EQUB &06, &00, &00, &00
+    EQUB &00, &00, &6D, &00
+    EQUB &05, &35, &00, &00
+    EQUB &05, &FF, &6D, &00
+    EQUB &04, &00, &6D, &00
+    EQUB &00, &00, &00, &00
+    EQUB &05, &29, &6D, &00
+    EQUB &05, &FF, &6D, &00
+    EQUB &06, &21, &6D, &00
+    EQUB &00, &FF, &00, &00
+    EQUB &05, &21, &6D, &00
+    EQUB &05, &FF, &00, &00
+    EQUB &04, &00, &6D, &00
+    EQUB &00, &00, &00, &00
+    EQUB &05, &00, &6D, &00
+    EQUB &05, &00, &6D, &00
+    EQUB &06, &00, &00, &00
+    EQUB &00, &00, &6D, &00
+    EQUB &05, &2D, &00, &00
+    EQUB &05, &FF, &6D, &00
+    EQUB &04, &00, &6D, &00
+    EQUB &00, &00, &00, &00
+    EQUB &05, &35, &6D, &00
+    EQUB &05, &FF, &6D, &00
+    EQUB &06, &3D, &6D, &00
+    EQUB &00, &FF, &00, &00
+    EQUB &05, &3D, &6D, &00
+    EQUB &05, &FF, &00, &00
+    EQUB &04, &00, &6D, &00
+    EQUB &00, &00, &00, &00
+    EQUB &05, &00, &6D, &00
+    EQUB &05, &00, &6D, &00
+    EQUB &06, &35, &00, &00
+    EQUB &00, &FF, &6D, &00
+    EQUB &05, &00, &00, &00
+    EQUB &05, &00, &6D, &00
+    EQUB &04, &00, &6D, &00
+    EQUB &00, &00, &00, &00
+    EQUB &05, &00, &6D, &00
+    EQUB &05, &00, &6D, &00
+    EQUB &06, &2D, &6D, &00
+    EQUB &00, &FF, &00, &00
+    EQUB &05, &00, &6D, &00
+    EQUB &05, &00, &00, &00
+    EQUB &04, &00, &6D, &00
+    EQUB &00, &00, &00, &00
+    EQUB &05, &21, &6D, &00
+    EQUB &05, &FF, &6D, &00
+    EQUB &06, &00, &00, &00
+    EQUB &00, &00, &6D, &00
+    EQUB &05, &00, &00, &00
+    EQUB &05, &00, &6D, &00
+    EQUB &04, &29, &6D, &00
+    EQUB &00, &FF, &00, &00
+    EQUB &05, &00, &6D, &00
+    EQUB &05, &00, &6D, &00
+    EQUB &06, &00, &6D, &00
+    EQUB &00, &00, &00, &00
+    EQUB &05, &2D, &6D, &00
+    EQUB &05, &FF, &00, &00
+    EQUB &04, &00, &6D, &00
+    EQUB &00, &00, &00, &00
+    EQUB &05, &00, &6D, &00
+    EQUB &05, &00, &6D, &00
+    EQUB &06, &31, &00, &00
+    EQUB &00, &FF, &6D, &00
+    EQUB &05, &00, &00, &00
+    EQUB &05, &00, &6D, &00
+    EQUB &04, &31, &6D, &00
+    EQUB &00, &FF, &00, &00
+    EQUB &05, &00, &6D, &00
+    EQUB &05, &00, &6D, &00
+    EQUB &06, &35, &65, &00
+    EQUB &00, &FF, &00, &00
+    EQUB &05, &00, &65, &00
+    EQUB &05, &00, &00, &00
+    EQUB &04, &00, &65, &00
+    EQUB &00, &00, &00, &00
+    EQUB &05, &00, &65, &00
+    EQUB &05, &00, &65, &00
+    EQUB &06, &35, &00, &00
+    EQUB &00, &FF, &65, &00
+    EQUB &05, &00, &00, &00
+    EQUB &05, &00, &65, &00
+    EQUB &04, &00, &65, &00
+    EQUB &00, &00, &00, &00
+    EQUB &05, &00, &65, &00
+    EQUB &05, &00, &65, &00
+    EQUB &06, &35, &75, &00
+    EQUB &00, &FF, &00, &00
+    EQUB &05, &00, &75, &00
+    EQUB &05, &00, &00, &00
+    EQUB &04, &35, &75, &00
+    EQUB &00, &FF, &00, &00
+    EQUB &05, &00, &75, &00
+    EQUB &05, &00, &75, &00
+    EQUB &06, &35, &00, &00
+    EQUB &00, &FF, &75, &00
+    EQUB &05, &35, &75, &00
+    EQUB &05, &FF, &75, &00
+    EQUB &04, &35, &75, &00
+    EQUB &00, &FF, &75, &00
+    EQUB &05, &35, &75, &00
+    EQUB &05, &FF, &75, &00
+    EQUB &06, &3D, &3D, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &04, &00, &3D, &00
+    EQUB &00, &00, &6D, &00
+    EQUB &00, &45, &59, &00
+    EQUB &00, &00, &49, &00
+    EQUB &06, &00, &3D, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &06, &00, &3D, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &04, &49, &3D, &00
+    EQUB &00, &00, &6D, &00
+    EQUB &00, &00, &59, &00
+    EQUB &00, &00, &49, &00
+    EQUB &06, &00, &3D, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &00, &3D, &3D, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &04, &00, &3D, &00
+    EQUB &00, &00, &6D, &00
+    EQUB &00, &00, &59, &00
+    EQUB &00, &00, &49, &00
+    EQUB &06, &35, &3D, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &06, &00, &3D, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &04, &49, &3D, &00
+    EQUB &00, &00, &6D, &00
+    EQUB &00, &00, &59, &00
+    EQUB &00, &00, &29, &00
+    EQUB &06, &2D, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &04, &00, &2D, &00
+    EQUB &00, &00, &5D, &00
+    EQUB &00, &00, &49, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &06, &00, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &06, &29, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &04, &00, &2D, &00
+    EQUB &00, &00, &5D, &00
+    EQUB &00, &21, &49, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &06, &00, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &04, &00, &2D, &00
+    EQUB &00, &00, &5D, &00
+    EQUB &00, &00, &49, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &06, &35, &2D, &6D
+    EQUB &00, &00, &2D, &5D
+    EQUB &06, &00, &2D, &6D
+    EQUB &00, &00, &2D, &79
+    EQUB &04, &39, &2D, &75
+    EQUB &00, &00, &5D, &71
+    EQUB &00, &00, &59, &75
+    EQUB &00, &00, &39, &81
+    EQUB &06, &3D, &3D, &79
+    EQUB &00, &00, &3D, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &04, &00, &3D, &00
+    EQUB &00, &00, &6D, &00
+    EQUB &00, &45, &59, &00
+    EQUB &00, &00, &49, &00
+    EQUB &06, &00, &3D, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &06, &00, &3D, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &04, &49, &3D, &00
+    EQUB &00, &00, &6D, &00
+    EQUB &00, &00, &59, &00
+    EQUB &00, &00, &49, &00
+    EQUB &06, &00, &3D, &00
+    EQUB &00, &00, &3D, &FF
+    EQUB &00, &3D, &3D, &79
+    EQUB &00, &00, &3D, &00
+    EQUB &04, &00, &3D, &81
+    EQUB &00, &00, &6D, &00
+    EQUB &00, &00, &59, &79
+    EQUB &00, &00, &49, &00
+    EQUB &06, &35, &3D, &75
+    EQUB &00, &00, &3D, &FF
+    EQUB &06, &00, &3D, &75
+    EQUB &00, &00, &3D, &6D
+    EQUB &04, &49, &3D, &65
+    EQUB &00, &00, &6D, &00
+    EQUB &00, &00, &59, &59
+    EQUB &00, &00, &29, &00
+    EQUB &06, &2D, &2D, &6D
+    EQUB &00, &00, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &04, &00, &2D, &00
+    EQUB &00, &00, &5D, &00
+    EQUB &00, &00, &49, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &06, &00, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &06, &29, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &04, &00, &2D, &00
+    EQUB &00, &00, &5D, &00
+    EQUB &00, &21, &49, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &06, &00, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &04, &00, &2D, &00
+    EQUB &00, &00, &5D, &00
+    EQUB &00, &00, &49, &00
+    EQUB &00, &00, &3D, &FF
+    EQUB &06, &2D, &2D, &6D
+    EQUB &00, &00, &2D, &00
+    EQUB &06, &00, &2D, &00
+    EQUB &00, &00, &2D, &FF
+    EQUB &04, &29, &2D, &75
+    EQUB &00, &00, &5D, &00
+    EQUB &00, &00, &59, &00
+    EQUB &00, &00, &39, &FF
+    EQUB &06, &3D, &3D, &79
+    EQUB &00, &00, &3D, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &04, &00, &3D, &00
+    EQUB &00, &00, &6D, &00
+    EQUB &00, &45, &59, &00
+    EQUB &00, &00, &49, &00
+    EQUB &06, &00, &3D, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &06, &00, &3D, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &04, &49, &3D, &00
+    EQUB &00, &00, &6D, &00
+    EQUB &00, &00, &59, &00
+    EQUB &00, &00, &49, &00
+    EQUB &06, &00, &3D, &00
+    EQUB &00, &00, &3D, &FF
+    EQUB &00, &3D, &3D, &79
+    EQUB &00, &00, &3D, &00
+    EQUB &04, &00, &3D, &81
+    EQUB &00, &00, &6D, &00
+    EQUB &00, &00, &59, &79
+    EQUB &00, &00, &49, &00
+    EQUB &06, &35, &3D, &75
+    EQUB &00, &00, &3D, &FF
+    EQUB &06, &00, &3D, &75
+    EQUB &00, &00, &3D, &6D
+    EQUB &04, &49, &3D, &65
+    EQUB &00, &00, &6D, &00
+    EQUB &00, &00, &59, &6D
+    EQUB &00, &00, &29, &00
+    EQUB &06, &2D, &2D, &89
+    EQUB &00, &00, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &04, &00, &2D, &00
+    EQUB &00, &00, &5D, &00
+    EQUB &00, &00, &49, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &06, &35, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &06, &00, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &04, &00, &2D, &00
+    EQUB &00, &00, &5D, &00
+    EQUB &00, &00, &49, &00
+    EQUB &00, &00, &3D, &00
+    EQUB &06, &49, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &00, &00, &2D, &00
+    EQUB &04, &00, &2D, &00
+    EQUB &00, &00, &5D, &00
+    EQUB &00, &00, &49, &00
+    EQUB &00, &00, &3D, &FF
+    EQUB &04, &59, &2D, &79
+    EQUB &00, &00, &2D, &00
+    EQUB &04, &00, &2D, &00
+    EQUB &00, &00, &2D, &FF
+    EQUB &04, &51, &2D, &75
+    EQUB &04, &00, &5D, &00
+    EQUB &04, &00, &49, &00
+    EQUB &04, &00, &3D, &FF
+
+\ ;     c1 c2                                                         # &00 = silence, otherwise pitch
+.high_score_music_data
+    EQUB &81, &21
+    EQUB &75, &51
+    EQUB &6D, &21
+    EQUB &81, &51
+    EQUB &00, &21
+    EQUB &00, &51
+    EQUB &00, &21
+    EQUB &00, &51
+    EQUB &81, &21
+    EQUB &75, &51
+    EQUB &6D, &21
+    EQUB &81, &51
+    EQUB &00, &21
+    EQUB &00, &51
+    EQUB &00, &21
+    EQUB &00, &51
+    EQUB &81, &19
+    EQUB &75, &49
+    EQUB &6D, &19
+    EQUB &79, &49
+    EQUB &00, &19
+    EQUB &00, &49
+    EQUB &00, &19
+    EQUB &00, &49
+    EQUB &81, &19
+    EQUB &75, &49
+    EQUB &6D, &19
+    EQUB &79, &49
+    EQUB &00, &19
+    EQUB &00, &49
+    EQUB &00, &19
+    EQUB &00, &49
+    EQUB &81, &15
+    EQUB &75, &45
+    EQUB &6D, &15
+    EQUB &75, &45
+    EQUB &00, &15
+    EQUB &00, &45
+    EQUB &00, &15
+    EQUB &00, &45
+    EQUB &81, &15
+    EQUB &75, &45
+    EQUB &6D, &15
+    EQUB &75, &45
+    EQUB &00, &15
+    EQUB &00, &45
+    EQUB &00, &15
+    EQUB &00, &45
+    EQUB &71, &11
+    EQUB &71, &41
+    EQUB &71, &11
+    EQUB &71, &41
+    EQUB &71, &11
+    EQUB &71, &41
+    EQUB &71, &11
+    EQUB &71, &41
+    EQUB &6D, &0D
+    EQUB &6D, &3D
+    EQUB &6D, &0D
+    EQUB &6D, &3D
+    EQUB &6D, &0D
+    EQUB &6D, &3D
+    EQUB &6D, &0D
+    EQUB &6D, &3D
+    EQUB &81, &21
+    EQUB &75, &51
+    EQUB &6D, &21
+    EQUB &81, &51
+    EQUB &75, &21
+    EQUB &6D, &51
+    EQUB &81, &21
+    EQUB &75, &51
+    EQUB &6D, &21
+    EQUB &81, &51
+    EQUB &75, &21
+    EQUB &6D, &51
+    EQUB &81, &21
+    EQUB &75, &51
+    EQUB &6D, &21
+    EQUB &81, &51
+    EQUB &75, &21
+    EQUB &6D, &51
+    EQUB &8D, &21
+    EQUB &00, &51
+    EQUB &8D, &21
+    EQUB &00, &51
+    EQUB &00, &21
+    EQUB &00, &51
+    EQUB &89, &0D
+    EQUB &00, &3D
+    EQUB &89, &0D
+    EQUB &00, &3D
+    EQUB &00, &0D
+    EQUB &00, &3D
+    EQUB &00, &0D
+    EQUB &00, &3D
+    EQUB &81, &0D
+    EQUB &75, &3D
+    EQUB &6D, &0D
+    EQUB &81, &3D
+    EQUB &75, &0D
+    EQUB &6D, &3D
+    EQUB &81, &0D
+    EQUB &00, &3D
+    EQUB &00, &21
+    EQUB &00, &51
+    EQUB &00, &21
+    EQUB &00, &51
+    EQUB &81, &21
+    EQUB &81, &51
+    EQUB &81, &21
+    EQUB &81, &51
+    EQUB &71, &11
+    EQUB &71, &41
+    EQUB &71, &11
+    EQUB &71, &41
+    EQUB &71, &11
+    EQUB &71, &41
+    EQUB &71, &11
+    EQUB &71, &41
+    EQUB &6D, &0D
+    EQUB &6D, &3D
+    EQUB &6D, &0D
+    EQUB &6D, &3D
+    EQUB &6D, &0D
+    EQUB &6D, &3D
+    EQUB &6D, &0D
+    EQUB &6D, &3D
+    EQUB &61, &01
+    EQUB &6D, &31
+    EQUB &61, &01
+    EQUB &6D, &31
+    EQUB &61, &01
+    EQUB &6D, &31
+    EQUB &61, &01
+    EQUB &6D, &31
+    EQUB &65, &05
+    EQUB &75, &35
+    EQUB &65, &05
+    EQUB &75, &35
+    EQUB &65, &05
+    EQUB &75, &35
+    EQUB &65, &05
+    EQUB &75, &35
+    EQUB &6D, &15
+    EQUB &81, &45
+    EQUB &6D, &15
+    EQUB &81, &45
+    EQUB &6D, &15
+    EQUB &81, &45
+    EQUB &6D, &15
+    EQUB &81, &45
+    EQUB &7D, &0D
+    EQUB &89, &3D
+    EQUB &7D, &0D
+    EQUB &89, &3D
+    EQUB &7D, &0D
+    EQUB &89, &3D
+    EQUB &7D, &0D
+    EQUB &89, &3D
+    EQUB &61, &01
+    EQUB &6D, &31
+    EQUB &61, &01
+    EQUB &6D, &31
+    EQUB &61, &01
+    EQUB &6D, &31
+    EQUB &61, &01
+    EQUB &6D, &31
+    EQUB &65, &05
+    EQUB &75, &35
+    EQUB &65, &05
+    EQUB &75, &35
+    EQUB &65, &05
+    EQUB &75, &35
+    EQUB &65, &05
+    EQUB &75, &35
+    EQUB &6D, &15
+    EQUB &81, &45
+    EQUB &6D, &15
+    EQUB &81, &45
+    EQUB &6D, &15
+    EQUB &81, &45
+    EQUB &6D, &15
+    EQUB &81, &45
+    EQUB &7D, &0D
+    EQUB &89, &3D
+    EQUB &7D, &0D
+    EQUB &89, &3D
+    EQUB &7D, &0D
+    EQUB &89, &3D
+    EQUB &7D, &0D
+    EQUB &89, &3D
+
+\ ;     chan  vol   pitch dur
+.sound_data_a280
+    EQUB &10, &00, &02, &00, &00, &00, &02, &00    \ &00                                 # Title screen channel 0
+    EQUB &12, &00, &03, &00, &00, &00, &02, &00    \ &08                                 # Title screen channel 2
+    EQUB &13, &00, &04, &00, &00, &00, &02, &00    \ &10                                 # Title screen channel 3
+    EQUB &11, &00, &01, &00, &00, &00, &02, &00    \ &18                                 # Title screen channel 1
+    EQUB &13, &00, &0A, &00, &00, &00, &05, &00    \ &20                                 # High score channel 3
+    EQUB &11, &00, &00, &00, &00, &00, &05, &00    \ &28                                 # High score channel 1
+    EQUB &12, &00, &00, &00, &00, &00, &05, &00    \ &30                                 # High score channel 2
+
+.timer_block
+    EQUB &FF, &FF, &FF, &FF, &FF
+
+.start_title_screen_music
+    LDA music_muted
+    BNE leave_a2e7
+    LDX #&01
+    STX channel_one_envelope
+    DEX                             \ 0
+    STX music_address_low
+    LDA #HI(title_screen_music_data)\ &9300 = title_screen_music_data
+    STA music_address_high
+    LDA #LO(title_screen_music_event_handler)\ &a305 = title_screen_music_event_handler
+    STA evntv
+    LDA #&A3
+    STA event_vector_high
+.enable_interval_timer_events
+    LDA #&0E                        \ Enable event
+    LDX #&05                        \ interval timer crossing zero
+    JSR osbyte                      \ OSBYTE
+.write_timer_block
+    LDX #LO(timer_block)            \ &a2b8 = timer_block
+    LDY #&A2
+    LDA #&04                        \ Write interval timer
+    JMP (wordv)
+.leave_a2e7
+    RTS
+
+.start_high_score_music
+    LDA music_muted
+    BNE leave_a2e7
+    LDA #&00
+    STA music_address_low
+    LDA #HI(high_score_music_data)  \ &a100 = high_score_music_data
+    STA music_address_high
+    LDA #&C0
+    STA high_score_music_notes_remaining
+    LDA #LO(high_score_music_event_handler)\ &a393 = high_score_music_event_handler
+    STA evntv
+    LDA #&A3
+    STA event_vector_high
+    BNE enable_interval_timer_events\ Always branches
+
+.title_screen_music_event_handler
+    PHP
+    TXA
+    PHA
+    TYA
+    PHA
+    LDA #&F6
+    STA timer_block
+    LDX music_address_high
+    CPX #&9A
+    BNE not_envelope_five
+    LDA #&05
+    STA channel_one_envelope
+.not_envelope_five
+    CPX #&9C
+    BNE not_envelope_one
+    LDA #&01
+    STA channel_one_envelope
+.not_envelope_one
+    LDY #&00
+    LDA (music_address),Y
+    BEQ skip_channel_zero
+    STA sound_data_a280 + 4         \ sound_data + &00 + 4 (pitch)
+    JSR title_screen_play_sound
+.skip_channel_zero
+    LDA #&03
+    STA sound_data_a280 + 10        \ sound_data + &08 + 2 (volume)
+    LDY #&01
+    LDA (music_address),Y
+    TAX
+    BEQ skip_channel_two
+    INX
+    BNE not_silent_channel_two
+    STX sound_data_a280 + 10        \ sound_data + &08 + 2 (volume)
+.not_silent_channel_two
+    STA sound_data_a280 + 12        \ sound_data + &08 + 4 (pitch)
+    JSR title_screen_play_sound
+.skip_channel_two
+    LDA #&04
+    STA sound_data_a280 + 18        \ sound_data + &10 + 2 (volume)
+    LDY #&02
+    LDA (music_address),Y
+    TAX
+    BEQ skip_channel_three
+    INX
+    BNE not_silent_channel_three
+    STX sound_data_a280 + 18        \ sound_data + &10 + 2 (volume)
+.not_silent_channel_three
+    STA sound_data_a280 + 20        \ sound_data + &10 + 4 (pitch)
+    JSR title_screen_play_sound
+.skip_channel_three
+    LDA channel_one_envelope
+    STA sound_data_a280 + 26        \ sound_data + &18 + 2 (volume)
+    LDY #&03
+    LDA (music_address),Y
+    TAX
+    BEQ skip_channel_one
+    INX
+    BNE not_silent_channel_one
+    STX sound_data_a280 + 26        \ sound_data + &18 + 2 (volume)
+.not_silent_channel_one
+    STA sound_data_a280 + 28        \ sound_data + &18 + 4 (pitch)
+    JSR title_screen_play_sound
+.skip_channel_one
+    JSR write_timer_block
+    LDA music_address
+    CLC
+    ADC #&04
+    STA music_address
+    BCC not_end_of_title_screen_music
+    INC music_address_high
+    LDA music_address_high
+    CMP #&A1
+    BNE not_end_of_title_screen_music
+    LDA #&95
+    STA music_address_high
+.not_end_of_title_screen_music
+    PLA
+    TAY
+    PLA
+    TAX
+    PLP
+    RTS
+
+.high_score_music_event_handler
+    PHP
+    TXA
+    PHA
+    TYA
+    PHA
+    LDA #&F0
+    STA timer_block
+    LDY #&00
+    LDA (music_address),Y
+    BEQ set_channel_one_envelope
+    LDA #&0A
+.set_channel_one_envelope
+    STA sound_data_a280 + 42        \ sound_data + &28 + 2 (volume)
+    STA sound_data_a280 + 50        \ sound_data + &30 + 2 (volume)
+    LDA (music_address),Y
+    STA sound_data_a280 + 44        \ sound_data + &28 + 4 (pitch)
+    CLC
+    ADC #&30
+    STA sound_data_a280 + 52        \ sound_data + &30 + 4 (pitch)
+    LDX #&A8
+    JSR high_score_play_sound
+    LDX #&B0
+    JSR high_score_play_sound
+    LDY #&01
+    LDA (music_address),Y
+    STA sound_data_a280 + 36        \ sound_data + &20 + 4 (pitch)
+    LDX #&A0
+    JSR high_score_play_sound
+    JSR write_timer_block
+    LDA music_address_low
+    CLC
+    ADC #&02
+    STA music_address_low
+    BCC skip_page_a3da
+    INC music_address_high
+.skip_page_a3da
+    DEC high_score_music_notes_remaining
+    BNE not_end_of_high_score_music
+    LDA #&00
+    STA music_address_low
+    LDA #HI(high_score_music_data)  \ &a100 = high_score_music_data
+    STA music_address_high
+.not_end_of_high_score_music
+    PLA
+    TAY
+    PLA
+    TAX
+    PLP
+    RTS
+
+.title_screen_play_sound
+    TYA
+    ASL A
+    ASL A
+    ASL A
+    ORA #&80
+    TAX
+.high_score_play_sound
+    LDA #&07
+    LDY #HI(sound_data_a280)        \ &a280 = sound_data
+    JMP (wordv)
+
+

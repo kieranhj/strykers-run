@@ -1,0 +1,193 @@
+\ title.6502 - SCREEN: the loading picture, run by SRRUN before the banks load.
+\
+\ The Stairway to Hell disc's build of the title loader (decision 1): the disassembly's
+\ tape-version StrykerSCR moved up a page to &2100, its zero page moved from &70 to &C0, and its
+\ entry routine rewritten (MODE 2 by VDU 22 and a smaller display window). The picture data and
+\ the unpacker are the disassembly's; the entry routine is disassembled from the STH file.
+\ Hand-written; this file is INCLUDEd inside its SECTION by src/main.6502.
+
+column_address      = &C0       \ &C0-&C1: top of the current column on screen
+column_address_low  = &C0
+column_address_high = &C1
+data_address        = &C2       \ &C2-&C3: packed data
+data_address_low    = &C2
+data_address_high   = &C3
+screen_address      = &C4       \ &C4-&C5: where the next byte goes
+screen_address_low  = &C4
+screen_address_high = &C5
+title_offset        = &C6
+
+\ unused
+    EQUB &00
+
+\ The packed image: columns of run-length codes, top byte = run type:
+\   11 ...... run of 3, 10 ...... run of 1, 01 ...... run of 2, 00 ...... next byte = run
+\ six bits index mask_table / give the pixel value; &00 ends a column, a negative byte after
+\ it ends the data.
+INCLUDE "title_data.6502"
+
+.run_game_command               \ unused by SCREEN (SETSCR, the standard version's, uses it)
+    EQUS "RUN GAME", 13
+
+\ unused
+    EQUB &0D
+
+.packed_data_addresses_high_table
+    EQUB HI(packed_data_zero), HI(packed_data_one)
+
+\ unused
+    EQUB &00
+
+.packed_data_addresses_low_table
+    EQUB LO(packed_data_zero), LO(packed_data_one)
+
+\ unused
+    EQUB &00
+
+.mask_table
+    EQUB &FF, &AA, &55, &00, &AA, &AA, &00, &00, &55, &00, &55, &00, &00, &00, &00, &00
+    EQUB &AA, &AA, &00, &00, &AA, &AA, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00
+    EQUB &55, &00, &55, &00, &00, &00, &00, &00, &55, &00, &55, &00, &00, &00, &00, &00
+    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00
+
+\ Called with A = screen address low, X = screen address high (bottom of the first column),
+\ Y = which image (0 = picture, 1 = logos).
+.unpack_screen_data
+    STX screen_address_high
+    STA screen_address_low
+    STX column_address_high
+    STA column_address_low
+    LDA packed_data_addresses_high_table,Y
+    STA data_address_high
+    LDA packed_data_addresses_low_table,Y
+    STA data_address_low
+    LDY #&00
+.unpack_screen_data_loop
+    LDA (data_address),Y            \ Get byte of packed data
+    BEQ end_of_column               \ Zero indicates end of column
+.not_end_of_column
+    TAX
+    BPL is_positive
+.is_negative
+    AND #&40
+    BNE is_run_length_3
+.is_run_length_1
+    TXA                             \ 10 ...... run length 1
+    AND #&3F
+    LDX #&01
+    BNE unpack_run                  \ Always branches
+.is_run_length_3
+    TXA                             \ 11 ...... run length 3
+    AND #&3F
+    LDX #&03
+    BNE unpack_run                  \ Always branches
+.is_positive
+    AND #&40
+    BEQ is_variable_run_length
+.is_run_length_2
+    TXA                             \ 01 ...... run length 2
+    AND #&3F
+    LDX #&02
+    BNE unpack_run                  \ Always branches
+.is_variable_run_length
+    INY                             \ 00 ...... use next byte for run length
+    BNE skip_page_1
+    INC data_address_high
+.skip_page_1
+    LDA (data_address),Y            \ Get byte of packed data for run length
+.unpack_run
+    STA pixel_value
+    STY title_offset
+    TAY
+    LDA mask_table,Y
+    STA pixel_mask
+    LDY title_offset
+    INY
+    BNE unpack_run_loop
+    INC data_address_high
+.unpack_run_loop
+    STY title_offset
+    LDY #&00
+    LDA (screen_address),Y
+pixel_mask = * + 1
+    AND #&FF                        \ actually AND pixel_mask
+pixel_value = * + 1
+    EOR #&FF                        \ actually EOR pixel_value
+    STA (screen_address),Y
+    LDY title_offset
+    LDA screen_address_low
+    AND #&07
+    BEQ move_up_a_group
+.move_up_a_row
+    DEC screen_address_low
+.next_byte_of_run
+    DEX
+    BNE unpack_run_loop
+    BEQ unpack_screen_data_loop     \ Always branches
+.move_up_a_group
+    DEC screen_address_high
+    DEC screen_address_high
+    LDA screen_address_low
+    SEC
+    SBC #&79
+    STA screen_address_low
+    BCS next_byte_of_run
+    DEC screen_address_high
+    BNE next_byte_of_run            \ Always branches
+.end_of_column
+    INY
+    BNE skip_page_2
+    INC data_address_high
+.skip_page_2
+    LDA (data_address),Y            \ Get byte of packed data
+    BPL next_column                 \ Negative indicates end of data
+    RTS
+.next_column
+    INY
+    BNE skip_page_3
+    INC data_address_high
+.skip_page_3
+    LDA column_address_low
+    CLC
+    ADC #&08                        \ Move right a column
+    STA column_address_low
+    BCC skip_page_column
+    INC column_address_high
+.skip_page_column
+    LDA column_address_high
+    STA screen_address_high
+    LDA column_address_low
+    STA screen_address_low
+    JMP unpack_screen_data_loop
+
+\ *RUN SCREEN enters here (STH build; disassembled from the file).
+.title_entry_point
+    LDA #22 : JSR oswrch            \ MODE 2
+    LDA #2  : JSR oswrch
+    LDA #6  : STA crtc_reg          \ R6: vertical displayed = 15 character rows
+    LDA #&0F : STA crtc_data
+    LDA #7  : STA crtc_reg          \ R7: vertical sync position
+    LDA #&1C : STA crtc_data
+    LDA #12 : STA crtc_reg          \ R12/R13: display from &5A80 (&0B50 * 8)
+    LDA #&0B : STA crtc_data
+    LDA #13 : STA crtc_reg
+    LDA #&50 : STA crtc_data
+    LDA #&9A                        \ Write to Video ULA control register and RAM copy
+    LDX #&14                        \ MODE 2 settings, cursor disabled
+    JSR osbyte
+    LDA #&01 : STA ula_palette      \ Set colour 0 to cyan
+    LDA #&67 : STA ula_palette      \ Set colour 6 to black
+    LDA #&87                        \ Plot image, its first column ending at &7D87
+    LDX #&7D
+    LDY #&00
+    JSR unpack_screen_data
+    LDA #&24                        \ Plot Stryker's Run and Superior Software logo at &7C24
+    LDX #&7C
+    LDY #&01
+    JMP unpack_screen_data
+
+\ The standard version's SETSCR ends by running the game; unused here.
+.title_run_game
+    LDX #LO(run_game_command)
+    LDY #HI(run_game_command)
+    JMP oscli

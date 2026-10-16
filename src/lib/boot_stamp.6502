@@ -1,0 +1,202 @@
+\ ******************************************************************
+\ *	boot_stamp.6502 - the build's own testimony, as a disc file
+\ ******************************************************************
+\ *	beeb-port-kit, MIT, Kieran Connell 2026. Baron syntax.
+\ *
+\ *	WHAT IT IS. Macros that assemble TWO disc files:
+\ *	  INFO   the stamp - the assembly time, "DEV build" unless
+\ *	         RELEASE, one line per compile flag that is on, the
+\ *	         version line under RELEASE. A plain text file, so
+\ *	         `*TYPE INFO` reads it back at ANY prompt, months later
+\ *	  !BOOT  a few bytes of 6502 that print the same stamp and then
+\ *	         OSCLI `RUN <file>`. `*OPT 4,2`, so SHIFT+BREAK *RUNs it
+\ *	A debug build looks like a normal one until the thing you are
+\ *	testing behaves oddly; a disc image with no date cannot be matched
+\ *	to a source tree. Both ports learned both the hard way, and both
+\ *	now stamp EVERY flag that changes what the disc contains (KC's
+\ *	rule), so a build cannot lie about itself.
+\ *
+\ *	WHY A FILE, NOT ONLY A BOOT MESSAGE (KC, Paradroid, 2026-09-11).
+\ *	The stamp was readable only in the seconds it scrolled past at
+\ *	boot, which is no use when the question - which build is this? -
+\ *	is asked of a disc image someone was given a week ago. As a file
+\ *	it answers at any prompt. `*TYPE` is the filing system's own
+\ *	command: it needs no language ROM and works on DFS 1.20
+\ *	(measured, below).
+\ *
+\ *	WHY *RUN AND NEVER *EXEC (hexwab, Paradroid, 2026-09-13). There
+\ *	used to be a second shape here, a text `!BOOT` of `*` commands
+\ *	`*EXEC`'d at a language prompt, and a BOOT_RUN switch to pick it;
+\ *	the kit kept it for dev builds. Two reasons it is gone:
+\ *	  - **`*EXEC` writes into `&1100-&1900`**, DFS's random-access
+\ *	    buffer area. A game that lives there - Paradroid does - is
+\ *	    running on the fact that `*LOAD`, and `*RUN` which is `*LOAD`
+\ *	    plus a jump, never touch it. `*EXEC` does, and so does CLOSING
+\ *	    an exec file, which is an implicit `*EXEC`. Paradroid's dev
+\ *	    disc went black with the CPU inside the DNFS ROM at `&ACB1`
+\ *	    the moment `OSBYTE 140` was added (loader.6502's contract), and
+\ *	    closing the file politely first hung identically.
+\ *	  - **`*EXEC` needs a language ROM to type into**: a B with no
+\ *	    BASIC stops at "Language?", and `*CONFIGURE LANG 11` types the
+\ *	    boot into Edit (../docs/target-portability.md 16).
+\ *	The stub needs neither, and prints without `REM`s. Nothing was
+\ *	lost with the text file: the stamp it used to `*TYPE` the stub
+\ *	prints itself, from the same macro, and `INFO` is still a disc
+\ *	file, so `*TYPE INFO` still answers at any prompt.
+\ *
+\ *	WHERE IT CAME FROM.
+\ *	  https://github.com/kieranhj/edge-beeb/blob/master/src/main.asm
+\ *	    (~1975-2033: one REM per flag, MUSIC_AKL and GFX_CPC stamped
+\ *	    OUTSIDE the RELEASE test because they are legal under it)
+\ *	  https://github.com/kieranhj/paradroid-beeb/blob/main/src/main.asm
+\ *	    (the DEBUG_ANY fold, ASSERT DEBUG_ANY = 0 under RELEASE,
+\ *	    VERSION_LINE in the DEBUG line's seat on a release; at b5ffa94
+\ *	    the INFO file and the write-the-stamp-once rule; at 61500a8 the
+\ *	    one boot shape)
+\ *	Edge's shape (a line per flag) is the one here; Paradroid's single
+\ *	"DEBUG: A B C" line is the same information folded.
+\ *
+\ *	WHAT WAS MEASURED: nothing electrical. Three facts about the files:
+\ *	  - The stamp is a disc file, not code. Edge assembled it inside
+\ *	    the code image once and it cost 200 bytes of the tightest
+\ *	    region in the build for text nothing executes (its decision
+\ *	    49). Assemble INFO at a scratch address that exists, that
+\ *	    nothing has claimed at assembly time and that it is never
+\ *	    loaded to - the template and Paradroid use &7E00, Edge &2600.
+\ *	  - **The disc option must be 2**, `--opt 2` or the disc builder's
+\ *	    equivalent, or SHIFT+BREAK never runs the stub. The template's
+\ *	    build scripts pass it on every build, release or not.
+\ *	  - `*TYPE INFO` works on DFS 1.20 and on the Master's DFS
+\ *	    (jsbeeb, 2026-09-11 - Paradroid's dev disc, and this kit's
+\ *	    template on both models).
+\ *
+\ *	THE INCLUDER DEFINES, before this file is included:
+\ *	  RELEASE        0 or 1 (both ports pass it on the command line:
+\ *	                 beebasm has no IFDEF and refuses a symbol defined
+\ *	                 twice, so main.asm cannot carry a default)
+\ *	  BUILD_TIME     the build's timestamp, as a string. BeebASM stamped
+\ *	                 this with TIME$; Baron has no TIME$, so the build
+\ *	                 script writes it - the template's tools/build_stamp.py
+\ *	                 (run by its Makefile and build.ps1) generates
+\ *	                 build/build_time.6502 holding one line,
+\ *	                 BUILD_TIME = "07 Sep 2026 15:47:31", and main.6502
+\ *	                 includes it. NOT a -D: Windows PowerShell cannot
+\ *	                 hand a quoted string containing spaces to a native
+\ *	                 exe (measured 2026-09-07, three forms). The time is
+\ *	                 the SOURCE's (SOURCE_DATE_EPOCH, else the last
+\ *	                 commit), so the same commit builds the same disc on
+\ *	                 any machine - ../docs/build-portability.md rule 13.
+\ *	  DEBUG_ANY      the OR of every DEBUG_ flag; the head macro ASSERTs
+\ *	                 it is 0 under RELEASE
+\ *	  VERSION_LINE   a string, printed under RELEASE (e.g. "v1.0 2026-09-06")
+\ *
+\ *	THE STAMP IS WRITTEN ONCE, as a macro of the includer's own, and
+\ *	both files use it. That is what stops them drifting - a disc whose
+\ *	INFO and whose boot message disagree is worse than neither:
+\ *
+\ *	  MACRO BUILD_STAMP           - the includer's, named as it likes
+\ *	  BOOT_STAMP_HEAD "Edge Grinder"
+\ *	  BOOT_FLAG DEBUG_COLL,   "DEBUG_COLL: collisions do not kill"
+\ *	  BOOT_FLAG DEBUG_TIMING, "DEBUG_TIMING: the frame meter is running"
+\ *	  BOOT_FLAG MUSIC_AKL,    "MUSIC_AKL: Arkos replay"  \ legal under RELEASE
+\ *	  BOOT_STAMP_TIME
+\ *	  ENDMACRO
+\ *
+\ *	  SECTION Info, org = INFO_STAGE, filename = "INFO"
+\ *	  .infofile
+\ *	  BUILD_STAMP
+\ *	  .infofile_end
+\ *	  ENDSECTION
+\ *
+\ *	  SECTION Boot, org = BOOT_STAGE, guard = BOOT_STAGE + 256,
+\ *	          filename = "!BOOT", exec = bootfile
+\ *	  .bootfile
+\ *	  BOOT_FILE_HEAD              - the print loop
+\ *	  BUILD_STAMP                 - the stub's own copy: it IS the boot,
+\ *	                                so nothing has *TYPEd anything yet
+\ *	  BOOT_FILE_TAIL "Edge"
+\ *	  .bootfile_end
+\ *	  ENDSECTION                  - the filename IS the request to save
+\ *	                                it, and the section guard is what
+\ *	                                the ASSERT was
+\ *
+\ *	BOOT_STAGE MUST BE SOMEWHERE THE STUB CAN RUN: not &7E00, which is
+\ *	MODE 7's screen, so printing the stamp would scroll over the code
+\ *	printing it. The template and Paradroid use &0900. The section
+\ *	needs exec = its first byte, and the text must fit 255 bytes (X
+\ *	indexes it).
+\ *
+\ *	BOOT_FLAG emits its line whenever the flag is non-zero, so a flag
+\ *	that is legal under RELEASE (a music or artwork variant) is stamped
+\ *	by the same macro; the ASSERT on DEBUG_ANY is what keeps DEBUG_
+\ *	flags out of a release, not the stamp.
+\ *
+\ *	ANOTHER FILE TO *RUN FIRST, such as a bank detector
+\ *	(swram_probe.6502): the stub's tail has room for ONE command, so a
+\ *	project that needs two writes its own (Paradroid's JSR OSCLI then
+\ *	JMP OSCLI). A probe that refuses to start the game must BRK, not
+\ *	just return, or the stub carries on and runs the game anyway.
+\ *
+\ *	PUT INFO NEXT TO !BOOT ON THE DISC - straight after it in the
+\ *	layout - so the head is already there when the boot reads it.
+\ *
+\ *	FORKED into beeb-port-kit/template 2026-09-07, unchanged.
+\ *	FORKED into strykers 2026-10-16: only the stamp macros are used;
+\ *	src/loader.6502 writes its own !BOOT head and tail, because the
+\ *	boot runs *TV255,1 and *FX200,3 before RUN SRRUN.
+\ *	Fork this into your project; keep this header.
+\ ******************************************************************
+
+\ ---- the stamp: title [DEV build], or VERSION_LINE under RELEASE ---
+\ Plain text, no "REM ": INFO is *TYPEd, never typed at a BASIC
+\ prompt, and the stub prints its copy through OSASCI.
+MACRO BOOT_STAMP_HEAD title
+IF RELEASE
+    ASSERT DEBUG_ANY = 0        ; a release carries no debug at all
+    EQUS title, 13
+    EQUS VERSION_LINE, 13
+ELSE
+    EQUS title, " DEV build", 13
+ENDIF
+ENDMACRO
+
+\ ---- one line per flag that is on ---------------------------------
+MACRO BOOT_FLAG flag, text
+IF flag
+    EQUS text, 13
+ENDIF
+ENDMACRO
+
+\ ---- BUILD <time>: the stamp's last line --------------------------
+MACRO BOOT_STAMP_TIME
+    EQUS "BUILD ", BUILD_TIME, 13
+ENDMACRO
+
+\ ---- !BOOT: print the stamp, then RUN the game --------------------
+\ The 0 BOOT_FILE_TAIL emits ends the stamp; the command follows it,
+\ and the loop works out its address from where it stopped.
+MACRO BOOT_FILE_HEAD
+    ldx #0                      ; (not .print/.text: PRINT is a directive)
+.bs_loop
+    lda bs_text,x
+    beq bs_done
+    jsr osasci                  ; 13 goes out as CR and LF
+    inx
+    bne bs_loop
+.bs_done
+    txa                         ; the command starts at bs_text + X + 1:
+    sec                         ; past the 0 that ended the stamp
+    adc #LO(bs_text)
+    tax
+    lda #HI(bs_text)
+    adc #0
+    tay
+    jmp oscli                   ; RUN <file>: never returns
+.bs_text
+ENDMACRO
+
+\ ---- and the command that starts the game -------------------------
+MACRO BOOT_FILE_TAIL runfile
+    EQUB 0                      ; ends the stamp the loop above prints
+    EQUS "RUN ", runfile, 13    ; OSCLI's command, after the 0
+ENDMACRO

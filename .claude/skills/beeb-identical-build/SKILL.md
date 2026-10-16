@@ -1,0 +1,83 @@
+---
+name: beeb-identical-build
+description: Prove that a change meant to be mechanical left the BBC Micro port's binary untouched - by comparing disc images and catalogue files byte for byte - or, where addresses legitimately moved, that no instruction was added, removed or reordered, by diffing the two beebasm listings reduced to opcode streams. Use when splitting a source file, reordering includes, changing the build script, widening a table, relocating data, or any change whose commit message wants to say "byte-identical".
+---
+
+# Byte-identical build and listing-stream diff
+
+Two checks for a change that should not alter behaviour. The first is for a change that should
+not alter the disc *at all*; the second is for a change that legitimately moves addresses and
+must be proved to have done nothing else. Both are faster than the oracle and, for this class of
+change, stronger.
+
+**Baseline:** build the OLD tree first and keep its image and listing somewhere the new build will not overwrite
+**Always differs:** whatever carries the assembly time - `INFO` (the kit's build stamp as a disc file) and, in a `*RUN`-boot release, the `!BOOT` stub that prints its own copy - so compare per file, not per image, when it does
+**Listing:** `build/<NAME>.lst`, from the assembler's `-v`
+
+## Steps
+
+1. **Build the old tree into a baseline and keep it.** Before touching the source, or from a
+   `git stash` / `git worktree` of `HEAD`. Copy `build/` aside; the next build overwrites it.
+
+   ```powershell
+   .\build.ps1
+   Copy-Item build build-old -Recurse
+   ```
+
+2. **Make the change and build again**, with the same flags. The `-D` symbols the project
+   passes (`RELEASE`, `MUSIC_AKL`, `GFX_CPC`, ...) are in `CLAUDE.md` "Build"; a different flag
+   set is a different binary and the comparison means nothing.
+
+3. **Compare the images.** Identical is the pass and the end.
+
+   ```bash
+   cmp build-old/<NAME>.SSD build/<NAME>.SSD
+   ```
+
+4. **If they differ only where they should, compare per file.** Edge Grinder's `!BOOT` carries
+   the assembly time and a DEV stamp, so its disc always differs there. The kit template's
+   stamp is `INFO`, a disc file, and carries the last commit's time, so two builds of one
+   commit are identical images, and a difference in `INFO` (or in a release `!BOOT`, whose stub
+   prints the same bytes) means the stamps differ. Pin the time with `SOURCE_DATE_EPOCH` to
+   take it out of the comparison. For the per-file check:
+
+   ```bash
+   python tools/dfs.py compare build-old/<name>.ssd build/<name>.ssd --ignore INFO --ignore '!BOOT'
+   ```
+
+   (`python -m beeb_port_kit.dfs compare ...` from the kit, for a port that has not forked it.)
+   It prints both SHA256s, then says either "identical images" or which files differ, where,
+   and whether a load or exec address moved. Say in the commit which files were compared.
+
+5. **When addresses legitimately moved - a width change, a data removal, a relocation - diff
+   the listing streams instead.** The reducer is checked in (`tools/listing.py`, forked from the
+   kit's `py/beeb_port_kit/listing.py`); both ports wrote one inline each time, which is why the numbers below
+   were never reproducible.
+
+   ```bash
+   python tools/listing.py stream build-old/<NAME>.lst > old.txt
+   python tools/listing.py stream build/<NAME>.lst     > new.txt
+   diff old.txt new.txt && echo "stream identical, $(wc -l < new.txt) entries"
+   ```
+
+   Each entry is one emitted instruction as its opcode and operand length. Identical streams
+   (7,753 instructions in Paradroid's blitter pass; 22,954 in its RAM pass) prove no instruction
+   was added, removed or reordered, so every difference in the image is a width change or data.
+   Then the smoke test only has to confirm the new addresses do not collide.
+
+6. **Know what it cannot validate.** Two things, and the first is measured (kit, 2026-09-07, on
+   the template): **the stream cannot see an operand's value.** A build against itself gives 0
+   differences, one inserted `NOP` gives exactly 1, and changing a constant from 8 to 4 gives 0.
+   It proves the shape of the code, not its constants - which is why step 4's byte-for-byte
+   comparison comes first and this is the fallback. Second, a change that *intentionally* alters
+   instructions - Paradroid's SCANSTEP tail folding - fails the stream diff by design; that is
+   the oracle's job (`beeb-buffer-oracle`). Do not weaken the reducer to make such a change
+   pass.
+
+7. **Apply the same check to generated data.** "Every existing output is byte for byte
+   untouched" caught a 28-byte move in every sprite bank when two tables were emitted in the
+   other order (Edge decision 63). `git diff --stat src/data/` after running an exporter is the
+   cheap form; an unexpected file in it is the finding.
+
+8. **Put the result in the commit body**: "byte-identical" with the files compared, or
+   "listing stream identical, N instructions" with the count.
