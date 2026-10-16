@@ -1302,22 +1302,29 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     INY                             \ white: the next page
 .green
     STY draw_column.pix_operand + 1
+    STY draw_column.pix_operand_2 + 1
     BIT dm_flip
     BMI flipped
     LDA #LO(unflipped_green_pixel_table)
     STA draw_column.pix_operand
+    STA draw_column.pix_operand_2
     LDA #LO(unflipped_mask_table)
     STA draw_column.mask_operand
+    STA draw_column.mask_operand_2
     LDA #HI(unflipped_mask_table)
     STA draw_column.mask_operand + 1
+    STA draw_column.mask_operand_2 + 1
     BRA parts                       \ 65C02 opcode
 .flipped
     LDA #LO(flipped_green_pixel_table)
     STA draw_column.pix_operand
+    STA draw_column.pix_operand_2
     LDA #LO(flipped_mask_table)
     STA draw_column.mask_operand
+    STA draw_column.mask_operand_2
     LDA #HI(flipped_mask_table)
     STA draw_column.mask_operand + 1
+    STA draw_column.mask_operand_2 + 1
 .parts
     LDX dm_type                     \ part one: the animation's sprite, at the bottom
     LDA dm_frame
@@ -1520,7 +1527,14 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     STA v_ptr + 1
     LDA rows_left
     STA dc_count
-.byte
+.cell                               \ Y = the line it starts on: does the column end in this cell?
+    TYA
+    SEC
+    SBC rows_left                   \ line - rows left
+    BCS last_cell                   \ 0 or more: it ends here, above line 0
+    EOR #&FF                        \ no: rows left after this cell, rows - line - 1
+    STA rows_left
+.byte                               \ down to line 0
     LDA (d_ptr),Y                   \ the pixel/mask index
     TAX
     LDA (s_ptr),Y
@@ -1530,10 +1544,10 @@ mask_operand = * + 1
 pix_operand = * + 1
     EOR &FFFF,X                     \ self-modified: the pixel table for the colour and flip
     STA (s_ptr),Y
-    DEC rows_left
-    BEQ column_done
     DEY
     BPL byte
+    LDA rows_left
+    BEQ column_done
     LDA d_ptr                       \ the next cell: the data 8 back...
     SEC
     SBC #8
@@ -1560,7 +1574,22 @@ pix_operand = * + 1
 .in_ring
     STA s_ptr + 1
     LDY #7                          \ ...from its bottom line
-    BRA byte                        \ 65C02 opcode
+    BRA cell                        \ 65C02 opcode
+.last_cell
+    STA stop_y                      \ the line below the last one drawn
+.part_byte
+    LDA (d_ptr),Y
+    TAX
+    LDA (s_ptr),Y
+    STA (v_ptr),Y
+mask_operand_2 = * + 1
+    AND &FFFF,X                     \ self-modified, as mask_operand
+pix_operand_2 = * + 1
+    EOR &FFFF,X                     \ self-modified, as pix_operand
+    STA (s_ptr),Y
+    DEY
+    CPY stop_y
+    BNE part_byte
 .column_done
     LDA v_ptr                       \ the record goes after the last cell: v_ptr + 8
     CLC
@@ -1704,13 +1733,20 @@ pix_operand = * + 1
     TXA
     AND #&07
     TAY
+.cell                               \ as draw_column: does the column end in this cell?
+    TYA
+    SEC
+    SBC rows_left
+    BCS last_cell
+    EOR #&FF
+    STA rows_left
 .byte
     LDA (v_ptr),Y
     STA (s_ptr),Y
-    DEC rows_left
-    BEQ column
     DEY
     BPL byte
+    LDA rows_left
+    BEQ column
     LDA v_ptr                       \ the next cell: the save block 8 on...
     CLC
     ADC #8
@@ -1730,7 +1766,16 @@ pix_operand = * + 1
 .in_ring
     STA s_ptr + 1
     LDY #7
-    BRA byte                        \ 65C02 opcode
+    BRA cell                        \ 65C02 opcode
+.last_cell
+    STA stop_y
+.part_byte
+    LDA (v_ptr),Y
+    STA (s_ptr),Y
+    DEY
+    CPY stop_y
+    BNE part_byte
+    JMP column
 .blocks_done
     LDX back                        \ the block is free; the arena shrinks if it was the last
     LDA save_end_lo,Y

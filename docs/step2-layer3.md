@@ -17,7 +17,8 @@ Same game in each (keys by pass, `tools/passbench.mjs`, seed 1, passes 500-2000,
 | A, B, C and the searches (`2e0fedc`) | 20.55 | 97,337 |
 | + E, the 50 Hz sound driver (`828ec7a`) | 21.59 | 92,652 |
 | + the pass lock not waiting (decision 26) | 23.38 | 85,535 |
-| + D: the column write unrolled, the lives digit from a table | **23.86** | 83,832 |
+| + D: the column write unrolled, the lives digit from a table | 23.86 | 83,832 |
+| + the sprite loops decide per cell, not per byte, where a column ends | **24.00** | 83,350 |
 
 Frame-timed play (`tools/profile.mjs`, `tools/speed.mjs`; these press keys by frame, so each
 build plays a slightly different game and the numbers move a few percent with it):
@@ -104,6 +105,10 @@ lives digit from a table of the bytes `plot_lives` leaves (`src/lives_digits.650
 screen), 1.8k to ~0.5k a call. Both proved byte for byte: the shown frames of the previous commit
 and this one identical over 2 x 3,000 passes. (Counts of 10 or more, which the game does not
 reach, would show blank where `plot_lives` read past the font.) Same game: 23.86 passes/s.
+
+**The sprite byte loops** decide once a cell, not once a byte, where the column ends: a cell it
+carries on past runs to line 0 on `DEY`/`BPL` alone, the last stops on `CPY`; 4-7 cycles a byte
+less, drawing and restoring. Proved byte for byte against the previous commit (2 x 3,000 passes).
 
 ## Checks
 
