@@ -16,9 +16,9 @@ The game never runs faster than one pass every two fields (25 Hz) and averages a
 
 | | Frames 4000-5000 | Frames 16000-17000 |
 |---|---|---|
-| **Waiting for the raster** | **24.8** | **40.5** |
-| `wait_for_timer_281a` (end of `update_movers`: wait for the beam to reach the sky) | 12.54 | 33.55 |
-| `check_if_raster_is_in_mover` (don't redraw a mover while the beam is on it) | 11.60 | 4.31 |
+| **Waiting** | **24.8** | **40.5** |
+| `wait_for_timer_281a` (end of `update_movers`: a pass-length floor - spins until System VIA T2, restarted when `update_movers` began, shows 36,864 us gone, ~1.84 fields) | 12.54 | 33.55 |
+| `check_if_raster_is_in_mover` (waits until the beam has just passed the mover, 0-32 lines below it, then redraws it: chasing the beam, ~half a field on average) | 11.60 | 4.31 |
 | `wait_for_timer_1b7c` (`update_screen`: wait for the beam to reach the ground) | 0.66 | 2.59 |
 | **MOS interrupt processing** (`irq1_handler` chains to the MOS on every IRQ) | 20.05 | 20.25 |
 | `irq1_handler` itself (palette split) | 1.03 | 1.03 |
@@ -33,9 +33,10 @@ Full tables: `build/profile-baseline.json`, `build/profile-baseline-16000.json` 
 
 ## What this says for step 2
 
-- Roughly a quarter to two fifths of the CPU is spent racing the beam: the game draws on the
-  screen being displayed and orders its updates by raster position to hide the flicker that
-  causes. Drawing into a hidden buffer (double buffering in the Master's shadow RAM) removes the
+- Roughly a quarter to two fifths of the CPU is spent waiting: chasing the beam so a mover is
+  redrawn just after it has been displayed (it draws on the screen being shown, erasing by EOR),
+  and holding each pass to at least ~1.84 fields. (Corrected 2026-10-16: `wait_for_timer_281a`
+  is that floor, not a raster wait.) Drawing into a hidden buffer (double buffering in the Master's shadow RAM) removes the
   reason for every one of those waits - and the flicker.
 - A fifth is the MOS's interrupt handling, entered on every interrupt the game takes, including
   its own User VIA timer interrupts for the palette split. Not yet broken down (keyboard scan,
