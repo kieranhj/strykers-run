@@ -1239,7 +1239,9 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
 {
     LDA need,X
     AND #&40
-    BEQ out
+    BNE going_on
+    RTS
+.going_on
     STX dm_slot
     TXA
     CLC
@@ -1260,9 +1262,33 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     LDA arena_top_lo,X
     STA save_start_lo,Y
     STA top
+    STA mark_part.base_lo
+    STA mark_part.header_lo
     LDA arena_top_hi,X
     STA save_start_hi,Y
     STA top + 1
+    STA mark_part.base_hi
+    STA mark_part.header_lo + 1
+    LDA top                         \ the block's header: where parts 2 and 3 start (0: none)
+    CLC
+    ADC #1
+    STA mark_part.header_hi
+    LDA top + 1
+    ADC #0
+    STA mark_part.header_hi + 1
+    LDA #0
+    LDY #3
+.no_parts
+    STA (top),Y
+    DEY
+    BPL no_parts
+    LDA top
+    CLC
+    ADC #4
+    STA top
+    BCC header_same_page
+    INC top + 1
+.header_same_page
     JSR draw_mover                  \ (draw_column moves top on)
     LDX back
     LDY dm_index
@@ -1275,6 +1301,34 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     LDX dm_slot
     JSR record_live                 \ X = slot, Y = slot + boff
 .out
+    RTS
+}
+
+\ mark_part2, mark_part3: the part about to be drawn starts here (top), as an offset from the
+\ block's start, into the block's header (put_on set the operands). Keeps A, X, Y.
+.mark_part2
+    PHY
+    LDY #0
+    BRA mark_part                   \ 65C02 opcode
+.mark_part3
+    PHY
+    LDY #2
+.mark_part
+{
+    PHA
+    LDA top
+    SEC
+base_lo = * + 1
+    SBC #0                          \ self-modified: the block's start
+header_lo = * + 1
+    STA &FFFF,Y                     \ self-modified: the header
+    LDA top + 1
+base_hi = * + 1
+    SBC #0
+header_hi = * + 1
+    STA &FFFF,Y
+    PLA
+    PLY
     RTS
 }
 
@@ -1392,6 +1446,7 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     TAY
     LDA animation_table,Y
     LDY dm_raise
+    JSR mark_part2
     JSR ren_draw_sprite
     LDX dm_type
     LDA mover_types_parts,X
@@ -1401,6 +1456,7 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     ADC #&08
     TAY
     LDA mover_types_third_sprite,X
+    JSR mark_part3
     JSR ren_draw_sprite
 .nothing
     RTS
@@ -1552,10 +1608,17 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
 \ with the player. After the column's cells, its record: their length, the count, the address.
 .draw_column
 {
-    STA dc_addr_lo
-    STX dc_addr_hi
     STX s_ptr + 1
+    LDY #1                          \ the column's record first: count, address low, high
+    STA (top),Y
     TAX
+    INY
+    LDA s_ptr + 1
+    STA (top),Y
+    LDY #0
+    LDA rows_left
+    STA (top),Y
+    TXA
     AND #&F8
     STA s_ptr
     TXA
@@ -1570,12 +1633,13 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     LDA col_ptr + 1
     ADC #&FF
     STA d_ptr + 1
-    LDA top
+    LDA top                         \ the cells after the record
+    CLC
+    ADC #3
     STA v_ptr
     LDA top + 1
+    ADC #0
     STA v_ptr + 1
-    LDA rows_left
-    STA dc_count
 .cell                               \ Y = the line it starts on: does the column end in this cell?
     TYA
     SEC
@@ -1640,37 +1704,13 @@ pix_operand_2 = * + 1
     CPY stop_y
     BNE part_byte
 .column_done
-    LDA v_ptr                       \ the record goes after the last cell: v_ptr + 8
+    LDA v_ptr                       \ the next column's record after this one's last cell
     CLC
     ADC #8
-    TAX
+    STA top
     LDA v_ptr + 1
     ADC #0
-    STA v_ptr + 1                   \ (the record's address in X, v_ptr + 1)
-    TXA
-    SEC                             \ the cells' length: that less top
-    SBC top
-    STX top
-    LDX v_ptr + 1
-    STX top + 1
-    LDY #0
-    STA (top),Y
-    INY
-    LDA dc_count
-    STA (top),Y
-    INY
-    LDA dc_addr_lo
-    STA (top),Y
-    INY
-    LDA dc_addr_hi
-    STA (top),Y
-    LDA top
-    CLC
-    ADC #4
-    STA top
-    BCC done
-    INC top + 1
-.done
+    STA top + 1
     RTS
 }
 
@@ -1730,33 +1770,78 @@ pix_operand_2 = * + 1
 }
 
 \ ---- taking a mover off ------------------------------------------------------------------
-\ restore_block: Y = slot + boff. Its save block's columns from the last back: each record
-\ (length, count, address) and the cells before it, put back on the screen as draw_column took
-\ them. Frees the block, popping the arena if it was the last.
+\ restore_block: Y = slot + boff. Its save block, a part at a time from the last (parts of one
+\ mover can overlap, so the bytes the later part saved go back first); within a part, its columns
+\ in any order (they never overlap): each record (count, address) and the cells after it, put
+\ back on the screen as draw_column took them. Frees the block, popping the arena if it was
+\ the last.
 .restore_block
 {
     STY rb_index
-    LDA save_end_lo,Y
+    LDA save_start_lo,Y             \ the header: where parts 2 and 3 start
     STA top
-    LDA save_end_hi,Y
+    LDA save_start_hi,Y
     STA top + 1
-.column
+    LDY #3
+.header
+    LDA (top),Y
+    STA rb_part2,Y
+    DEY
+    BPL header
     LDY rb_index
+    LDA save_end_lo,Y
+    STA rb_end
+    LDA save_end_hi,Y
+    STA rb_end + 1
+    LDX #2                          \ part 3, then part 2: from its start to rb_end
+.each_part
+    LDA rb_part2,X
+    ORA rb_part2 + 1,X
+    BEQ no_part
+    LDY rb_index
+    LDA save_start_lo,Y
+    CLC
+    ADC rb_part2,X
+    STA top
+    LDA save_start_hi,Y
+    ADC rb_part2 + 1,X
+    STA top + 1
+    PHX
+    JSR columns
+    PLX
+    LDY rb_index                    \ the part before ends where this one starts
+    LDA save_start_lo,Y
+    CLC
+    ADC rb_part2,X
+    STA rb_end
+    LDA save_start_hi,Y
+    ADC rb_part2 + 1,X
+    STA rb_end + 1
+.no_part
+    DEX
+    DEX
+    BPL each_part
+    LDY rb_index                    \ part 1: after the header
+    LDA save_start_lo,Y
+    CLC
+    ADC #4
+    STA top
+    LDA save_start_hi,Y
+    ADC #0
+    STA top + 1
+    JSR columns
+    LDY rb_index
+    JMP blocks_done
+.columns                            \ the columns from top to rb_end
     LDA top
-    CMP save_start_lo,Y
+    CMP rb_end
     BNE more
     LDA top + 1
-    CMP save_start_hi,Y
-    BEQ blocks_done
+    CMP rb_end + 1
+    BNE more
+    RTS
 .more
-    LDA top                         \ back 4: the record
-    SEC
-    SBC #4
-    STA top
-    BCS record_same_page
-    DEC top + 1
-.record_same_page
-    LDY #3
+    LDY #2                          \ the record
     LDA (top),Y
     STA s_ptr + 1
     DEY
@@ -1765,16 +1850,12 @@ pix_operand_2 = * + 1
     DEY
     LDA (top),Y
     STA rows_left
-    DEY
-    LDA (top),Y                     \ back the cells' length: v_ptr, and top for the next
-    EOR #&FF
-    SEC
-    ADC top
-    STA top
+    LDA top                         \ the cells after it
+    CLC
+    ADC #3
     STA v_ptr
     LDA top + 1
-    SBC #0
-    STA top + 1
+    ADC #0
     STA v_ptr + 1
     TXA
     AND #&F8
@@ -1795,7 +1876,7 @@ pix_operand_2 = * + 1
     DEY
     BPL byte
     LDA rows_left
-    BEQ column
+    BEQ column_done
     LDA v_ptr                       \ the next cell: the save block 8 on...
     CLC
     ADC #8
@@ -1824,7 +1905,15 @@ pix_operand_2 = * + 1
     DEY
     CPY stop_y
     BNE part_byte
-    JMP column
+.column_done
+    LDA v_ptr                       \ the next record after this column's last cell
+    CLC
+    ADC #8
+    STA top
+    LDA v_ptr + 1
+    ADC #0
+    STA top + 1
+    JMP columns
 .blocks_done
     LDX back                        \ the block is free; the arena shrinks if it was the last
     LDA save_end_lo,Y
@@ -2170,14 +2259,14 @@ NEXT
 .ds_addr_hi     EQUB 0
 .ds_fr          EQUB 0
 .ds_clip        EQUB 0
-.dc_count       EQUB 0
-.dc_addr_lo     EQUB 0
-.dc_addr_hi     EQUB 0
 .seg_line       EQUB 0
 .ra_rows        EQUB 0
 .ra_lo          EQUB 0
 .ra_hi          EQUB 0
 .rb_index       EQUB 0
+.rb_part2       EQUB 0, 0           \ the header: part 2's start, part 3's (offsets)
+.rb_part3       EQUB 0, 0
+.rb_end         EQUB 0, 0
 .cp_cursor_lo   EQUB 0
 .cp_cursor_hi   EQUB 0
 .cp_best        EQUB 0
