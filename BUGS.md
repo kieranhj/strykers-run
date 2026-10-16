@@ -37,3 +37,15 @@ no User VIA T2 restart for the raster waits, no `game_over_cooldown` tick. Fixed
 in play the MOS's System VIA IRQ mask (`&0279`) leaves vsync to the game, and the User VIA T1
 fire is never chained (decision 15). 0 fields of 1,000 since. On the title the MOS still has
 vsync, so the race remains there, where the only effect is the palette.
+
+## 4. Soldiers sometimes jump 1-6 columns when they move (original behaviour; fixed in step 2)
+
+Seen 2026-10-16 (jsbeeb 2.5.0, Master 128, 20,000 frames of scripted play with `DEBUG_LIVES`):
+at the start of `move_mover`, straight after `unplot_and_move_mover` erases the mover, the
+mover's x in `mover_x_low`/`&C5` was not its real x in 81 of 8,495 moves - always a soldier
+(types 1-3, the three-part sprites), 1 to 6 columns ahead. The plotter advances `mover_x_low`
+column by column as it draws, and the clipping loops advance it past clipped columns; for a
+mover whose last part is wider than a column, or which is clipped, the erase leaves it moved on,
+and `move_mover_right`/`left` start from there. So the soldier skips forward. Fixed (KC: let it
+go, decision 13's policy) by reloading the mover's x after the erase; in layer 2 the logic no
+longer draws, so the cause goes too. After the fix, 8,569 of 8,569 moves start from the real x.

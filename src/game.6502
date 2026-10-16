@@ -2728,9 +2728,7 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     STX crtc_reg                    \ video register number
     LDA #&50                        \ Display screen
     STA crtc_data                   \ video register value
-    DEX                             \ 0
-    STX unused_variable             \ Unused variable
-    RTS
+    RTS                             \ (step 2: the original's STX unused_variable went; nothing reads it)
 
 .wait_for_vsync_2242
     LDA field_count                 \ Wait for vertical retrace: step 2 (decision 14) counts
@@ -3091,6 +3089,11 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
 .unplot_and_move_mover
     LDY mover_to_update
     JSR plot_mover                  \ Unplot mover
+    \ Step 2 (BUGS #4): the plotter leaves mover_x_low advanced past a clipped or wide sprite,
+    \ and the move routines start from it, so a soldier jumped 1-6 columns in ~1% of moves.
+    \ Move from the mover's own x, as the logic will once it no longer draws (layer 2).
+    LDY mover_to_update
+    JSR get_mover_Y_x
 .move_mover
     LDA x_delta
     AND #&80
