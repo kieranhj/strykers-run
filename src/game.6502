@@ -4501,14 +4501,17 @@ ASSERT shown_screen < &3000
     CLC                             \ Leave with carry clear to indicate raster not in mover
     RTS
 
+\ Step 2 (decision 27, KC): the default keys are Z X K M L, SPACE, RETURN, P; the original's
+\ were A, Z, RIGHT, LEFT, SHIFT, DELETE, CTRL, P. Negative INKEY numbers; define controls
+\ rewrites them.
 .keys
-    EQUB &BE    \ &01 (KEY_UP)      : A
-    EQUB &9E    \ &02 (KEY_DOWN)    : Z
-    EQUB &86    \ &04 (KEY_RIGHT)   : RIGHT
-    EQUB &E6    \ &08 (KEY_LEFT)    : LEFT
-    EQUB &FF    \ &10 (KEY_FIRE)    : SHIFT
-    EQUB &A6    \ &20 (KEY_GRENADE) : DELETE
-    EQUB &FE    \ &40 (KEY_ENTER)   : CTRL
+    EQUB &B9    \ &01 (KEY_UP)      : K
+    EQUB &9A    \ &02 (KEY_DOWN)    : M
+    EQUB &BD    \ &04 (KEY_RIGHT)   : X
+    EQUB &9E    \ &08 (KEY_LEFT)    : Z
+    EQUB &A9    \ &10 (KEY_FIRE)    : L
+    EQUB &9D    \ &20 (KEY_GRENADE) : SPACE
+    EQUB &B6    \ &40 (KEY_ENTER)   : RETURN
     EQUB &C8    \ &80 (KEY_PAUSE)   : P
 
 .check_for_player_input
