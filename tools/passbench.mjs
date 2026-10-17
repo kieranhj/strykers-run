@@ -46,7 +46,9 @@ for (const disc of discs) {
         for (const [k, v] of Object.entries(sec.labels || {})) if (v && typeof v.value === "number") syms[k] = v.value;
     const s = await bootMaster(MachineSession, disc);
     const cpu = s._machine.processor;
-    const m = { passes: 0, target: 1, lastStop: -1, at: [] };
+    const m = { passes: 0, target: 1, lastStop: -1, at: [], flips: [] };
+    // every flip (the vsync interrupt writes shown_screen): how long each frame stays shown
+    cpu.debugWrite.add((a) => { if (a === syms.shown_screen) m.flips.push({ pass: m.passes, field: s.readMemory(0x90, 1)[0] }); return false; });
     cpu.debugInstruction.add((pc) => {
         if (pc !== syms.main_game_loop) return false;
         const c = s.elapsedCycles;
@@ -142,6 +144,11 @@ for (const disc of discs) {
     const per = (v) => Math.round(v / n);
     const moved = vl[last] - vl[FROM];
     console.log(`${disc}: passes ${FROM}-${last} (${HOLD ? "holding " + HOLD.join("+") : "seed " + SEED}${CTRL ? ", CTRL" : ""}${stalled ? `; stopped making passes at ${stalled}` : ""}): ${(n / (cyc / 2e6)).toFixed(2)} passes/s, ${Math.round(cyc / n)} cycles a pass, fields ${JSON.stringify(fields)}; the view moved ${moved} columns, ${(moved / (cyc / 2e6)).toFixed(1)} a second`);
+    // the frames: how many fields each stayed on screen (a frame shown for 3 or more is late)
+    const fl = m.flips.filter((f) => f.pass > FROM && f.pass <= last), shownFor = {};
+    for (let i = 1; i < fl.length; i++) { const g = (fl[i].field - fl[i - 1].field + 256) & 255; shownFor[g] = (shownFor[g] || 0) + 1; }
+    const lateFrames = Object.entries(shownFor).filter(([g]) => +g > 2).reduce((t, [, k]) => t + k, 0);
+    console.log(`  frames: ${fl.length - 1}, shown for (fields) ${JSON.stringify(shownFor)}; late frames ${lateFrames}`);
     if (DETAIL) {
         // each pass's work (everything but the wait for the flip): over 2 fields (79,872) the
         // frame cannot be on time
