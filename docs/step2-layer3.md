@@ -219,6 +219,24 @@ is over 2 fields (79,872 cycles), and by how much:
 
 ## Measured and set aside
 
+- **Compiled sprites** (RAM for cycles item 2, 2026-10-17). Which sprites the renderer draws
+  (`build/j2`, `spriteuse`): an enemy helicopter's body (`&45`, 170 bytes, 21% of the drawing on
+  seed 1, 17% holding RIGHT), the flying scooter (`&48`, 11%), then the player's parts. In MODE 2
+  a column crosses character cells `&280` apart at lines that depend on where the sprite stands,
+  so code per sprite byte needs a branch every byte (or 8 copies a sprite): ~15-17 bytes of code
+  a sprite byte, ~11K for those two alone, for an estimated 1-2.5k a pass. Not built.
+- **The logic a pass ahead** (item 5, which KC had agreed to on an estimate of mine that was
+  wrong: it took a pass to cost the larger of its logic and its render, as if both could run at
+  once). `tools/pipesim.py` replays each pass's measured logic and render cycles (one CPU,
+  vsync every 39,936, a frame flipped at the first vsync after its render and 2 fields after the
+  last): late frames now 75 (seed 1) and 53 (holding RIGHT) - which matches the fields the runs
+  measured - against 73 and 55 with the logic one pass ahead, 72 and 52 two ahead. Decision 26
+  already gives the wait to the next logic; a late frame is a heavy render, which no ordering
+  hides. Not built (and no latency added). The same model says what does help: 10 cycles less a
+  byte drawn takes the late frames to 48 and 32, 20 cycles to 29 and 12; 4,000 less render every
+  pass to 48 and 33. (Note: "late passes", work over 2 fields, overstate it: 223 such passes
+  made 75 late frames.)
+
 - **A room check by mover type** (each type's largest save block, so the arena fills further
   before compacting): every frame identical, but 23.96 passes/s against 24.00 - compacting less
   often moves more when it does. Reverted.
