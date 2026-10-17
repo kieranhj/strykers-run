@@ -4627,28 +4627,21 @@ ASSERT shown_screen < &3000
     EQUB &C8    \ &80 (KEY_PAUSE)   : P
 
 .check_for_player_input
-    LDY #&00
-    STY keys_pressed_bitmap
-    STY key_to_check
-.check_for_player_input_loop
-    LDX keys,Y
-    JSR check_for_keypress
-    BNE key_not_pressed
-    LDA #&01
-    LDY key_to_check
-    BEQ skip_shift
-.shift_loop
-    ASL A
-    DEY
-    BNE shift_loop
-.skip_shift
-    EOR keys_pressed_bitmap
+    LDA #LO(keys)
+    STA check_for_player_input_key
+    LDA #&80                        \ grind: a sentinel, shifted out into C by the eighth ROR
     STA keys_pressed_bitmap
-.key_not_pressed
-    INC key_to_check
-    LDY key_to_check
-    CPY #&08
-    BNE check_for_player_input_loop
+.check_for_player_input_loop
+check_for_player_input_key = * + 1
+    LDA keys                        \ actually LDA keys + key number (self-modified)
+    EOR #&FF                        \ INKEY number -> internal key number (check_for_keypress, inlined)
+    TAX
+    JSR keydown_int                 \ A = &80 if down, else 0
+    ASL A                           \ C = down
+    ROR keys_pressed_bitmap         \ key in at bit 7: after eight, key N is bit N
+    INC check_for_player_input_key
+    BCC check_for_player_input_loop \ C = 1 only when the sentinel falls out
+    ASSERT HI(keys) = HI(keys + 7)  \ the INC walks the low byte only
 .leave_2f89
     RTS
 

@@ -514,17 +514,23 @@ ENDIF
     STA os_ram_copy_of_currently_selected_rom
     STA romsel
     LDY #0
-.putting_on
-    CPY act_n
-    BEQ put_on_player
-    STY ren_k
-    LDX act,Y
-    BEQ next_put_on                 \ the player goes on last
-    JSR put_on
-.next_put_on
-    LDY ren_k
+    LDA act                         \ the player (slot 0) goes on last: when listed, it is first
+    BNE put_on_test
     INY
-    BRA putting_on                  \ 65C02 opcode
+.put_on_test
+    CPY act_n                       \ (unsigned: act_n may be 0 with a stale player entry)
+    BCS put_on_player
+.putting_on
+    LDX act,Y
+    BIT need,X                      \ V = bit 6, it goes on: put_on's own test, done here
+    BVC next_put_on
+    PHY                             \ 65C02 opcode
+    JSR put_on.going_on
+    PLY                             \ 65C02 opcode
+.next_put_on
+    INY
+    CPY act_n
+    BCC putting_on
 .put_on_player
     LDX #0
     JSR put_on
