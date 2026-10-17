@@ -1313,7 +1313,8 @@ MOVER_WIDEST = &0B                  \ step 2 (layer 3): the largest entry below 
     EQUB &02, &05, &32, &09, &0E, &0E, &11, &11, &14, &08
 
 .scroll_screen_left
-    JSR initialise_column_buffer
+    LDX #&FF                        \ step 2 (layer 3): this scroll's direction
+    JSR start_column
     LDX viewport_left_low
     BNE skip_overflow_left_18e8
     DEC viewport_left_high
@@ -1347,6 +1348,13 @@ MOVER_WIDEST = &0B                  \ step 2 (layer 3): the largest entry below 
 .skip_wraparound_191a
     STX crtc_start_address_high
     STY crtc_start_address_low
+    JSR layers_left_or_prebuilt     \ step 2 (layer 3, RAM for cycles 1): the walk, or the state
+    BRA layers_left_done            \ the renderer's prebuilt walk left (65C02 opcode)
+.layers_left_or_prebuilt
+    LDA pre_use
+    BEQ layers_left
+    JMP install_prebuilt
+.layers_left                        \ a subroutine: src/prebuild.6502 runs it ahead
     LDY #&07                        \ *** Enhanced version has extra layer for clouds
     STY edge_and_layer
     LDA #&01
@@ -1378,6 +1386,8 @@ MOVER_WIDEST = &0B                  \ step 2 (layer 3): the largest entry below 
 .not_left_edge_1959
     TYA
     BPL scroll_layers_left_loop
+    RTS
+.layers_left_done
     LDA #&14                        \ KC
     JSR change_pixel_tables         \ Use foreground palette (use colour 6 for cyan)
     LDY #&00
@@ -1594,7 +1604,8 @@ MOVER_WIDEST = &0B                  \ step 2 (layer 3): the largest entry below 
     EQUB &AA, &A7, &A3, &A1
 
 .scroll_screen_right
-    JSR initialise_column_buffer
+    LDX #&01                        \ step 2 (layer 3): this scroll's direction
+    JSR start_column
     INC viewport_left_low
     BNE skip_overflow_left_1ad2
     INC viewport_left_high
@@ -1625,6 +1636,13 @@ MOVER_WIDEST = &0B                  \ step 2 (layer 3): the largest entry below 
 .skip_wraparound_1afe
     STX crtc_start_address_high
     STY crtc_start_address_low
+    JSR layers_right_or_prebuilt     \ step 2 (layer 3, RAM for cycles 1): the walk, or the state
+    BRA layers_right_done            \ the renderer's prebuilt walk left (65C02 opcode)
+.layers_right_or_prebuilt
+    LDA pre_use
+    BEQ layers_right
+    JMP install_prebuilt
+.layers_right                        \ a subroutine: src/prebuild.6502 runs it ahead
     LDY #&07                        \ *** Enhanced version has extra layer for clouds
     STY edge_and_layer
     LDA #&01
@@ -1656,6 +1674,8 @@ MOVER_WIDEST = &0B                  \ step 2 (layer 3): the largest entry below 
 .not_left_edge_1b3d
     TYA
     BPL scroll_layers_right_loop
+    RTS
+.layers_right_done
     LDA #&14                        \ KC
     JSR change_pixel_tables         \ Use foreground palette (use colour 6 for cyan)
     LDY #&01
@@ -2882,6 +2902,8 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     RTS
 
 .reset_screen_scroll
+    STZ pre_valid                   \ step 2 (layer 3): no column built ahead, no scroll yet
+    STZ last_dir
     LDX #&0D                        \ R13: Displayed screen start address register (low)
     STX crtc_reg                    \ video register number
     LDY #&00
@@ -5340,6 +5362,84 @@ ASSERT shown_screen < &3000
 .cm_left_low
     EQUB &00
 .cm_left_high
+    EQUB &00
+
+\ Step 2 (layer 3, RAM for cycles 1): the scroll's side of the column the renderer builds ahead
+\ in its wait (src/prebuild.6502, bank 4).
+\ start_column, in place of initialise_column_buffer: X = this scroll's direction (1 right, &FF
+\ left). The prebuilt column (already in column_buffer) if it is for this direction from this
+\ viewport, else the buffer cleared. Either way A = X = 0, Z set, N clear, C and V as they came
+\ (as initialise_column_buffer).
+.start_column
+    STX last_dir
+    LDA #1                          \ a column built, not yet pushed (history_push)
+    STA col_fresh
+    PHP
+    TXA
+    EOR pre_valid                   \ 0 only if built for this direction (&80: unusable)
+    BNE start_clear
+    LDA pre_view_low
+    CMP viewport_left_low
+    BNE start_clear
+    LDA pre_view_high
+    CMP viewport_left_high
+    BNE start_clear
+    LDA #1
+    STA pre_use                     \ the walk's state from the prebuild (install_prebuilt)
+    STZ pre_valid                   \ 65C02 opcode
+    PLP
+    LDX #&00
+    LDA #&00
+    RTS
+.start_clear
+    STZ pre_valid                   \ 65C02 opcode
+    STZ pre_use
+    PLP
+    JMP initialise_column_buffer
+\ install_prebuilt, in place of the walk: the state the prebuild's walk left, and the bank it
+\ left paged. A = Y = &FF, N and C set, as the walk leaves them (X is written before it is read).
+.install_prebuilt
+    LDA #&04
+    STA os_ram_copy_of_currently_selected_rom
+    STA romsel                      \ Paged ROM latch
+    JSR put_prebuilt_state          \ bank 4; A = the bank
+    STA os_ram_copy_of_currently_selected_rom
+    STA romsel                      \ Paged ROM latch
+    LDA #&FF
+    TAY
+    SEC
+    RTS
+\ prebuild_layers: the renderer's prebuild (bank 4), X = the direction. The walk, the cyan
+\ entries back as the scroll puts them, then bank 4 again; pre_bank = the bank the walk left.
+.prebuild_layers
+    CPX #&01
+    BNE prebuild_left
+    JSR layers_right
+    BRA prebuild_walked             \ 65C02 opcode
+.prebuild_left
+    JSR layers_left
+.prebuild_walked
+    LDA os_ram_copy_of_currently_selected_rom
+    STA pre_bank
+    LDA #&14                        \ KC
+    JSR change_pixel_tables
+    LDA #&04
+    STA os_ram_copy_of_currently_selected_rom
+    STA romsel                      \ Paged ROM latch
+    RTS
+.last_dir                          \ the last scroll's direction: 1 right, &FF left, 0 none yet
+    EQUB &00
+.pre_valid                         \ 0: nothing built; 1 or &FF: built for that direction; &80: not usable
+    EQUB &00
+.pre_use                           \ this scroll takes the prebuilt column and state
+    EQUB &00
+.pre_view_low                      \ the viewport it was built from
+    EQUB &00
+.pre_view_high
+    EQUB &00
+.pre_bank                          \ the bank its walk left paged
+    EQUB &00
+.col_fresh                         \ column_buffer holds a column not yet pushed to the history
     EQUB &00
 
 IF SHIFT = 0

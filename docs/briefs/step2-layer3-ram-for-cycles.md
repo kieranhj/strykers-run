@@ -73,6 +73,15 @@ before using). ANDY: 7. HAZEL (8K) unused, but paging it in hides the MOS ROM th
    (skip, fill, merge) already decided: about half the 3.3k unpack, for ~25% more scenery data
    (banks 6 and 7 may not hold it).
 
+7. **Later (KC): the front end's music compressed** with ZX02 (the kit's `tools/zx02.py`): the title
+   music (3,584 bytes) and the high score music (384) are needed only on the front end, so they
+   can be kept packed in bank 5 and unpacked when the front end starts, into RAM the front end
+   does not use. The music must stay page-aligned and is read by its event handler with bank 5
+   paged, so the buffer must be main RAM (a save arena, the game's tables) - to be found. Frees
+   RAM, not cycles: room for item 2.
+8. **Later (KC): music in the game**, new, once 25 Hz holds comfortably with room to spare. A
+   change to how it plays: a decision when it is built.
+
 Not doable: the world as pixels (7,485 x 200 bytes); a clean background copy in place of save
 blocks (16K a screen); the mountains baked in (they are the MOS 3.20 ROM's bytes at `&C300`: a
 deviation on any other MOS).

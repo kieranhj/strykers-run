@@ -94,7 +94,7 @@ ORIGSSD = $(BUILD)/strykers-original.ssd
 SRC = \
   src/main.6502 src/os.6502 src/zp.6502 src/game.6502 src/font.6502 \
   src/bank4.6502 src/bank5.6502 src/bank6.6502 src/bank7.6502 \
-  src/render.6502 src/lives_digits.6502 \
+  src/render.6502 src/lives_digits.6502 src/prebuild.6502 \
   src/sprite_andy.6502 src/sprite_columns.6502 src/sprite_straight.6502 \
   src/sfx_data.6502 src/title.6502 src/title_data.6502 src/loader.6502 \
   src/lib/boot_stamp.6502 src/lib/keydown.6502 src/lib/sfx50.6502

@@ -22,7 +22,8 @@ Same game in each (keys by pass, `tools/passbench.mjs`, seed 1, passes 500-2000,
 | + D: the scroll's column building; BUGS #6 fixed | 24.11 | 82,948 |
 | + records first, restored a part at a time (`53076ff`) | 24.21 | 82,627 |
 | + the sprite column walk and draw merged (late passes, item 2, `a12b92b`) | 24.40 | 81,958 |
-| + the collision searches' left edge worked out once a search (item 3) | **24.42** | 81,905 |
+| + the collision searches' left edge worked out once a search (item 3, `0670ca9`) | 24.42 | 81,905 |
+| + the next column built in the wait for the flip (RAM for cycles, item 1) | **24.43** | 81,851 |
 
 Frame-timed play (`tools/profile.mjs`, `tools/speed.mjs`; these press keys by frame, so each
 build plays a slightly different game and the numbers move a few percent with it):
@@ -144,6 +145,7 @@ is over 2 fields (79,872 cycles), and by how much:
 | before (`53076ff`) | 24.21/s; 298 late: 0-5k 98, 5-10k 48, 10-15k 44, 15-20k 28, 20-30k 46, 30-40k 22, 40k+ 12 | 23.72/s; 187 late: 62, 31, 28, 18, 38, 10, 0 |
 | the column walk and draw merged | 24.40/s; 228 late: 59, 46, 40, 24, 43, 9, 7 | 23.96/s; 151 late: 45, 34, 16, 19, 36, 1, 0 |
 | the searches' left edge once a search | 24.42/s; 223 late: 57, 46, 39, 25, 41, 9, 6 | 23.98/s; 144 late: 39, 33, 16, 19, 36, 1, 0 |
+| the next column built in the wait (RAM for cycles 1) | 24.43/s; 210 late: 57, 43, 38, 21, 36, 9, 6 | 24.10/s; 129 late: 34, 31, 14, 16, 33, 1, 0 |
 
 - **The sprite column walk and draw merged** (`ren_draw_sprite` sets up a part and falls into
   `draw_column`, which loops over its columns): no call a column; the column's bottom kept as
@@ -167,6 +169,26 @@ is over 2 fields (79,872 cycles), and by how much:
   carry as the old tests did at every exit (the overflow flag differs, and nothing in the game
   reads it). `check_for_mover_collision_with_range_of_movers_loop` 4,255 to 3,424 cycles a late
   pass (seed 1), 3,005 to 2,421 holding RIGHT.
+- **The next column built in the wait** (`docs/briefs/step2-layer3-ram-for-cycles.md` item 1,
+  `src/prebuild.6502`): after a scroll's column is pushed, `render` (before `wait_for_flip`, if the
+  flip is two fields off, or one with User VIA T2 showing about 9,000 us of it left) runs the 8
+  layers' walk for the same direction on the real state, into `column_buffer`, keeps the state it
+  leaves and puts the old back. The next scroll, if in that direction from the same viewport,
+  keeps the column and takes that state (`start_column`, `install_prebuilt`): no clear, no walk.
+  The walks became subroutines (`layers_right`, `layers_left`). What the walk reads and writes
+  in zero page was measured over 3 x 20,000 frames (`zpafter`): nothing it writes is read before
+  being written again, so the scroll does not set it; and in 3% of walks a cloud starts before
+  any layer has set the table pointers (`&B9`, `&C8/&C9`), so the original's first column of it
+  uses whatever the multiply left - the prebuild cannot know that and gives up on those. A push
+  with no scroll since the last (the original's, after a hostile collision) takes the last column
+  from its history slot, since `column_buffer` may hold the next one; the prebuild waits while a
+  built column is unpushed (the original's lost column). `&0982-&0CFF` turned out never read or
+  written after start-up (50,000 frames, front end and play), kept for items 3 and 2. Holding
+  RIGHT, 75% of scrolls take the prebuilt column, 56% on seed 1 (the rest: no time in the wait,
+  a change of direction, or unusable); the logic 19.2k to 17.0k a pass holding RIGHT, and the
+  prebuild's 3.6k is in the wait (`passbench` now counts work `render` does before it waits as
+  wait, and reports it). One bug on the way: a state change to 0 was missed (the flag was the
+  new value); the frames against `678ea21` caught it and a per-push column comparison found it.
 
 ## Checks
 

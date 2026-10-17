@@ -64,8 +64,10 @@ for (const disc of discs) {
     const holdAt = (p) => HOLD.filter((k) => { const [name, every] = k.split("@"); return !every || p % +every < 3; }).map((k) => k.split("@")[0]);
     const keysAt = HOLD ? Array.from({ length: FROM + N + 2 }, (_, p) => holdAt(p)) : passKeys(FROM + N + 2);
     // detail: cycles in render (less its wait for the flip), in the wait, in interrupts; bytes
+    // (the wait includes the work render does in it before waiting - the next scroll's column,
+    // src/prebuild.6502 - which is also counted on its own, as pre)
     // drawn and restored; scroll columns written; viewport_left at each pass
-    const d = { render: 0, wait: 0, irq: 0, drawn: 0, restored: 0, columns: 0, scroll: 0, offStale: 0, onNew: 0, byOverlap: 0, drawsOn: 0 };
+    const d = { render: 0, wait: 0, pre: 0, irq: 0, drawn: 0, restored: 0, columns: 0, scroll: 0, offStale: 0, onNew: 0, byOverlap: 0, drawsOn: 0 };
     const snaps = [];          // d at each pass's start, for the per-pass breakdown
     // a flat profile per pass (by the top-level label at or below the PC; interrupts apart),
     // kept for the passes over 2 fields
@@ -100,7 +102,7 @@ for (const disc of discs) {
             if (pc === 0xe59e && !inIrq) { inIrq = true; irq0 = c; } else if (inIrq && lastOp === 0x40) { inIrq = false; d.irq += c - irq0; }
             lastOp = op;
             if (inIrq) return false;
-            if (wt && cpu.s > wt.sp) { d.wait += c - wt.c; wt = null; }
+            if (wt && cpu.s > wt.sp) { d.wait += c - wt.c; if (wt.pre) d.pre += c - wt.c; wt = null; }
             if (ren && cpu.s > ren.sp) { d.render += c - ren.c; ren = null; }
             if (scr && cpu.s > scr.sp) { d.scroll += c - scr.c; scr = null; }
             if ((pc === syms.scroll_screen_right || pc === syms.scroll_screen_left) && !scr) scr = { c, sp: cpu.s };
@@ -112,7 +114,7 @@ for (const disc of discs) {
                 if (pc === syms.take_off && d._before) { for (let i = 0; i < 34; i++) { const v = cpu.readmem(syms.need + i); if (v && !d._before[i]) d.byOverlap++; } d._before = null; }
                 if (pc === syms.draw_mover) d.drawsOn++;
                 if (pc === syms.render && !ren) ren = { c, sp: cpu.s };
-                if (pc === syms.wait_for_flip && !wt) wt = { c, sp: cpu.s };
+                if ((pc === syms.wait_for_flip || pc === syms.prebuild) && !wt) wt = { c, sp: cpu.s, pre: pc === syms.prebuild };
                 if (pc === syms["draw_column.byte"] || pc === syms["draw_column.part_byte"]) d.drawn++;
                 if (pc === syms["restore_block.byte"] || pc === syms["restore_block.part_byte"]) d.restored++;
                 if (pc === syms.write_column) d.columns++;
@@ -162,5 +164,5 @@ for (const disc of discs) {
         for (const [k, v] of [...heavyProfile].sort((a, b) => b[1] - a[1]).slice(0, 22)) console.log(`    ${k.padEnd(48)} ${String(Math.round(v / heavyPasses)).padStart(7)}`);
         console.log(`    the over-2-field passes on average: render ${avg("render", over)} scroll ${avg("scroll", over)} other logic ${avg("work", over) - avg("render", over) - avg("scroll", over) - avg("irq", over)} drawn ${avg("drawn", over)} restored ${avg("restored", over)}`);
     }
-    if (DETAIL) console.log(`  a pass: render ${per(d.render - d.wait)} (+ wait for flip ${per(d.wait)}), interrupts ${per(d.irq)}, the rest (logic) ${per(cyc - d.render - d.irq)}; bytes drawn ${(d.drawn / n).toFixed(0)}, restored ${(d.restored / n).toFixed(0)}; columns scrolled ${(d.columns / n).toFixed(2)}`);
+    if (DETAIL) console.log(`  a pass: render ${per(d.render - d.wait)} (+ wait for flip ${per(d.wait)}, of which work done in it ${per(d.pre)}), interrupts ${per(d.irq)}, the rest (logic) ${per(cyc - d.render - d.irq)}; bytes drawn ${(d.drawn / n).toFixed(0)}, restored ${(d.restored / n).toFixed(0)}; columns scrolled ${(d.columns / n).toFixed(2)}`);
 }

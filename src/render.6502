@@ -60,9 +60,14 @@ MAX_BLOCK   = &2A0                  \ more than any mover's save block: 636 byte
 \ =============================================================================================
 .history_push
 {
-    \ layer 3 (D): the column into its slot, 8 bytes a time. (Not cleared after: every push
-    \ follows a scroll that rebuilt the column - 278 pushes for 278 scrolls holding RIGHT, 400
-    \ for 400 on seed 1, measured 2026-10-17.)
+    \ layer 3 (D): the column into its slot, 8 bytes a time. A push with no scroll since the
+    \ last (the original's, after a hostile collision) pushes the last column again: from its
+    \ slot, since column_buffer may hold the next scroll's, built ahead (src/prebuild.6502).
+    LDA col_fresh
+    BNE fresh
+    JMP repush
+.fresh
+    STZ col_fresh                   \ 65C02 opcode
     LDX hist_next
     LDA hist_dst_hi,X
     STA dst1 + 2
@@ -104,6 +109,7 @@ MAX_BLOCK   = &2A0                  \ more than any mover's save block: 636 byte
     SBC #8
     TAX
     BNE copy
+.pushed
     LDX hist_next
 .header                             \ X = the slot
     LDA edge_screen_address_low
@@ -154,6 +160,24 @@ MAX_BLOCK   = &2A0                  \ more than any mover's save block: 636 byte
     EOR #1
     STA hist_next
     RTS
+.repush
+    LDX hist_next
+    LDA hist_dst_hi,X
+    STA rp_dst + 2
+    TXA
+    EOR #1
+    TAX
+    LDA hist_dst_hi,X
+    STA rp_src + 2
+    LDX #200
+.rp_loop
+.rp_src
+    LDA hist0 - 1,X                 \ self-modified: the last slot
+.rp_dst
+    STA hist0 - 1,X                 \ self-modified: this one
+    DEX
+    BNE rp_loop
+    JMP pushed
 }
 
 \ =============================================================================================
@@ -282,6 +306,7 @@ MAX_BLOCK   = &2A0                  \ more than any mover's save block: 636 byte
 \ =============================================================================================
 .render
 {
+    JSR prebuild                    \ RAM for cycles 1: the next scroll column, if there is time
     JSR wait_for_flip               \ the hidden screen is the one the last frame went to until
     JSR save_game_zp                \ it is shown (decision 26)
     LDA shown_screen                \ draw into the screen not being shown
