@@ -81,3 +81,12 @@ shown screen byte-identical on all but 8 of 42,000 passes. Slower: 11.6 passes/s
 - [ ] BUGS #1: a fixed ground texture table; BUGS #2: the legs sprite overrun
 - [ ] Check in jsbeeb, then fix: a scroll column lost when moving with `frame` >= 0 (firing in a
       helicopter while moving); the column replotted after a hostile collision
+
+## Ideas for improvement - gameplay variations (KC, 2026-10-17; not agreed)
+Each changes how the original plays (rule 1), so each needs a decision before it is built.
+- [ ] Jump at once, without the player stopping first.
+- [ ] Fire while running, without stopping.
+- [ ] Run at the jumping and helicopter speed, which scrolls more smoothly. Measured in layer 3
+      (`docs/step2-layer3.md`, 600 passes each, the original's design too): running moves the view
+      0.46 columns a pass, jumping 0.65-0.67.
+- [ ] Or a run modifier key: today's speed becomes a jog, and the key gives a faster run.
