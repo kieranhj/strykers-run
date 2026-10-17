@@ -522,6 +522,49 @@ Either would bring row-major back to about the column format's speed, not past i
 
 **Kept from the work, on `main`:** the tools read either format.
 
+## The column format: a fast path, and the player's running frames compiled (costed)
+
+KC, after the row-major result: "cost those wins. do we have a fast path for sprites that aren't
+clipped and aren't going to hit the &8000 address wraparound?"
+
+**Half of one.** `ren_draw_sprite` runs the per-column clip test only for a part that can clip
+(`ds_clip`). But every step to the next column, and every cell crossing, tests the 16K ring, for
+every part.
+
+**Measured set-up** (`tools/colfast.py` on `tools/drawprof.mjs`'s labels, `07ef49c`):
+- **drawing:** 131-164 cycles a column, besides the byte loops and cell crossings;
+- **restoring:** 64-67 a column.
+
+The player is drawn as 3 parts with 14-21 columns and few cells. 14% of the columns drawn are in
+clipped draws: none of the player's, 22-32% of the helicopters'.
+
+**The two wins:**
+- **A fast column path**, for a part that is not clipped and cannot wrap (checked once for the
+  part): no ring tests, one header read, no 3-byte record a column (the restore walks the
+  sprite's headers again), the data pointer from the column pointer. About 86 cycles a column
+  against 131-164: 48 less a column drawn, 6 less a cell, 5 less a column restored.
+- **The player's running frames compiled**, part by part:
+  - the form: code per (sprite, flip, line in the cell), a pointer a cell row, `LDY #o :
+    LDA (p),Y : STA save+n : AND #m : EOR #p : STA (p),Y` (21 cycles a byte, ~80 a part with the
+    bank's stub), restoring with `LDY #o : LDA save+n : STA (p),Y` (12 a byte, ~60 a part);
+  - what it needs: the player's save area fixed per screen, and the code in banks 5-7, entered
+    through a main-RAM stub;
+  - the running frames are 14 kinds holding RIGHT (529 bytes of sprite), and on seed 1 they are
+    72% of the player's bytes.
+
+**25 Hz late frames** (now 41 on seed 1, 24 holding RIGHT), with the render change a pass:
+
+| | RAM | seed 1 | holding RIGHT |
+|---|---|---|---|
+| fast column path | ~0.3K of code | 29 (-1.4k) | 13 (-2.0k) |
+| running frames compiled, all 14 kinds | ~10.6K | 20 (-4.4k) | 1 (-8.9k) |
+| the 8 commonest kinds (65% of the bytes holding RIGHT) | ~6.1K | 24 (-2.9k) | 5 (-5.8k) |
+| fast path + all 14 compiled | ~10.9K | 15 (-5.2k) | 0 (-9.8k) |
+| fast path + the 8 commonest | ~6.4K | 19 (-3.9k) | 1 (-7.0k) |
+
+**RAM:** free in banks 5-7 is about 7.5K (bank 5 ~2.5K, bank 6 ~2.7K, bank 7 ~2.3K). The 8
+commonest kinds fit; all 14 need HAZEL (to be measured) or the front end's music packed.
+
 ## Tools
 
 - **`tools/fieldcost.mjs DISC [--from P] [--passes N] [--seed S] [--hold RIGHT] --out PER.json`:** the
@@ -534,6 +577,9 @@ Either would bring row-major back to about the column format's speed, not past i
   same screen; the player's (sprite, flip, line) kinds.
 - **`tools/whatif.py FC.json OPS.json [--out FC2.json KINDS]`:** the 25 Hz late frames with each
   option's estimated cost taken off. `--out` writes the passes recosted for `fieldsim.py`.
+- **`tools/colfast.py FC.json OPS.json [RIGHT_OPS.json]`** (`TOP=N`): the column renderer's
+  set-up by column, cell and part, and the 25 Hz late frames with a fast column path or the
+  player's running frames compiled.
 - **`tools/screendiff.mjs A B [PASS] [SEED]`:** both builds played to a pass, both screens
   compared byte by byte.
 - **`tools/singlebuf.mjs` fixed:** it changed keys at 400,000-cycle boundaries, not at each pass,
