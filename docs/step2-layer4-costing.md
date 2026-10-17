@@ -469,6 +469,59 @@ then 14.0k / 16.2k against 23.5k / 30.3k, and the render alone makes 6 / 0 frame
   On top of that, HAZEL's 8K, if it can be paged during the render (to be measured: it hides the
   MOS's `&C000-&DFFF`), and ~3-4K from packing the front end's music.
 
+## Row-major sprites: built, measured, set aside (branch `row-major-sprites`)
+
+KC asked for all the sprite data row-major. The format that fits where the sprites are now (KC
+chose it over offset + index a byte, which needs ~14K in banks 5-7):
+- per chunk a length, then a stream read with X counting down;
+- rows up from the bottom, each a header (last column << 4 | count - 1) and its indices leftwards;
+- gaps padded with the transparent index 0.
+
+**Size:** 7,906 bytes, against the column format's 7,750; the largest save block is 384 bytes, not
+636.
+
+**The loops:**
+- **draw:** one pointer a row, Y stepping 8 (back 8 flipped), 46 cycles a byte;
+- **restore:** the same stream walked again;
+- **clipped parts**, and cells from `&7FA8` in the last page, go a byte at a time;
+- **the screen-wrap test** is made once a cell, not once a row.
+
+**Proved:** state and shown screen identical to `07ef49c`'s renderer, on 6,000 passes each of
+seeds 1, 3 and 4 with CTRL, and against `DEBUG_FULLREDRAW` on seed 5.
+
+**Measured (passbench, the same build flags): slower.**
+
+| | the column format (`07ef49c`) | row-major |
+|---|---|---|
+| seed 1: passes/s, late frames of 1,498 | 24.70, 41 | 23.68, 166 |
+| holding RIGHT: passes/s, late frames of 598 | 24.51, 26 | 23.17, 95 |
+| render a pass (seed 1) | 30.6k | 37.1k |
+
+Draw + restore a pass, seed 1 (`tools/drawprof.mjs`):
+
+| | column format | row-major |
+|---|---|---|
+| player | 9.3k | 10.4k |
+| enemies | 2.3k | 3.3k |
+| enemy helicopters | 8.0k | 11.7k |
+| projectiles | 2.0k | 2.3k |
+
+**Why the estimate above was wrong:**
+- **The rows are short.** It took the sprite set's average, 6.3 bytes a row. The player draws
+  28 rows of ~3.8 bytes (against 21 columns of ~5), at ~60 cycles a row: the header decode, the
+  row's end and start, a line up.
+- **The byte loop costs more.** It keeps Y in zero page around the table lookups and steps it
+  by 8: 46 cycles against the column loop's 40.
+- **The restore costs more.** It has to decode the rows too: 53 cycles a byte for the player,
+  against 39.
+- **Clipped parts are frequent.** Movers at the screen's edges take the byte-at-a-time path,
+  which is why the helicopters went from 8.0k to 11.7k a pass.
+
+**Unbuilt fixes:** a clipped fast path, and each row's end marked by bit 7 of its last index.
+Either would bring row-major back to about the column format's speed, not past it.
+
+**Kept from the work, on `main`:** the tools read either format.
+
 ## Tools
 
 - **`tools/fieldcost.mjs DISC [--from P] [--passes N] [--seed S] [--hold RIGHT] --out PER.json`:** the
@@ -481,6 +534,8 @@ then 14.0k / 16.2k against 23.5k / 30.3k, and the render alone makes 6 / 0 frame
   same screen; the player's (sprite, flip, line) kinds.
 - **`tools/whatif.py FC.json OPS.json [--out FC2.json KINDS]`:** the 25 Hz late frames with each
   option's estimated cost taken off. `--out` writes the passes recosted for `fieldsim.py`.
+- **`tools/screendiff.mjs A B [PASS] [SEED]`:** both builds played to a pass, both screens
+  compared byte by byte.
 - **`tools/singlebuf.mjs` fixed:** it changed keys at 400,000-cycle boundaries, not at each pass,
   so it played a slightly different game from passbench. The first versions of `fieldcost` did the
   same: they saw 31 late frames where passbench saw 41.
