@@ -4213,13 +4213,14 @@ ENDIF
     STA mover_y_max
 .search_for_target
     JSR calculate_mover_x_max_from_offset
+    STZ friendly_targets_found
+    STZ unfriendly_targets_found
     LDX #&FF
     STX target                      \ Set to negative to indicate no target found by default
-    INX                             \ 0
-    STX friendly_targets_found
-    STX unfriendly_targets_found
-    JSR set_cm_left
-    LDX #&0B                        \ MOVER_LAST_ENEMY_HELICOPTER
+    JSR set_cm_left                 \ (leaves X alone)
+    LDX #&0C                        \ MOVER_LAST_ENEMY_HELICOPTER + 1: the DEX makes it &0B
+.search_prefilter_next             \ grind: a mover the prefilter passes over (X >= 2) comes back here
+    DEX
 .search_for_target_loop
     CPX #&02                        \ step 2 (layer 3): a mover that cannot be in range is passed
     BCC search_in_full                  \ over, except in the last two checks
@@ -4227,12 +4228,12 @@ ENDIF
     CMP movers_x_low,X              \ own first test)
     LDA mover_x_max_high
     SBC movers_x_high,X
-    BCC consider_next_enemy
+    BCC search_prefilter_next      \ X >= 2, so X >= 1 after the DEX
     LDA movers_x_low,X              \ left of it even at the widest type: x < its left - &0B
     CMP cm_left_low
     LDA movers_x_high,X
     SBC cm_left_high
-    BCC consider_next_enemy
+    BCC search_prefilter_next      \ X >= 2, so X >= 1 after the DEX
 .search_in_full
     JSR check_for_mover_collision_with_mover_X\ Returns carry set if collision, i.e. mover in range
     BCC consider_next_enemy

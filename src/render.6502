@@ -1968,15 +1968,14 @@ pix_operand_2 = * + 1
     BCC cell
     INC v_ptr + 1
     BRA cell                        \ 65C02 opcode
-.last_cell
-    DEC A                           \ 65C02 opcode
-    STA stop_y
+.last_cell                          \ rows_m1 = Y - the last line: rows_m1 + 1 bytes to put back
+    LDX rows_m1                     \ (X is free in columns: .more reloads it)
 .part_byte
     LDA (v_ptr),Y
     STA (s_ptr),Y
     DEY
-    CPY stop_y
-    BNE part_byte
+    DEX
+    BPL part_byte
     JMP columns
 .compiled                           \ its entry: the kind, then the part's bottom left cell
     LDA v_ptr
@@ -2227,34 +2226,32 @@ pix_operand_2 = * + 1
     LDA wa_off                      \ the column: (offset - the row's start) / 8
     SEC
     SBC wa_rows_base_lo,Y
-    STA wa_t
-    LDA wa_off + 1
-    SBC wa_rows_base_hi,Y
-    LSR A
-    ROR wa_t
-    LSR A
-    ROR wa_t
-    LSR A
-    ROR wa_t
-    LDA wa_t
+    PHA                             \ the offset in the row, low byte
+    TXA                             \ X = wa_off + 1 still
+    SBC wa_rows_base_hi,Y           \ high byte 0..2: the offset is under &280
+    LSR A                           \ C = bit 0 of it, A = bit 1
+    TAX
+    PLA
+    ROR A
+    CPX #1                          \ C = bit 1
+    ROR A
+    LSR A                           \ the column, 0..&4F
     CLC
     ADC viewport_left_low
     STA wa_x_lo
     LDA viewport_left_high
     ADC #0
     STA wa_x_hi
-    TYA                             \ the line from the top: row * 8 + the line in the cell
+    TYA                             \ y = &C7 - (row * 8 + the line in the cell)
     ASL A
     ASL A
-    ASL A
-    STA wa_t
+    ASL A                           \ C = 0: row <= 25
+    EOR #&FF
+    ADC #&C8                        \ &C7 - row * 8, its low 3 bits 111
+    STA wa_y
     LDA wa_off
     AND #&07
-    ORA wa_t
-    EOR #&FF                        \ y = &C7 - that
-    SEC
-    ADC #&C7
-    STA wa_y
+    TRB wa_y                        \ less the line in the cell (65C02 opcode)
     RTS
 }
 .wa_rows_guess                      \ by the offset's high byte h: floor(h * 256 / &280)
