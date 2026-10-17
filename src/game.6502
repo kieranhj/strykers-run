@@ -2073,12 +2073,16 @@ ENDIF
     EQUB &00, &00, &02, &02, &00, &00, &00, &02, &3E
 
 .add_delta_to_screen_address_in_AX    \ # Called with A = address_low, X = address_high
-    JSR get_screen_address_delta
+    STX delta_high                  \ grind: in-line, delta_high the high byte's temporary
+    LDX deltas_low_table,Y
+    STX delta_low
     CLC
     ADC delta_low
+    LDX deltas_high_table,Y
     TAY
     TXA
-    ADC delta_high
+    ADC delta_high                  \ delta + address high: the same sum, C, V, N and Z
+    STX delta_high
     BPL skip_wraparound_1d46
     SEC
     SBC #&40
@@ -2087,21 +2091,16 @@ ENDIF
     TYA
     RTS                             \ Leave with A = address_low, X = address_high
 
-.get_screen_address_delta
-    PHA
-    LDA deltas_low_table,Y
-    STA delta_low
-    LDA deltas_high_table,Y
-    STA delta_high
-    PLA
-    RTS
-
 .subtract_delta_from_screen_address_in_AX    \ # Called with A = address_low, X = address_high
-    JSR get_screen_address_delta
+    STX delta_high                  \ grind: in-line, delta_high the high byte's temporary
+    LDX deltas_low_table,Y
+    STX delta_low
     SEC
     SBC delta_low
+    LDX deltas_high_table,Y
     TAY
-    TXA
+    LDA delta_high
+    STX delta_high
     SBC delta_high
     CMP #&40
     BCS skip_wraparound_1d66
