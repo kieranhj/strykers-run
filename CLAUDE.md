@@ -94,6 +94,10 @@ disassembly's `actually`/`also` notes say what an operand really is.
 - `tools/analyse.py report|annotate` - beebgame's static analyses of the build (liveness, known values, ranges,
   register ABIs; `build/dataflow/`): `tools/dataflow/` vendored, `tools/baron_dbg.py` reads a Baron build,
   `tools/dataflow_config.py` and `tools/isr_model.py` describe this game's interrupts (the beeb-dataflow skill)
+- `tools/compiled.py LAYER2.ssd` - the player's commonest sprite parts as code (`src/compiled_*.6502`), from the layer 2 build's sprites
+- `tools/pcprof.mjs`, `tools/pcagg.py`, `tools/pccats.py`, `tools/budgetdata.py` - per-instruction profile by phase, label and job; the cycle budget page's data
+- `tools/drawprof.mjs`, `tools/whatif.py`, `tools/colfast.py` - each draw by label and byte kind; costing renderer changes on measured passes
+- `tools/hang.mjs DISC PASS`, `tools/screendiff.mjs A B PASS` - where a stalled build goes; two builds' screens byte by byte
 - `tools/sprites.py stats|emit|straight` - sprite sizes, save block sizes, and the generated sprite sources
 - `tools/sfxcapture.mjs DISC OUT [--pairs]` - each sound effect's chip writes by MOS tick; `--pairs`, an effect over another
 - `tools/sfx50.py CAPTURE.json OUT.6502 [--show]` - fit 50 Hz ramps (for `src/lib/sfx50.6502`) to captured effects; `--show` prints them against the MOS's
@@ -108,13 +112,16 @@ hardware-scrolled by the CRTC). Bank 5 `&8000-&83FF` is the player buffer.
 
 Step 2 additions: zero page `&90` (`field_count`), `&92`/`&93` (the PRNG), `&9B` (`drawing`),
 `&9C/&9D` (the sprite walk's and the renderer's pointer), `&9E` (`plot_sprite`); the renderer's
-scratch `&C0-&CD` (given back by `restore_game_zp` only where the logic reads). `&34D5-&3FFF` is
-the save arena (main and shadow, one per screen); ANDY `&8000-&8FFF` holds 53 sprites, paged in
-while the renderer draws. The keyboard read, PRNG and `pass_start`
-are in `&31xx`, with 517 bytes free up to `&33FF`; everything from `&3400` stays where the original
-had it (BUGS #1, #2). The interrupt's variables are below `&3000` (the renderer draws with ACCCON's
-X bit set when the target is shadow). Bank 4: the renderer `&9000-`, then its sprites and tables (below `&B600`, ASSERTed: BUGS #6);
-workspace `&B400-&BEFF`.
+scratch `&C0-&CD` (given back by `restore_game_zp` only where the logic reads). `&3604-&3FFF` is
+the save arena (main and shadow, one per screen), after `player_save` (`&34D5`, 303 bytes a screen:
+the compiled kinds' saves); ANDY `&8000-&8FFF` holds 53 sprites, paged in while the renderer draws.
+The keyboard read, PRNG and `pass_start` are in `&31xx`, `compiled_call` (the stub that pages a
+compiled kind's bank) at `&33BB`, with 43 bytes free up to `&33FF`; everything from `&3400` stays
+where the original had it (BUGS #1, #2). The interrupt's variables are below `&3000` (the renderer
+draws with ACCCON's X bit set when the target is shadow). Bank 4: the renderer `&9000-`, then its
+sprites and tables (below `&B600`, ASSERTed: BUGS #6); workspace `&B400-&BEFF`; under ANDY, the
+prebuild and `save_game_zp`/`restore_game_zp` (`src/render_zp.6502`, ROMSEL `&04` only). Banks 5-7
+end with the player's compiled sprite kinds (`tools/compiled.py`; each bank's end ASSERTed).
 Bank 5 grows only at its end (its music is page-aligned). In play the game's `irq1_handler` owns
 vsync and flips the two screens (main and shadow, both `&4000-&7FFF`); on the front end the MOS
 has vsync and only main is used (decisions 14, 23).

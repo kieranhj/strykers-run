@@ -565,6 +565,80 @@ clipped draws: none of the player's, 22-32% of the helicopters'.
 **RAM:** free in banks 5-7 is about 7.5K (bank 5 ~2.5K, bank 6 ~2.7K, bank 7 ~2.3K). The 8
 commonest kinds fit; all 14 need HAZEL (to be measured) or the front end's music packed.
 
+## Built: the player's 8 commonest parts compiled, `draw_column` trimmed (`e72c386`)
+
+KC: "do the fast path + 8 commonest".
+
+**The fast column path was not worth a path of its own.** Written out instruction by
+instruction, its saving (costed above at 48 cycles a column) was about 10. On the common path the
+ring tests were already on rare branches: only when a column's step crosses a page, and 4 cycles
+a cell crossing. What a column pays for is its record in the save block and its pointers, which
+every column needs. Two trims went into `draw_column` for every part:
+- the record's count is written at once;
+- the column's line is worked out once.
+
+**The compiled kinds** (`tools/compiled.py`, `src/compiled_*.6502`):
+- **which:** the player's 8 commonest (sprite, flip, line) kinds holding RIGHT. Sprite 0 at
+  line 7, sprite 9 at lines 3, 4 and 5, sprites 1-4 at line 7; all unflipped.
+- **the code:** a pointer a character row, then `LDY #o : LDA (row),Y : STA save+n : AND #m :
+  EOR #p : STA (row),Y` (`LDA #p` for an opaque byte; `LDY` shared by bytes with the same
+  offset). The restore is `LDA save+n : STA (row),Y`.
+- **the size:** 6,010 bytes, in banks 5-7. Every placement was tried; `main.6502` now ASSERTs
+  each bank's end, since the first build ran bank 7's code past `&BFFF` (`tools/hang.mjs` found
+  it).
+- **the entry:** `ren_draw_sprite` looks up the player's unclipped parts (`compiled_part`) and
+  calls the kind through `compiled_call` in main RAM (`&33BB`). A row that could run past `&7FFF`
+  gives up before drawing anything, and the generic path draws the part.
+- **the saves:** go to a fixed 303-byte area per screen, `player_save` at `&34D5`, so the arena
+  is now `&3604-&3FFF`. The save block gets an 11-byte entry marked by count - 1 = `&FF`, which
+  `restore_block` hands to the kind's restore.
+- **room in bank 4:** `save_game_zp`/`restore_game_zp` moved under ANDY (`src/render_zp.6502`,
+  ROMSEL `&04` only).
+
+**Proved:** state and shown screen identical to `07ef49c` over 6,000 passes on seeds 1 and 3 and
+4 with CTRL, and to `DEBUG_FULLREDRAW` on seed 5. Both helicopter flights had no frame differing.
+The front end passed 15 of 15.
+
+**Measured:** jsbeeb 2.5.0, `-Shift 256 -ShiftEnd -Define DEBUG_LIVES`; late frames are shown 3+
+fields.
+
+| | `07ef49c` | `e72c386` | estimated (above) |
+|---|---|---|---|
+| seed 1: passes/s, late frames of 1,498 | 24.70, 41 | **24.84, 24** | 19 |
+| holding RIGHT: passes/s, late frames of 598 | 24.51, 26 | **24.83, 10** | 1 |
+| render a pass, seed 1 (fieldcost) | 30.6k | 28.5k | |
+| render a pass, holding RIGHT (fieldcost) | 40.7k | 36.5k | |
+| the player holding RIGHT: draw / restore a pass | 9.5k / 4.2k | 6.4k / 3.0k | |
+| 50 Hz option 2 (fieldsim): late frames, seed 1 / RIGHT | 529 / 353 | 389 / 224 | |
+
+**Why less than estimated:**
+- the 8 kinds are only 65% of the player's bytes holding RIGHT; its other 6 running kinds are
+  still drawn generically;
+- finding the kind and the stub cost about 110 cycles a part;
+- the trims came to about 10 cycles a column, not 48.
+
+**Left at 25 Hz:**
+- **seed 1:** for no late frames the render must be 32% cheaper; for 1% late, 6%.
+- **holding RIGHT:** 6% and 1%.
+
+**The RAM it took**, in the shipping build:
+- 6,010 bytes of code in banks 5-7: bank 5 2,037, bank 6 2,169, bank 7 1,804;
+- the 303-byte save area per screen, taken from the arena;
+- 56 bytes of table and about 200 of code in bank 4.
+
+**Left after it:**
+- bank 5: 1K at `&8000` and 424 bytes at `&BE58`;
+- bank 6: 530 at `&BDEE`;
+- bank 7: 481 at `&BE1F`.
+
+The shifted test builds keep a page free, so they have 256 less in each bank.
+- bank 4: 295 above the sprites, 137 under ANDY;
+- main RAM: 43 at `&33D5`;
+- ANDY: 7;
+- HAZEL: unused.
+
+The other 6 kinds (~4.6K) need HAZEL or the front end's music packed.
+
 ## Tools
 
 - **`tools/fieldcost.mjs DISC [--from P] [--passes N] [--seed S] [--hold RIGHT] --out PER.json`:** the
@@ -580,6 +654,10 @@ commonest kinds fit; all 14 need HAZEL (to be measured) or the front end's music
 - **`tools/colfast.py FC.json OPS.json [RIGHT_OPS.json]`** (`TOP=N`): the column renderer's
   set-up by column, cell and part, and the 25 Hz late frames with a fast column path or the
   player's running frames compiled.
+- **`tools/compiled.py LAYER2.ssd [src]`:** the compiled kinds' code, table and save area.
+- **`tools/pcprof.mjs`, `tools/pcagg.py`, `tools/pccats.py`, `tools/budgetdata.py`:** the
+  per-instruction profile, by label and by job, and the cycle budget page's data.
+- **`tools/hang.mjs DISC PASS`:** where a build that stops making passes first leaves its code.
 - **`tools/screendiff.mjs A B [PASS] [SEED]`:** both builds played to a pass, both screens
   compared byte by byte.
 - **`tools/singlebuf.mjs` fixed:** it changed keys at 400,000-cycle boundaries, not at each pass,
