@@ -5427,6 +5427,24 @@ ASSERT shown_screen < &3000
 .col_fresh                         \ column_buffer holds a column not yet pushed to the history
     EQUB &00
 
+\ compiled_call (step 2 layer 4): A = the bank holding a compiled kind (tools/compiled.py), X =
+\ the ROMSEL to come back to, compiled_vec = the entry. Pages the bank (with the MOS's copy, which
+\ the vsync interrupt restores ROMSEL from), runs the code, pages X's back; keeps the code's carry.
+\ Here because the renderer in bank 4 cannot page another bank over itself.
+.compiled_call
+    STX compiled_back
+    STA os_ram_copy_of_currently_selected_rom
+    STA romsel
+    JSR compiled_jump
+    LDA compiled_back
+    STA os_ram_copy_of_currently_selected_rom
+    STA romsel
+    RTS
+.compiled_jump
+    JMP (compiled_vec)
+.compiled_vec   EQUW 0
+.compiled_back  EQUB 0
+
 IF SHIFT = 0
     unused_3400_original = &3400
 ELSE
@@ -5459,6 +5477,9 @@ ENDIF
 \ The renderer's save-unders, one area per screen: the renderer draws with ACCCON's X bit set
 \ for the shadow screen, so these same addresses are main RAM for screen 0 and shadow RAM for
 \ screen 1 (render.6502).
+.player_save                        \ step 2 layer 4: the compiled kinds' saves (tools/compiled.py), at
+PLAYER_SAVE = player_save           \ fixed addresses: only the player draws them, once a screen
+    SKIP PLAYER_SAVE_SIZE
 .save_arena
     SKIP (&4000 - GAME_DOWN) - *
 save_arena_end = *

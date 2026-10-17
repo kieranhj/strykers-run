@@ -1,0 +1,157 @@
+\ render_zp.6502 - the renderer's save and restore of the game's zero page (src/render.6502
+\ calls them). In sideways bank 4 below &9000, under ANDY: they run with ROMSEL &04 only (at the
+\ start of render, before the movers go on, and at its end, after), which leaves room above
+\ &9000 for the player's compiled kinds' table and code (step 2 layer 4).
+
+\ ---- the game's zero page ----------------------------------------------------------------
+\ The plotter's scratch bytes are also the logic's variables (delta_high is frame_and_flip,
+\ screen_address is threshold...), and the original's logic reads, at the start of a pass, what
+\ its own last drawing left there. So what the renderer does to the bytes the logic reads is
+\ undone. Layer 3 (option B) keeps only those: the bytes whose first access by the logic after
+\ a render was ever a read (tools/zplive.mjs, 2026-10-16, jsbeeb 2.5.0: four seeds, 30,000
+\ frames each, the same 59 or 60, of which 13 the renderer's own work changes), less the
+\ sprite unpacker's code at &04-&1E (the renderer never writes it), the MOS's (&E7-&ED), and
+\ what the vsync interrupt counts meanwhile (field_count &90, game_over_cooldown &96); plus
+\ the rest of &B0-&BB and &F8/&F9 (the plotter's leftovers) for margin. Pass lockstep proves it.
+.save_game_zp
+    LDA &00
+    STA zp_save + &00
+    LDA &01
+    STA zp_save + &01
+    LDA &02
+    STA zp_save + &02
+    LDA &03
+    STA zp_save + &03
+    LDA &7E
+    STA zp_save + &7E
+    LDA &7F
+    STA zp_save + &7F
+    LDA &80
+    STA zp_save + &80
+    LDA &82
+    STA zp_save + &82
+    LDA &83
+    STA zp_save + &83
+    LDA &84
+    STA zp_save + &84
+    LDA &8E
+    STA zp_save + &8E
+    LDA &8F
+    STA zp_save + &8F
+    LDA &92
+    STA zp_save + &92
+    LDA &93
+    STA zp_save + &93
+    LDA &94
+    STA zp_save + &94
+    LDA &95
+    STA zp_save + &95
+    LDA &9B
+    STA zp_save + &9B
+    LDA &9F
+    STA zp_save + &9F
+    LDA &A0
+    STA zp_save + &A0
+    LDA &B0
+    STA zp_save + &B0
+    LDA &B1
+    STA zp_save + &B1
+    LDA &B2
+    STA zp_save + &B2
+    LDA &B3
+    STA zp_save + &B3
+    LDA &B4
+    STA zp_save + &B4
+    LDA &B5
+    STA zp_save + &B5
+    LDA &B6
+    STA zp_save + &B6
+    LDA &B7
+    STA zp_save + &B7
+    LDA &B8
+    STA zp_save + &B8
+    LDA &B9
+    STA zp_save + &B9
+    LDA &BA
+    STA zp_save + &BA
+    LDA &BB
+    STA zp_save + &BB
+    LDA &C0
+    STA zp_save + &C0
+    LDA &F8
+    STA zp_save + &F8
+    LDA &F9
+    STA zp_save + &F9
+    RTS
+
+.restore_game_zp
+    LDA zp_save + &00
+    STA &00
+    LDA zp_save + &01
+    STA &01
+    LDA zp_save + &02
+    STA &02
+    LDA zp_save + &03
+    STA &03
+    LDA zp_save + &7E
+    STA &7E
+    LDA zp_save + &7F
+    STA &7F
+    LDA zp_save + &80
+    STA &80
+    LDA zp_save + &82
+    STA &82
+    LDA zp_save + &83
+    STA &83
+    LDA zp_save + &84
+    STA &84
+    LDA zp_save + &8E
+    STA &8E
+    LDA zp_save + &8F
+    STA &8F
+    LDA zp_save + &92
+    STA &92
+    LDA zp_save + &93
+    STA &93
+    LDA zp_save + &94
+    STA &94
+    LDA zp_save + &95
+    STA &95
+    LDA zp_save + &9B
+    STA &9B
+    LDA zp_save + &9F
+    STA &9F
+    LDA zp_save + &A0
+    STA &A0
+    LDA zp_save + &B0
+    STA &B0
+    LDA zp_save + &B1
+    STA &B1
+    LDA zp_save + &B2
+    STA &B2
+    LDA zp_save + &B3
+    STA &B3
+    LDA zp_save + &B4
+    STA &B4
+    LDA zp_save + &B5
+    STA &B5
+    LDA zp_save + &B6
+    STA &B6
+    LDA zp_save + &B7
+    STA &B7
+    LDA zp_save + &B8
+    STA &B8
+    LDA zp_save + &B9
+    STA &B9
+    LDA zp_save + &BA
+    STA &BA
+    LDA zp_save + &BB
+    STA &BB
+    LDA zp_save + &C0
+    STA &C0
+    LDA zp_save + &F8
+    STA &F8
+    LDA zp_save + &F9
+    STA &F9
+    RTS
+
