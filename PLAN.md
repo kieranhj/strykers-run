@@ -58,6 +58,10 @@ shown screen byte-identical on all but 8 of 42,000 passes. Slower: 11.6 passes/s
 - [x] The next pass's logic runs while the frame waits for its flip (decision 26)
 - [ ] D: the landscape column
 - [ ] The sprite loops' per-column overhead; the renderer's bookkeeping; a helicopter test
+- [ ] RAM for cycles (`docs/briefs/step2-layer3-ram-for-cycles.md`, KC 2026-10-17: never wait
+      when there is work): 1 the next column built in the wait, 3 no history copy and no rescan,
+      2 compiled sprites, 4 tables for arithmetic; later 5 (the logic a pass ahead: a decision)
+      and 6 (scenery runs translated at build time)
 - [ ] Budget: half an original pass of work, plus double-buffer overhead, under 39,936 cycles.
       Report before layer 4; if it cannot fit, bring the numbers and the options
 
