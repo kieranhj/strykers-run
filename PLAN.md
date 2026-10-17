@@ -90,3 +90,8 @@ Each changes how the original plays (rule 1), so each needs a decision before it
       (`docs/step2-layer3.md`, 600 passes each, the original's design too): running moves the view
       0.46 columns a pass, jumping 0.65-0.67.
 - [ ] Or a run modifier key: today's speed becomes a jog, and the key gives a faster run.
+- [ ] Health packs.
+- [ ] Shields.
+- [ ] Music in the game, once 25 Hz holds with time to spare (already noted in
+      `docs/briefs/step2-layer3-ram-for-cycles.md`, item 8). It costs cycles every field and RAM
+      for the tune: about 2.5K is free in banks 5-7 (`docs/step2-layer4-costing.md`).
