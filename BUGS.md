@@ -112,7 +112,7 @@ mask table and the page as `calculate_sprite_address_for_column_of_scenery` does
 state identical to `e72c386` over 6,000 passes on seeds 1 and 3; the screens (see the layer 4
 costing doc for the count: 591 and 627 passes of 6,000 differ, by 5 to 11 bytes).
 
-## 9. The mountain layer's data is HAZEL, not the MOS ROM (original behaviour; OPEN: KC)
+## 9. The mountain layer's data is HAZEL, not the MOS ROM (original behaviour; KEPT: decision 31)
 
 Found 2026-10-17 (`tools/hazelwatch.mjs`, jsbeeb 2.5.0, Master 128 MOS 3.20): the MOS leaves ACCCON's
 Y bit set from the start of the game on, so HAZEL (the filing system's workspace) is paged in at
@@ -123,4 +123,6 @@ Master it holds whatever the DFS left, so the mountains depend on the machine's 
 On a Model B (the standard version) `&C300` is the MOS ROM. Reads advance a byte every 11-12
 columns: `&C300-&C41B` by column 3,319 (`tools/hazelreach.mjs`; the run could go no further);
 extrapolated, about `&C300-&C590` for the whole world. Kept as it is: layer 4 puts nothing in HAZEL
-below `&C700` (decision 29). Fixing it means choosing what the mountains should be: KC.
+below `&C700` (decision 29). KC, 2026-10-17: leave it (decision 31) - the mountains stay as the
+enhanced version draws them, from whatever HAZEL holds at `&C300`; nothing may be put in
+`&C300-&C6FF`.

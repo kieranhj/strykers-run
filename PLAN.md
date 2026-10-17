@@ -10,11 +10,9 @@ and 1 of 598 holding RIGHT.
 ## Waiting on KC
 
 - **25 Hz or 50 Hz** (decision 11 targets 50 Hz). Layer 4's costing says 50 Hz does not fit:
-  option 2 would still make 364 of 2,999 frames late on seed 1. Recommended: a steady 25 Hz, as
-  a new decision. The rest of layer 4 (below) depends on it.
+  option 2 would still make 357 of 2,999 frames late on seed 1 (`6cc44ba`, `tools/fieldsim.py`).
+  Recommended: a steady 25 Hz, as a new decision. The rest of layer 4 (below) depends on it.
   `docs/step2-layer4-costing.md` "The answer" and "Recommendation".
-- **BUGS #9, the mountains.** They read HAZEL at `&C300`, not the MOS ROM: zeros in jsbeeb,
-  whatever the filing system left on a real Master. Choose what they should be.
 - **b2 and real hardware.** The flip, ACCCON's X bit and HAZEL left paged in (Y) are seen in
   jsbeeb only (`docs/step2-layer2.md` "Open").
 - **Close layer 3.** Every item of its two briefs is built or set aside with measurements: tag
