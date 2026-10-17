@@ -1,5 +1,7 @@
 # Brief: step 2, layer 3 - the late passes
 
+**BUILT** (2026-10-17): items 2 and 3 built, item 1 set aside. What landed: "Landed" at the end.
+
 You are continuing a project in `C:\Users\khcon\OneDrive\BEEB\Projects\strykers`: Stryker's Run
 (Enhanced), Superior Software 1986, BBC Master 128, rebuilt as Baron 6502 source and being made to
 run at a steady 25 frames a second, double buffered, with masked sprites. KC (the owner) wants
@@ -119,3 +121,12 @@ overwrite `build/`.
 Each of the three is either committed (proven as above, measured, documented) or set aside with
 its measurement in `docs/step2-layer3.md`. Then report to KC: passes/s, late passes, the "over by"
 histogram before and after, what is left and what it would take.
+
+## Landed
+
+- Item 2, the sprite column walk and draw merged: `a12b92b`.
+- Item 3, the collision searches' left edge worked out once a search: `0670ca9` (24.42 passes/s
+  on seed 1).
+- Item 1, building the next column on the pass that does not scroll: set aside, measured (it
+  would cost ~10.5k on the pass before to save ~4.8k; `docs/step2-layer3.md` "Measured and set
+  aside"). The same idea in the wait for the flip was built instead: RAM for cycles item 1.

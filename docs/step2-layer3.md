@@ -1,4 +1,4 @@
-# Step 2, layer 3: fast enough (in progress)
+# Step 2, layer 3: fast enough
 
 2026-10-16. Measured on **jsbeeb 2.5.0, Master 128 (MOS 3.20)** with the harnesses in `tools/`.
 **Not yet seen on b2 or real hardware.** The analysis and the options KC chose (all of A, B+C, D,
@@ -301,4 +301,7 @@ is over 2 fields (79,872 cycles), and by how much:
 
 - D's rest: building the column (`add_column_of_scenery_to_column_buffer`, `history_push`, the
   edge movers' addresses: ~4.5k on a scrolling pass).
-- A test with helicopters: none of the lockstep runs boarded one (`passesInHelicopter` 0).
+- A test with helicopters: done since, `tools/helilock.mjs` (boards one, flies, is shot down; two
+  builds compared every pass).
+- Later work on the heavy frames is in layer 4 (`docs/step2-layer4-costing.md`); what is still open
+  is in PLAN.md.

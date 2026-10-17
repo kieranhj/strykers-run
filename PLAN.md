@@ -1,100 +1,64 @@
 # Plan
 
-Step 1: a buildable, relocatable source. Step 2: optimise (frame rate, flicker) - planned once
-step 1's measurements exist.
+What is left, most pressing first: the decisions waiting on KC, then the speed work, then layer
+5's fixes, then the ideas (the order is the doc pass's, 2026-10-17: KC has not ranked them). What
+has landed is in `docs/done.md`.
 
-## Phase 0 - toolchain and skeleton: DONE 2026-10-16
-## Phase 1 - byte-identical rebuild: DONE 2026-10-16
-All seven files identical to STH; the disc boots and plays on jsbeeb Master.
+Now (`6cc44ba`, passbench, 2026-10-17): a steady 25 Hz in all but 21 of 1,498 frames on seed 1
+and 1 of 598 holding RIGHT.
 
-## Phase 2 - relocatable source: DONE 2026-10-16
-Every absolute reference the game and banks make is a symbol: labels, the sprite and routine
-address tables (`LO()`/`HI()`, flipped entries as sprite + offset), lo/hi immediate pairs, the
-copy-down blocks, vector high bytes, the music's page compares, sound parameter blocks. Layout
-facts the code relies on are ASSERTs (mask tables &80 above pixel tables in one page; music
-page-aligned; sound blocks ORed; resident part ends by &4000). Proven by decision 7: 30,000
-frames cycle-identical, game a page down, banks a page up; an odd game shift (&40) plays.
-Left numeric on purpose: hardware and MOS, screen addresses, the OS ROM bytes the mountains and
-ground use, the self-modified placeholders (&FFFF), five unused mover sprite table entries.
-Not exercised by the scripted play: define controls, instructions, high score entry (checked
-statically only).
+## Waiting on KC
 
-## Phase 3 - measurement harness: DONE 2026-10-16
-`tools/profile.mjs`: passes per second, fields per pass, flat profile by routine with raster
-waits and MOS time split out. Baseline in `docs/baseline.md`: 15-17 passes a second, 25-40% of
-the CPU waiting for the raster, 20% in the MOS's interrupt handling, 10-20% plotting sprites.
+- **25 Hz or 50 Hz** (decision 11 targets 50 Hz). Layer 4's costing says 50 Hz does not fit:
+  option 2 would still make 364 of 2,999 frames late on seed 1. Recommended: a steady 25 Hz, as
+  a new decision. The rest of layer 4 (below) depends on it.
+  `docs/step2-layer4-costing.md` "The answer" and "Recommendation".
+- **BUGS #9, the mountains.** They read HAZEL at `&C300`, not the MOS ROM: zeros in jsbeeb,
+  whatever the filing system left on a real Master. Choose what they should be.
+- **b2 and real hardware.** The flip, ACCCON's X bit and HAZEL left paged in (Y) are seen in
+  jsbeeb only (`docs/step2-layer2.md` "Open").
+- **Close layer 3.** Every item of its two briefs is built or set aside with measurements: tag
+  `step2-layer3`?
 
-# Step 2 - 50 Hz, flicker free (decisions 11-13)
+## Speed (layer 3's leftovers and layer 4)
 
-Speed reference: the original's design rate, 25 passes a second (decision 12): one original pass
-of movement per 2 fields. Each layer is measured (`tools/profile.mjs`, `tools/speed.mjs`), gets a
-decisions row and a commit.
+- **The late frames left are heavy renders** (400-500 bytes). Options, with their costing in
+  `docs/step2-layer4-costing.md` "The heaviest frames":
+  - the player standing, jumping and facing left compiled (~1K a part; HAZEL has 2.6K free, banks
+    5-7 2.5K, bank 4 about 240 bytes - the build's listing; the start-up block that carries HAZEL's code is nearly full - `MGAME` loads to
+    `&5A55`, the loading picture is at `&5A80`);
+  - compaction kept out of the frame; a delta redraw for movers that stay in place;
+  - the renderer's bookkeeping (`mark_to_draw`, `close_over_overlaps`, ~4.5k a pass);
+  - the helicopters as compiled code (~20K: no room).
+- **D's rest:** building the scroll column (`add_column_of_scenery_to_column_buffer`, the edge
+  movers' addresses: ~4.5k on a scrolling pass). `docs/step2-layer3.md` "Next".
+- **Scenery runs translated at build time** (RAM for cycles item 6): about half the 3.3k unpack,
+  for ~25% more scenery data. `docs/briefs/step2-layer3-ram-for-cycles.md`.
+- **If KC keeps 50 Hz:** one field = half a pass - player, movers (staggered), helicopters and
+  projectiles each on their own cadence, vertical rates halved, pass counters doubled, render
+  every field; and `tools/speed.mjs` per object type against the design rate.
 
-## Layer 1 - own the interrupt, lock to vsync: DONE 2026-10-16 (`docs/step2-layer1.md`)
-Decisions 14-19. In play the game's handler keeps vsync and User VIA T1, the MOS only its
-100 Hz tick for the OSWORD 7 sound; the front end is still the MOS's. Pass locked to 2 fields,
-keyboard direct, PRNG. Interrupts 21% -> 10.6% of the CPU; 16.8 -> 17.8 passes/s (town),
-15.1 -> 17.0 (frame 16000); about half the passes still overrun their slot.
-Left for later (KC): the MOS out of the interrupt entirely, with the game's own sound driver
-(probably 50 Hz) in place of OSWORD 7 and the MOS envelopes (the tick is still 9-10% of the
-CPU, ~6.8% of it sound); then the front end owned too (its music events, `&EC` key reads,
-OSBYTE 19 and OSBYTE &81 scans).
+## Checks not yet made
 
-## Layer 2 - double buffering in shadow RAM: DONE in jsbeeb 2026-10-16 (`docs/step2-layer2.md`)
-Decisions 20-23. The logic no longer draws; a renderer in bank 4 keeps per-screen records and
-draws the hidden screen; the vsync interrupt flips main/shadow at the pass lock's field; every
-raster wait is gone. Pass lockstep against the single-screen control: game state identical,
-shown screen byte-identical on all but 8 of 42,000 passes. Slower: 11.6 passes/s in the town,
-10.3 scrolling (layer 1: 17.8, 16.6).
-- [ ] b2 and real hardware (KC): the flip and the X bit are jsbeeb-only so far
+- **The whole world.** No harness has reached the headquarters (player x `&1CED`, the
+  completion screen): `tools/hazelreach.mjs`, holding RIGHT and jumping, stops at column 3,319.
 
-## Layer 3 - fast enough (in progress: `docs/step2-layer3.md`, analysis `docs/step2-layer3-analysis.md`)
-- [x] Profile and options (KC: all of A, B+C, D, E; A1)
-- [x] C: the logic's sprite walk from a column table
-- [x] A: masked sprites over save blocks (decision 24); B: the zero-page save cut to what the
-      logic reads; the collision and target searches reject far movers early. 20.55 passes/s
-      on the same game as layer 2's control (17.79); identical state over 24,000 passes
-- [x] E: our own 50 Hz sound effect driver, `src/lib/sfx50.6502` (decision 25)
-- [x] The next pass's logic runs while the frame waits for its flip (decision 26)
-- [ ] D: the landscape column
-- [ ] The sprite loops' per-column overhead; the renderer's bookkeeping; a helicopter test
-- [ ] RAM for cycles (`docs/briefs/step2-layer3-ram-for-cycles.md`, KC 2026-10-17: never wait
-      when there is work): 1 the next column built in the wait, 3 no history copy and no rescan,
-      2 compiled sprites, 4 tables for arithmetic; later 5 (the logic a pass ahead: a decision)
-      and 6 (scenery runs translated at build time)
-- [ ] Budget: half an original pass of work, plus double-buffer overhead, under 39,936 cycles.
-      Report before layer 4; if it cannot fit, bring the numbers and the options
+## Layer 5 - quirks and original glitches (decision 13)
 
-## Layer 4 - 50 Hz
-- [x] Costed option 2 (50 Hz for the cheap things) and full 50 Hz, 2026-10-17
-      (`docs/step2-layer4-costing.md`): neither fits - with no logic at all the render alone makes 412-634 of 2,999 frames late on seed 1 (285-446 of 1,199 holding RIGHT);
-      1% late needs the render 53-67% cheaper. Recommended: stay at a steady 25 Hz
-      (a new decision replacing 11's target: KC)
-- [x] The player's 8 commonest sprite parts compiled (`e72c386`): late frames 41 -> 24 (seed 1),
-      26 -> 10 (holding RIGHT); 50 Hz option 2 529 -> 389
-- [x] The other 6 running kinds compiled into HAZEL, the front end's tunes packed (decision 29), and
-      the scenery first-column glitch fixed (BUGS #8, decision 30): late frames 22 (seed 1), 2
-      (holding RIGHT)
-- [ ] BUGS #9: what the mountains should be (they read HAZEL `&C300`, not the MOS ROM): KC
-- [ ] One field = half a pass: player, movers (staggered), helicopters, projectiles each on their
-      own cadence; vertical rates halved, pass counters doubled; render every field
-- [ ] `tools/speed.mjs` per object type against the design rate
+- BUGS #1, a fixed ground texture table (RAM for cycles item 4's ground textures as columns is
+  the way); BUGS #2, the legs sprite overrun.
+- Check in jsbeeb, then fix: a scroll column lost when moving with `frame` >= 0 (firing in a
+  helicopter while moving); the column replotted after a hostile collision.
 
-## Layer 5 - quirks and original glitches
-- [ ] BUGS #1: a fixed ground texture table; BUGS #2: the legs sprite overrun
-- [ ] Check in jsbeeb, then fix: a scroll column lost when moving with `frame` >= 0 (firing in a
-      helicopter while moving); the column replotted after a hostile collision
+## Ideas - gameplay variations (KC, 2026-10-17; not agreed)
 
-## Ideas for improvement - gameplay variations (KC, 2026-10-17; not agreed)
 Each changes how the original plays (rule 1), so each needs a decision before it is built.
-- [ ] Jump at once, without the player stopping first.
-- [ ] Fire while running, without stopping.
-- [ ] Run at the jumping and helicopter speed, which scrolls more smoothly. Measured in layer 3
-      (`docs/step2-layer3.md`, 600 passes each, the original's design too): running moves the view
-      0.46 columns a pass, jumping 0.65-0.67.
-- [ ] Or a run modifier key: today's speed becomes a jog, and the key gives a faster run.
-- [ ] Health packs.
-- [ ] Shields.
-- [ ] Music in the game, once 25 Hz holds with time to spare (already noted in
-      `docs/briefs/step2-layer3-ram-for-cycles.md`, item 8). It costs cycles every field and RAM
-      for the tune: about 2.5K is free in banks 5-7 (`docs/step2-layer4-costing.md`).
+- Jump at once, without the player stopping first.
+- Fire while running, without stopping.
+- Run at the jumping and helicopter speed, which scrolls more smoothly: running moves the view
+  0.46 columns a pass, jumping 0.65-0.67 (`docs/step2-layer3.md`).
+- Or a run modifier key: today's speed becomes a jog, and the key gives a faster run.
+- Health packs.
+- Shields.
+- Music in the game, once 25 Hz holds with time to spare: cycles every field, and RAM for the
+  tune (about 2.5K free in banks 5-7 and 2.6K in HAZEL; the memory map page).

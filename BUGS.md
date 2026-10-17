@@ -2,7 +2,7 @@
 
 Numbered, kept when fixed. Each says what was seen, on what, and what fixed it.
 
-## 1. The ground's texture depends on where the mover sprites are (original behaviour; open)
+## 1. The ground's texture depends on where the mover sprites are (original behaviour; OPEN: layer 5)
 
 Seen 2026-10-16 by the relocation test (tools/tracediff.mjs, jsbeeb 2.5.0): with the game
 assembled a page lower, the ground drew different pixels. `add_ground_to_column_buffer` reads its
@@ -14,7 +14,7 @@ moves sprite data or touches that zero page will change how the ground looks. De
 to keep it (and accept a different-looking ground) or replace it with a fixed texture.
 The relocation test builds (`SHIFT` set) read the pattern from &0A00 instead, identical in both.
 
-## 2. Drawing the player's legs reads past the end of the sprite (original behaviour; open)
+## 2. Drawing the player's legs reads past the end of the sprite (original behaviour; OPEN: layer 5)
 
 Seen 2026-10-16 by the relocation test: unpacking `mover_sprite_00` (SPRITE_LEGS_ONE, the last
 mover sprite, ending at &3FFF) with the column pointer advanced by clipping, the unpacker read on
@@ -25,7 +25,7 @@ count outruns the data; to look at in step 2, where the sprites will move and th
 something else. The relocation test builds (`SHIFT` set) put the font after this sprite so the
 overrun reads the same bytes in both.
 
-## 3. The palette split is missing from about one field in a hundred (original behaviour; fixed in step 2 layer 1)
+## 3. The palette split is missing from about one field in a hundred (original behaviour; FIXED in layer 1, `1041a13`)
 
 Seen 2026-10-16 by the palette-split probe (`tools/split.mjs`, jsbeeb 2.5.0, Master 128, frames
 4000-5000 of the scripted game): in the byte-identical build, 12 fields of 1,000 had neither the
@@ -38,7 +38,7 @@ in play the MOS's System VIA IRQ mask (`&0279`) leaves vsync to the game, and th
 fire is never chained (decision 15). 0 fields of 1,000 since. On the title the MOS still has
 vsync, so the race remains there, where the only effect is the palette.
 
-## 4. Soldiers sometimes jump 1-6 columns when they move (original behaviour; fixed in step 2)
+## 4. Soldiers sometimes jump 1-6 columns when they move (original behaviour; FIXED, `0a078b8`)
 
 Seen 2026-10-16 (jsbeeb 2.5.0, Master 128, 20,000 frames of scripted play with `DEBUG_LIVES`):
 at the start of `move_mover`, straight after `unplot_and_move_mover` erases the mover, the
@@ -50,7 +50,7 @@ and `move_mover_right`/`left` start from there. So the soldier skips forward. Fi
 go, decision 13's policy) by reloading the mover's x after the erase; in layer 2 the logic no
 longer draws, so the cause goes too. After the fix, 8,569 of 8,569 moves start from the real x.
 
-## 5. Layer 1's vsync wait lost OSBYTE 19's registers: the game over text was garbage (fixed in layer 2)
+## 5. Layer 1's vsync wait lost OSBYTE 19's registers: the game over text was garbage (FIXED in layer 2, `63892d7`)
 
 Found 2026-10-16 in layer 2, when the second game would not start: `text_screen` had written into
 the renderer's code in bank 4. `text_screen` keeps its text's low byte in Y across
@@ -63,7 +63,7 @@ returning OSBYTE 19's X and Y. Checked by `tools/frontend.mjs`: the game over sc
 `text_screen` finishes it, is `1754be00fa0ba297` in the byte-identical build and in layer 2, and
 was `ea8f2e8221426d18` in layer 1.
 
-## 6. Bank 4's last sprites under the renderer's records (layer 3, `52b97c7` to `9debfee`; fixed)
+## 6. Bank 4's last sprites under the renderer's records (layer 3, `52b97c7` to `9debfee`; FIXED, `0bfe0f0`)
 
 Found 2026-10-16 by a 5,000-pass screen lockstep: the frames of two builds that differed only in
 how `history_push` copies parted at pass 4,139, at a soldier-type mover on the right edge. The
@@ -74,10 +74,11 @@ sprites drew as garbage once overwritten; where they ended depended on the code 
 two builds disagreed. The WIP published from `9debfee` has it. The check guarded only the
 renderer's own variables (`render_end <= REN_BASE`), not the data after them. Fixed by moving the
 workspace up to `&B600` (to `&BEFF`; `&BFFF` in the relocation builds) and ASSERTing that bank 4's
-contents end below it. Checked: the frames of the fixed build and of `678ea21` (the last commit
+contents end below it. (`c5d760b` moved the workspace back to `&B400`, `REN_BASE`, with the
+ASSERT kept: `src/main.6502`.) Checked: the frames of the fixed build and of `678ea21` (the last commit
 before the overrun) identical over 2 x 6,000 passes.
 
-## 7. A shot-down helicopter's explosion left on one screen (layer 2 and 3; fixed)
+## 7. A shot-down helicopter's explosion left on one screen (layer 2 and 3; FIXED, `c5d760b`)
 
 Seen by KC 2026-10-16 on b2: the explosion of the helicopter he was flying stayed drawn on one of
 the two screens, flickering. `kill_player_helicopter` turns the player's bullet and grenade slots
@@ -96,7 +97,7 @@ every pass; it did not catch the original case (the wreck changed every pass the
 the fixed build's flights identical to its `DEBUG_FULLREDRAW` twin, and the state through a
 flight identical to the control's.
 
-## 8. A new scenery sprite's first column drawn through stale table pointers (original behaviour; fixed in layer 4)
+## 8. A new scenery sprite's first column drawn through stale table pointers (original behaviour; FIXED in layer 4, `b10d6b5`)
 
 Found 2026-10-17 by `tools/hazelreach.mjs` (jsbeeb 2.5.0, running right through the world): the
 scroll's unpacker read HAZEL at `&C9C0-&C9FD` with `LDA (mask_table_address),Y` (`&1D09`). A
@@ -109,9 +110,9 @@ table (the other flip's, if theirs differed), or the multiply's leftovers, or `m
 walks, for clouds). Fixed (KC; decision 30): `get_scenery_y_sprite_and_flip_for_layer_Y` sets the
 mask table and the page as `calculate_sprite_address_for_column_of_scenery` does. Checked: game
 state identical to `e72c386` over 6,000 passes on seeds 1 and 3; the screens (see the layer 4
-costing doc for the count).
+costing doc for the count: 591 and 627 passes of 6,000 differ, by 5 to 11 bytes).
 
-## 9. The mountain layer's data is HAZEL, not the MOS ROM (original behaviour; open)
+## 9. The mountain layer's data is HAZEL, not the MOS ROM (original behaviour; OPEN: KC)
 
 Found 2026-10-17 (`tools/hazelwatch.mjs`, jsbeeb 2.5.0, Master 128 MOS 3.20): the MOS leaves ACCCON's
 Y bit set from the start of the game on, so HAZEL (the filing system's workspace) is paged in at

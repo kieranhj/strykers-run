@@ -4,7 +4,14 @@ Stryker's Run was written by Chris Roberts and Philip Meller, with graphics by N
 by Martin Galway, and published by Superior Software for the BBC Micro in 1986. This repository
 rebuilds the BBC Master 128 enhanced version as [Baron](https://github.com/waitingforvsync/baron)
 source - byte for byte identical to the original at the tag `step1-identical` - and is now
-optimising it to 50 Hz and removing its sprite flicker (`PLAN.md`).
+making it run smoothly and without its sprite flicker.
+
+**Where it stands** (2026-10-17): the game draws into two screens in turn (shadow RAM), its
+sprites masked, so nothing flickers, and runs at a steady 25 frames a second - the speed the
+original was designed for - in all but about 1 frame in 70 on a busy scripted game, against the
+original's 15-17 and its flicker. 50 Hz was costed and does not fit; whether to stay at 25 is
+the next decision. What has landed is in `docs/done.md`, what is left in `PLAN.md`. Seen in the
+jsbeeb emulator only so far, not yet on real hardware.
 
 The game remains the copyright of its authors and publisher. This repository is for study and
 preservation; it does not include the original disc images or the disassembly it was made from.
@@ -101,6 +108,26 @@ uncommitted changes, so two machines building the same commit get the same SHA25
 Boot the image on a Master 128 (SHIFT+BREAK). The enhanced version needs the Master's four
 sideways RAM banks.
 
+## Playing
+
+The latest work-in-progress build runs in the browser, in jsbeeb as a Master 128:
+<https://bbc.xania.org/?disc=https://bitshifters.github.io/content/wip/strykers-run-wip.ssd&autoboot&model=Master>
+
+| Key | |
+|---|---|
+| Z, X | left, right |
+| K, M | up (jump), down |
+| L | fire |
+| SPACE | grenade |
+| RETURN | enter |
+| P | pause |
+
+These are this version's defaults (`docs/decisions.md` 27; the original's were A, Z, RIGHT, LEFT,
+SHIFT, DELETE, CTRL, P); define controls on the title screen changes them. Two debug flags exist
+for test builds (`-Define`, or `DEFINES=`): `DEBUG_LIVES`, infinite lives, and
+`DEBUG_FULLREDRAW`, the renderer redrawing every sprite every frame (the oracle the tests compare
+against). `-Release` turns every debug flag off.
+
 ### Reference files
 
 The builds check their output byte for byte against the reference disc when you have it. Put the
@@ -112,4 +139,6 @@ files the project was made from in `reference/` (gitignored):
 | `reference/strykers-run-enhanced-disassembly.txt` | Level 7's disassembly | `tools/disasm2baron.py` (the one-time conversion) |
 | `reference/disc999/Disc999-StrykersRunEnhanced.ssd` | another copy, with seven corrupted scenery bytes (`docs/decisions.md` 1) | nothing; kept for the record |
 
-`CLAUDE.md`, `PLAN.md` and `docs/` describe the project, its decisions and its measurements.
+`CLAUDE.md` holds the project's rules and how its tools are used, `PLAN.md` what is left to do,
+`docs/done.md` what has landed, `docs/decisions.md` every decision, `BUGS.md` every defect found;
+the rest of `docs/` has each layer's measurements.

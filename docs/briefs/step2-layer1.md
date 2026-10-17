@@ -1,5 +1,7 @@
 # Brief: step 2, layer 1 - own the interrupt, lock the loop to vsync
 
+**BUILT** (2026-10-16, `1041a13`; tag `step2-layer1`). What landed: "Landed" at the end.
+
 You are continuing a project in `C:\Users\khcon\OneDrive\BEEB\Projects\strykers`: Stryker's Run
 (Enhanced), Superior Software 1986, BBC Master 128, rebuilt as Baron 6502 source. Step 1 is done
 (byte-identical rebuild, relocatable source, measurement harness). Step 2 is making the game run at
@@ -96,3 +98,10 @@ main loop is locked to 2-field passes when it fits (count with tools/profile.mjs
 histogram), the MOS IRQ share is gone or explained, the profile and speed are recorded in
 `docs/step2-layer1.md`, and the layer is committed and pushed. Report the before/after numbers and
 anything that needs the user's decision.
+
+## Landed
+
+Built as `docs/step2-layer1.md` describes (decisions 14-20): the game's handler keeps vsync in
+play, the pass is locked to 2 fields, the keyboard is read directly, a PRNG replaces User VIA T2.
+Interrupts 21% -> 10.6% of the CPU; 16.8 -> 17.8 passes/s in the town. The MOS's 100 Hz tick
+went later, with the 50 Hz sound driver (layer 3, decision 25).

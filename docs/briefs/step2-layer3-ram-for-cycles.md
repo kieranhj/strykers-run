@@ -1,5 +1,8 @@
 # Plan: step 2, layer 3 - trading RAM for cycles
 
+**BUILT** (2026-10-17): items 1, 3 and 4 built; 2 built for the player in layer 4; 5 set aside; 7
+built in layer 4; 6 and 8 still open (PLAN.md). What landed: "Landed" at the end.
+
 KC, 2026-10-17: "we should never be waiting for the vsync when there is work to do", and the
 memory map shows room to spend. **The aim: no late passes.** Every pass's work inside 2 fields
 (79,872 cycles), by doing work ahead of time (in the wait, or at build time) and spending RAM to
@@ -99,3 +102,25 @@ built, byte for byte, on every scroll of the proof runs.
 1, 3, 2 and 4 are each committed or set aside with their measurements in
 `docs/step2-layer3.md`; then report passes/s, late passes and the "over by" histogram against the
 numbers above, and bring 5 to KC with numbers.
+
+## Landed
+
+- **1**, the next column built in the wait for the flip: `5ad76a8` (24.43 passes/s on seed 1).
+- **3**, its rows into the history slot in the wait too: `23ace82`. Part (b), keeping each
+  layer's next column address, was not built.
+- **4**, tables for arithmetic: movers that cannot be on screen left out (`50deb9d`),
+  `raise_address` in one step and the multiply from a table (`ea62708`), the row stepping
+  (`07ef49c`): 24.70 passes/s, 41 late frames of 1,498. The ground's textures as columns wait for
+  BUGS #1 (layer 5).
+- **2**, compiled sprites: set aside for the enemy sprites (`docs/step2-layer3.md`), then built
+  for the player's 14 running parts in layer 4 (`e72c386`, `c08f9dd`, `6cc44ba`): 21 late frames of
+  1,498 on seed 1, 1 of 598 holding RIGHT.
+- **5**, the logic a pass ahead: set aside, modelled (`tools/pipesim.py`: no gain; decision 26
+  already gives the wait to the next logic).
+- **7**, the front end's music packed: built in layer 4 (decision 29), not as planned here - the
+  tunes are packed on the disc and unpacked into their own place at start-up, which freed their
+  area on the disc for HAZEL's compiled code. Unpacking at each front end start was not needed.
+- **6** (scenery runs translated) and **8** (music in the game): open, in PLAN.md.
+
+The "not doable" note on the mountains above was wrong: they read HAZEL at `&C300`, not the MOS
+ROM (BUGS #9).
