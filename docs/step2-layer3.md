@@ -21,7 +21,8 @@ Same game in each (keys by pass, `tools/passbench.mjs`, seed 1, passes 500-2000,
 | + the sprite loops decide per cell, not per byte, where a column ends | 24.00 | 83,350 |
 | + D: the scroll's column building; BUGS #6 fixed | 24.11 | 82,948 |
 | + records first, restored a part at a time (`53076ff`) | 24.21 | 82,627 |
-| + the sprite column walk and draw merged (late passes, item 2) | **24.40** | 81,958 |
+| + the sprite column walk and draw merged (late passes, item 2, `a12b92b`) | 24.40 | 81,958 |
+| + the collision searches' left edge worked out once a search (item 3) | **24.42** | 81,905 |
 
 Frame-timed play (`tools/profile.mjs`, `tools/speed.mjs`; these press keys by frame, so each
 build plays a slightly different game and the numbers move a few percent with it):
@@ -140,6 +141,7 @@ is over 2 fields (79,872 cycles), and by how much:
 |---|---|---|
 | before (`53076ff`) | 24.21/s; 298 late: 0-5k 98, 5-10k 48, 10-15k 44, 15-20k 28, 20-30k 46, 30-40k 22, 40k+ 12 | 23.72/s; 187 late: 62, 31, 28, 18, 38, 10, 0 |
 | the column walk and draw merged | 24.40/s; 228 late: 59, 46, 40, 24, 43, 9, 7 | 23.96/s; 151 late: 45, 34, 16, 19, 36, 1, 0 |
+| the searches' left edge once a search | 24.42/s; 223 late: 57, 46, 39, 25, 41, 9, 6 | 23.98/s; 144 late: 39, 33, 16, 19, 36, 1, 0 |
 
 - **The sprite column walk and draw merged** (`ren_draw_sprite` sets up a part and falls into
   `draw_column`, which loops over its columns): no call a column; the column's bottom kept as
@@ -154,6 +156,15 @@ is over 2 fields (79,872 cycles), and by how much:
   13.4k a late pass (more bytes drawn in the late set: 385 against 369). Proved: frames identical
   to `678ea21` over 2 x 6,000 passes and to `DEBUG_FULLREDRAW` over 6,000 and a helicopter
   flight; state identical to the control over 3 x 6,000 and a flight; front end 15/15.
+- **The collision searches' left edge once a search** (`set_cm_left`): the three searches
+  (`check_for_mover_collision_with_range_of_movers`, `check_for_collision_with_friends`,
+  `search_for_target`) tested each mover's left edge as its x + `MOVER_WIDEST` against the
+  mover's x; they now compare its x with the mover's x - `MOVER_WIDEST` (0 if that is below 0),
+  worked out once before the loop. The range search also keeps its "in full from here" index
+  (`last_mover` + 3) in a variable instead of working it out a mover. Leaves A, X, Y and the
+  carry as the old tests did at every exit (the overflow flag differs, and nothing in the game
+  reads it). `check_for_mover_collision_with_range_of_movers_loop` 4,255 to 3,424 cycles a late
+  pass (seed 1), 3,005 to 2,421 holding RIGHT.
 
 ## Checks
 

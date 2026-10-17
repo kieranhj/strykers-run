@@ -3737,31 +3737,29 @@ move_mover_routine_address_high = * + 2
     JSR calculate_mover_x_max_and_y_max
     LDX first_mover
 .check_for_mover_collision_with_range_of_movers
-.check_for_mover_collision_with_range_of_movers_loop
     \ Step 2 (layer 3): a mover right of the range, or left of it even at the widest type, cannot
     \ collide, and is passed over without check_for_mover_collision_with_mover_X looking up its
     \ type, width and height - except in the last two checks: the last one that runs (the last
-    \ is skipped if it is mover_to_update) leaves A, Y, &78 and &7A as the original did.
-    TXA
+    \ is skipped if it is mover_to_update) leaves A, Y, &78 and &7A as the original did. Worked
+    \ out once a search: those two are X < last_mover + 3; the left edge is the range's left
+    \ less the widest type (0 if that is below 0). A and C here are the loop's to set.
+    LDA last_mover
     CLC
-    SBC last_mover                  \ X - last_mover - 1: the checks left after this one
-    CMP #&02
+    ADC #3
+    STA cm_full_below
+    JSR set_cm_left
+.check_for_mover_collision_with_range_of_movers_loop
+    CPX cm_full_below
     BCC check_in_full
     LDA mover_x_max_low             \ right of the range: x > the range's right (the original's
     CMP movers_x_low,X              \ own first test)
     LDA mover_x_max_high
     SBC movers_x_high,X
     BCC check_next_mover
-    LDA movers_x_low,X              \ left of it even at the widest type: x + &0B < its left
-    CLC
-    ADC #MOVER_WIDEST
-    TAY
+    LDA movers_x_low,X              \ left of it even at the widest type: x < its left - &0B
+    CMP cm_left_low
     LDA movers_x_high,X
-    ADC #0
-    CMP &C5
-    BCC check_next_mover
-    BNE check_in_full
-    CPY mover_x_low
+    SBC cm_left_high
     BCC check_next_mover
 .check_in_full
     JSR check_for_mover_collision_with_mover_X
@@ -3772,6 +3770,22 @@ move_mover_routine_address_high = * + 2
     BNE check_for_mover_collision_with_range_of_movers_loop
     CLC                             \ Leave with carry clear to indicate no collision
 .leave_2865
+    RTS
+
+\ Step 2 (layer 3): the collision searches' left edge, the range's left (mover_x_low, &C5) less
+\ the widest type, 0 if that is below 0: a mover whose x is below it cannot be in range.
+.set_cm_left
+    LDA mover_x_low
+    SEC
+    SBC #MOVER_WIDEST
+    STA cm_left_low
+    LDA &C5
+    SBC #0
+    BCS cm_left_known
+    LDA #0
+    STA cm_left_low
+.cm_left_known
+    STA cm_left_high
     RTS
 
 .calculate_mover_x_max_and_y_max
@@ -4119,6 +4133,7 @@ ENDIF
     RTS
 
 .check_for_collision_with_friends
+    JSR set_cm_left
     LDX #&0B                        \ MOVER_LAST_ENEMY_HELICOPTER
 .check_for_collision_with_non_bullet_movers_loop
     CPX #&02                        \ step 2 (layer 3): a mover that cannot be in range is passed
@@ -4128,16 +4143,10 @@ ENDIF
     LDA mover_x_max_high
     SBC movers_x_high,X
     BCC consider_next_mover_2abe
-    LDA movers_x_low,X              \ left of it even at the widest type: x + &0B < its left
-    CLC
-    ADC #MOVER_WIDEST
-    TAY
+    LDA movers_x_low,X              \ left of it even at the widest type: x < its left - &0B
+    CMP cm_left_low
     LDA movers_x_high,X
-    ADC #0
-    CMP &C5
-    BCC consider_next_mover_2abe
-    BNE friends_in_full
-    CPY mover_x_low
+    SBC cm_left_high
     BCC consider_next_mover_2abe
 .friends_in_full
     JSR check_for_mover_collision_with_mover_X
@@ -4179,6 +4188,7 @@ ENDIF
     INX                             \ 0
     STX friendly_targets_found
     STX unfriendly_targets_found
+    JSR set_cm_left
     LDX #&0B                        \ MOVER_LAST_ENEMY_HELICOPTER
 .search_for_target_loop
     CPX #&02                        \ step 2 (layer 3): a mover that cannot be in range is passed
@@ -4188,16 +4198,10 @@ ENDIF
     LDA mover_x_max_high
     SBC movers_x_high,X
     BCC consider_next_enemy
-    LDA movers_x_low,X              \ left of it even at the widest type: x + &0B < its left
-    CLC
-    ADC #MOVER_WIDEST
-    TAY
+    LDA movers_x_low,X              \ left of it even at the widest type: x < its left - &0B
+    CMP cm_left_low
     LDA movers_x_high,X
-    ADC #0
-    CMP &C5
-    BCC consider_next_enemy
-    BNE search_in_full
-    CPY mover_x_low
+    SBC cm_left_high
     BCC consider_next_enemy
 .search_in_full
     JSR check_for_mover_collision_with_mover_X\ Returns carry set if collision, i.e. mover in range
@@ -5330,6 +5334,12 @@ ASSERT shown_screen < &3000
     JMP render_reset
 
 .pass_start                         \ decision 18: field_count when this pass's slot began
+    EQUB &00
+.cm_full_below                      \ step 2 (layer 3): the collision search's bounds, worked
+    EQUB &00                        \ out once a search
+.cm_left_low
+    EQUB &00
+.cm_left_high
     EQUB &00
 
 IF SHIFT = 0
