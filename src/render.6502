@@ -52,7 +52,7 @@ b_ptr       = &C9                   \ the cell of a sprite column's bottom (&C9/
 rows_m1     = &CB                   \ a column's rows still to do, less 1
 ds_c        = &CC                   \ a part's columns left
 ds_line     = &CD                   \ the line in the cell of a part's bottom
-MAX_BLOCK   = &2A0                  \ more than any mover's save block: 656 bytes at most (tools/sprites.py stats)
+MAX_BLOCK   = &2A0                  \ more than any mover's save block: 636 bytes at most (tools/sprites.py stats)
 
 \ =============================================================================================
 \ history_push: the scroll has built a new edge column in column_buffer (update_screen pages
@@ -60,8 +60,9 @@ MAX_BLOCK   = &2A0                  \ more than any mover's save block: 656 byte
 \ =============================================================================================
 .history_push
 {
-    \ layer 3 (D): the column into its slot, 8 bytes a time. (Not cleared after: while the
-    \ player moves, update_screen pushes every pass and the column is rebuilt every other one.)
+    \ layer 3 (D): the column into its slot, 8 bytes a time. (Not cleared after: every push
+    \ follows a scroll that rebuilt the column - 278 pushes for 278 scrolls holding RIGHT, 400
+    \ for 400 on seed 1, measured 2026-10-17.)
     LDX hist_next
     LDA hist_dst_hi,X
     STA dst1 + 2

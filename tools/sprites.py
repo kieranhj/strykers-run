@@ -6,7 +6,8 @@ column format for the masked renderer (step 2 layer 3, option A1), and measured.
     python tools/sprites.py emit   [build/strykers.ssd] [src/sprite_columns.6502]
     python tools/sprites.py straight [build/strykers.ssd] [src/sprite_straight.6502] [src/sprite_andy.6502]
 
-Reads the built disc and its symbol dump (the .ssd's .symbols.json): MGAME (main RAM from
+Every command reads a disc that still has the game's run-length mover sprites, which layer 3
+removed: the layer 2 build (the tag step2-layer2). Reads the built disc and its symbol dump (the .ssd's .symbols.json): MGAME (main RAM from
 &0E00, the copied-down &0400 block via moved_0400_load) and DATA1 (sideways bank 4 from &8000).
 The run-length format (src/game.6502 unpack_column_of_sprite): a column is a header byte, then
 entries - 1x...... runs of 1 or 3, 01...... of 2, 00nnnnnn then an index byte: a run of n - then
@@ -16,11 +17,14 @@ and mask tables (&0440 and &04C0 unflipped green; the mask depends only on the f
 
 The straight format, per sprite: per column the first row drawn (rows up from the bottom) and the
 count, leading and trailing transparent bytes (mask &FF, pixel 0) trimmed, then the index bytes
-bottom-up. The sprite's columns are listed by a table of pointers, so a flipped sprite is drawn
-by walking them backwards, as the original's flipped tables do.
+top-down, so one Y register indexes the data, the screen's character cell and the save block
+together. The columns follow one another; a flipped sprite's are placed from the right
+(render.6502's ren_draw_sprite).
 
 stats: per-sprite and per-mover-type sizes, including each type's largest save-under (the sum
-over its parts of the bytes drawn, in its largest frame), which sizes the renderer's buffers.
+over its parts of the bytes drawn, in its largest frame) and largest save block (render.6502's
+layout: a 4-byte header, then a 3-byte record and 8 bytes a cell for each column), which sizes
+MAX_BLOCK. 636 bytes at most, on the step2-layer2 build, 2026-10-17.
 """
 import json
 import sys
@@ -151,8 +155,8 @@ def stats(disc):
     print(f"{len(sprites)} mover sprites: run-length {rle} bytes ({where}); straight {total} index bytes "
           f"in {cols} columns (+{2 * cols} column headers, +{2 * cols} column pointers)")
     frames = b.table("mover_types_animation_frame", 0x1C)
-    def block(sp):          # render.6502's save block: 8 bytes a cell (the worst line), 4 a column
-        return sum(8 * ((len(c) + 7 + 7) // 8) + 4 for _, c in sprites[sp]["straight"] if c)
+    def block(sp):          # render.6502's save block: a 3-byte record a column, 8 bytes a cell (the worst line)
+        return sum(8 * ((len(c) + 7 + 7) // 8) + 3 for _, c in sprites[sp]["straight"] if c)
     print("type  parts  frames  largest save-under (bytes drawn)  columns  largest save block")
     for t in range(0x1C):
         nf = max(frames[t], 0x0E if t < 5 else 0)           # soldiers' and the player's special frames
@@ -164,7 +168,7 @@ def stats(disc):
             size = sum(sum(len(c) for _, c in sprites[sp]["straight"]) for sp, _ in ps)
             ncol = max(len(sprites[sp]["straight"]) for sp, _ in ps)
             best = max(best, (size, f, ncol))
-            worst_block = max(worst_block, sum(block(sp) for sp, _ in ps))
+            worst_block = max(worst_block, 4 + sum(block(sp) for sp, _ in ps))   # + the 4-byte header
         print(f"  {t:02X}  {len(parts_of(b, t, 0))}      {nf:2}      {best[0]:4} (frame {best[1]:X})                  {best[2]:2}       {worst_block:4}")
 
 

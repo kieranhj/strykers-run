@@ -88,6 +88,9 @@ disassembly's `actually`/`also` notes say what an operand really is.
 - `tools/helilock.mjs CONTROL TEST [PASSES] [VARIANT]` - two builds in step through a helicopter flight (board, fly, shot down), state and newest frame every pass; passlock's scripts never board one
 - `tools/worldcheck.mjs DISC` - the renderer's world position of each record against the mover's x/y (BUGS #7)
 - `tools/zplive.mjs DISC` - the zero-page bytes the logic reads first after a render (what `restore_game_zp` must keep)
+- `tools/analyse.py report|annotate` - beebgame's static analyses of the build (liveness, known values, ranges,
+  register ABIs; `build/dataflow/`): `tools/dataflow/` vendored, `tools/baron_dbg.py` reads a Baron build,
+  `tools/dataflow_config.py` and `tools/isr_model.py` describe this game's interrupts (the beeb-dataflow skill)
 - `tools/sprites.py stats|emit|straight` - sprite sizes, save block sizes, and the generated sprite sources
 - `tools/sfxcapture.mjs DISC OUT [--pairs]` - each sound effect's chip writes by MOS tick; `--pairs`, an effect over another
 - `tools/sfx50.py CAPTURE.json OUT.6502 [--show]` - fit 50 Hz ramps (for `src/lib/sfx50.6502`) to captured effects; `--show` prints them against the MOS's

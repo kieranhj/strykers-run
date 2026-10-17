@@ -56,10 +56,12 @@ with ANDY paged in (ROMSEL `&84`), so it and its tables start at `&9000`.
 - **Save blocks.** Each mover drawn on a screen has a save block in that screen's arena:
   `save_arena`, `&34D5-&3FFF` (2,859 bytes), freed by the main-RAM run-length sprites, in main
   RAM for the main screen and in shadow RAM for the shadow screen (the renderer draws with
-  ACCCON's X bit set). A column's bytes take 8 per character cell (the lines not drawn left
-  unused), so moving up a cell is the data 8 back, the save block 8 on, the screen `&280` up;
-  after its cells, a 4-byte record (length, count, address). Blocks are allocated at the arena's
-  top and compacted when the largest block (656 bytes, `tools/sprites.py stats`) might not fit.
+  ACCCON's X bit set). A block opens with a 4-byte header, where its parts 2 and 3 start (as
+  offsets, so `compact` can move it); then each column a 3-byte record (count - 1, the address
+  of its lowest byte) and its cells, 8 bytes each (the lines not drawn left unused), so moving
+  up a cell is the data 8 back, the save block 8 on, the screen `&280` up. Blocks are allocated
+  at the arena's top and compacted when the largest possible block (`MAX_BLOCK`, 672 bytes;
+  the largest a mover needs is 636, `tools/sprites.py stats` on the layer 2 build) might not fit.
 - **Order.** Overlapping movers must come off in the reverse of the order they went on. A mover
   overlapping one that changes (or the scroll's columns, or the lives digit) comes off and goes
   back on too (`close_over_overlaps`, over a list of rectangles); they go on in slot order with
