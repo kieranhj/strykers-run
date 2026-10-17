@@ -24,7 +24,8 @@ Same game in each (keys by pass, `tools/passbench.mjs`, seed 1, passes 500-2000,
 | + the sprite column walk and draw merged (late passes, item 2, `a12b92b`) | 24.40 | 81,958 |
 | + the collision searches' left edge worked out once a search (item 3, `0670ca9`) | 24.42 | 81,905 |
 | + the next column built in the wait for the flip (RAM for cycles, item 1, `5ad76a8`) | 24.43 | 81,851 |
-| + its rows 24-199 into the history slot in the wait (item 3) | **24.43** | 81,851 |
+| + its rows 24-199 into the history slot in the wait (item 3, `23ace82`) | 24.43 | 81,851 |
+| + movers that cannot be on the screen left out of the renderer's list (item 4) | **24.61** | 81,266 |
 
 Frame-timed play (`tools/profile.mjs`, `tools/speed.mjs`; these press keys by frame, so each
 build plays a slightly different game and the numbers move a few percent with it):
@@ -148,6 +149,7 @@ is over 2 fields (79,872 cycles), and by how much:
 | the searches' left edge once a search | 24.42/s; 223 late: 57, 46, 39, 25, 41, 9, 6 | 23.98/s; 144 late: 39, 33, 16, 19, 36, 1, 0 |
 | the next column built in the wait (RAM for cycles 1) | 24.43/s; 210 late: 57, 43, 38, 21, 36, 9, 6 | 24.10/s; 129 late: 34, 31, 14, 16, 33, 1, 0 |
 | and its history copy in the wait (3) | 24.43/s; 205 late: 54, 41, 38, 21, 36, 9, 6 | 24.12/s; 128 late: 34, 31, 14, 17, 31, 1, 0 |
+| off-screen movers out of the renderer's list (4) | 24.61/s; 165 late: 45, 36, 26, 19, 26, 10, 3 | 24.45/s; 104 late: 33, 18, 23, 18, 11, 1, 0 |
 
 - **The sprite column walk and draw merged** (`ren_draw_sprite` sets up a part and falls into
   `draw_column`, which loops over its columns): no call a column; the column's bottom kept as
@@ -196,6 +198,13 @@ is over 2 fields (79,872 cycles), and by how much:
   24-199 of the column into that slot; the ground is only rows 0-23, so a scroll that takes the
   prebuilt column pushes 24 rows, not 200. Logic 17.0k to 16.3k a pass holding RIGHT (the slot is
   often still needed when the prebuild runs: jumping and scrolling every pass).
+- **Movers that cannot be on the screen left out** (item 4): `render`'s list of the slots that
+  matter took every live mover, ~22 holding RIGHT, most of them far off (allied helicopters
+  thousands of columns away), and `mark_to_draw` called the game's `get_mover_Y_x` and
+  `check_if_mover_is_on_screen` for each, every pass. A mover not drawn on this screen whose x
+  high byte is past the right edge's, or more than one below the left edge's (widths are under
+  256), can never be marked to go on: it is no longer listed. Render 34.6k to 31.1k a pass on
+  seed 1; frames taking 3 fields 121 to 97 (seed 1) and 70 to 52 (holding RIGHT).
 
 ## Checks
 

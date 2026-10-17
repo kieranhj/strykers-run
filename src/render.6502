@@ -404,6 +404,16 @@ MAX_BLOCK   = &2A0                  \ more than any mover's save block: 636 byte
     BNE shown
     LDA movers_x_high,X
     BMI classified                  \ nothing shown, nothing there
+    \ RAM for cycles 4: not shown here, and its x cannot put it on the screen (its high byte past
+    \ the right edge's, or more than one below the left edge's: widths are under 256), so it
+    \ cannot go on (mark_to_draw's check_if_mover_is_on_screen) and nothing else lists it
+    CMP viewport_right_high
+    BEQ near_screen
+    BCS classified                  \ right of the screen
+.near_screen
+    INC A                           \ 65C02 opcode
+    CMP viewport_left_high
+    BCC classified                  \ left of it
     BRA listed                      \ 65C02 opcode
 .shown
 IF DEBUG_FULLREDRAW
