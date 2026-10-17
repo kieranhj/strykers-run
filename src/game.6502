@@ -2104,21 +2104,7 @@ ENDIF
 .subtract_Y_rows_from_screen_address_in_AX
     STY unused_0076
     BEQ leave_1d68
-.consider_next_row
-    TAY
-    AND #&07
-    BEQ next_group_1d79
-    DEY
-    TYA
-.next_row_1d74
-    DEC unused_0076
-    BNE consider_next_row
-    RTS
-.next_group_1d79
-    TYA
-    LDY #&03                        \ &0279
-    JSR subtract_delta_from_screen_address_in_AX
-    JMP next_row_1d74
+    JMP rows_up                     \ step 2 (RAM for cycles 4): in steps, not a row at a time
 
 .add_Y_rows_from_screen_address_in_AX
     STY unused_0076
@@ -5440,22 +5426,6 @@ ASSERT shown_screen < &3000
     EQUB &00
 .col_fresh                         \ column_buffer holds a column not yet pushed to the history
     EQUB &00
-\ Step 2 (RAM for cycles 4): A x &4E as multiply_A_by_X_2f1e with X = &4E leaves everything:
-\ the result, multiplicand and multiplier_low 0, multiplier_high &4E, A = result_high, X = &4E,
-\ Y = 0, C clear, Z set, N clear (V is never read). The tables are made at start-up.
-.multiply_by_78
-    TAX
-    LDA times_78_lo,X
-    STA result_low
-    LDA times_78_hi,X
-    STA result_high
-    STZ multiplicand                \ 65C02 opcode
-    STZ multiplier_low
-    LDX #&4E
-    STX multiplier_high
-    CLC
-    LDY #&00
-    RTS
 
 IF SHIFT = 0
     unused_3400_original = &3400
@@ -5734,6 +5704,12 @@ target_address_high = * + 2
     STA sound_data_0880 - 1,X
     DEX
     BNE move_4600_to_46df_loop
+    LDX #MOVED_0A20_SIZE            \ step 2 (RAM for cycles 4): the block at &0A20
+.move_0a20_loop
+    LDA moved_0a20_load - 1,X
+    STA &0A20 - 1,X
+    DEX
+    BNE move_0a20_loop
     JMP initialisation
 
 .video_register_values
@@ -5890,6 +5866,98 @@ SECTION moved_0880, org = &0880, cmos = TRUE
     EQUB &01, &00, &00, &00, &00, &00, &00, &7F, &FD, &FD, &FD, &7E, &64, &00, &00, &00    \ 10
 
 ENDSECTION
+
+.moved_0a20_load     \ step 2 (RAM for cycles 4): carried in the file here, copied to &0A20 at start-up
+SECTION moved_0a20, org = &0A20, cmos = TRUE
+\ &0982-&0CFF is never read or written after start-up (front end and play, 50,000 frames,
+\ 2026-10-17); &0A00-&0A1F is kept clear: the relocation test builds read it as the ground.
+
+\ multiply_by_78: A x &4E as multiply_A_by_X_2f1e with X = &4E leaves everything: the result,
+\ multiplicand and multiplier_low 0, multiplier_high &4E, A = result_high, X = &4E, Y = 0, C clear,
+\ Z set, N clear (V is never read). The tables are made at start-up.
+.multiply_by_78
+    TAX
+    LDA times_78_lo,X
+    STA result_low
+    LDA times_78_hi,X
+    STA result_high
+    STZ multiplicand                \ 65C02 opcode
+    STZ multiplier_low
+    LDX #&4E
+    STX multiplier_high
+    CLC
+    LDY #&00
+    RTS
+
+\ rows_up: subtract_Y_rows_from_screen_address_in_AX's rows (unused_0076 of them, 1 or more) in
+\ a step each: those inside the cell, the whole cells, and the last cell's crossing by the
+\ original's own subtract_delta_from_screen_address_in_AX. It leaves what the row-at-a-time loop
+\ leaves: A = Y = the address's low byte, X its high byte, unused_0076 0, Z set, N clear; if it
+\ crossed a cell, delta_low/high &79/&02 and C and V as that last crossing left them; if not, C
+\ and V as they came.
+.rows_up
+    PHP                             \ C and V for the rows that stay in the cell
+    STA ru_lo
+    AND #&07                        \ the line
+    CMP unused_0076
+    BCC ru_cross                    \ the rows reach past the cell's top
+    LDA ru_lo                       \ inside the cell (C set: line >= rows)
+    SBC unused_0076
+    STA ru_lo
+    PLP
+    BRA ru_done                     \ 65C02 opcode
+.ru_cross                           \ A = the line. d = rows - line - 1: the rows below the cell
+    EOR #&FF                        \ above's bottom line when it is reached
+    CLC
+    ADC unused_0076
+    STA ru_d
+    PLA                             \ (not these flags: the crossing sets them)
+    LDA ru_d
+    LSR A
+    LSR A
+    LSR A
+    TAY                             \ the whole cells before the last crossing
+    LDA ru_lo
+    AND #&F8                        \ line 0 of this cell, then up those cells
+    SEC
+    SBC ru_cells_lo,Y
+    STA ru_lo
+    TXA
+    SBC ru_cells_hi,Y
+    CMP #&40                        \ round the 16K screen
+    BCS ru_in_ring
+    ADC #&40
+.ru_in_ring
+    TAX
+    LDA ru_lo
+    LDY #&03                        \ &0279: line 0 to the cell above's line 7, as the original
+    JSR subtract_delta_from_screen_address_in_AX
+    AND #&F8                        \ then up the rest of the rows inside that cell: its line
+    STA ru_lo                       \ 7 - (d AND 7) (AND, EOR, ORA: C and V as it left them)
+    LDA ru_d
+    AND #&07
+    EOR #&07
+    ORA ru_lo
+    STA ru_lo
+.ru_done
+    LDA #&01
+    STA unused_0076
+    LDA ru_lo
+    TAY
+    DEC unused_0076                 \ 0: Z set, N clear
+    RTS
+.ru_cells_lo                        \ n character rows: n * &280
+    EQUB &00, &80, &00, &80, &00, &80, &00, &80
+.ru_cells_hi
+    EQUB &00, &02, &05, &07, &0A, &0C, &0F, &11
+.ru_lo
+    EQUB &00
+.ru_d
+    EQUB &00
+.moved_0a20_end
+ENDSECTION
+MOVED_0A20_SIZE = moved_0a20_end - &0A20
+ASSERT MOVED_0A20_SIZE <= &E0
 
 
 

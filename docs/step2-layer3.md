@@ -26,7 +26,8 @@ Same game in each (keys by pass, `tools/passbench.mjs`, seed 1, passes 500-2000,
 | + the next column built in the wait for the flip (RAM for cycles, item 1, `5ad76a8`) | 24.43 | 81,851 |
 | + its rows 24-199 into the history slot in the wait (item 3, `23ace82`) | 24.43 | 81,851 |
 | + movers that cannot be on the screen left out of the renderer's list (item 4, `50deb9d`) | 24.61 | 81,266 |
-| + `raise_address` in one step; `move_mover`'s multiply from a table (item 4) | **24.67** | 81,080 |
+| + `raise_address` in one step; `move_mover`'s multiply from a table (item 4, `ea62708`) | 24.67 | 81,080 |
+| + the logic's row stepping in steps, not a row at a time (item 4) | **24.70** | 80,973 |
 
 Frame-timed play (`tools/profile.mjs`, `tools/speed.mjs`; these press keys by frame, so each
 build plays a slightly different game and the numbers move a few percent with it):
@@ -152,6 +153,7 @@ is over 2 fields (79,872 cycles), and by how much:
 | and its history copy in the wait (3) | 24.43/s; 205 late: 54, 41, 38, 21, 36, 9, 6 | 24.12/s; 128 late: 34, 31, 14, 17, 31, 1, 0 |
 | off-screen movers out of the renderer's list (4) | 24.61/s; 165 late: 45, 36, 26, 19, 26, 10, 3 | 24.45/s; 104 late: 33, 18, 23, 18, 11, 1, 0 |
 | `raise_address` in one step, the multiply from a table (4) | 24.67/s; late frames 44 of 1,498 | 24.49/s; late frames 27 of 598 |
+| the logic's row stepping in steps (4) | 24.70/s; late frames 41 of 1,498 | 24.51/s; late frames 26 of 598 |
 
 - **The sprite column walk and draw merged** (`ren_draw_sprite` sets up a part and falls into
   `draw_column`, which loops over its columns): no call a column; the column's bottom kept as
@@ -215,6 +217,16 @@ is over 2 fields (79,872 cycles), and by how much:
   leaves (result; multiplicand and multiplier_low 0; multiplier_high `&4E`; A the result's high
   byte, X `&4E`, Y 0, C clear, Z set, N clear). From here the late frames are counted as frames
   (`passbench`'s flips): 51 to 44 of 1,498 on seed 1, 30 to 27 of 598 holding RIGHT.
+- **The logic's row stepping in steps** (item 4): `subtract_Y_rows_from_screen_address_in_AX`
+  went up a screen address a row at a time, crossing a character cell with
+  `subtract_delta_from_screen_address_in_AX`. `rows_up` does the rows inside the cell, the whole
+  cells and the last crossing (by that same routine) in a step each, and leaves what the loop
+  leaves: A = Y = the low byte, X the high, `unused_0076` 0, Z set, N clear; if it crossed a cell,
+  `delta_low/high` `&79/&02` (they are also `last_mover` and others) and C and V as the last
+  crossing left them; if not, C and V as they came. It and `multiply_by_78` live in a block
+  copied to `&0A20-&0AA9` at start-up (`moved_0a20`), as the original copies its own blocks: main
+  RAM below the font has 24 bytes left. `&0A00-&0A1F` is kept clear (the relocation test builds
+  read it as the ground).
 
 ## Checks
 
