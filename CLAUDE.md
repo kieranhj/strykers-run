@@ -28,12 +28,16 @@ the bug log. The method is beeb-port-kit's (`C:\Users\khcon\OneDrive\BEEB\Repos\
 ## Build
 
 ```powershell
-.\build.ps1             # build/strykers.ssd, then tools/compare.py against the reference
-.\build.ps1 -NoCompare  # step 2: the code deliberately differs from the reference
+.\build.ps1             # build/strykers.ssd (not compared: step 2's code differs from the reference)
+.\build.ps1 -Compare    # then tools/compare.py against the reference (-NoCompare: accepted, the default)
 .\build.ps1 -Release
 ```
 
-Step 1's byte-identical source is the tag `step1-identical`; from step 2 on, build with `-NoCompare`.
+Step 1's byte-identical source is the tag `step1-identical`; `-Compare` checks a build against the reference.
+The `Makefile` is the same build for POSIX (`make`, `make release`, `make SHIFT=256 SHIFTEND=1
+DEFINES=DEBUG_LIVES`; comparing is off unless `COMPARE=1`) and makes the same images, byte for
+byte: a change to the pipeline lands in both. `make original` builds the tag's source into
+`build/strykers-original.ssd`. Milestones get tags (`step2-layerN` as each layer closes; README.md).
 Baron 0.5.3 (`bin\baron.exe`, gitignored; built from `C:\Users\khcon\OneDrive\BEEB\Repos\baron`,
 decision 2). One assembly, `src/main.6502`, so the game and the banks share one symbol table.
 `build/strykers.lst` is the listing, `build/strykers.symbols.json` the symbol dump: take

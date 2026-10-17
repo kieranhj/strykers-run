@@ -1,3 +1,6 @@
 *.ssd   binary
 *.bin   binary
 *.png   binary
+Makefile text eol=lf
+*.mk     text eol=lf
+*.sh     text eol=lf
