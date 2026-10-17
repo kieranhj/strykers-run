@@ -30,8 +30,18 @@ function passKeys(n) {
 const s = await bootMaster(MachineSession, disc);
 const cpu = s._machine.processor;
 const rdm = (a, n) => [...s.readMemory(a, n, { shadow: false })];
-let passes = 0;
-cpu.debugInstruction.add((pc) => { if (pc === syms.main_game_loop) passes++; return false; });
+// passes counted at main_game_loop, the emulator stopped at each so the keys change exactly there
+// (passbench's way, so this is the game passbench plays; after a stop the other hooks do not see
+// that instruction, so the pass's start is noted here)
+let passes = 0, target = 1, lastStop = -1, lStart = 0, scrolledNow = false;
+cpu.debugInstruction.add((pc) => {
+    if (pc !== syms.main_game_loop) return false;
+    const c = s.elapsedCycles;
+    if (c === lastStop) return false;
+    passes++; lStart = c; scrolledNow = false;
+    if (passes >= target) { lastStop = c; return true; }
+    return false;
+});
 const events = makeScript(6000, SEED);
 for (let f = 1; f <= 6000 && passes < 1; f++) { applyEvents(events, f, [s]); await s.runFrames(1); }
 s.releaseAllKeys();
@@ -40,14 +50,13 @@ const keysAt = HOLD ? Array.from({ length: FROM + N + 2 }, () => HOLD.split(",")
 const SL = 34;
 const snap = () => [syms.movers_type_and_colour, syms.movers_frame_and_flip, syms.movers_x_low, syms.movers_x_high, syms.movers_y, syms.movers_screen_address_low, syms.movers_screen_address_high]
     .map((a) => rdm(a, SL));
-let prev = null, cur = null, scrolledNow = false, scrollPrev = false;
+let prev = null, cur = null;
 const per = []; let P = null;
 let op = null;   // {kind, slot, sp, bytes}
-let inRender = false, renderSp = 0, rStart = 0, lStart = 0, wait = 0, wStart = 0, wSp = 0;
+let inRender = false, renderSp = 0, rStart = 0, wait = 0, wStart = 0, wSp = 0;
 cpu.debugInstruction.add((pc) => {
     if (passes <= FROM || passes > FROM + N) return false;
     const b4 = (cpu.romsel & 15) === 4;
-    if (pc === syms.main_game_loop) { lStart = s.elapsedCycles; scrolledNow = false; }
     if (pc === syms.scroll_screen_right || pc === syms.scroll_screen_left) scrolledNow = true;
     if (b4 && pc === syms.render && !inRender) {
         inRender = true; renderSp = cpu.s; rStart = s.elapsedCycles; wait = 0;
@@ -73,6 +82,7 @@ cpu.debugInstruction.add((pc) => {
 });
 let held = [];
 for (let p = 1; p <= FROM + N; p++) {
+    target = p;
     for (let i = 0; passes < p && i < 150; i++) await s.runFor(400000);
     const want = keysAt[p] || [];
     for (const k of held) if (!want.includes(k)) s.keyUpRaw(gameKey(s, k));

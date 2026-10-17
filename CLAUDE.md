@@ -84,6 +84,9 @@ disassembly's `actually`/`also` notes say what an operand really is.
 - `tools/passlock.mjs CONTROL TEST [PASSES] [SEED] [--screen]` - two builds in step by pass (same keys per pass), game state compared every pass, and the shown screen (`--trace`, `--dump`, `WATCH=` to chase a difference). Layer 2's oracle: build both `-Shift 256 -ShiftEnd` so the ground pattern is fixed
 - `tools/shadowaudit.mjs DISC` - what the renderer reads in `&3000-&3FFF` with ACCCON's X bit set, against what play writes there
 - `tools/passbench.mjs DISC [DISC2 ...]` - speed on the same game whatever the build's speed (keys by pass, as passlock): compare builds with this, not the frame-timed tools
+- `tools/fieldcost.mjs DISC [--hold RIGHT] --out PER.json`, `tools/fieldsim.py PER.json [--report]` - passbench's game by pass:
+  logic by group and mover, render by slot and type, what changed and who wrote it; then 50 Hz schedules field by field
+  (`docs/step2-layer4-costing.md`)
 - `tools/passcost.mjs DISC [FROM] [FRAMES] [--right]`, `tools/passhist.mjs` - a pass's cycles by phase; each pass's work against the bytes it drew
 - `tools/helilock.mjs CONTROL TEST [PASSES] [VARIANT]` - two builds in step through a helicopter flight (board, fly, shot down), state and newest frame every pass; passlock's scripts never board one
 - `tools/worldcheck.mjs DISC` - the renderer's world position of each record against the mover's x/y (BUGS #7)
