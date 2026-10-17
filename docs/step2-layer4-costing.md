@@ -319,6 +319,156 @@ The heaviest of those frames are the same clusters, so the levers are:
 Changing the target is KC's decision: it would be a new row in `docs/decisions.md`, replacing
 decision 11's.
 
+**Later the same day**, the options in the next section were costed. Row-major sprite data for
+the player and the helicopters (about 8K) with compaction kept out of the frame clears 25 Hz:
+- 4 late frames on seed 1 and 0 holding RIGHT;
+- with the other movers' columns made cheaper and a delta redraw for movers that stay in place,
+  1 and 0.
+
+The same package brings option 2 to 3.7% late frames. Everything compiled brings it to 1.6% and
+0.9%, but that is ~45K of code, more RAM than there is. So: fix 25 Hz first, with row-major data,
+and revisit 50 Hz once those numbers are measured in a build.
+
+## The heaviest frames: what makes them cheaper (KC: "we have the RAM")
+
+Measured with `tools/drawprof.mjs` on the same games and build: every `put_on` and `take_off`, by
+renderer label, and each byte drawn.
+
+**Where a draw's cycles go**, a pass (seed 1 / holding RIGHT):
+
+| | player | enemy helicopters | enemies |
+|---|---|---|---|
+| draw: cycles a byte, all told | 89 / 88 | 71 / 69 | 92 / 91 |
+| of which the byte loops (`byte`, `part_byte`) | ~40 | ~40 | ~40 |
+| restore: cycles a byte | 39 / 39 | 32 / 32 | 38 / 39 |
+| a draw: parts, columns, cells, bytes | 3, 21, 25.6, 107 | 1.6, 19.4, 36.3, 183 | 2.5, 17.6, 20.2, 88 |
+| bytes fully transparent / opaque / mixed | 0 / 38 / 62% | 0 / 38 / 62% | 0 / 41 / 59% |
+
+**The player is drawn the slow way.** Its columns are short: 3 parts, 21 columns and about 5 bytes
+a column. So the per-column work costs as much as the drawing itself: about 48 cycles a byte on
+top of the loop's 40. That work is:
+- reading the column's header;
+- raising to its first row;
+- writing the save block's 3-byte record;
+- setting the data pointer, and the cell and next-column steps.
+
+**No empty bytes are drawn.** Leading and trailing transparent bytes are trimmed from each
+column at build time (`tools/sprites.py`), and no column has transparent bytes inside it: 0 of the
+bytes drawn. 35-44% are fully opaque (mask 0), which need no read of the screen to combine, only
+to save.
+
+**Against the last drawing of the same slot on the same screen** (the last but one pass):
+- **The helicopters** have always moved. 85% of their bytes land on an address they drew before,
+  but only 30% with the same index.
+- **The enemies, redrawn where they stood**, have 66% (seed 1) and 84% (holding RIGHT) of their
+  bytes unchanged.
+- **The player, redrawn in place**, has 20-42% unchanged.
+
+**The player's sprite kinds** (sprite, flip, line in the cell):
+- 54 kinds over 31 (sprite, flip) on seed 1, 1,956 bytes in all; 14 over 10 holding RIGHT.
+- Its parts sit at only four lines in the cell (3, 4, 5, 7).
+
+**The helicopters' kinds:** 12 (sprite, flip, line) kinds, 954 bytes, at lines 1, 2, 4 and 7 in
+these games. But they fly at any height, so code per alignment would need 8 variants.
+
+### The options
+
+`tools/whatif.py` takes each option's estimated cost off the measured passes and replays them.
+The 50 Hz figures come from `tools/fieldsim.py` on passes recosted the same way (`whatif.py
+--out`). Each new loop's cost is an estimate, written beside the option in `whatif.py`.
+
+**1. Compiled sprites, alignment-free.**
+- **The form:** code per sprite row, not per column. A row is one screen line, its bytes 8 apart,
+  so one pointer and `LDY #offset` reach the whole row, whatever the alignment. Stepping to the
+  next row is about 25 cycles (a line up, or a cell crossing).
+- **Per byte:** `LDY #o : LDA (row),Y : STA save+n : AND #m : EOR #p : STA (row),Y`, 21 cycles
+  (19 opaque) against 88. Restoring is `LDY #o : LDA save+n : STA (row),Y`, 12 against 39.
+- **The save area** must be fixed per slot and screen: the player's always is slot 0, and the
+  enemy helicopters slots 10-11.
+- **RAM:** about 13 bytes of code a byte drawn and 7 a byte restored, so ~20 a sprite byte. The
+  player's 31 observed (sprite, flip) kinds would need ~25K, the 10 used holding RIGHT ~8K, and
+  the helicopters' observed kinds ~20K.
+- **The fallback:** a part that straddles the screen's wrap at `&8000` takes the generic path.
+
+**2. Row-major sprite data**, the same row form as data:
+- **Per byte:** its offset, mask and pixel, with the flip and colour applied at build time.
+- **Draw:** `LDY off,X : LDA (row),Y : STA save,X : AND mask,X : EOR pix,X : STA (row),Y : DEX :
+  BNE`, 33 cycles a byte (35 counted).
+- **Restore:** `LDY off,X : LDA save,X : STA (row),Y : DEX : BNE`, 19 (22 counted).
+- **RAM:** ~3 bytes a sprite byte plus a row header. The player's observed kinds need ~4.5K and
+  the helicopters' ~3.3K.
+- **Cost:** most of what compiling gains, at a sixth of the RAM.
+
+**3. Compaction out of the frame.** Compact either arena in the wait for the flip, before it is
+needed: the arenas are at `&34D5-&3FFF`, not displayed. Or make it faster: it moves 45.9 cycles a
+byte kept, where a plain copy is ~13.
+
+**4. A same-place redraw by delta.** A mover redrawn where it stood:
+- skip its bytes whose index has not changed;
+- recompute the others from the save block, which still holds the background: (saved AND mask)
+  EOR pixel;
+- fall back if anything else touched it (an overlap, the scroll's zone).
+
+It suits standing enemies, which change their frame in place.
+
+**5. Cheaper columns for the rest.** The per-column header, raise and record work precomputed or
+dropped, taking 60 cycles a column off the draw and 30 off the restore. Restoring could walk the
+sprite's geometry again instead of the records.
+
+**25 Hz late frames** (shown 3+ fields; now 41 seed 1, 24 in the replay holding RIGHT) and the
+render a pass (now 30.6k / 40.7k):
+
+| option | seed 1 | holding RIGHT |
+|---|---|---|
+| compaction in the wait | 37 (-0.3k) | 22 (-0.1k) |
+| player compiled | 10 (-6.3k) | **0** (-9.2k) |
+| player row-major | 16 (-4.8k) | 1 (-6.9k) |
+| helicopters compiled | 7 (-5.1k) | 1 (-6.1k) |
+| helicopters row-major | 13 (-3.4k) | 2 (-3.9k) |
+| same-place redraws by delta | 30 (-2.5k) | 16 (-4.0k) |
+| every column 60 cheaper to draw | 26 (-1.7k) | 10 (-2.4k) |
+
+The packages, replayed from the recosted passes (each draw recosted once, so the delta is not also
+counted on the player or the helicopters):
+
+| package | seed 1 | holding RIGHT |
+|---|---|---|
+| player and helicopters row-major, compaction in the wait | 4 (-8.3k) | 0 (-10.9k) |
+| the same, with the rest's columns and delta | 1 (-9.6k) | 0 (-13.9k) |
+| player compiled, helicopters row-major, compaction, the rest's columns, delta | **0** (-11.1k) | 0 (-16.1k) |
+| everything compiled, the rest's columns, delta, compaction | 0 (-12.9k) | 0 (-18.3k) |
+
+**50 Hz (option 2) on the recosted passes.** Late frames are out of 2,999 fields (seed 1) and
+1,199 (holding RIGHT); option 2 is now 529 and 353:
+
+| package | option 2 | player-alt | full 50 Hz |
+|---|---|---|---|
+| player compiled, compaction | 239 / 140 | 229 / 124 | 501 / 301 |
+| player and helicopters row-major, compaction | 164 / 114 | 111 / 65 | 355 / 231 |
+| player compiled, helicopters compiled, compaction | 94 / 61 | 67 / 45 | 225 / 144 |
+| row-major both, the rest's columns, delta, compaction | 111 / 44 | 77 / 15 | 292 / 148 |
+| player compiled, helicopters row-major, the rest's columns, delta, compaction | 81 / 28 | 56 / 12 | 250 / 113 |
+| everything compiled, the rest's columns, delta, compaction | **47 / 11** | 37 / 2 | 168 / 69 |
+
+With the last package, option 2 runs at 49.3 / 49.7 fields of game a second. A field's render is
+then 14.0k / 16.2k against 23.5k / 30.3k, and the render alone makes 6 / 0 frames late.
+
+**What this changes:**
+- **At 25 Hz**, the player alone (compiled, or row-major at 4.5K) all but clears holding RIGHT (0-1
+  late frames) and takes seed 1 from 41 to 10-16. Row-major for the player and the helicopters, with
+  compaction in the wait, leaves 4 and 0 in under 8K of RAM.
+- **50 Hz** needs nearly everything: about 1.6% of frames late on seed 1 and 0.9% holding RIGHT,
+  with ~45K of compiled code that does not fit. With row-major data instead (~8K) it is 3.7% and
+  3.7%.
+- **The free RAM** in this build is about 11.5K by the catalogue lengths:
+  - bank 5 ~2.5K, plus the 4.1K copy of ANDY's sprites once they are copied;
+  - bank 6 ~2.7K;
+  - bank 7 ~2.3K;
+  - bank 4 is full.
+
+  On top of that, HAZEL's 8K, if it can be paged during the render (to be measured: it hides the
+  MOS's `&C000-&DFFF`), and ~3-4K from packing the front end's music.
+
 ## Tools
 
 - **`tools/fieldcost.mjs DISC [--from P] [--passes N] [--seed S] [--hold RIGHT] --out PER.json`:** the
@@ -326,6 +476,11 @@ decision 11's.
   passbench's game exactly: 41 late frames of 1,500 flips on seed 1, as passbench reports.
 - **`tools/fieldsim.py PER.json ... [--report] [--schedules a,b] [--worst N] [--no-compact]`:** the
   model and its check at 25 Hz. Schedules are entries in its `SCHEDULES` table.
+- **`tools/drawprof.mjs DISC [--hold RIGHT] --out OPS.json`:** each draw and restore by renderer
+  label, its parts, columns, cells, bytes and byte kinds, against the slot's last drawing on the
+  same screen; the player's (sprite, flip, line) kinds.
+- **`tools/whatif.py FC.json OPS.json [--out FC2.json KINDS]`:** the 25 Hz late frames with each
+  option's estimated cost taken off. `--out` writes the passes recosted for `fieldsim.py`.
 - **`tools/singlebuf.mjs` fixed:** it changed keys at 400,000-cycle boundaries, not at each pass,
   so it played a slightly different game from passbench. The first versions of `fieldcost` did the
   same: they saw 31 late frames where passbench saw 41.
