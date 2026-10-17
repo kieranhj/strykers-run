@@ -904,11 +904,12 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     CMP #&FF
     BNE next                        \ shown and staying
 .candidate
-    LDY ren_i
-    LDA movers_x_high,Y
+    LDA movers_x_high,X             \ X = ren_i on both ways in
     BMI next                        \ no mover in the slot
-    JSR get_mover_Y_x
-    LDA movers_type_and_colour,Y
+    STA &C5                         \ get_mover_Y_x, inline and by X
+    LDA movers_x_low,X
+    STA mover_x_low
+    LDA movers_type_and_colour,X
     AND #&7F
     TAX
     JSR check_if_mover_is_on_screen \ carry set if not
@@ -1944,25 +1945,20 @@ pix_operand_2 = * + 1
     STA (s_ptr),Y
     DEY
     BPL byte
-    LDA v_ptr                       \ the next cell: the save block 8 on...
-    CLC
-    ADC #8
-    STA v_ptr
-    BCC save_same_page
-    INC v_ptr + 1
-.save_same_page
-    LDA s_ptr                       \ ...the screen a character row up, round the 16K
-    SEC
-    SBC #&80
+    LDA s_ptr                       \ the next cell: the screen a character row up (C = 0 from
+    SBC #&7F                        \ cell's SBC: this takes &80)...
     STA s_ptr
     LDA s_ptr + 1
-    SBC #&02
-    CMP #&40
-    BCS in_ring
-    ADC #&40
-.in_ring
+    SBC #&02                        \ (high &40-&7F: no borrow, C = 1 after)
+    AND #&3F                        \ ...round the 16K (&3D-&7D to &40-&7F)
+    ORA #&40
     STA s_ptr + 1
+    LDA v_ptr                       \ ...the save block 8 on (C = 1: ADC #7 adds 8)
+    ADC #7
+    STA v_ptr
     LDY #7
+    BCC cell
+    INC v_ptr + 1
     BRA cell                        \ 65C02 opcode
 .last_cell
     DEC A                           \ 65C02 opcode

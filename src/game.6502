@@ -2138,28 +2138,38 @@ ENDIF
     JMP next_row_1d84 + 11
 
 .calculate_screen_addresses_for_movers_on_edge
-    LDY #&00                        \ MOVER_FIRST                               # Bug: player is never on edge, so should be &01
-.calculate_screen_addresses_for_movers_on_edge_loop
     \ Step 2 (layer 3, D): a mover whose x high byte cannot put its edge on the screen's
     \ (equal for the right edge; equal or one less for the left, the width being under 256)
-    \ is passed over without the type lookup - except the last, whose &D0, mover_width and
-    \ registers are what the routine leaves
-    CPY #&21
-    BEQ edge_in_full
+    \ is passed over without the type lookup - except the last, whose &D0 and mover_width
+    \ are what the routine leaves. Grind: one loop for each edge (&CF read once, not every
+    \ mover), the last (&21) taken in full by a tail call: Y is left &21, the flags as it
+    \ leaves them (both callers go on to add_movers_to_column_buffer, then load X and Y)
+    LDY #&00                        \ MOVER_FIRST                               # Bug: player is never on edge, so should be &01
+    LDX &CF                         \ Zero for left edge, non-zero for right edge
+    BEQ edge_left_loop
+.edge_right_loop
     LDA movers_x_high,Y
     CMP edge_x_high
-    BEQ edge_in_full
-    LDX &CF
-    BNE edge_next                   \ the right edge: x itself
-    INC A                           \ 65C02 opcode
-    CMP edge_x_high
-    BNE edge_next
-.edge_in_full
+    BNE edge_right_next             \ the right edge: x itself
     JSR calculate_screen_addresses_for_mover_on_edge
-.edge_next
+.edge_right_next
     INY
-    CPY #&22                        \ MOVER_LAST + 1                        *** Enhanced version adds tank
-    BCC calculate_screen_addresses_for_movers_on_edge_loop
+    CPY #&21                        \ MOVER_LAST                            *** Enhanced version adds tank
+    BCC edge_right_loop
+.edge_last
+    JMP calculate_screen_addresses_for_mover_on_edge
+.edge_left_loop
+    LDA edge_x_high                 \ the left edge: x or x + 1 (mod 256), so edge_x_high - x is 0 or 1
+    SEC
+    SBC movers_x_high,Y
+    CMP #&02
+    BCS edge_left_next
+    JSR calculate_screen_addresses_for_mover_on_edge
+.edge_left_next
+    INY
+    CPY #&21
+    BCC edge_left_loop
+    BCS edge_last                   \ Always branches
     RTS
 .calculate_screen_addresses_for_mover_on_edge
     LDA movers_x_high,Y
