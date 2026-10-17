@@ -79,6 +79,14 @@ MAX_BLOCK   = &2A0                  \ more than any mover's save block: 636 byte
     STA dst7 + 2
     STA dst8 + 2
     LDX #200
+    LDA pre_use                     \ the prebuilt column (src/prebuild.6502), whose rows 24-199
+    BEQ copy                        \ are already in this slot: only the ground's rows
+    LDA pre_hist
+    BEQ copy
+    DEC A                           \ 65C02 opcode
+    CMP hist_next
+    BNE copy
+    LDX #24
 .copy
     LDA column_buffer - 1,X
 .dst1
@@ -110,6 +118,7 @@ MAX_BLOCK   = &2A0                  \ more than any mover's save block: 636 byte
     TAX
     BNE copy
 .pushed
+    STZ pre_hist                    \ 65C02 opcode: the slot is this push's now
     LDX hist_next
 .header                             \ X = the slot
     LDA edge_screen_address_low

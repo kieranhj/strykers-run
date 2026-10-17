@@ -43,6 +43,8 @@ PRE_T2_MIN = &D6                    \ one field to go: start only if User VIA T2
 .pre_old_view   SKIP 2              \ viewport_left_low, viewport_right_low
 .pre_first      SKIP 1
 .pre_more       SKIP 1              \ non-zero: more of the state changed than the sprite addresses
+.pre_hist       SKIP 1              \ item 3: 1 + the history slot holding rows 24-199 of the column,
+                                    \ 0 none (history_push)
 
 \ prebuild: render calls this before it waits for the flip
 .prebuild
@@ -200,13 +202,75 @@ PRE_T2_MIN = &D6                    \ one field to go: start only if User VIA T2
 .check_next
     DEX
     BPL check_started
-.usable
-    LDA last_dir
-    STA pre_valid                   \ built for this direction
-    RTS
+    BMI usable                      \ always
 .unusable
     LDA #&80                        \ tried: nothing to use until the next scroll
     STA pre_valid
+    RTS
+.usable
+    LDA last_dir
+    STA pre_valid                   \ built for this direction
+    \ Item 3: rows 24-199 of the column (the ground's 24 rows are the scroll's) straight into the
+    \ history slot the push will fill, if neither screen still needs what it holds: a screen at
+    \ most one push behind needs only the newest slot (render's pending columns).
+    LDA hist_seq
+    SEC
+    SBC buf_seq
+    CMP #2
+    BCS no_copy
+    LDA hist_seq
+    SEC
+    SBC buf_seq + 1
+    CMP #2
+    BCC slot_free
+.no_copy
+    RTS
+.slot_free
+    LDX hist_next
+    LDA hist_dst_hi,X
+    STA pc_dst1 + 2
+    STA pc_dst2 + 2
+    STA pc_dst3 + 2
+    STA pc_dst4 + 2
+    STA pc_dst5 + 2
+    STA pc_dst6 + 2
+    STA pc_dst7 + 2
+    STA pc_dst8 + 2
+    LDX #200
+.pc_copy
+    LDA column_buffer - 1,X
+.pc_dst1
+    STA hist0 - 1,X
+    LDA column_buffer - 2,X
+.pc_dst2
+    STA hist0 - 2,X
+    LDA column_buffer - 3,X
+.pc_dst3
+    STA hist0 - 3,X
+    LDA column_buffer - 4,X
+.pc_dst4
+    STA hist0 - 4,X
+    LDA column_buffer - 5,X
+.pc_dst5
+    STA hist0 - 5,X
+    LDA column_buffer - 6,X
+.pc_dst6
+    STA hist0 - 6,X
+    LDA column_buffer - 7,X
+.pc_dst7
+    STA hist0 - 7,X
+    LDA column_buffer - 8,X
+.pc_dst8
+    STA hist0 - 8,X
+    TXA
+    SEC
+    SBC #8
+    TAX
+    CMP #24
+    BNE pc_copy
+    LDX hist_next
+    INX
+    STX pre_hist
     RTS
 }
 
