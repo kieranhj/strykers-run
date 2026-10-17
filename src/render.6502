@@ -2088,30 +2088,33 @@ pix_operand_2 = * + 1
     STA save_start_hi,Y
     ADC cp_len_hi
     STA save_end_hi,Y
-    STA cp_next_hi
-    LDY #0
-.move
-    LDA cp_len_lo
-    ORA cp_len_hi
-    BEQ moved
+    STA cp_cursor_hi                \ the next block's cursor now: nothing reads cp_cursor_hi again
+    LDY #0                          \ copy forward (the block only moves down), Y and the pointers
+    LDX cp_len_hi                   \ as the byte loop had them: whole pages (rare: after .all_moved,
+    BNE whole_pages                 \ which BEQ all_moved must reach), then the rest
+.rest
+    LDA cp_len_lo                   \ the rest (Y = 0 up): an odd byte, then pairs
+    LSR A
+    TAX
+    BCC odd_done                    \ (Z from TAX: no pairs)
     LDA (v_ptr),Y
     STA (s_ptr),Y
     INY
-    BNE counted
-    INC v_ptr + 1
-    INC s_ptr + 1
-.counted
-    LDA cp_len_lo
-    BNE len_low
-    DEC cp_len_hi
-.len_low
-    DEC cp_len_lo
-    BRA move                        \ 65C02 opcode
+    CPX #0
+.odd_done
+    BEQ moved
+.pairs
+    LDA (v_ptr),Y
+    STA (s_ptr),Y
+    INY
+    LDA (v_ptr),Y
+    STA (s_ptr),Y
+    INY
+    DEX
+    BNE pairs
 .moved
     LDA cp_next_lo
     STA cp_cursor_lo
-    LDA cp_next_hi
-    STA cp_cursor_hi
     JMP next_block
 .all_moved
     LDX back
@@ -2120,6 +2123,16 @@ pix_operand_2 = * + 1
     LDA cp_cursor_hi
     STA arena_top_hi,X
     RTS
+.whole_pages
+    LDA (v_ptr),Y
+    STA (s_ptr),Y
+    INY
+    BNE whole_pages
+    INC v_ptr + 1
+    INC s_ptr + 1
+    DEX
+    BNE whole_pages
+    BRA rest                        \ 65C02 opcode
 }
 
 \ ---- records -----------------------------------------------------------------------------
