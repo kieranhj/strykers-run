@@ -25,7 +25,8 @@ Same game in each (keys by pass, `tools/passbench.mjs`, seed 1, passes 500-2000,
 | + the collision searches' left edge worked out once a search (item 3, `0670ca9`) | 24.42 | 81,905 |
 | + the next column built in the wait for the flip (RAM for cycles, item 1, `5ad76a8`) | 24.43 | 81,851 |
 | + its rows 24-199 into the history slot in the wait (item 3, `23ace82`) | 24.43 | 81,851 |
-| + movers that cannot be on the screen left out of the renderer's list (item 4) | **24.61** | 81,266 |
+| + movers that cannot be on the screen left out of the renderer's list (item 4, `50deb9d`) | 24.61 | 81,266 |
+| + `raise_address` in one step; `move_mover`'s multiply from a table (item 4) | **24.67** | 81,080 |
 
 Frame-timed play (`tools/profile.mjs`, `tools/speed.mjs`; these press keys by frame, so each
 build plays a slightly different game and the numbers move a few percent with it):
@@ -150,6 +151,7 @@ is over 2 fields (79,872 cycles), and by how much:
 | the next column built in the wait (RAM for cycles 1) | 24.43/s; 210 late: 57, 43, 38, 21, 36, 9, 6 | 24.10/s; 129 late: 34, 31, 14, 16, 33, 1, 0 |
 | and its history copy in the wait (3) | 24.43/s; 205 late: 54, 41, 38, 21, 36, 9, 6 | 24.12/s; 128 late: 34, 31, 14, 17, 31, 1, 0 |
 | off-screen movers out of the renderer's list (4) | 24.61/s; 165 late: 45, 36, 26, 19, 26, 10, 3 | 24.45/s; 104 late: 33, 18, 23, 18, 11, 1, 0 |
+| `raise_address` in one step, the multiply from a table (4) | 24.67/s; late frames 44 of 1,498 | 24.49/s; late frames 27 of 598 |
 
 - **The sprite column walk and draw merged** (`ren_draw_sprite` sets up a part and falls into
   `draw_column`, which loops over its columns): no call a column; the column's bottom kept as
@@ -205,6 +207,14 @@ is over 2 fields (79,872 cycles), and by how much:
   high byte is past the right edge's, or more than one below the left edge's (widths are under
   256), can never be marked to go on: it is no longer listed. Render 34.6k to 31.1k a pass on
   seed 1; frames taking 3 fields 121 to 97 (seed 1) and 70 to 52 (holding RIGHT).
+- **`raise_address` in one step; the multiply from a table** (item 4): `raise_address` (once a
+  sprite part) works out the cells to go up and the line it ends on, and takes the whole
+  `&280` multiple from an 8-entry table, instead of a cell at a time. `move_mover`'s
+  `multiply_A_by_X_2f1e` with X = `&4E` (every move) became `multiply_by_78`: a 512-byte table
+  at `&0B00` (made at start-up), leaving every byte, register and flag the shift-and-add loop
+  leaves (result; multiplicand and multiplier_low 0; multiplier_high `&4E`; A the result's high
+  byte, X `&4E`, Y 0, C clear, Z set, N clear). From here the late frames are counted as frames
+  (`passbench`'s flips): 51 to 44 of 1,498 on seed 1, 30 to 27 of 598 holding RIGHT.
 
 ## Checks
 

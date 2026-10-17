@@ -3268,8 +3268,7 @@ move_mover_routine_address_high = * + 2
     SBC y
     CLC
     ADC #&18
-    LDX #&4E
-    JSR multiply_A_by_X_2f1e
+    JSR multiply_by_78              \ step 2 (RAM for cycles 4): A x &4E from a table
     LDY mover_to_update
     LDA result_high
     STA movers_raster_y,Y
@@ -5441,6 +5440,22 @@ ASSERT shown_screen < &3000
     EQUB &00
 .col_fresh                         \ column_buffer holds a column not yet pushed to the history
     EQUB &00
+\ Step 2 (RAM for cycles 4): A x &4E as multiply_A_by_X_2f1e with X = &4E leaves everything:
+\ the result, multiplicand and multiplier_low 0, multiplier_high &4E, A = result_high, X = &4E,
+\ Y = 0, C clear, Z set, N clear (V is never read). The tables are made at start-up.
+.multiply_by_78
+    TAX
+    LDA times_78_lo,X
+    STA result_low
+    LDA times_78_hi,X
+    STA result_high
+    STZ multiplicand                \ 65C02 opcode
+    STZ multiplier_low
+    LDX #&4E
+    STX multiplier_high
+    CLC
+    LDY #&00
+    RTS
 
 IF SHIFT = 0
     unused_3400_original = &3400
@@ -5574,6 +5589,21 @@ SECTION moved_0004, org = &0004, cmos = TRUE
 ENDSECTION
 
 .initialisation
+    \ Step 2 (RAM for cycles 4): the table multiply_by_78 reads, n x &4E for n = 0-255
+    LDA #&00
+    STA times_78_lo
+    STA times_78_hi
+    LDX #&01
+.times_78_loop
+    LDA times_78_lo - 1,X
+    CLC
+    ADC #&4E
+    STA times_78_lo,X
+    LDA times_78_hi - 1,X
+    ADC #&00
+    STA times_78_hi,X
+    INX
+    BNE times_78_loop
     LDA #&14
     STA ula_control                 \ video ULA control register
     STA os_ula_control_copy

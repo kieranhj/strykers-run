@@ -1806,38 +1806,52 @@ pix_operand_2 = * + 1
 \ cell's top line it is the cell above's bottom line.
 .raise_address
 {
-    STY ra_rows
+    STX ra_hi                       \ RAM for cycles 4: in one step, not a cell at a time
     STA ra_lo
-    STX ra_hi
-.again
-    LDA ra_rows
-    BEQ out
-    LDA ra_lo
-    AND #&07                        \ the rows left in this cell above this one
+    STY ra_rows
+    AND #&07                        \ the line in the cell
     CMP ra_rows
-    BCC leave_cell
+    BCC up
     LDA ra_lo                       \ it stays in the cell
     SEC
     SBC ra_rows
-    STA ra_lo
-.out
-    LDA ra_lo
     LDX ra_hi
     RTS
-.leave_cell
-    EOR #&FF                        \ rows -= line + 1
-    SEC
+.up                                 \ d = rows - line - 1: 0 is the cell above's bottom line
+    EOR #&FF
+    CLC
     ADC ra_rows
+    TAY
+    AND #&07
+    EOR #&07                        \ the line it ends on: 7 - (d AND 7)
     STA ra_rows
-    DEC ra_rows
     LDA ra_lo
     AND #&F8
-    LDX ra_hi
-    JSR up_a_cell
+    ORA ra_rows
     STA ra_lo
-    STX ra_hi
-    BRA again                       \ 65C02 opcode
+    TYA
+    LSR A
+    LSR A
+    LSR A
+    TAY                             \ cells up, less 1
+    LDA ra_lo
+    SEC
+    SBC raise_cells_lo,Y
+    STA ra_lo
+    LDA ra_hi
+    SBC raise_cells_hi,Y
+    CMP #&40                        \ round the 16K screen
+    BCS in_ring
+    ADC #&40
+.in_ring
+    TAX
+    LDA ra_lo
+    RTS
 }
+.raise_cells_lo                     \ (n + 1) character rows: (n + 1) * &280
+    EQUB &80, &00, &80, &00, &80, &00, &80, &00
+.raise_cells_hi
+    EQUB &02, &05, &07, &0A, &0C, &0F, &11, &14
 
 \ ---- taking a mover off ------------------------------------------------------------------
 \ restore_block: Y = slot + boff. Its save block, a part at a time from the last (parts of one
