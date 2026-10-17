@@ -201,14 +201,20 @@ def emit(disc, out_dir):
         if part == "a":
             body += [".compiled_unsafe_hazel", "    SEC", "    RTS"]
         Path(out_dir, f"compiled_hazel_{part}.6502").write_text(NL.join(body) + NL)
+    # the kind of each sprite, flip and line, indexed sprite << 4 | flip << 3 | line: &FF for none
+    nsprites = max(s for s, *_ in table) + 1
+    index = [0xFF] * (nsprites * 16)
+    for k, (s, fl, ln, _, _) in enumerate(table):
+        index[s << 4 | fl << 3 | ln] = k
     tab = head + [c + "Bank 4: the kinds render.6502 looks up for the player's parts (bank 0: HAZEL, called",
                   c + "directly), and the save area: kinds whose sprites are never drawn together share theirs.",
                   f"COMPILED_KINDS = {len(table)}",
+                  f"CK_SPRITES = {nsprites}                 " + BS + " every kind's sprite is below this",
                   f"PLAYER_SAVE_SIZE = {off}",
                   f"HAZEL_ORG = &{HAZEL_ORG:04X}",
-                  ".ck_sprite      EQUB " + ", ".join(f"&{s:02X}" for s, _, _, _, _ in table),
-                  ".ck_flipline    EQUB " + ", ".join(f"&{(fl << 7) | ln:02X}" for _, fl, ln, _, _ in table) + "    " + BS + " flip << 7 | line",
-                  ".ck_bank        EQUB " + ", ".join(f"&{bk:02X}" for _, _, _, bk, _ in table),
+                  ".ck_index       " + BS + " sprite << 4 | flip << 3 | line -> the kind, or &FF"]
+    tab += ["    EQUB " + ", ".join(f"&{v:02X}" for v in index[r:r + 16]) for r in range(0, len(index), 16)]
+    tab += [".ck_bank        EQUB " + ", ".join(f"&{bk:02X}" for _, _, _, bk, _ in table),
                   ".ck_draw_lo     EQUB " + ", ".join(f"LO({nm}_draw)" for *_, nm in table),
                   ".ck_draw_hi     EQUB " + ", ".join(f"HI({nm}_draw)" for *_, nm in table),
                   ".ck_restore_lo  EQUB " + ", ".join(f"LO({nm}_restore)" for *_, nm in table),

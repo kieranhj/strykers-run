@@ -3,10 +3,20 @@
 \ Bank 4: the kinds render.6502 looks up for the player's parts (bank 0: HAZEL, called
 \ directly), and the save area: kinds whose sprites are never drawn together share theirs.
 COMPILED_KINDS = 14
+CK_SPRITES = 10                 \ every kind's sprite is below this
 PLAYER_SAVE_SIZE = 117
 HAZEL_ORG = &C700
-.ck_sprite      EQUB &00, &09, &09, &09, &02, &03, &01, &04, &06, &07, &05, &08, &08, &05
-.ck_flipline    EQUB &07, &05, &03, &04, &07, &07, &07, &07, &04, &04, &05, &03, &05, &03    \ flip << 7 | line
+.ck_index       \ sprite << 4 | flip << 3 | line -> the kind, or &FF
+    EQUB &FF, &FF, &FF, &FF, &FF, &FF, &FF, &00, &FF, &FF, &FF, &FF, &FF, &FF, &FF, &FF
+    EQUB &FF, &FF, &FF, &FF, &FF, &FF, &FF, &06, &FF, &FF, &FF, &FF, &FF, &FF, &FF, &FF
+    EQUB &FF, &FF, &FF, &FF, &FF, &FF, &FF, &04, &FF, &FF, &FF, &FF, &FF, &FF, &FF, &FF
+    EQUB &FF, &FF, &FF, &FF, &FF, &FF, &FF, &05, &FF, &FF, &FF, &FF, &FF, &FF, &FF, &FF
+    EQUB &FF, &FF, &FF, &FF, &FF, &FF, &FF, &07, &FF, &FF, &FF, &FF, &FF, &FF, &FF, &FF
+    EQUB &FF, &FF, &FF, &0D, &FF, &0A, &FF, &FF, &FF, &FF, &FF, &FF, &FF, &FF, &FF, &FF
+    EQUB &FF, &FF, &FF, &FF, &08, &FF, &FF, &FF, &FF, &FF, &FF, &FF, &FF, &FF, &FF, &FF
+    EQUB &FF, &FF, &FF, &FF, &09, &FF, &FF, &FF, &FF, &FF, &FF, &FF, &FF, &FF, &FF, &FF
+    EQUB &FF, &FF, &FF, &0B, &FF, &0C, &FF, &FF, &FF, &FF, &FF, &FF, &FF, &FF, &FF, &FF
+    EQUB &FF, &FF, &FF, &02, &03, &01, &FF, &FF, &FF, &FF, &FF, &FF, &FF, &FF, &FF, &FF
 .ck_bank        EQUB &06, &05, &05, &06, &06, &05, &07, &07, &00, &00, &00, &00, &00, &00
 .ck_draw_lo     EQUB LO(ck0_00_u7_draw), LO(ck1_09_u5_draw), LO(ck2_09_u3_draw), LO(ck3_09_u4_draw), LO(ck4_02_u7_draw), LO(ck5_03_u7_draw), LO(ck6_01_u7_draw), LO(ck7_04_u7_draw), LO(ck8_06_u4_draw), LO(ck9_07_u4_draw), LO(ck10_05_u5_draw), LO(ck11_08_u3_draw), LO(ck12_08_u5_draw), LO(ck13_05_u3_draw)
 .ck_draw_hi     EQUB HI(ck0_00_u7_draw), HI(ck1_09_u5_draw), HI(ck2_09_u3_draw), HI(ck3_09_u4_draw), HI(ck4_02_u7_draw), HI(ck5_03_u7_draw), HI(ck6_01_u7_draw), HI(ck7_04_u7_draw), HI(ck8_06_u4_draw), HI(ck9_07_u4_draw), HI(ck10_05_u5_draw), HI(ck11_08_u3_draw), HI(ck12_08_u5_draw), HI(ck13_05_u3_draw)

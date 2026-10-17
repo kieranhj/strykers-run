@@ -1649,19 +1649,22 @@ pix_operand_2 = * + 1
 \ and ds_c are as the generic path wants them).
 .compiled_part
 {
-    LDA dm_flip
-    AND #&80
+    LDA ds_sprite                   \ the kind from ck_index: sprite << 4 | flip << 3 | line
+    CMP #CK_SPRITES
+    BCS none
+    ASL A
+    ASL A
+    ASL A
+    ASL A
     ORA ds_line
-    LDX #COMPILED_KINDS - 1
-.search
-    CMP ck_flipline,X
-    BNE next
-    LDY ck_sprite,X
-    CPY ds_sprite
-    BEQ found
-.next
-    DEX
-    BPL search
+    BIT dm_flip
+    BPL unflipped
+    ORA #&08
+.unflipped
+    TAY
+    LDX ck_index,Y
+    BPL found
+.none
     SEC
     RTS
 .found
