@@ -815,13 +815,21 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     LDA #4
     STA zone_count
 .each
-    JSR add_zone_column
+    LDY zone_n                      \ add_zone_column inlined: Y = where the list ends
+    TAX                             \ X = 4 (A is zone_count's 4): the columns to add
+.column
+    LDA zone_tmp_lo
+    STA zone_lo,Y
+    LDA zone_tmp_hi
+    STA zone_hi,Y
+    INY
     INC zone_tmp_lo
     BNE same_page
     INC zone_tmp_hi
 .same_page
-    DEC zone_count
-    BNE each
+    DEX
+    BNE column
+    STY zone_n
     RTS
 }
 
