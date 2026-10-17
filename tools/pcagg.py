@@ -6,6 +6,10 @@ bank_of = {'DATA1': 4, 'DATA2': 5, 'DATA3': 6, 'DATA4': 7}
 labs = collections.defaultdict(list)   # bank (0 = main) -> [(addr, name)]
 for sec in json.load(open(sys.argv[2]))['assemblies'][0]['sections']:
     name = sec.get('name') or ''
+    if name.startswith('hazel_'):   # the compiled kinds in HAZEL, &C000-&DFFF (layer 4)
+        for k, v in (sec.get('labels') or {}).items():
+            if isinstance(v, dict) and isinstance(v.get('value'), int) and '.' not in k: labs['H'].append((v['value'], k))
+        continue
     if name not in bank_of and not (name == 'MGAME' or name.startswith('moved_')): continue
     for k, v in (sec.get('labels') or {}).items():
         if not isinstance(v, dict) or not isinstance(v.get('value'), int) or '.' in k: continue
@@ -21,6 +25,9 @@ addrs = {b: [a for a, _ in L] for b, L in labs.items()}
 
 def name_of(key):
     bank, a = key >> 16, key & 0xFFFF
+    if 0xC000 <= a < 0xE000 and 'H' in addrs and addrs['H'] and a >= addrs['H'][0]:
+        i = bisect.bisect_right(addrs['H'], a) - 1
+        return labs['H'][i][1]
     if a >= 0xC000: return '(MOS)'
     b = bank if 0x8000 <= a < 0xC000 else 0
     i = bisect.bisect_right(addrs.get(b, []), a) - 1

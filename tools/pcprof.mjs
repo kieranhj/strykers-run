@@ -96,7 +96,7 @@ for (const disc of discs) {
         const RESTORED = new Set(["restore_part.byte", "slow_row.put_back", "restore_block.byte", "restore_block.part_byte"].map((k) => syms[k]).filter((v) => v !== undefined));
         // the compiled kinds: their entries (banks 5-7) and the bytes each draws and puts back
         const KIND = new Map();
-        for (const bk of [5, 6, 7]) { let src = ""; try { src = readFileSync(new URL(`../src/compiled_bank${bk}.6502`, import.meta.url), "utf8"); } catch {}
+        for (const [bk, file] of [[5, "bank5"], [6, "bank6"], [7, "bank7"], [4, "hazel_a"], [4, "hazel_b"]]) { let src = ""; try { src = readFileSync(new URL(`../src/compiled_${file}.6502`, import.meta.url), "utf8"); } catch {}
             for (const m of src.matchAll(/^\.(ck\w+)_draw\r?\n\\ .*?: (\d+) bytes/gm)) KIND.set(`${bk}:${syms[m[1] + "_draw"]}`, +m[2]), KIND.set(`${bk}:${syms[m[1] + "_restore"]}`, -m[2]); }
         cpu.debugInstruction.add((pc, op) => {
             if (m.passes <= FROM || m.passes > FROM + N) { lastOp = op; return false; }

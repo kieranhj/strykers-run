@@ -59,6 +59,11 @@ s.releaseAllKeys();
 const keysAt = HOLD ? Array.from({ length: FROM + N + 2 }, () => HOLD.split(",")) : passKeys(FROM + N + 2);
 
 const A = syms, rd = (a) => cpu.readmem(a), rw = (a) => cpu.readmem(a) | (cpu.readmem(a + 1) << 8);
+// the compiled kinds (layer 4): their entries and the bytes each draws (+) and puts back (-), by
+// the bank paged when they run (HAZEL's run with bank 4's)
+const KIND = new Map();
+for (const [bk, file] of [[5, "bank5"], [6, "bank6"], [7, "bank7"], [4, "hazel_a"], [4, "hazel_b"]]) { let src = ""; try { src = readFileSync(new URL(`../src/compiled_${file}.6502`, import.meta.url), "utf8"); } catch {}
+    for (const m of src.matchAll(/^\.(ck\w+)_draw\r?\n\\ .*?: (\d+) bytes/gm)) KIND.set(`${bk}:${syms[m[1] + "_draw"]}`, +m[2]), KIND.set(`${bk}:${syms[m[1] + "_restore"]}`, -m[2]); }
 const ops = [];             // {k, slot, type, pass, screen, cyc, by: {label: cycles}, parts, cols, cells, bytes, tr, op, mx, same, sameIdx, prevBytes}
 const last = new Map();     // slot + 64 * screen -> Map(addr -> index) of its last drawing there
 let op = null, inIrq = false, lastOp = 0, lastC = 0, lastName = null;
@@ -69,7 +74,9 @@ cpu.debugInstruction.add((pc, opc) => {
     if (pc === 0xe59e && !inIrq) inIrq = true; else if (inIrq && lastOp === 0x40) inIrq = false;
     lastOp = opc;
     if (inIrq || passes <= FROM || passes > FROM + N) return false;
-    if ((cpu.romsel & 15) !== 4 || pc < 0x9000 || pc >= 0xc000) { if (op) lastName = "(game code)"; return false; }
+    const kb = op && KIND.get(`${cpu.romsel & 15}:${pc}`);
+    if (kb > 0) op.bytes += kb; else if (kb < 0) op.restored -= kb;
+    if ((cpu.romsel & 15) !== 4 || pc < 0x9000 || pc >= 0xc000) { if (op) lastName = kb !== undefined || (pc >= 0xc000 && pc < 0xe000) || (cpu.romsel & 15) > 4 ? "(compiled kinds)" : "(game code)"; return false; }
     if (op && cpu.s > op.sp) {
         if (op.bytes || op.restored) {
             if (op.k === "on") {
