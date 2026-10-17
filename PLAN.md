@@ -67,8 +67,8 @@ shown screen byte-identical on all but 8 of 42,000 passes. Slower: 11.6 passes/s
 
 ## Layer 4 - 50 Hz
 - [x] Costed option 2 (50 Hz for the cheap things) and full 50 Hz, 2026-10-17
-      (`docs/step2-layer4-costing.md`): neither fits - the render alone misses a field on 300-600
-      frames in 3,000; 1% late needs the render 53-67% cheaper. Recommended: stay at a steady 25 Hz
+      (`docs/step2-layer4-costing.md`): neither fits - with no logic at all the render alone makes 412-634 of 2,999 frames late on seed 1 (285-446 of 1,199 holding RIGHT);
+      1% late needs the render 53-67% cheaper. Recommended: stay at a steady 25 Hz
       (a new decision replacing 11's target: KC)
 - [ ] One field = half a pass: player, movers (staggered), helicopters, projectiles each on their
       own cadence; vertical rates halved, pass counters doubled; render every field
