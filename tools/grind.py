@@ -237,7 +237,11 @@ def from_dir(d):
             wins.add(c.get('window', ''))
             c['skeptics'] = []
             for v in sorted(d.glob(f"skeptic-{c.get('window')}-{i}-*.json")):
-                vote = json.loads(v.read_text(encoding='utf-8'))
+                try:
+                    vote = json.loads(v.read_text(encoding='utf-8'))
+                except ValueError as e:     # an agent's hand-written JSON (a 6502 comment's \)
+                    print(f"{v.name}: {e}; vote skipped (the workflow's own result has it)")
+                    continue
                 vote['lens'] = v.stem.rsplit('-', 1)[1]
                 c['skeptics'].append(vote)
             cands.append(c)
