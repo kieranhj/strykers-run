@@ -697,6 +697,43 @@ jumps and turns left (flipped kinds), which are not compiled.
 - **bank 4:** 235 bytes above, 137 under ANDY;
 - **banks 5-7:** as before. The tunes' carrier area is music again after start-up.
 
+## Unlocked: the flip at the next vsync, not every 2 fields (modelled)
+
+KC, 2026-10-17: what frame rate would the game run at if a frame were shown at the first vsync after
+its render, rather than held to 25 Hz, with the loop blocking only when it is about to write to the
+screen being shown? Modelled by `tools/unlocksim.py` on the measured passes of `6cc44ba` (`tools/
+pcprof.mjs` with `PERPASS=`, `-Shift 256 -ShiftEnd -Define DEBUG_LIVES`, jsbeeb 2.5.0): each pass's
+logic and render replayed on one CPU, vsync every 39,936 cycles. As now (decision 26), logic k+1
+runs as soon as render k ends, and render k+1 waits only for frame k's flip, since until then the
+hidden screen is the one about to be shown. With the flip held at least 2 fields apart the model
+gives back what was measured (holding RIGHT 25.02 a second, 1 late frame; seed 1 24.87 against
+24.86, 21 late), so it stands for the real loop.
+
+| Measured passes, `6cc44ba` | Flip at least 2 fields apart (now) | Flip at the next vsync | The CPU flat out, no vsync |
+|---|---|---|---|
+| Holding RIGHT, passes 50-650 (599) | 25.02 a second | **34.2**: 321 frames 1 field, 276 2 fields, 1 3 fields | 40.1 |
+| Seed 1, passes 500-2000 (1,499) | 24.87 | **37.3**: 1,008 1 field, 467 2, 23 3 | 46.5 |
+
+A pass averages 49,856 cycles of work holding RIGHT (logic 16,015, render 33,841) and 43,036 on
+seed 1 (15,713, 27,323), against a field's 39,936: most passes miss one field by a little, so
+frames land on 1 or 2 fields in about equal numbers.
+
+What it would mean:
+- **The game would run faster with it.** A pass is one fixed step of movement (decision 12: 25
+  passes a second is the design speed), so 34 passes a second plays 37% fast, and the speed would
+  rise and fall with what is on the screen, as the original's did. Keeping the speed means scaling
+  each pass's movement by the fields it took: the rescaling layer 4 planned for 50 Hz, a change to
+  the logic.
+- **Uneven motion.** Frames would alternate at random between 1 and 2 fields, so even with the
+  movement scaled the scroll would step unevenly, where today it moves every 2 fields.
+- **What the model leaves out.** Each pass keeps the interrupt time it had at 25 Hz (at a higher
+  rate there are fewer interrupts a pass: a small saving). A pass is taken to cost the same at any
+  rate; with the movement scaled each frame moves less, which may make a pass a little cheaper, but
+  that is not measured.
+
+So there is about 35-50% more frame rate in the CPU than 25 Hz uses, not the 100% that 50 Hz needs:
+unlocked, with the movement scaled, the game would run at a variable 30-37 Hz.
+
 ## Tools
 
 - **`tools/fieldcost.mjs DISC [--from P] [--passes N] [--seed S] [--hold RIGHT] --out PER.json`:** the
@@ -715,6 +752,8 @@ jumps and turns left (flipped kinds), which are not compiled.
 - **`tools/compiled.py LAYER2.ssd [src]`:** the compiled kinds' code, table and save area.
 - **`tools/pcprof.mjs`, `tools/pcagg.py`, `tools/pccats.py`, `tools/budgetdata.py`:** the
   per-instruction profile, by label and by job, and the cycle budget page's data.
+- **`tools/unlocksim.py PERPASS.json [...]`:** each measured pass's logic and render replayed with
+  the flip held 2 fields apart (as now) and at the next vsync; the frame rate and fields a frame.
 - **`tools/packmusic.py`:** the front end's tunes packed (ZX02) for the disc, checked by unpacking.
 - **`tools/hazelwatch.mjs DISC [FRAMES]`, `tools/hazelreach.mjs DISC [PASSES]`:** what reads and
   writes HAZEL after the start; how far the mountain layer's reads go across the world.

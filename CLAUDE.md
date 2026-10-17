@@ -101,6 +101,7 @@ disassembly's `actually`/`also` notes say what an operand really is.
 - `tools/compiled.py LAYER2.ssd src` - the player's running sprite parts as code (`src/compiled_*.6502`), from the layer 2 build's sprites
 - `tools/pcprof.mjs`, `tools/pcagg.py`, `tools/pccats.py`, `tools/budgetdata.py` - per-instruction profile by phase, label and job; the cycle budget page's data
 - `tools/drawprof.mjs`, `tools/whatif.py`, `tools/colfast.py` - each draw by label and byte kind; costing renderer changes on measured passes
+- `tools/pipesim.py PERPASS.json`, `tools/unlocksim.py PERPASS.json` - measured passes replayed under other loop orders: the logic ahead; the flip at the next vsync
 - `tools/packmusic.py` - the front end's tunes packed (ZX02) into `src/music_packed.6502`, checked by unpacking
 - `tools/hazelwatch.mjs DISC`, `tools/hazelreach.mjs DISC` - who touches HAZEL after the start; how far the mountain layer reads
 - `tools/hang.mjs DISC PASS`, `tools/screendiff.mjs A B PASS` - where a stalled build goes; two builds' screens byte by byte

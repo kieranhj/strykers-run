@@ -12,7 +12,10 @@ and 1 of 598 holding RIGHT.
 - **25 Hz or 50 Hz** (decision 11 targets 50 Hz). Layer 4's costing says 50 Hz does not fit:
   option 2 would still make 357 of 2,999 frames late on seed 1 (`6cc44ba`, `tools/fieldsim.py`).
   Recommended: a steady 25 Hz, as a new decision. The rest of layer 4 (below) depends on it.
-  `docs/step2-layer4-costing.md` "The answer" and "Recommendation".
+  `docs/step2-layer4-costing.md` "The answer" and "Recommendation". A third way, modelled: the
+  flip at the next vsync gives 34 frames a second holding RIGHT and 37 on seed 1, uneven (1 or 2
+  fields a frame), and needs the movement scaled by the fields each pass took, or the game plays
+  that much faster (same document, "Unlocked").
 - **b2 and real hardware.** The flip, ACCCON's X bit and HAZEL left paged in (Y) are seen in
   jsbeeb only (`docs/step2-layer2.md` "Open").
 
