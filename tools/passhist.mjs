@@ -27,6 +27,9 @@ const cpu = s._machine.processor;
 const cyc = () => cpu.currentCycles + cpu.cycleSeconds * 2000000;
 const passes = []; let cur = null, waitFrom = null, lastC = cyc(), renFrom = null, inIrq = false, irqFrom = 0, lastOp = 0;
 const bank4 = () => (cpu.romsel & 15) === 4;
+// the byte loops: the row-major renderer's (fast and slow_row) or the column renderer's
+const DRAWN = new Set(["ren_draw_sprite.byte", "slow_row.draw_byte", "draw_column.byte", "draw_column.part_byte"].map((k) => syms[k]).filter((v) => v !== undefined));
+const RESTORED = new Set(["restore_part.byte", "slow_row.put_back", "restore_block.byte", "restore_block.part_byte"].map((k) => syms[k]).filter((v) => v !== undefined));
 cpu.debugInstruction.add((pc, op) => {
     const c = cyc();
     if (pc === 0xe59e && !inIrq) { inIrq = true; irqFrom = c; } else if (inIrq && lastOp === 0x40) { inIrq = false; if (cur) cur.irq += c - irqFrom; }
@@ -39,8 +42,8 @@ cpu.debugInstruction.add((pc, op) => {
     if (bank4() && pc === syms.render && !renFrom) renFrom = { c, sp: cpu.s };
     if (pc === syms.initialise_column_buffer) cur.built++;
     if (bank4() && pc === syms.write_column) cur.written++;
-    if (bank4() && pc === syms["draw_column.byte"]) cur.drawn++;
-    if (bank4() && pc === syms["restore_block.byte"]) cur.restored++;
+    if (bank4() && DRAWN.has(pc)) cur.drawn++;
+    if (bank4() && RESTORED.has(pc)) cur.restored++;
     if (pc === syms.play_sound) cur.sounds++;
     return false;
 });

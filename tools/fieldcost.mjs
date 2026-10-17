@@ -141,7 +141,9 @@ cpu.debugWrite.add((a, v) => {
 // this screen's arena top (bank 4, at render's paging)
 const top = () => { const b = cpu.readmem(syms.back); return cpu.readmem(syms.arena_top_lo + b) + 256 * cpu.readmem(syms.arena_top_hi + b); };
 let onRec = null;
-const DRAWB = [syms["draw_column.byte"], syms["draw_column.part_byte"]], RESTB = [syms["restore_block.byte"], syms["restore_block.part_byte"]];
+// the byte loops: the row-major renderer's (fast and slow_row) or the column renderer's
+const DRAWB = ["ren_draw_sprite.byte", "slow_row.draw_byte", "draw_column.byte", "draw_column.part_byte"].map((k) => syms[k]).filter((v) => v !== undefined);
+const RESTB = ["restore_part.byte", "slow_row.put_back", "restore_block.byte", "restore_block.part_byte"].map((k) => syms[k]).filter((v) => v !== undefined);
 cpu.debugInstruction.add((pc, op) => {
     if (passes <= FROM || passes > FROM + N) { lastOp = op; lastKey = null; return false; }
     const c = s.elapsedCycles;
@@ -183,7 +185,7 @@ cpu.debugInstruction.add((pc, op) => {
     }
     [lastKey, lastRec] = keyOf();
     if (lastRec && lastRec.bytes !== undefined) {
-        if (lastRec.k === "on" ? (pc === DRAWB[0] || pc === DRAWB[1]) : (pc === RESTB[0] || pc === RESTB[1])) lastRec.bytes++;
+        if ((lastRec.k === "on" ? DRAWB : RESTB).includes(pc)) lastRec.bytes++;
     }
     return false;
 });

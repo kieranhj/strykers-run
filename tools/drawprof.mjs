@@ -92,15 +92,23 @@ cpu.debugInstruction.add((pc, opc) => {
     lastName = routine(pc);
     if (pc === A.ren_draw_sprite) { op.parts++; op.partList.push([cpu.a, op.frame >> 7, -1, 0]); }
     else if (pc === A.draw_column && op.partList.length) op.partList[op.partList.length - 1][2] = rd(0xcd);   // ds_line (render.6502: zero page)
-    else if (pc === A["draw_column.each"]) op.cols++;
+    else if (pc === A["ren_draw_sprite.chunk"] && op.partList.length && op.partList[op.partList.length - 1][2] < 0)
+        op.partList[op.partList.length - 1][2] = rd(0xc2) & 7;                  // row-major: the bottom row's line in its cell
+    else if (pc === A["draw_column.each"] || pc === A["ren_draw_sprite.fast"] || pc === A.slow_row) op.cols++;   // columns, or rows
     else if (pc === A["draw_column.cell"]) op.cells++;
-    else if (pc === A["draw_column.byte"] || pc === A["draw_column.part_byte"]) {
-        const y = cpu.y, i = rd(rw(0xc0) + y), addr = rw(0xc2) + y;
-        const m = rd(rw(A["draw_column.mask_operand"]) + i), p = rd(rw(A["draw_column.pix_operand"]) + i);
+    else if (pc === A["draw_column.byte"] || pc === A["draw_column.part_byte"] || pc === A["ren_draw_sprite.byte"] || pc === A["slow_row.draw_byte"]) {
+        // the byte's index and screen address: the column loop's (Y the line in the cell), the
+        // row loop's (X the stream's place, Y the offset in the row), slow_row's (Y the place)
+        let i, addr;
+        if (pc === A["ren_draw_sprite.byte"]) { i = rd(rw(A["ren_draw_sprite.data_op"]) + cpu.x); addr = rw(0xc2) + cpu.y; }
+        else if (pc === A["slow_row.draw_byte"]) { i = rd(rw(0xc0) + cpu.y); addr = rw(0xc9); }
+        else { i = rd(rw(0xc0) + cpu.y); addr = rw(0xc2) + cpu.y; }
+        const mo = A["ren_draw_sprite.mask_op"] ?? A["draw_column.mask_operand"], po = A["ren_draw_sprite.pix_op"] ?? A["draw_column.pix_operand"];
+        const m = rd(rw(mo) + i), p = rd(rw(po) + i);
         op.bytes++; if (m === 0xff && p === 0) op.tr++; else if (m === 0) op.op++; else op.mx++;
         op.drawn.set(addr, i); if (op.partList.length) op.partList[op.partList.length - 1][3]++;
     }
-    else if (pc === A["restore_block.byte"] || pc === A["restore_block.part_byte"]) op.restored++;
+    else if (pc === A["restore_block.byte"] || pc === A["restore_block.part_byte"] || pc === A["restore_part.byte"] || pc === A["slow_row.put_back"]) op.restored++;
     return false;
 });
 let held = [];
@@ -119,7 +127,7 @@ for (const [name, f] of G) for (const k of ["on", "off"]) {
     const sel = ops.filter((o) => o.k === k && f(o.slot)); if (!sel.length) continue;
     const sum = (key) => sel.reduce((t, o) => t + o[key], 0), cyc = sum("cyc"), b = k === "on" ? sum("bytes") : sum("restored");
     console.log(`  ${name} ${k}: ${(cyc / N).toFixed(0)} cycles, ${(b / N).toFixed(1)} bytes (${(cyc / Math.max(1, b)).toFixed(1)} a byte), ${(sel.length / N).toFixed(2)} calls`
-        + (k === "on" ? `, ${(sum("parts") / sel.length).toFixed(1)} parts, ${(sum("cols") / sel.length).toFixed(1)} columns, ${(sum("cells") / sel.length).toFixed(1)} cells, ${(b / sel.length).toFixed(1)} bytes a call;`
+        + (k === "on" ? `, ${(sum("parts") / sel.length).toFixed(1)} parts, ${(sum("cols") / sel.length).toFixed(1)} columns (row-major: rows), ${(sum("cells") / sel.length).toFixed(1)} cells, ${(b / sel.length).toFixed(1)} bytes a call;`
             + ` transparent ${(100 * sum("tr") / b).toFixed(1)}%, opaque ${(100 * sum("op") / b).toFixed(1)}%, mixed ${(100 * sum("mx") / b).toFixed(1)}%;`
             + ` at an address its last drawing on this screen drew ${(100 * sum("same") / b).toFixed(1)}%, and with the same index ${(100 * sum("sameIdx") / b).toFixed(1)}%` : ""));
     const by = {}; for (const o of sel) for (const [l, v] of Object.entries(o.by)) by[l] = (by[l] || 0) + v;

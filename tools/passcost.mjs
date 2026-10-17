@@ -47,7 +47,7 @@ const PHASES = [
     "swap_record_in", "swap_record_out", "record_live", "check_if_mover_is_on_screen",
     "wait_for_pass_slot", "wait_for_flip", "wait_for_field_count_2242",
     "mark_to_draw", "close_over_overlaps", "take_off", "put_on", "draw_mover", "ren_draw_sprite",
-    "draw_column", "restore_block", "raise_address", "up_a_cell", "compact",
+    "draw_column", "restore_block", "restore_part", "slow_row", "raise_address", "up_a_cell", "compact",
 ].filter((n) => n in syms);
 const entry = new Map(PHASES.map((n) => [syms[n], n]));
 const isBank4 = (a) => a >= 0x8000 && a < 0xc000;
@@ -102,9 +102,9 @@ cpu.debugInstruction.add((pc, op) => {
         if (pc === unpackSta) counts.unpackBytes++;
         if (pc === consider) counts.unpackColumns++;
         if (pc === syms["rect_copy.column"]) counts.saveBytes++;
-        if (pc === syms["draw_column.byte"]) counts.maskedBytes++;
-        if (pc === syms["draw_column.cell"]) counts.segments++;
-        if (pc === syms["restore_block.byte"]) counts.restoredBytes++;
+        if (pc === syms["draw_column.byte"] || pc === syms["ren_draw_sprite.byte"] || pc === syms["slow_row.draw_byte"]) counts.maskedBytes++;
+        if (pc === syms["draw_column.cell"] || pc === syms["ren_draw_sprite.fast"]) counts.segments++;   // cells, or rows
+        if (pc === syms["restore_block.byte"] || pc === syms["restore_part.byte"] || pc === syms["slow_row.put_back"]) counts.restoredBytes++;
     }
     if (pc === syms.main_game_loop && !inIrq) passes++;
     lastPc = pc; lastOp = op;

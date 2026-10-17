@@ -52,6 +52,8 @@ const snap = () => [syms.movers_type_and_colour, syms.movers_frame_and_flip, sym
     .map((a) => rdm(a, SL));
 let prev = null, cur = null;
 const per = []; let P = null;
+// the byte loops, drawing and putting back: the row-major renderer's or the column renderer's
+const BYTES = new Set([...["ren_draw_sprite.byte", "slow_row.draw_byte", "draw_column.byte", "draw_column.part_byte"], ...["restore_part.byte", "slow_row.put_back", "restore_block.byte", "restore_block.part_byte"]].map((k) => syms[k]).filter((v) => v !== undefined));
 let op = null;   // {kind, slot, sp, bytes}
 let inRender = false, renderSp = 0, rStart = 0, wait = 0, wStart = 0, wSp = 0;
 cpu.debugInstruction.add((pc) => {
@@ -76,7 +78,7 @@ cpu.debugInstruction.add((pc) => {
         else { if (ch) P.restNew += op.bytes; else P.restOld += op.bytes; }
         op = null;
     }
-    else if (op && (pc === syms["draw_column.byte"] || pc === syms["draw_column.part_byte"] || pc === syms["restore_block.byte"] || pc === syms["restore_block.part_byte"])) op.bytes++;
+    else if (op && BYTES.has(pc)) op.bytes++;
     if (cpu.s > renderSp && pc !== syms.render) { inRender = false; P.render = s.elapsedCycles - rStart - wait; }
     return false;
 });

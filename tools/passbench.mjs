@@ -96,6 +96,9 @@ for (const disc of discs) {
         const cyc = () => s.elapsedCycles;
         let inIrq = false, irq0 = 0, lastOp = 0, ren = null, wt = null;
         const b4 = () => (cpu.romsel & 15) === 4;
+        // the byte loops: the row-major renderer's (fast and slow_row) or the column renderer's
+        const DRAWN = new Set(["ren_draw_sprite.byte", "slow_row.draw_byte", "draw_column.byte", "draw_column.part_byte"].map((k) => syms[k]).filter((v) => v !== undefined));
+        const RESTORED = new Set(["restore_part.byte", "slow_row.put_back", "restore_block.byte", "restore_block.part_byte"].map((k) => syms[k]).filter((v) => v !== undefined));
         cpu.debugInstruction.add((pc, op) => {
             if (m.passes <= FROM || m.passes > FROM + N) { lastOp = op; return false; }
             const c = cyc();
@@ -117,8 +120,8 @@ for (const disc of discs) {
                 if (pc === syms.draw_mover) d.drawsOn++;
                 if (pc === syms.render && !ren) ren = { c, sp: cpu.s };
                 if ((pc === syms.wait_for_flip || pc === syms.prebuild) && !wt) wt = { c, sp: cpu.s, pre: pc === syms.prebuild };
-                if (pc === syms["draw_column.byte"] || pc === syms["draw_column.part_byte"]) d.drawn++;
-                if (pc === syms["restore_block.byte"] || pc === syms["restore_block.part_byte"]) d.restored++;
+                if (DRAWN.has(pc)) d.drawn++;
+                if (RESTORED.has(pc)) d.restored++;
                 if (pc === syms.write_column) d.columns++;
             }
             return false;
