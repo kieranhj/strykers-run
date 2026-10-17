@@ -3664,18 +3664,17 @@ move_mover_routine_address_high = * + 2
     BPL populate_movers_to_update_loop
     STY movers_to_update_base
 .update_movers_loop
-    LDX #&02
-.find_topmost_remaining_mover_loop
-    LDY #&02
-.find_topmost_remaining_mover_inner_loop
-    LDA movers_to_update_raster_y,Y
+    LDX #&02                        \ grind: the last slot holding the lowest raster y, as the
+    LDA movers_to_update_raster_y + 1 \ original's search found it (a later slot wins a tie)
+    CMP movers_to_update_raster_y + 2
+    BCS find_topmost_check_slot_0   \ slot 1 >= slot 2: slot 2 stays
+    DEX                             \ slot 1 < slot 2: slot 1
+.find_topmost_check_slot_0
+    LDA movers_to_update_raster_y
     CMP movers_to_update_raster_y,X
-    BCS not_topmost_mover
-    DEX
-    BPL find_topmost_remaining_mover_loop\ Always branches
-.not_topmost_mover
-    DEY
-    BPL find_topmost_remaining_mover_inner_loop
+    BCS found_topmost_mover         \ slot 0 >= the candidate: the candidate stays
+    LDX #&00
+.found_topmost_mover
     LDA #&FF
     STA movers_to_update_raster_y,X \ Set to maximum value to prevent being found again
     LDY movers_to_update,X
@@ -3764,12 +3763,16 @@ move_mover_routine_address_high = * + 2
     LDA last_mover
     CLC
     ADC #3
-    STA cm_full_below
+    STA cm_full_below_operand       \ grind: cm_full_below lives in the CPX's operand
+    LDA mover_x_max_low             \ grind: and the range's right (low) in the LDA's
+    STA cm_x_max_low_operand
     JSR set_cm_left
 .check_for_mover_collision_with_range_of_movers_loop
-    CPX cm_full_below
+cm_full_below_operand = * + 1
+    CPX #&00                        \ actually CPX #(last_mover + 3), set above
     BCC check_in_full
-    LDA mover_x_max_low             \ right of the range: x > the range's right (the original's
+cm_x_max_low_operand = * + 1
+    LDA #&00                        \ actually LDA #mover_x_max_low, set above: right of the range: x > the range's right (the original's
     CMP movers_x_low,X              \ own first test)
     LDA mover_x_max_high
     SBC movers_x_high,X

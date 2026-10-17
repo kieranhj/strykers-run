@@ -391,17 +391,18 @@ MAX_BLOCK   = &2A0                  \ more than any mover's save block: 636 byte
     \ ---- 1. what comes off: shown here and stale (another state than the live slot, or in
     \ the zone). need: bit 7 take off, bit 6 put on ----
     STZ act_n                       \ and the list of slots that matter: shown here or live
+    LDA boff                        \ the records' x high for this screen: rec_xh + boff
+    ORA #LO(rec_xh)
+    STA classify_xh
+    ASSERT (LO(rec_xh) AND &40) = 0 AND LO(rec_xh) + 64 + MOVER_SLOTS <= &100
     LDX #0
 .classify
     STX ren_i
     STZ need,X
-    TXA
-    CLC
-    ADC boff
-    TAY
-    LDA rec_xh,Y
-    CMP #&FF
-    BNE shown
+classify_xh = * + 1
+    LDA rec_xh,X                    \ self-modified: rec_xh + boff
+    INC A                           \ &FF: nothing drawn here (65C02 opcode)
+    BNE shown_y
     LDA movers_x_high,X
     BMI classified                  \ nothing shown, nothing there
     \ RAM for cycles 4: not shown here, and its x cannot put it on the screen (its high byte past
@@ -415,6 +416,10 @@ MAX_BLOCK   = &2A0                  \ more than any mover's save block: 636 byte
     CMP viewport_left_high
     BCC classified                  \ left of it
     BRA listed                      \ 65C02 opcode
+.shown_y
+    TXA                             \ Y = slot + boff for .shown (slot < 64: OR is the add)
+    ORA boff
+    TAY
 .shown
 IF DEBUG_FULLREDRAW
     BRA stale                       \ the oracle: everything comes off and goes back on
@@ -1559,33 +1564,34 @@ pix_operand = * + 1
     STA (s_ptr),Y
     DEY
     BPL byte
-    LDA d_ptr                       \ the next cell: the data 8 back...
-    SEC
-    SBC #8
+    LDA d_ptr                       \ the next cell: the data 8 back (C = 0 from the cell test:
+    SBC #7                          \ the byte loop leaves C alone, so 7 + 1)...
     STA d_ptr
     BCS data_same_page
     DEC d_ptr + 1
+    SEC                             \ C = 1 on both paths
 .data_same_page
-    LDA v_ptr                       \ ...the save block 8 on...
-    CLC
-    ADC #8
+    LDA v_ptr                       \ ...the save block 8 on (C = 1: 7 + 1)...
+    ADC #7
     STA v_ptr
     BCC save_same_page
     INC v_ptr + 1
+    CLC                             \ C = 0 on both paths
 .save_same_page
-    LDA s_ptr                       \ ...the screen a character row up, round the 16K...
-    SEC
-    SBC #&80
+    LDA s_ptr                       \ ...the screen a character row up (C = 0: &7F + 1)...
+    SBC #&7F
     STA s_ptr
     LDA s_ptr + 1
     SBC #&02
-    CMP #&40
-    BCS in_ring
-    ADC #&40
-.in_ring
+    ORA #&40                        \ ...round the 16K: &3D-&3F (below the ring) -> &7D-&7F
     STA s_ptr + 1
-    LDY #7                          \ ...from its bottom line
-    BRA cell                        \ 65C02 opcode
+    LDY #7                          \ ...from its bottom line: the cell test inline (C = 1, as
+    TYA                             \ the ring's high byte is 3 or more)
+    SBC rows_m1                     \ line - (rows left - 1)
+    BCS last_cell                   \ 0 or more: it ends here
+    EOR #&FF                        \ no: rows left after this cell, less 1
+    STA rows_m1
+    BRA byte                        \ 65C02 opcode (C = 0, as the byte loop needs)
 .last_cell                          \ A = line - rows left + 1: the last line drawn
     DEC A                           \ 65C02 opcode: the line below it
     STA stop_y
