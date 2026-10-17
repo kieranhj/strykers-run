@@ -639,6 +639,63 @@ The shifted test builds keep a page free, so they have 256 less in each bank.
 
 The other 6 kinds (~4.6K) need HAZEL or the front end's music packed.
 
+## Built: all 14 running kinds compiled, 6 of them in HAZEL; the front end's tunes packed
+
+KC: "compile the other 6 running frames. compress the frontend music to make space. you can use all
+of hazel as we're not using DFS after boot." Decisions 29 and 30.
+
+**What HAZEL turned out to be** (`tools/hazelwatch.mjs`, jsbeeb 2.5.0, Master 128, MOS 3.20):
+- The MOS leaves ACCCON's Y bit set from the start of the game on, so HAZEL is paged in at
+  `&C000-&DFFF` throughout play. The compiled kinds there are called directly, with no paging.
+- After the start nothing writes HAZEL and no code runs there.
+- The scroll reads HAZEL in two places:
+  - **the mountain layer's data**, from `&C300` (BUGS #9: not the MOS ROM, as layer 3's brief
+    assumed). It advances about a byte every 11-12 columns; `tools/hazelreach.mjs` saw
+    `&C300-&C41B` by column 3,319, extrapolated to about `&C590` for the world. Left alone: the
+    kinds start at `&C700`;
+  - **a new scenery sprite's first column**, through stale table pointers (`mover_y_max`, often
+    `&C9xx`). That was an original glitch, fixed first (BUGS #8, `b10d6b5`): state identical, the
+    screens differing in those columns only (591 and 627 passes of 6,000, 5 to 11 bytes).
+
+**The kinds:**
+- the other 6 of the 14 the player drew holding RIGHT: sprites 6 and 7 at line 4, 5 at lines 3
+  and 5, 8 at lines 3 and 5;
+- 4,526 bytes of code at `&C700-&D8AD`;
+- **carried on the disc in two parts.** Part A (3,817 bytes) sits in bank 5's music area, part B
+  (709) in the start-up block. `unpack_for_play` (`src/game.6502`) copies both into HAZEL after
+  `mgame_relocate`'s `*TAPE`, then unpacks the tunes over part A's carrier.
+- **the save area:** kinds whose sprites never share a frame share one (`save_groups`). The 14
+  kinds need 117 bytes a screen, against 303 for the 8, so the arena is `&354A-&3FFF`.
+
+**The tunes** (`tools/packmusic.py`, ZX02, `src/lib/zx02depack.6502` forked from the kit):
+- 3,968 bytes packed to 956, carried in the start-up block;
+- unpacked to `&9300` at start-up, where the event handler expects them page-aligned. Checked byte
+  for byte against `src/music.6502` after start-up.
+- `MGAME` now loads to `&5A55`: 43 bytes below the loading picture at `&5A80` (ASSERTed).
+
+**Proved** against the fix-only build (`b10d6b5`): state and shown screen identical over 6,000
+passes on seeds 1 and 3 and 4 with CTRL, and to `DEBUG_FULLREDRAW` on seed 5. Both helicopter
+flights had no frame differing, and the front end passed 15 of 15 (two games, back to the title).
+
+**Measured:** passbench, `-Shift 256 -ShiftEnd -Define DEBUG_LIVES`; late frames are shown 3+ fields.
+
+| | `e72c386` (8 kinds) | `b10d6b5` (the fix) | now (14 kinds) |
+|---|---|---|---|
+| holding RIGHT: passes/s, late frames of 598 | 24.83, 10 | 24.83, 10 | **25.00, 2** |
+| seed 1: passes/s, late frames of 1,498 | 24.84, 24 | 24.85, 23 | **24.86, 22** |
+| 25 Hz, no late frames: the render cheaper by (seed 1 / RIGHT) | 32% / 6% | | 28% / 1% |
+| 50 Hz option 2 (fieldsim): late frames, seed 1 / RIGHT | 389 / 224 | | 364 / 200 |
+
+Holding RIGHT is now all compiled for the player. Seed 1 gains less: the player there also stands,
+jumps and turns left (flipped kinds), which are not compiled.
+
+**RAM after it** (shipping build):
+- **main RAM:** 31 bytes free at `&33E1`;
+- **HAZEL:** `&C000-&C2FF` (768) and `&D8AE-&DFFF` (1,874) free; `&C300-&C6FF` kept for the
+  mountains;
+- **bank 4:** 235 bytes above, 137 under ANDY;
+- **banks 5-7:** as before. The tunes' carrier area is music again after start-up.
+
 ## Tools
 
 - **`tools/fieldcost.mjs DISC [--from P] [--passes N] [--seed S] [--hold RIGHT] --out PER.json`:** the
@@ -657,6 +714,9 @@ The other 6 kinds (~4.6K) need HAZEL or the front end's music packed.
 - **`tools/compiled.py LAYER2.ssd [src]`:** the compiled kinds' code, table and save area.
 - **`tools/pcprof.mjs`, `tools/pcagg.py`, `tools/pccats.py`, `tools/budgetdata.py`:** the
   per-instruction profile, by label and by job, and the cycle budget page's data.
+- **`tools/packmusic.py`:** the front end's tunes packed (ZX02) for the disc, checked by unpacking.
+- **`tools/hazelwatch.mjs DISC [FRAMES]`, `tools/hazelreach.mjs DISC [PASSES]`:** what reads and
+  writes HAZEL after the start; how far the mountain layer's reads go across the world.
 - **`tools/hang.mjs DISC PASS`:** where a build that stops making passes first leaves its code.
 - **`tools/screendiff.mjs A B [PASS] [SEED]`:** both builds played to a pass, both screens
   compared byte by byte.

@@ -95,3 +95,31 @@ For every other mover the two agree (`tools/worldcheck.mjs`: 6,119 records, none
 every pass; it did not catch the original case (the wreck changed every pass there), but runs
 the fixed build's flights identical to its `DEBUG_FULLREDRAW` twin, and the state through a
 flight identical to the control's.
+
+## 8. A new scenery sprite's first column drawn through stale table pointers (original behaviour; fixed in layer 4)
+
+Found 2026-10-17 by `tools/hazelreach.mjs` (jsbeeb 2.5.0, running right through the world): the
+scroll's unpacker read HAZEL at `&C9C0-&C9FD` with `LDA (mask_table_address),Y` (`&1D09`). A
+scenery sprite that starts on an edge has its first column unpacked by
+`add_column_of_scenery_to_column_buffer` before `calculate_sprite_address_for_column_of_scenery`
+has set the mask table pointer and the tables' page for it (`&C8`/`&C9`, `&B9`); only the pixel
+table's low byte (its flip) was set. So that column used whatever was there: the last layer's mask
+table (the other flip's, if theirs differed), or the multiply's leftovers, or `mover_y_max`
+(`&C9`) - a mover's y, which points the reads into HAZEL in play (layer 3 measured this as 3% of
+walks, for clouds). Fixed (KC; decision 30): `get_scenery_y_sprite_and_flip_for_layer_Y` sets the
+mask table and the page as `calculate_sprite_address_for_column_of_scenery` does. Checked: game
+state identical to `e72c386` over 6,000 passes on seeds 1 and 3; the screens (see the layer 4
+costing doc for the count).
+
+## 9. The mountain layer's data is HAZEL, not the MOS ROM (original behaviour; open)
+
+Found 2026-10-17 (`tools/hazelwatch.mjs`, jsbeeb 2.5.0, Master 128 MOS 3.20): the MOS leaves ACCCON's
+Y bit set from the start of the game on, so HAZEL (the filing system's workspace) is paged in at
+`&C000-&DFFF` throughout play, and the mountain layer, whose data address starts at `&C300`
+(`initial_scenery_layer_addresses_high`), reads HAZEL there - not the MOS ROM's bytes, as
+`docs/briefs/step2-layer3-ram-for-cycles.md` assumed. In jsbeeb HAZEL holds zeros there; on a real
+Master it holds whatever the DFS left, so the mountains depend on the machine's last disc activity.
+On a Model B (the standard version) `&C300` is the MOS ROM. Reads advance a byte every 11-12
+columns: `&C300-&C41B` by column 3,319 (`tools/hazelreach.mjs`; the run could go no further);
+extrapolated, about `&C300-&C590` for the whole world. Kept as it is: layer 4 puts nothing in HAZEL
+below `&C700` (decision 29). Fixing it means choosing what the mountains should be: KC.

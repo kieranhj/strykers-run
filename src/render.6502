@@ -1638,6 +1638,9 @@ pix_operand_2 = * + 1
     RTS
 }
 
+.compiled_direct                    \ a kind in HAZEL: no bank to page
+    JMP (compiled_vec)
+
 \ compiled_part: the player's part (not clipped) as code, if its sprite, flip and line are one of
 \ tools/compiled.py's kinds: the kind's code in its bank (through compiled_call), from the
 \ part's bottom left cell (b_ptr), and an entry in the save block for restore_block: 11 bytes
@@ -1672,8 +1675,13 @@ pix_operand_2 = * + 1
     LDA ck_draw_hi,X
     STA compiled_vec + 1
     LDA ck_bank,X
+    BEQ in_hazel                    \ bank 0: HAZEL, paged in through play
     LDX #&84                        \ ANDY and bank 4 again after
     JSR compiled_call
+    BRA called                      \ 65C02 opcode
+.in_hazel
+    JSR compiled_direct
+.called
     BCS unsafe
     LDY #8                          \ its entry
     LDA #&FF
@@ -1938,8 +1946,12 @@ pix_operand_2 = * + 1
     LDA ck_restore_hi,X
     STA compiled_vec + 1
     LDA ck_bank,X
+    BEQ in_hazel                    \ bank 0: HAZEL
     LDX #&04                        \ bank 4 again after
     JSR compiled_call
+    JMP columns
+.in_hazel
+    JSR compiled_direct
     JMP columns
 .blocks_done
     LDX back                        \ the block is free; the arena shrinks if it was the last

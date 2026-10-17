@@ -44,6 +44,7 @@ INCLUDE "zp.6502"
 GAME_LOAD = &1900
 GAME_ORG  = &0E00 - GAME_DOWN
 
+INCLUDE "lib/zx02depack.6502"       \ step 2 layer 4: the macro, for the tunes (src/game.6502 unpack_for_play)
 SECTION MGAME, org = GAME_ORG, load = &FFFF0000 + GAME_LOAD, exec = &FFFF0000 + mgame_relocate, filename = "MGAME", cmos = TRUE
     INCLUDE "game.6502"
 
@@ -82,6 +83,8 @@ SECTION MGAME, org = GAME_ORG, load = &FFFF0000 + GAME_LOAD, exec = &FFFF0000 + 
     ENDSECTION
 .mgame_end
 ENDSECTION
+\ MGAME loads at &1900 while the loading picture is shown from &5A80 (src/title.6502): stay below it
+ASSERT mgame_end - GAME_ORG + GAME_LOAD <= &5A80, "MGAME would load over the loading picture by ", mgame_end - GAME_ORG + GAME_LOAD - &5A80
 
 \ ---------------------------------------------------------------------------------------------
 \ The sideways RAM banks. SRRUN loads each file at &1900 and copies &1900-&58FF into its bank

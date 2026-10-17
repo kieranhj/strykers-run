@@ -32,142 +32,142 @@
 .ck1_09_u5_ok1
     LDY #&08
     LDA (&C0),Y
-    STA PLAYER_SAVE + 35 + 0
+    STA PLAYER_SAVE + 47 + 0
     LDA #&2C
     STA (&C0),Y
     LDY #&09
     LDA (&C0),Y
-    STA PLAYER_SAVE + 35 + 1
+    STA PLAYER_SAVE + 47 + 1
     LDA #&2C
     STA (&C0),Y
     LDY #&0A
     LDA (&C0),Y
-    STA PLAYER_SAVE + 35 + 2
+    STA PLAYER_SAVE + 47 + 2
     LDA #&2C
     STA (&C0),Y
     LDY #&0B
     LDA (&C0),Y
-    STA PLAYER_SAVE + 35 + 3
+    STA PLAYER_SAVE + 47 + 3
     LDA #&2C
     STA (&C0),Y
     LDY #&0C
     LDA (&C0),Y
-    STA PLAYER_SAVE + 35 + 4
+    STA PLAYER_SAVE + 47 + 4
     LDA #&3C
     STA (&C0),Y
     LDY #&0D
     LDA (&C0),Y
-    STA PLAYER_SAVE + 35 + 5
+    STA PLAYER_SAVE + 47 + 5
     AND #&AA
     EOR #&14
     STA (&C0),Y
     LDY #&0E
     LDA (&C2),Y
-    STA PLAYER_SAVE + 35 + 6
+    STA PLAYER_SAVE + 47 + 6
     AND #&AA
     EOR #&14
     STA (&C2),Y
     LDY #&0F
     LDA (&C2),Y
-    STA PLAYER_SAVE + 35 + 7
+    STA PLAYER_SAVE + 47 + 7
     LDA #&3C
     STA (&C2),Y
     LDY #&10
     LDA (&C0),Y
-    STA PLAYER_SAVE + 35 + 8
+    STA PLAYER_SAVE + 47 + 8
     LDA #&1C
     STA (&C0),Y
     LDY #&11
     LDA (&C0),Y
-    STA PLAYER_SAVE + 35 + 9
+    STA PLAYER_SAVE + 47 + 9
     LDA #&2D
     STA (&C0),Y
     LDY #&12
     LDA (&C0),Y
-    STA PLAYER_SAVE + 35 + 10
+    STA PLAYER_SAVE + 47 + 10
     LDA #&2D
     STA (&C0),Y
     LDY #&13
     LDA (&C0),Y
-    STA PLAYER_SAVE + 35 + 11
+    STA PLAYER_SAVE + 47 + 11
     LDA #&1C
     STA (&C0),Y
     LDY #&14
     LDA (&C0),Y
-    STA PLAYER_SAVE + 35 + 12
+    STA PLAYER_SAVE + 47 + 12
     LDA #&0C
     STA (&C0),Y
     LDY #&15
     LDA (&C0),Y
-    STA PLAYER_SAVE + 35 + 13
+    STA PLAYER_SAVE + 47 + 13
     LDA #&3C
     STA (&C0),Y
     LDY #&16
     LDA (&C2),Y
-    STA PLAYER_SAVE + 35 + 14
+    STA PLAYER_SAVE + 47 + 14
     LDA #&3C
     STA (&C2),Y
     LDY #&17
     LDA (&C2),Y
-    STA PLAYER_SAVE + 35 + 15
+    STA PLAYER_SAVE + 47 + 15
     LDA #&0C
     STA (&C2),Y
     LDY #&18
     LDA (&C0),Y
-    STA PLAYER_SAVE + 35 + 16
+    STA PLAYER_SAVE + 47 + 16
     LDA #&1E
     STA (&C0),Y
     LDY #&19
     LDA (&C0),Y
-    STA PLAYER_SAVE + 35 + 17
+    STA PLAYER_SAVE + 47 + 17
     LDA #&0F
     STA (&C0),Y
     LDY #&1A
     LDA (&C0),Y
-    STA PLAYER_SAVE + 35 + 18
+    STA PLAYER_SAVE + 47 + 18
     LDA #&1E
     STA (&C0),Y
     LDY #&1B
     LDA (&C0),Y
-    STA PLAYER_SAVE + 35 + 19
+    STA PLAYER_SAVE + 47 + 19
     LDA #&3C
     STA (&C0),Y
     LDY #&1C
     LDA (&C0),Y
-    STA PLAYER_SAVE + 35 + 20
+    STA PLAYER_SAVE + 47 + 20
     LDA #&1C
     STA (&C0),Y
     LDY #&1D
     LDA (&C0),Y
-    STA PLAYER_SAVE + 35 + 21
+    STA PLAYER_SAVE + 47 + 21
     LDA #&3C
     STA (&C0),Y
     LDY #&1E
     LDA (&C2),Y
-    STA PLAYER_SAVE + 35 + 22
+    STA PLAYER_SAVE + 47 + 22
     AND #&55
     EOR #&28
     STA (&C2),Y
     LDY #&1F
     LDA (&C2),Y
-    STA PLAYER_SAVE + 35 + 23
+    STA PLAYER_SAVE + 47 + 23
     LDA #&3C
     STA (&C2),Y
     LDY #&20
     LDA (&C0),Y
-    STA PLAYER_SAVE + 35 + 24
+    STA PLAYER_SAVE + 47 + 24
     AND #&55
     EOR #&28
     STA (&C0),Y
     LDY #&21
     LDA (&C0),Y
-    STA PLAYER_SAVE + 35 + 25
+    STA PLAYER_SAVE + 47 + 25
     AND #&55
     EOR #&28
     STA (&C0),Y
     LDY #&22
     LDA (&C0),Y
-    STA PLAYER_SAVE + 35 + 26
+    STA PLAYER_SAVE + 47 + 26
     AND #&55
     EOR #&28
     STA (&C0),Y
@@ -186,85 +186,85 @@
 .ck1_09_u5_r1
     STA &C3
     LDY #&08
-    LDA PLAYER_SAVE + 35 + 0
+    LDA PLAYER_SAVE + 47 + 0
     STA (&C0),Y
     LDY #&09
-    LDA PLAYER_SAVE + 35 + 1
+    LDA PLAYER_SAVE + 47 + 1
     STA (&C0),Y
     LDY #&0A
-    LDA PLAYER_SAVE + 35 + 2
+    LDA PLAYER_SAVE + 47 + 2
     STA (&C0),Y
     LDY #&0B
-    LDA PLAYER_SAVE + 35 + 3
+    LDA PLAYER_SAVE + 47 + 3
     STA (&C0),Y
     LDY #&0C
-    LDA PLAYER_SAVE + 35 + 4
+    LDA PLAYER_SAVE + 47 + 4
     STA (&C0),Y
     LDY #&0D
-    LDA PLAYER_SAVE + 35 + 5
+    LDA PLAYER_SAVE + 47 + 5
     STA (&C0),Y
     LDY #&0E
-    LDA PLAYER_SAVE + 35 + 6
+    LDA PLAYER_SAVE + 47 + 6
     STA (&C2),Y
     LDY #&0F
-    LDA PLAYER_SAVE + 35 + 7
+    LDA PLAYER_SAVE + 47 + 7
     STA (&C2),Y
     LDY #&10
-    LDA PLAYER_SAVE + 35 + 8
+    LDA PLAYER_SAVE + 47 + 8
     STA (&C0),Y
     LDY #&11
-    LDA PLAYER_SAVE + 35 + 9
+    LDA PLAYER_SAVE + 47 + 9
     STA (&C0),Y
     LDY #&12
-    LDA PLAYER_SAVE + 35 + 10
+    LDA PLAYER_SAVE + 47 + 10
     STA (&C0),Y
     LDY #&13
-    LDA PLAYER_SAVE + 35 + 11
+    LDA PLAYER_SAVE + 47 + 11
     STA (&C0),Y
     LDY #&14
-    LDA PLAYER_SAVE + 35 + 12
+    LDA PLAYER_SAVE + 47 + 12
     STA (&C0),Y
     LDY #&15
-    LDA PLAYER_SAVE + 35 + 13
+    LDA PLAYER_SAVE + 47 + 13
     STA (&C0),Y
     LDY #&16
-    LDA PLAYER_SAVE + 35 + 14
+    LDA PLAYER_SAVE + 47 + 14
     STA (&C2),Y
     LDY #&17
-    LDA PLAYER_SAVE + 35 + 15
+    LDA PLAYER_SAVE + 47 + 15
     STA (&C2),Y
     LDY #&18
-    LDA PLAYER_SAVE + 35 + 16
+    LDA PLAYER_SAVE + 47 + 16
     STA (&C0),Y
     LDY #&19
-    LDA PLAYER_SAVE + 35 + 17
+    LDA PLAYER_SAVE + 47 + 17
     STA (&C0),Y
     LDY #&1A
-    LDA PLAYER_SAVE + 35 + 18
+    LDA PLAYER_SAVE + 47 + 18
     STA (&C0),Y
     LDY #&1B
-    LDA PLAYER_SAVE + 35 + 19
+    LDA PLAYER_SAVE + 47 + 19
     STA (&C0),Y
     LDY #&1C
-    LDA PLAYER_SAVE + 35 + 20
+    LDA PLAYER_SAVE + 47 + 20
     STA (&C0),Y
     LDY #&1D
-    LDA PLAYER_SAVE + 35 + 21
+    LDA PLAYER_SAVE + 47 + 21
     STA (&C0),Y
     LDY #&1E
-    LDA PLAYER_SAVE + 35 + 22
+    LDA PLAYER_SAVE + 47 + 22
     STA (&C2),Y
     LDY #&1F
-    LDA PLAYER_SAVE + 35 + 23
+    LDA PLAYER_SAVE + 47 + 23
     STA (&C2),Y
     LDY #&20
-    LDA PLAYER_SAVE + 35 + 24
+    LDA PLAYER_SAVE + 47 + 24
     STA (&C0),Y
     LDY #&21
-    LDA PLAYER_SAVE + 35 + 25
+    LDA PLAYER_SAVE + 47 + 25
     STA (&C0),Y
     LDY #&22
-    LDA PLAYER_SAVE + 35 + 26
+    LDA PLAYER_SAVE + 47 + 26
     STA (&C0),Y
     RTS
 .ck2_09_u3_draw
@@ -298,142 +298,142 @@
 .ck2_09_u3_ok1
     LDY #&08
     LDA (&C0),Y
-    STA PLAYER_SAVE + 62 + 0
+    STA PLAYER_SAVE + 47 + 0
     LDA #&2C
     STA (&C0),Y
     LDY #&09
     LDA (&C0),Y
-    STA PLAYER_SAVE + 62 + 1
+    STA PLAYER_SAVE + 47 + 1
     LDA #&2C
     STA (&C0),Y
     LDY #&0A
     LDA (&C0),Y
-    STA PLAYER_SAVE + 62 + 2
+    STA PLAYER_SAVE + 47 + 2
     LDA #&3C
     STA (&C0),Y
     LDY #&0B
     LDA (&C0),Y
-    STA PLAYER_SAVE + 62 + 3
+    STA PLAYER_SAVE + 47 + 3
     AND #&AA
     EOR #&14
     STA (&C0),Y
     LDY #&0C
     LDA (&C2),Y
-    STA PLAYER_SAVE + 62 + 4
+    STA PLAYER_SAVE + 47 + 4
     AND #&AA
     EOR #&14
     STA (&C2),Y
     LDY #&0D
     LDA (&C2),Y
-    STA PLAYER_SAVE + 62 + 5
+    STA PLAYER_SAVE + 47 + 5
     LDA #&3C
     STA (&C2),Y
     LDY #&0E
     LDA (&C2),Y
-    STA PLAYER_SAVE + 62 + 6
+    STA PLAYER_SAVE + 47 + 6
     LDA #&2C
     STA (&C2),Y
     LDY #&0F
     LDA (&C2),Y
-    STA PLAYER_SAVE + 62 + 7
+    STA PLAYER_SAVE + 47 + 7
     LDA #&2C
     STA (&C2),Y
     LDY #&10
     LDA (&C0),Y
-    STA PLAYER_SAVE + 62 + 8
+    STA PLAYER_SAVE + 47 + 8
     LDA #&2D
     STA (&C0),Y
     LDY #&11
     LDA (&C0),Y
-    STA PLAYER_SAVE + 62 + 9
+    STA PLAYER_SAVE + 47 + 9
     LDA #&1C
     STA (&C0),Y
     LDY #&12
     LDA (&C0),Y
-    STA PLAYER_SAVE + 62 + 10
+    STA PLAYER_SAVE + 47 + 10
     LDA #&0C
     STA (&C0),Y
     LDY #&13
     LDA (&C0),Y
-    STA PLAYER_SAVE + 62 + 11
+    STA PLAYER_SAVE + 47 + 11
     LDA #&3C
     STA (&C0),Y
     LDY #&14
     LDA (&C2),Y
-    STA PLAYER_SAVE + 62 + 12
+    STA PLAYER_SAVE + 47 + 12
     LDA #&3C
     STA (&C2),Y
     LDY #&15
     LDA (&C2),Y
-    STA PLAYER_SAVE + 62 + 13
+    STA PLAYER_SAVE + 47 + 13
     LDA #&0C
     STA (&C2),Y
     LDY #&16
     LDA (&C2),Y
-    STA PLAYER_SAVE + 62 + 14
+    STA PLAYER_SAVE + 47 + 14
     LDA #&1C
     STA (&C2),Y
     LDY #&17
     LDA (&C2),Y
-    STA PLAYER_SAVE + 62 + 15
+    STA PLAYER_SAVE + 47 + 15
     LDA #&2D
     STA (&C2),Y
     LDY #&18
     LDA (&C0),Y
-    STA PLAYER_SAVE + 62 + 16
+    STA PLAYER_SAVE + 47 + 16
     LDA #&1E
     STA (&C0),Y
     LDY #&19
     LDA (&C0),Y
-    STA PLAYER_SAVE + 62 + 17
+    STA PLAYER_SAVE + 47 + 17
     LDA #&3C
     STA (&C0),Y
     LDY #&1A
     LDA (&C0),Y
-    STA PLAYER_SAVE + 62 + 18
+    STA PLAYER_SAVE + 47 + 18
     LDA #&1C
     STA (&C0),Y
     LDY #&1B
     LDA (&C0),Y
-    STA PLAYER_SAVE + 62 + 19
+    STA PLAYER_SAVE + 47 + 19
     LDA #&3C
     STA (&C0),Y
     LDY #&1C
     LDA (&C2),Y
-    STA PLAYER_SAVE + 62 + 20
+    STA PLAYER_SAVE + 47 + 20
     AND #&55
     EOR #&28
     STA (&C2),Y
     LDY #&1D
     LDA (&C2),Y
-    STA PLAYER_SAVE + 62 + 21
+    STA PLAYER_SAVE + 47 + 21
     LDA #&3C
     STA (&C2),Y
     LDY #&1E
     LDA (&C2),Y
-    STA PLAYER_SAVE + 62 + 22
+    STA PLAYER_SAVE + 47 + 22
     LDA #&1E
     STA (&C2),Y
     LDY #&1F
     LDA (&C2),Y
-    STA PLAYER_SAVE + 62 + 23
+    STA PLAYER_SAVE + 47 + 23
     LDA #&0F
     STA (&C2),Y
     LDY #&20
     LDA (&C0),Y
-    STA PLAYER_SAVE + 62 + 24
+    STA PLAYER_SAVE + 47 + 24
     AND #&55
     EOR #&28
     STA (&C0),Y
     LDY #&26
     LDA (&C2),Y
-    STA PLAYER_SAVE + 62 + 25
+    STA PLAYER_SAVE + 47 + 25
     AND #&55
     EOR #&28
     STA (&C2),Y
     LDY #&27
     LDA (&C2),Y
-    STA PLAYER_SAVE + 62 + 26
+    STA PLAYER_SAVE + 47 + 26
     AND #&55
     EOR #&28
     STA (&C2),Y
@@ -452,85 +452,85 @@
 .ck2_09_u3_r1
     STA &C3
     LDY #&08
-    LDA PLAYER_SAVE + 62 + 0
+    LDA PLAYER_SAVE + 47 + 0
     STA (&C0),Y
     LDY #&09
-    LDA PLAYER_SAVE + 62 + 1
+    LDA PLAYER_SAVE + 47 + 1
     STA (&C0),Y
     LDY #&0A
-    LDA PLAYER_SAVE + 62 + 2
+    LDA PLAYER_SAVE + 47 + 2
     STA (&C0),Y
     LDY #&0B
-    LDA PLAYER_SAVE + 62 + 3
+    LDA PLAYER_SAVE + 47 + 3
     STA (&C0),Y
     LDY #&0C
-    LDA PLAYER_SAVE + 62 + 4
+    LDA PLAYER_SAVE + 47 + 4
     STA (&C2),Y
     LDY #&0D
-    LDA PLAYER_SAVE + 62 + 5
+    LDA PLAYER_SAVE + 47 + 5
     STA (&C2),Y
     LDY #&0E
-    LDA PLAYER_SAVE + 62 + 6
+    LDA PLAYER_SAVE + 47 + 6
     STA (&C2),Y
     LDY #&0F
-    LDA PLAYER_SAVE + 62 + 7
+    LDA PLAYER_SAVE + 47 + 7
     STA (&C2),Y
     LDY #&10
-    LDA PLAYER_SAVE + 62 + 8
+    LDA PLAYER_SAVE + 47 + 8
     STA (&C0),Y
     LDY #&11
-    LDA PLAYER_SAVE + 62 + 9
+    LDA PLAYER_SAVE + 47 + 9
     STA (&C0),Y
     LDY #&12
-    LDA PLAYER_SAVE + 62 + 10
+    LDA PLAYER_SAVE + 47 + 10
     STA (&C0),Y
     LDY #&13
-    LDA PLAYER_SAVE + 62 + 11
+    LDA PLAYER_SAVE + 47 + 11
     STA (&C0),Y
     LDY #&14
-    LDA PLAYER_SAVE + 62 + 12
+    LDA PLAYER_SAVE + 47 + 12
     STA (&C2),Y
     LDY #&15
-    LDA PLAYER_SAVE + 62 + 13
+    LDA PLAYER_SAVE + 47 + 13
     STA (&C2),Y
     LDY #&16
-    LDA PLAYER_SAVE + 62 + 14
+    LDA PLAYER_SAVE + 47 + 14
     STA (&C2),Y
     LDY #&17
-    LDA PLAYER_SAVE + 62 + 15
+    LDA PLAYER_SAVE + 47 + 15
     STA (&C2),Y
     LDY #&18
-    LDA PLAYER_SAVE + 62 + 16
+    LDA PLAYER_SAVE + 47 + 16
     STA (&C0),Y
     LDY #&19
-    LDA PLAYER_SAVE + 62 + 17
+    LDA PLAYER_SAVE + 47 + 17
     STA (&C0),Y
     LDY #&1A
-    LDA PLAYER_SAVE + 62 + 18
+    LDA PLAYER_SAVE + 47 + 18
     STA (&C0),Y
     LDY #&1B
-    LDA PLAYER_SAVE + 62 + 19
+    LDA PLAYER_SAVE + 47 + 19
     STA (&C0),Y
     LDY #&1C
-    LDA PLAYER_SAVE + 62 + 20
+    LDA PLAYER_SAVE + 47 + 20
     STA (&C2),Y
     LDY #&1D
-    LDA PLAYER_SAVE + 62 + 21
+    LDA PLAYER_SAVE + 47 + 21
     STA (&C2),Y
     LDY #&1E
-    LDA PLAYER_SAVE + 62 + 22
+    LDA PLAYER_SAVE + 47 + 22
     STA (&C2),Y
     LDY #&1F
-    LDA PLAYER_SAVE + 62 + 23
+    LDA PLAYER_SAVE + 47 + 23
     STA (&C2),Y
     LDY #&20
-    LDA PLAYER_SAVE + 62 + 24
+    LDA PLAYER_SAVE + 47 + 24
     STA (&C0),Y
     LDY #&26
-    LDA PLAYER_SAVE + 62 + 25
+    LDA PLAYER_SAVE + 47 + 25
     STA (&C2),Y
     LDY #&27
-    LDA PLAYER_SAVE + 62 + 26
+    LDA PLAYER_SAVE + 47 + 26
     STA (&C2),Y
     RTS
 .ck5_03_u7_draw
@@ -564,235 +564,235 @@
 .ck5_03_u7_ok1
     LDY #&01
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 0
+    STA PLAYER_SAVE + 0 + 0
     AND #&AA
     EOR #&14
     STA (&C0),Y
     LDY #&02
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 1
+    STA PLAYER_SAVE + 0 + 1
     LDA #&3C
     STA (&C0),Y
     LDY #&03
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 2
+    STA PLAYER_SAVE + 0 + 2
     LDA #&29
     STA (&C0),Y
     LDY #&04
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 3
+    STA PLAYER_SAVE + 0 + 3
     LDA #&29
     STA (&C0),Y
     LDY #&05
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 4
+    STA PLAYER_SAVE + 0 + 4
     LDA #&29
     STA (&C0),Y
     LDY #&06
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 5
+    STA PLAYER_SAVE + 0 + 5
     LDA #&3C
     STA (&C0),Y
     LDY #&07
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 6
+    STA PLAYER_SAVE + 0 + 6
     AND #&AA
     EOR #&14
     STA (&C0),Y
     LDY #&08
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 7
+    STA PLAYER_SAVE + 0 + 7
     LDA #&2C
     STA (&C0),Y
     LDY #&09
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 8
+    STA PLAYER_SAVE + 0 + 8
     LDA #&2C
     STA (&C0),Y
     LDY #&0A
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 9
+    STA PLAYER_SAVE + 0 + 9
     LDA #&0C
     STA (&C0),Y
     LDY #&0B
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 10
+    STA PLAYER_SAVE + 0 + 10
     LDA #&2C
     STA (&C0),Y
     LDY #&0C
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 11
+    STA PLAYER_SAVE + 0 + 11
     LDA #&3C
     STA (&C0),Y
     LDY #&0D
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 12
+    STA PLAYER_SAVE + 0 + 12
     LDA #&16
     STA (&C0),Y
     LDA (&C2),Y
-    STA PLAYER_SAVE + 163 + 13
+    STA PLAYER_SAVE + 0 + 13
     LDA #&2C
     STA (&C2),Y
     LDY #&0E
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 14
+    STA PLAYER_SAVE + 0 + 14
     LDA #&03
     STA (&C0),Y
     LDA (&C2),Y
-    STA PLAYER_SAVE + 163 + 15
+    STA PLAYER_SAVE + 0 + 15
     LDA #&3C
     STA (&C2),Y
     LDY #&0F
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 16
+    STA PLAYER_SAVE + 0 + 16
     LDA #&3C
     STA (&C0),Y
     LDA (&C2),Y
-    STA PLAYER_SAVE + 163 + 17
+    STA PLAYER_SAVE + 0 + 17
     LDA #&3C
     STA (&C2),Y
     LDY #&10
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 18
+    STA PLAYER_SAVE + 0 + 18
     LDA #&1C
     STA (&C0),Y
     LDY #&11
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 19
+    STA PLAYER_SAVE + 0 + 19
     LDA #&1C
     STA (&C0),Y
     LDY #&12
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 20
+    STA PLAYER_SAVE + 0 + 20
     LDA #&3C
     STA (&C0),Y
     LDY #&13
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 21
+    STA PLAYER_SAVE + 0 + 21
     LDA #&3C
     STA (&C0),Y
     LDY #&14
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 22
+    STA PLAYER_SAVE + 0 + 22
     LDA #&3C
     STA (&C0),Y
     LDY #&15
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 23
+    STA PLAYER_SAVE + 0 + 23
     LDA #&3C
     STA (&C0),Y
     LDA (&C2),Y
-    STA PLAYER_SAVE + 163 + 24
+    STA PLAYER_SAVE + 0 + 24
     LDA #&0C
     STA (&C2),Y
     LDY #&16
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 25
+    STA PLAYER_SAVE + 0 + 25
     AND #&55
     EOR #&28
     STA (&C0),Y
     LDA (&C2),Y
-    STA PLAYER_SAVE + 163 + 26
+    STA PLAYER_SAVE + 0 + 26
     LDA #&0C
     STA (&C2),Y
     LDY #&17
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 27
+    STA PLAYER_SAVE + 0 + 27
     AND #&55
     EOR #&28
     STA (&C0),Y
     LDA (&C2),Y
-    STA PLAYER_SAVE + 163 + 28
+    STA PLAYER_SAVE + 0 + 28
     LDA #&3C
     STA (&C2),Y
     LDY #&18
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 29
+    STA PLAYER_SAVE + 0 + 29
     LDA #&2C
     STA (&C0),Y
     LDY #&19
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 30
+    STA PLAYER_SAVE + 0 + 30
     LDA #&0C
     STA (&C0),Y
     LDY #&1A
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 31
+    STA PLAYER_SAVE + 0 + 31
     LDA #&3C
     STA (&C0),Y
     LDY #&1B
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 32
+    STA PLAYER_SAVE + 0 + 32
     LDA #&03
     STA (&C0),Y
     LDY #&1C
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 33
+    STA PLAYER_SAVE + 0 + 33
     LDA #&03
     STA (&C0),Y
     LDY #&1D
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 34
+    STA PLAYER_SAVE + 0 + 34
     LDA #&3C
     STA (&C0),Y
     LDA (&C2),Y
-    STA PLAYER_SAVE + 163 + 35
+    STA PLAYER_SAVE + 0 + 35
     LDA #&1C
     STA (&C2),Y
     LDY #&1E
     LDA (&C2),Y
-    STA PLAYER_SAVE + 163 + 36
+    STA PLAYER_SAVE + 0 + 36
     LDA #&0C
     STA (&C2),Y
     LDY #&1F
     LDA (&C2),Y
-    STA PLAYER_SAVE + 163 + 37
+    STA PLAYER_SAVE + 0 + 37
     LDA #&0C
     STA (&C2),Y
     LDY #&20
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 38
+    STA PLAYER_SAVE + 0 + 38
     LDA #&1C
     STA (&C0),Y
     LDY #&21
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 39
+    STA PLAYER_SAVE + 0 + 39
     LDA #&3C
     STA (&C0),Y
     LDY #&22
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 40
+    STA PLAYER_SAVE + 0 + 40
     AND #&55
     EOR #&28
     STA (&C0),Y
     LDY #&23
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 41
+    STA PLAYER_SAVE + 0 + 41
     LDA #&3C
     STA (&C0),Y
     LDY #&24
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 42
+    STA PLAYER_SAVE + 0 + 42
     LDA #&16
     STA (&C0),Y
     LDY #&25
     LDA (&C0),Y
-    STA PLAYER_SAVE + 163 + 43
+    STA PLAYER_SAVE + 0 + 43
     LDA #&3C
     STA (&C0),Y
     LDA (&C2),Y
-    STA PLAYER_SAVE + 163 + 44
+    STA PLAYER_SAVE + 0 + 44
     AND #&55
     EOR #&28
     STA (&C2),Y
     LDY #&26
     LDA (&C2),Y
-    STA PLAYER_SAVE + 163 + 45
+    STA PLAYER_SAVE + 0 + 45
     LDA #&3C
     STA (&C2),Y
     LDY #&27
     LDA (&C2),Y
-    STA PLAYER_SAVE + 163 + 46
+    STA PLAYER_SAVE + 0 + 46
     LDA #&1C
     STA (&C2),Y
     CLC
@@ -810,137 +810,137 @@
 .ck5_03_u7_r1
     STA &C3
     LDY #&01
-    LDA PLAYER_SAVE + 163 + 0
+    LDA PLAYER_SAVE + 0 + 0
     STA (&C0),Y
     LDY #&02
-    LDA PLAYER_SAVE + 163 + 1
+    LDA PLAYER_SAVE + 0 + 1
     STA (&C0),Y
     LDY #&03
-    LDA PLAYER_SAVE + 163 + 2
+    LDA PLAYER_SAVE + 0 + 2
     STA (&C0),Y
     LDY #&04
-    LDA PLAYER_SAVE + 163 + 3
+    LDA PLAYER_SAVE + 0 + 3
     STA (&C0),Y
     LDY #&05
-    LDA PLAYER_SAVE + 163 + 4
+    LDA PLAYER_SAVE + 0 + 4
     STA (&C0),Y
     LDY #&06
-    LDA PLAYER_SAVE + 163 + 5
+    LDA PLAYER_SAVE + 0 + 5
     STA (&C0),Y
     LDY #&07
-    LDA PLAYER_SAVE + 163 + 6
+    LDA PLAYER_SAVE + 0 + 6
     STA (&C0),Y
     LDY #&08
-    LDA PLAYER_SAVE + 163 + 7
+    LDA PLAYER_SAVE + 0 + 7
     STA (&C0),Y
     LDY #&09
-    LDA PLAYER_SAVE + 163 + 8
+    LDA PLAYER_SAVE + 0 + 8
     STA (&C0),Y
     LDY #&0A
-    LDA PLAYER_SAVE + 163 + 9
+    LDA PLAYER_SAVE + 0 + 9
     STA (&C0),Y
     LDY #&0B
-    LDA PLAYER_SAVE + 163 + 10
+    LDA PLAYER_SAVE + 0 + 10
     STA (&C0),Y
     LDY #&0C
-    LDA PLAYER_SAVE + 163 + 11
+    LDA PLAYER_SAVE + 0 + 11
     STA (&C0),Y
     LDY #&0D
-    LDA PLAYER_SAVE + 163 + 12
+    LDA PLAYER_SAVE + 0 + 12
     STA (&C0),Y
-    LDA PLAYER_SAVE + 163 + 13
+    LDA PLAYER_SAVE + 0 + 13
     STA (&C2),Y
     LDY #&0E
-    LDA PLAYER_SAVE + 163 + 14
+    LDA PLAYER_SAVE + 0 + 14
     STA (&C0),Y
-    LDA PLAYER_SAVE + 163 + 15
+    LDA PLAYER_SAVE + 0 + 15
     STA (&C2),Y
     LDY #&0F
-    LDA PLAYER_SAVE + 163 + 16
+    LDA PLAYER_SAVE + 0 + 16
     STA (&C0),Y
-    LDA PLAYER_SAVE + 163 + 17
+    LDA PLAYER_SAVE + 0 + 17
     STA (&C2),Y
     LDY #&10
-    LDA PLAYER_SAVE + 163 + 18
+    LDA PLAYER_SAVE + 0 + 18
     STA (&C0),Y
     LDY #&11
-    LDA PLAYER_SAVE + 163 + 19
+    LDA PLAYER_SAVE + 0 + 19
     STA (&C0),Y
     LDY #&12
-    LDA PLAYER_SAVE + 163 + 20
+    LDA PLAYER_SAVE + 0 + 20
     STA (&C0),Y
     LDY #&13
-    LDA PLAYER_SAVE + 163 + 21
+    LDA PLAYER_SAVE + 0 + 21
     STA (&C0),Y
     LDY #&14
-    LDA PLAYER_SAVE + 163 + 22
+    LDA PLAYER_SAVE + 0 + 22
     STA (&C0),Y
     LDY #&15
-    LDA PLAYER_SAVE + 163 + 23
+    LDA PLAYER_SAVE + 0 + 23
     STA (&C0),Y
-    LDA PLAYER_SAVE + 163 + 24
+    LDA PLAYER_SAVE + 0 + 24
     STA (&C2),Y
     LDY #&16
-    LDA PLAYER_SAVE + 163 + 25
+    LDA PLAYER_SAVE + 0 + 25
     STA (&C0),Y
-    LDA PLAYER_SAVE + 163 + 26
+    LDA PLAYER_SAVE + 0 + 26
     STA (&C2),Y
     LDY #&17
-    LDA PLAYER_SAVE + 163 + 27
+    LDA PLAYER_SAVE + 0 + 27
     STA (&C0),Y
-    LDA PLAYER_SAVE + 163 + 28
+    LDA PLAYER_SAVE + 0 + 28
     STA (&C2),Y
     LDY #&18
-    LDA PLAYER_SAVE + 163 + 29
+    LDA PLAYER_SAVE + 0 + 29
     STA (&C0),Y
     LDY #&19
-    LDA PLAYER_SAVE + 163 + 30
+    LDA PLAYER_SAVE + 0 + 30
     STA (&C0),Y
     LDY #&1A
-    LDA PLAYER_SAVE + 163 + 31
+    LDA PLAYER_SAVE + 0 + 31
     STA (&C0),Y
     LDY #&1B
-    LDA PLAYER_SAVE + 163 + 32
+    LDA PLAYER_SAVE + 0 + 32
     STA (&C0),Y
     LDY #&1C
-    LDA PLAYER_SAVE + 163 + 33
+    LDA PLAYER_SAVE + 0 + 33
     STA (&C0),Y
     LDY #&1D
-    LDA PLAYER_SAVE + 163 + 34
+    LDA PLAYER_SAVE + 0 + 34
     STA (&C0),Y
-    LDA PLAYER_SAVE + 163 + 35
+    LDA PLAYER_SAVE + 0 + 35
     STA (&C2),Y
     LDY #&1E
-    LDA PLAYER_SAVE + 163 + 36
+    LDA PLAYER_SAVE + 0 + 36
     STA (&C2),Y
     LDY #&1F
-    LDA PLAYER_SAVE + 163 + 37
+    LDA PLAYER_SAVE + 0 + 37
     STA (&C2),Y
     LDY #&20
-    LDA PLAYER_SAVE + 163 + 38
+    LDA PLAYER_SAVE + 0 + 38
     STA (&C0),Y
     LDY #&21
-    LDA PLAYER_SAVE + 163 + 39
+    LDA PLAYER_SAVE + 0 + 39
     STA (&C0),Y
     LDY #&22
-    LDA PLAYER_SAVE + 163 + 40
+    LDA PLAYER_SAVE + 0 + 40
     STA (&C0),Y
     LDY #&23
-    LDA PLAYER_SAVE + 163 + 41
+    LDA PLAYER_SAVE + 0 + 41
     STA (&C0),Y
     LDY #&24
-    LDA PLAYER_SAVE + 163 + 42
+    LDA PLAYER_SAVE + 0 + 42
     STA (&C0),Y
     LDY #&25
-    LDA PLAYER_SAVE + 163 + 43
+    LDA PLAYER_SAVE + 0 + 43
     STA (&C0),Y
-    LDA PLAYER_SAVE + 163 + 44
+    LDA PLAYER_SAVE + 0 + 44
     STA (&C2),Y
     LDY #&26
-    LDA PLAYER_SAVE + 163 + 45
+    LDA PLAYER_SAVE + 0 + 45
     STA (&C2),Y
     LDY #&27
-    LDA PLAYER_SAVE + 163 + 46
+    LDA PLAYER_SAVE + 0 + 46
     STA (&C2),Y
     RTS
 .compiled_unsafe_5

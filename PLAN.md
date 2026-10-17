@@ -71,8 +71,11 @@ shown screen byte-identical on all but 8 of 42,000 passes. Slower: 11.6 passes/s
       1% late needs the render 53-67% cheaper. Recommended: stay at a steady 25 Hz
       (a new decision replacing 11's target: KC)
 - [x] The player's 8 commonest sprite parts compiled (`e72c386`): late frames 41 -> 24 (seed 1),
-      26 -> 10 (holding RIGHT); 50 Hz option 2 529 -> 389. The other 6 running kinds need ~4.6K
-      (HAZEL or the front end's music packed)
+      26 -> 10 (holding RIGHT); 50 Hz option 2 529 -> 389
+- [x] The other 6 running kinds compiled into HAZEL, the front end's tunes packed (decision 29), and
+      the scenery first-column glitch fixed (BUGS #8, decision 30): late frames 22 (seed 1), 2
+      (holding RIGHT)
+- [ ] BUGS #9: what the mountains should be (they read HAZEL `&C300`, not the MOS ROM): KC
 - [ ] One field = half a pass: player, movers (staggered), helicopters, projectiles each on their
       own cadence; vertical rates halved, pass counters doubled; render every field
 - [ ] `tools/speed.mjs` per object type against the design rate

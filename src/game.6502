@@ -5742,6 +5742,7 @@ target_address_high = * + 2
     STA &0A20 - 1,X
     DEX
     BNE move_0a20_loop
+    JSR unpack_for_play             \ step 2 layer 4: HAZEL's compiled kinds, the tunes
     JMP initialisation
 
 .video_register_values
@@ -5991,5 +5992,94 @@ ENDSECTION
 MOVED_0A20_SIZE = moved_0a20_end - &0A20
 ASSERT MOVED_0A20_SIZE <= &E0
 
-
-
+\ ---- Step 2 layer 4: run once from entry_point, in the start-up block (the screen covers it later) ----
+\ unpack_for_play: the player's compiled sprite kinds that live in HAZEL (tools/compiled.py) copied
+\ into it from their carriers - part A in bank 5's music area, part B here - and then the front
+\ end's tunes unpacked into that area (src/music_packed.6502, ZX02). HAZEL is the filing system's
+\ workspace, released by mgame_relocate's *TAPE; the MOS leaves it paged in (ACCCON's Y bit) through
+\ play, which this sets too. Nothing reads HAZEL after the start but the scroll's mountain layer,
+\ &C300 on (tools/hazelwatch.mjs, tools/hazelreach.mjs), below HAZEL_ORG.
+zxsrc = &C0                         \ the depacker's zero page, and the copy's (the filing system's,
+zxdst = &C2                         \ free after *TAPE; the renderer's scratch later)
+zxofs = &C4
+zxbit = &C5
+zxwrk = &C6
+up_n  = &C8
+.unpack_for_play
+{
+    SEI
+    LDA acccon
+    ORA #&08                        \ Y: HAZEL at &C000-&DFFF
+    STA acccon
+    CLI
+    LDA #&05                        \ bank 5: part A's carrier, and the tunes' place
+    STA os_ram_copy_of_currently_selected_rom
+    STA romsel
+    LDA #LO(hazel_a_load)
+    STA zxsrc
+    LDA #HI(hazel_a_load)
+    STA zxsrc + 1
+    LDA #LO(HAZEL_ORG)
+    STA zxdst
+    LDA #HI(HAZEL_ORG)
+    STA zxdst + 1
+    LDA #LO(hazel_a_end - HAZEL_ORG)
+    STA up_n
+    LDA #HI(hazel_a_end - HAZEL_ORG)
+    STA up_n + 1
+    JSR copy
+    LDA #LO(hazel_b_load)           \ part B, from here, after part A
+    STA zxsrc
+    LDA #HI(hazel_b_load)
+    STA zxsrc + 1
+    LDA #LO(hazel_b_end - hazel_a_end)
+    STA up_n
+    LDA #HI(hazel_b_end - hazel_a_end)
+    STA up_n + 1
+    JSR copy
+    LDA #LO(music_packed)           \ the tunes, over part A's carrier
+    STA zxsrc
+    LDA #HI(music_packed)
+    STA zxsrc + 1
+    LDA #LO(title_screen_music_data)
+    STA zxdst
+    LDA #HI(title_screen_music_data)
+    STA zxdst + 1
+    JSR zx_unpack
+    LDA #&04
+    STA os_ram_copy_of_currently_selected_rom
+    STA romsel
+    RTS
+.copy                               \ up_n bytes from (zxsrc) to (zxdst), both moved on
+    LDY #0
+.each
+    LDA up_n
+    ORA up_n + 1
+    BEQ done
+    LDA (zxsrc),Y
+    STA (zxdst),Y
+    INC zxsrc
+    BNE src_on
+    INC zxsrc + 1
+.src_on
+    INC zxdst
+    BNE dst_on
+    INC zxdst + 1
+.dst_on
+    LDA up_n
+    BNE low
+    DEC up_n + 1
+.low
+    DEC up_n
+    JMP each
+.done
+    RTS
+}
+.zx_unpack
+    ZX02_DEPACKER
+.hazel_b_load
+SECTION hazel_b, org = hazel_a_end, cmos = TRUE
+    INCLUDE "compiled_hazel_b.6502"
+.hazel_b_end
+ENDSECTION
+    INCLUDE "music_packed.6502"

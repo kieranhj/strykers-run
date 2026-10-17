@@ -33,6 +33,13 @@ BS, NL = chr(92), chr(10)
 # the kinds, by the bytes they drew holding RIGHT for 600 passes (tools/drawprof.mjs on 07ef49c,
 # 2026-10-17; docs/step2-layer4-costing.md): (sprite, flipped, line of the bottom row)
 KINDS = [(0x00, 0, 7), (0x09, 0, 5), (0x09, 0, 3), (0x09, 0, 4), (0x02, 0, 7), (0x03, 0, 7), (0x01, 0, 7), (0x04, 0, 7)]
+# and the other 6 of the 14 it drew (KC 2026-10-17: "compile the other 6 running frames"), in HAZEL,
+# which the MOS leaves paged in at &C000-&DFFF through play
+KINDS_HAZEL = [(0x06, 0, 4), (0x07, 0, 4), (0x05, 0, 5), (0x08, 0, 3), (0x08, 0, 5), (0x05, 0, 3)]
+# HAZEL from &C700: below it, &C300 on is read by the scroll's mountain layer as data (tools/hazelreach.mjs)
+HAZEL_ORG = 0xC700
+HAZEL_CARRY_A = 0xF80                  # bank 5's music area, &9300-&A27F (the tunes are unpacked over it)
+HAZEL_CARRY_B = 0x300                  # in the start-up block, below the loading picture (main.6502 ASSERTs)
 POINTERS = [0xC0, 0xC2, 0xC9, 0xCB]           # render.6502 scratch zero page, p0 the entry (not &C7: col_ptr, which the fallback needs)
 # the room in each bank: from its content's end (the bench build's listing, 07ef49c: bank 5 &B663,
 # 6 &B575, 7 &B713) to &BF00 (the shifted test builds keep a page free; main.6502 ASSERTs it)
@@ -67,6 +74,23 @@ def kind_bytes(build, sprite, flipped, line):
     return out, n
 
 
+def save_groups(b, sp, kinds):
+    """Save areas the kinds can share: two kinds conflict when their sprites are drawn in the same
+    frame of the player (type 0: parts_of over every frame), since one draw's parts are saved at
+    once; any others never have saves outstanding together (a screen's save is put back before its
+    next drawing). Greedy colouring: -> {kind: group}."""
+    frames = b.table("mover_types_animation_frame", 0x1C)
+    together = set()
+    for f in range(max(frames[0], 0x0E)):
+        ps = [s for s, _ in sprites.parts_of(b, 0, f)]
+        together |= {(x, y) for x in ps for y in ps if x != y}
+    group = {}
+    for k in kinds:
+        used = {group[o] for o in group if (k[0], o[0]) in together}
+        group[k] = next(g for g in range(len(kinds)) if g not in used)
+    return group
+
+
 def emit(disc, out_dir):
     b = sprites.Build(disc)
     sp = sprites.load_sprites(b)
@@ -76,18 +100,27 @@ def emit(disc, out_dir):
     msk = {0: b.main(0x04C0, 64), 1: b.main(0x0480, 64)}
     assert (pix[0][20], pix[1][40], pix[1][20], pix[0][40], pix[1][60], pix[0][60]) == (0x14, 0x14, 0x28, 0x28, 0x3C, 0x3C), "pixel tables not in the foreground palette"
     c = BS + " "
-    banks = {5: [], 6: [], 7: []}
-    used = {5: 0, 6: 0, 7: 0}
-    table, built = [], []
-    save_off = 0
-    for k, (s, fl, line) in enumerate(KINDS):
+    kinds = KINDS + KINDS_HAZEL
+    group = save_groups(b, sp, kinds)
+    # each group's area is as big as its biggest kind's bytes
+    built, gsize = [], {}
+    for k, (s, fl, line) in enumerate(kinds):
         bytes_, n = kind_bytes(b, sp[s], fl, line)
+        drawn = [(q, y, i) for q, y, i in bytes_ if not (msk[fl][i] == 0xFF and pix[fl][i] == 0)]
+        g = group[(s, fl, line)]
+        gsize[g] = max(gsize.get(g, 0), len(drawn))
+        built.append((k, s, fl, line, bytes_, drawn))
+    goff, off = {}, 0
+    for g in sorted(gsize):
+        goff[g] = off
+        off += gsize[g]
+    code = []
+    for k, s, fl, line, bytes_, drawn in built:
         rows = max(q for q, _, _ in bytes_) + 1
         assert rows <= len(POINTERS), (s, fl, line, rows)
         assert all(0 <= y <= 255 for _, y, _ in bytes_)
-        drawn = [(q, y, i) for q, y, i in bytes_ if not (msk[fl][i] == 0xFF and pix[fl][i] == 0)]
         name = f"ck{k}_{s:02x}_{'f' if fl else 'u'}{line}"
-        save = f"PLAYER_SAVE + {save_off}"
+        save = f"PLAYER_SAVE + {goff[group[(s, fl, line)]]}"
         d, r = [f".{name}_draw", c + f"sprite &{s:02X}{' flipped' if fl else ''}, bottom row at line {line}: {len(drawn)} bytes, {rows} character rows"], [f".{name}_restore"]
         def prologue(tag):               # each row &280 below the last, round the 16K screen
             out = []
@@ -123,24 +156,38 @@ def emit(disc, out_dir):
             r += [f"    LDA {save} + {nbyte}", f"    STA (&{p:02X}),Y"]
         d += ["    CLC", "    RTS"]
         r += ["    RTS"]
-        built.append((d + r, size_of(d + r), (s, fl, line, name)))
-        save_off += len(drawn)
-    # place: every assignment of kinds to banks, the first that fits (each bank also has its exit, 2 bytes)
+        code.append((d + r, size_of(d + r), (s, fl, line, name)))
+    nb = len(KINDS)
+    # the banks' kinds: every assignment to banks 5-7, the one with the most slack (each bank also
+    # has its exit, 2 bytes)
     import itertools
+    banks = {5: [], 6: [], 7: []}
     best = None
-    for assign in itertools.product(list(banks), repeat=len(built)):
+    for assign in itertools.product(list(banks), repeat=nb):
         u = {bk: 2 for bk in banks}
-        for (_, size, _), bk in zip(built, assign):
+        for (_, size, _), bk in zip(code[:nb], assign):
             u[bk] += size
         if all(u[bk] <= FREE[bk] for bk in banks):
             slack = min(FREE[bk] - u[bk] for bk in banks)
             if not best or slack > best[0]:
                 best = (slack, assign, u)
-    assert best, f"the kinds do not fit: {sum(sz for _, sz, _ in built)} bytes of code, {sum(FREE.values())} of room"
+    assert best, "the banks' kinds do not fit"
     _, assign, used = best
-    for (code, _, (s, fl, line, name)), bk in zip(built, assign):
-        banks[bk] += code
+    table = []
+    for (lines, _, (s, fl, line, name)), bk in zip(code[:nb], assign):
+        banks[bk] += lines
         table.append((s, fl, line, bk, name))
+    # HAZEL's kinds: from HAZEL_ORG on, carried in two parts - part A in bank 5's music area
+    # (unpacked over it at start-up), part B in the game's start-up block - and copied in there
+    pieces, room, size_a, size_b = {"a": [], "b": []}, {"a": HAZEL_CARRY_A - 2, "b": HAZEL_CARRY_B}, 0, 0
+    for lines, size, (s, fl, line, name) in code[nb:]:
+        part = "a" if size_a + size <= room["a"] else "b"
+        assert part == "a" or size_b + size <= room["b"], "HAZEL's kinds do not fit their carriers"
+        pieces[part] += lines
+        if part == "a": size_a += size
+        else: size_b += size
+        table.append((s, fl, line, 0, name))
+    assert HAZEL_ORG + size_a + 2 + size_b <= 0xE000
     head = [c + "GENERATED by tools/compiled.py from " + Path(disc).name + "; do not edit.",
             c + "The player's commonest sprite parts as code (step 2 layer 4): see the tool's docstring."]
     for bk, lines in banks.items():        # each bank's code, with its own exit for an unsafe row
@@ -148,9 +195,17 @@ def emit(disc, out_dir):
         body += [ln.replace("compiled_unsafe", f"compiled_unsafe_{bk}") for ln in lines]
         body += [f".compiled_unsafe_{bk}", "    SEC", "    RTS"]
         Path(out_dir, f"compiled_bank{bk}.6502").write_text(NL.join(body) + NL)
-    tab = head + [c + "Bank 4: the kinds render.6502 looks up for the player's parts, and the save area.",
+    for part in ("a", "b"):
+        body = head + [c + f"HAZEL, part {part.upper()}: " + ("from HAZEL_ORG, carried in bank 5's music area" if part == "a" else "after part A, carried in the start-up block") + " (src/main.6502, src/game.6502 unpack_for_play)."]
+        body += [ln.replace("compiled_unsafe", "compiled_unsafe_hazel") for ln in pieces[part]]
+        if part == "a":
+            body += [".compiled_unsafe_hazel", "    SEC", "    RTS"]
+        Path(out_dir, f"compiled_hazel_{part}.6502").write_text(NL.join(body) + NL)
+    tab = head + [c + "Bank 4: the kinds render.6502 looks up for the player's parts (bank 0: HAZEL, called",
+                  c + "directly), and the save area: kinds whose sprites are never drawn together share theirs.",
                   f"COMPILED_KINDS = {len(table)}",
-                  f"PLAYER_SAVE_SIZE = {save_off}",
+                  f"PLAYER_SAVE_SIZE = {off}",
+                  f"HAZEL_ORG = &{HAZEL_ORG:04X}",
                   ".ck_sprite      EQUB " + ", ".join(f"&{s:02X}" for s, _, _, _, _ in table),
                   ".ck_flipline    EQUB " + ", ".join(f"&{(fl << 7) | ln:02X}" for _, fl, ln, _, _ in table) + "    " + BS + " flip << 7 | line",
                   ".ck_bank        EQUB " + ", ".join(f"&{bk:02X}" for _, _, _, bk, _ in table),
@@ -159,7 +214,8 @@ def emit(disc, out_dir):
                   ".ck_restore_lo  EQUB " + ", ".join(f"LO({nm}_restore)" for *_, nm in table),
                   ".ck_restore_hi  EQUB " + ", ".join(f"HI({nm}_restore)" for *_, nm in table)]
     Path(out_dir, "compiled_table.6502").write_text(NL.join(tab) + NL)
-    print(f"{len(table)} kinds, save area {save_off} bytes; code by bank {used} of {FREE}")
+    print(f"{len(table)} kinds, save area {off} bytes in {len(gsize)} shared areas; banks {used} of {FREE}; "
+          f"HAZEL &{HAZEL_ORG:04X}: part A {size_a + 2} (of {HAZEL_CARRY_A}), part B {size_b} (of {HAZEL_CARRY_B})")
 
 
 if __name__ == "__main__":
