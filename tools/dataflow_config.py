@@ -69,26 +69,40 @@ else:
 # known. ISR_MODEL replaces that (in the analysis's process; tools/dataflow is
 # unmodified): each site below is the MOS, which returns having touched only
 # MOS_WORKSPACE. Any other unknown exit or pointer store in the interrupt
-# still means all memory, with a note naming it. Sites are file:line of
-# src/ at 0670ca9; a site the interrupt no longer reaches stops the run.
+# still means all memory, with a note naming it. A site the interrupt no longer
+# reaches stops the run. Sites are file:line, found from a label and the text of
+# the instruction after it (_at), so moving code does not stale them: until
+# 2521688 they were line numbers, and moving the music out of bank5.6502 broke
+# the run.
 ISR_MODEL = True
+
+
+def _at(path, label, code):
+    """'path:line' of the first line after .label whose code (before any comment)
+    contains `code`."""
+    lines = open(path, encoding='utf-8').read().splitlines()
+    start = next(i for i, l in enumerate(lines) if l.split()[:1] == ['.' + label])
+    for i in range(start, len(lines)):
+        if code in lines[i].split(chr(92))[0]:
+            return '%s:%d' % (path, i + 1)
+    raise ValueError('%s: no %r after .%s' % (path, code, label))
+
+
 ISR_MOS_EXITS = {
     # leave_irq1_handler's JMP &FFFF: the previous IRQ1V (the MOS), its operand
     # written at start-up (STA previous_irq1_vector_low, STA leave_irq1_handler + 7).
-    'src/game.6502:4540': 'leave_irq1_handler: JMP &FFFF (previous IRQ1V) to the MOS',
-    # analysis.py takes this STA as an unknown exit (2026-10-17, at 0670ca9). Nothing
-    # writes its bytes; leave_irq1_handler_owned returns to the interrupted code by
-    # RTI. Modelled as the MOS, it only adds MOS_WORKSPACE to what the interrupt may
-    # touch: wider than the truth, never narrower. (At 0e7101e the same mistake fell
-    # on leave_irq1_handler's PLX instead.)
-    'src/game.6502:4529': 'leave_irq1_handler_owned: STA irq_accumulator (see above)',
+    _at('src/game.6502', 'leave_irq1_handler', 'JMP &FFFF'):
+        'leave_irq1_handler: JMP &FFFF (previous IRQ1V) to the MOS',
+    # (Until 2521688 leave_irq1_handler_owned's STA irq_accumulator was listed too:
+    # analysis.py took it as an unknown exit at 0670ca9, and the PLX before it at
+    # 0e7101e. At 2521688 it no longer does, so the site went.)
 }
 if CONTEXT != 'play':
     ISR_MOS_EXITS.update({
-        'src/bank5.6502:677': 'title handler: JMP (previous IRQ1V) - irq1_handler, '
+        _at('src/bank5.6502', 'title_screen_irq1_handler', 'JMP (previous_irq1_vector_for_title_screen_low)'): 'title handler: JMP (previous IRQ1V) - irq1_handler, '
                               'itself a root, or the MOS',
-        'src/bank5.6502:2256': 'write_timer_block: JMP (wordv), OSWORD 4 (reads timer_block)',
-        'src/bank5.6502:2423': 'high_score_play_sound: JMP (wordv), OSWORD 7 SOUND (reads its block)',
+        _at('src/bank5.6502', 'write_timer_block', 'JMP (wordv)'): 'write_timer_block: JMP (wordv), OSWORD 4 (reads timer_block)',
+        _at('src/bank5.6502', 'high_score_play_sound', 'JMP (wordv)'): 'high_score_play_sound: JMP (wordv), OSWORD 7 SOUND (reads its block)',
     })
 
 # What the MOS's interrupt path (IRQ, the 100 Hz tick, events, buffers, the
@@ -113,9 +127,9 @@ ISR_POINTER_STORES = {} if CONTEXT == 'play' else {
     # plot_title_screen_character: reached in the interrupt only from
     # update_scrolltext's initialise_scrolltext_buffer, which points
     # text_screen_address at scrolltext_buffer (&89EE, 24 bytes; generous)
-    'src/bank5.6502:101': (0x89EE, 0x8AFF),
+    _at('src/bank5.6502', 'plot_title_screen_character_row_loop', 'STA (text_screen_address),Y'): (0x89EE, 0x8AFF),
     # scroll_scrolltext: target_address = &7480, &4E columns of 8 bytes
-    'src/bank5.6502:539': (0x7400, 0x77FF),
+    _at('src/bank5.6502', 'scroll_scrolltext_byte_loop', 'STA (target_address),Y'): (0x7400, 0x77FF),
 }
 
 # Bytes a handler pushes on entry and pulls back before it leaves, so the
