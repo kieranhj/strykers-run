@@ -1513,6 +1513,17 @@ MOVER_WIDEST = &0B                  \ step 2 (layer 3): the largest entry below 
     LDA scenery_layer_flip
     STA scenery_layers_flip,Y
     STA pixel_table_address_low
+    \ Step 2 layer 4 (BUGS #8, decision 30): the sprite's first column is unpacked through the
+    \ table pointers before calculate_sprite_address_for_column_of_scenery sets them for the
+    \ next, so set them here as it does: the mask table &80 above the pixel table, both in the
+    \ tables' page. The original left them as the last layer, the multiply or a mover's y_max
+    \ (&C9) had, so that column read stray bytes (HAZEL's, in play). ORA keeps C and V.
+    ORA #flipped_mask_table - flipped_green_pixel_table
+    STA mask_table_address_low
+    LDA #HI(flipped_green_pixel_table)
+    STA mask_table_address_high
+    STA pixel_table_address_high
+    LDA pixel_table_address_low     \ the flip again, for the branch
 .use_flipped_or_unflipped_scenery_sprite_opcode_one
     BEQ use_flipped_sprite          \ if scrolling right
 \ #     also     BNE &1de5 ; use_flipped_sprite                       # if scrolling left
