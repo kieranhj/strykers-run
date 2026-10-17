@@ -1,5 +1,7 @@
 # Step 2, layer 3: fast enough
 
+**Closed 2026-10-17, tag `step2-layer3` (`07ef49c`).** Its leftovers are in PLAN.md.
+
 2026-10-16. Measured on **jsbeeb 2.5.0, Master 128 (MOS 3.20)** with the harnesses in `tools/`.
 **Not yet seen on b2 or real hardware.** The analysis and the options KC chose (all of A, B+C, D,
 E; A1 index bytes) are in `docs/step2-layer3-analysis.md`. Done so far: C, A, B, parts of the

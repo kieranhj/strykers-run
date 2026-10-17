@@ -49,7 +49,8 @@ disc across):
 **Milestone tags.** As each stage of the optimised version closes, its commit is tagged:
 `step1-identical` is the first, and the layers of step 2 follow as `step2-layer1`,
 `step2-layer2`, ...: `step2-layer1` is `0a078b8` (the interrupt owned, the pass locked; layer 2's
-control) and `step2-layer2` is `63892d7` (double buffered, drawn from per-screen records). Each tag builds with the build script it carries; check one out
+control) `step2-layer2` is `63892d7` (double buffered, drawn from per-screen records) and `step2-layer3`
+is `07ef49c` (fast enough: 24.70 passes a second, the original's design rate 25). Each tag builds with the build script it carries; check one out
 with `git worktree add ../strykers-<tag> <tag>`.
 
 ### Tools

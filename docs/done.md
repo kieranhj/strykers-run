@@ -46,7 +46,7 @@ raster wait is gone. Pass lockstep against the single-screen control: game state
 shown screen byte-identical on all but 8 of 42,000 passes. Slower then: 11.6 passes/s in the
 town, 10.3 scrolling. BUGS #5 fixed here.
 
-### Layer 3 - fast enough (2026-10-16 to 17; not tagged)
+### Layer 3 - fast enough (2026-10-16 to 17; tag `step2-layer3`, `07ef49c`)
 
 `docs/step2-layer3.md` (its table has every step), analysis `docs/step2-layer3-analysis.md`,
 briefs `docs/briefs/step2-layer3-late-passes.md` and `docs/briefs/step2-layer3-ram-for-cycles.md`.

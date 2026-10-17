@@ -15,8 +15,6 @@ and 1 of 598 holding RIGHT.
   `docs/step2-layer4-costing.md` "The answer" and "Recommendation".
 - **b2 and real hardware.** The flip, ACCCON's X bit and HAZEL left paged in (Y) are seen in
   jsbeeb only (`docs/step2-layer2.md` "Open").
-- **Close layer 3.** Every item of its two briefs is built or set aside with measurements: tag
-  `step2-layer3`?
 
 ## Speed (layer 3's leftovers and layer 4)
 
