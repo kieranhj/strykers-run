@@ -433,18 +433,17 @@ ENDIF
     LDA rec_type,Y
     JSR width_of_type_A
     JSR span_in_zone
+    LDX ren_i                       \ (keeps C) X = ren_i on every path into stale and listed
     BCC listed
 .stale
-    LDX ren_i
     LDA #&80
     STA need,X
 .listed
     LDY act_n
-    LDA ren_i
+    TXA
     STA act,Y
     INC act_n
-.classified
-    LDX ren_i
+.classified                         \ X = ren_i on every path in
     INX
     CPX #MOVER_SLOTS
     BNE classify
@@ -606,6 +605,38 @@ ENDIF
 \ not depend on what was there: src/lives_digits.6502, from tools/livesdigits.py) -------------
 .ren_plot_lives
 {
+    LDA screen_start_address_high   \ the 4 cells are 32 bytes in a row unless they can pass
+    CMP #&7F                        \ &8000 (page &7F only): then one copy, self-modified
+    BEQ by_cell
+    STA fast_dst + 2
+    LDA screen_start_address_low
+    STA fast_dst + 1
+    LDA lives                       \ lives_digits + 32 * (lives AND 15)
+    ASL A
+    ASL A
+    ASL A
+    ASL A
+    ASL A                           \ A = 32 * (lives AND 7), C = lives bit 3
+    TAX
+    LDA #HI(lives_digits)
+    ADC #0                          \ + bit 3 (C = 0 after: HI(lives_digits) < &FF)
+    STA fast_src + 2
+    TXA
+    ADC #LO(lives_digits)
+    STA fast_src + 1
+    BCC fast_src_same_page
+    INC fast_src + 2
+.fast_src_same_page
+    LDY #31
+.fast_row
+.fast_src
+    LDA lives_digits,Y              \ self-modified: the digit's 32 bytes
+.fast_dst
+    STA &4000,Y                     \ self-modified: the screen start
+    DEY
+    BPL fast_row
+    RTS
+.by_cell                            \ round the 16K screen, a cell at a time
     LDA lives                       \ d_ptr = lives_digits + 32 * (lives AND 15)
     AND #&0F
     STA d_ptr + 1
