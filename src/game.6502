@@ -2405,26 +2405,26 @@ walk_d = walk_ptr + 1
     LDX walk_n
     DEX                             \ n - 1
     CPX walk_d
-    BCC moved_on
+    BCC moved_on                    \ n - 1 < d: the common case
+    CLC                             \ (Z kept)
+    BEQ moved_on                    \ n - 1 = d: the same sums
+    LDA viewport_right_low          \ n - 1 > d: mover_x_low + d...
+    STA mover_x_low
+    LDA pixel_table_address_low     \ ...and d + 1 steps (d < 255 here),
+    BNE walk_beyond_steps
+    INX                             \ but none if flipped with n = 0
+    BEQ walked
+.walk_beyond_steps
     LDX walk_d
+    INX
+    BNE steps_known                 \ always
 .moved_on
-    TXA
-    CLC
+    TXA                             \ C = 0
     ADC mover_x_low
     STA mover_x_low                 \ + min(n - 1, d)
-    LDX walk_n                      \ the steps: n flipped, n - 1 not...
-    LDA pixel_table_address_low
-    BEQ steps_limited               \ zero if flipped
-    DEX
-.steps_limited
-    LDA walk_d                      \ ...but no more than d + 1
-    CLC
-    ADC #&01
-    BCS steps_known                 \ d = 255: d + 1 is no limit
-    STA walk_d
-    CPX walk_d
-    BCC steps_known
-    LDX walk_d
+    LDA pixel_table_address_low     \ the steps: n - 1, or n flipped (within d + 1 here)
+    BNE steps_known                 \ zero if flipped
+    INX
 .steps_known
     TXA
     BEQ walked                      \ no column steps: nothing more changed
