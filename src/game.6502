@@ -2098,11 +2098,20 @@ walk_d = walk_ptr + 1
     LDA movers_screen_address_low,Y
     LDY columns_to_clip_from_left
     BEQ leave_1f55
-.adjust_screen_address_loop
-    LDY #&00                        \ &0008                                     # Move right a column
-    JSR add_delta_to_screen_address_in_AX
-    DEC columns_to_clip_from_left
+.adjust_screen_address_loop         \ Y = columns_to_clip_from_left (non-zero): AX + 8 a column
+    CLC                             \ grind: add_delta_to_screen_address_in_AX's &0008, inline
+    ADC #&08
+    BCC adjust_same_page
+    INX
+    BPL adjust_same_page
+    LDX #&40                        \ &7F + 1: round the 16K screen (the high byte is &00-&7F)
+.adjust_same_page
+    DEY
     BNE adjust_screen_address_loop
+    STY columns_to_clip_from_left   \ 0, as the DEC loop left it
+    STY delta_high                  \ and the delta add_delta_to_screen_address_in_AX left, &0008
+    LDY #&08
+    STY delta_low
 .leave_1f55
     RTS                             \ Leave with AX = mover_screen_address
 
@@ -3856,6 +3865,8 @@ ENDIF
     STA mover_y_max
 .search_for_target
     JSR calculate_mover_x_max_from_offset
+    LDA mover_x_max_high            \ grind: the range's right (high) in the prefilter's LDA
+    STA stf_x_max_high_operand_s
     STZ friendly_targets_found
     STZ unfriendly_targets_found
     LDX #&FF
@@ -3867,11 +3878,15 @@ ENDIF
 .search_for_target_loop
     CPX #&02                        \ step 2 (layer 3): a mover that cannot be in range is passed
     BCC search_in_full                  \ over, except in the last two checks
-    LDA mover_x_max_low             \ right of the range: x > the range's right (the original's
-    CMP movers_x_low,X              \ own first test)
-    LDA mover_x_max_high
-    SBC movers_x_high,X
+stf_x_max_high_operand_s = * + 1
+    LDA #&00                        \ actually LDA #mover_x_max_high, set above: right of the range: x > the range's right (the original's
+    CMP movers_x_high,X             \ own first test), the high bytes first
     BCC search_prefilter_next      \ X >= 2, so X >= 1 after the DEX
+    BNE stf_left_test_s             \ the range's right is a page or more right of x
+    LDA mover_x_max_low
+    CMP movers_x_low,X
+    BCC search_prefilter_next      \ X >= 2, so X >= 1 after the DEX
+.stf_left_test_s
     LDA movers_x_low,X              \ left of it even at the widest type: x < its left - &0B
     CMP cm_left_low
     LDA movers_x_high,X
@@ -4606,11 +4621,35 @@ ASSERT shown_screen < &3000
     LDA #&08                        \ FRAME_GUN_DOWN
     BNE replot_mover                \ Always branches
 
-.update_mover
-    JSR check_if_mover_can_be_updated\ Returns carry clear if mover can be updated
-    BCS leave_with_carry_clear_315f
+.update_mover    \ grind: check_if_mover_can_be_updated inlined; the paths that do not update leave by RTS (C is dead in update_mover's caller)
+    LDX mover_to_update
+    JSR check_for_player_collision_with_mover_Y\ Returns carry set if collision
+    BCS leave_3160                  \ Leave if mover overlaps player
+    LDX viewport_right_high
+    LDA viewport_right_low
+    ADC #&0A                        \ C=0 here (BCS above not taken)
+    BCC um0db5_skip_overflow
+    INX
+.um0db5_skip_overflow
+    CPX &C5
+    BCC leave_3160
+    BNE um0db5_is_on_screen
+    CMP mover_x_low                 \ If the mover is beyond the right edge of the screen,
+    BCC leave_3160                  \ leave: no update required
+.um0db5_is_on_screen
+    LDY mover_to_update
+    LDA movers_type_and_colour,Y
+    AND #&7F
+    CMP #&0D                        \ MOVER_TYPE_SKELETON: below it, update (C=0)
+    BCC um0db5_update
+    CMP #&13                        \ MOVER_TYPE_MINE: mines are updated too (C=0)
+    BCS um0db5_mine
+    JMP animate_explosion_or_skeleton\ Explosion or skeleton: animate it and leave (its RTS returns from update_mover)
+.um0db5_mine
+    CLC
+.um0db5_update
     JSR consider_mover_firing_bullet\ Returns carry clear if mover fired bullet
-    BCC leave_with_carry_clear_315f
+    BCC leave_3160
     JSR consider_mover_firing_grenade\ Returns carry clear if mover fired grenade
     LDY mover_to_update
     BCS not_throwing_grenade
