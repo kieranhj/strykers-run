@@ -1625,19 +1625,19 @@ ENDIF
 .use_viewport_left_as_edge
     LDX viewport_left_low
     LDY viewport_left_high
-    LDA #&00                        \ Zero to indicate left edge
-.set_edge_x
     STX edge_x_low
     STY edge_x_high
-    STA &CF
+    STZ &CF                         \ Zero to indicate left edge (grind: 65C02 opcode; A, N and Z are dead in both callers)
     RTS
 
 .move_to_next_column_in_XY
-    JSR set_scenery_sprite_address_from_XY\ Returns Y = 0
+    STX scenery_sprite_address_high \ grind: set_scenery_sprite_address_from_XY in line
+    STY scenery_sprite_address_low
+    LDY #&01                        \ grind: the loop's first INY folded in (byte 0 is the walk's)
 .find_end_of_column_loop
-    INY
     LDA (scenery_sprite_address),Y  \ Zero indicates end of column
     BEQ move_to_next_column
+    INY
     AND #&C0
     BNE find_end_of_column_loop
     INY                             \ Get extra byte for variable length run
@@ -1645,16 +1645,14 @@ ENDIF
 
 .move_to_next_column
     LDX scenery_sprite_address_high
-    INY                             \ One byte for the zero that indicates end of column
-    BNE skip_page_byte
-    INX
-.skip_page_byte
-    TYA                             \ Bytes for the content of the plotted column
-    CLC
+    TYA                             \ Bytes for the content of the plotted column,
+    SEC                             \ grind: and the carry one for the zero that ends it
     ADC scenery_sprite_address_low
-    BCC skip_page_column_length
-    INX
-.skip_page_column_length
+    BCS move_to_next_column_page_07b9
+    LDY edge_and_layer
+    RTS                             \ Leave with AX = scenery_sprite_address
+.move_to_next_column_page_07b9
+    INX                             \ grind: the rare page crossing out of line (its bytes keep the code after in place)
     LDY edge_and_layer
     RTS                             \ Leave with AX = scenery_sprite_address
 
@@ -3350,16 +3348,15 @@ move_mover_routine_address_high = * + 2
 .wait_for_timer_281a
     JSR render_pass                 \ Step 2 (layer 2): draw this pass into the hidden screen
     SEI                             \ the field chosen and the flip armed before a vsync can pass
-    LDA field_count
-    TAX
-    SEC
-    SBC pass_start                  \ fields since the last flip
-    CMP #&02
-    INX
-    TXA                             \ A = the next field
-    BCS set_flip_field              \ 2 or more: show it at the next field
-    LDA pass_start
-    ADC #&02                        \ (C clear) fewer: 2 fields after the last flip
+    LDA field_count                 \ grind: the next field (field_count + 1), or the one after if no
+    CMP pass_start                  \ field has gone by since the last flip - the same as pass_start + 2
+    BNE flip_next_field_eb41b       \ (1 field gone: pass_start + 2 = field_count + 1; 2 or more: the next)
+    INC A                           \ 65C02 opcode
+    INC A                           \ 65C02 opcode: field_count + 2
+    BRA set_flip_field              \ 65C02 opcode
+    EQUB &00, &00, &00, &00, &00, &00 \ never run: keeps the 18 bytes, so nothing after moves
+.flip_next_field_eb41b
+    INC A                           \ 65C02 opcode: field_count + 1
 .set_flip_field
     STA flip_target                 \ layer 2: the vsync interrupt shows the new screen then
     STA pass_start
