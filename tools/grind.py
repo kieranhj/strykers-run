@@ -409,6 +409,8 @@ def judge(kind, out):
         return bool(ok), f"passes {d.get('passes')}, identical {d.get('identical')}, screen {d.get('screenPassesIdentical')}, first screen diff {d.get('screenFirstDiffPass')}"
     if kind == 'helilock':
         return d.get('boarded') and d.get('framesDiffering') == 0, f"boarded {d.get('boarded')}, frames differing {d.get('framesDiffering')}"
+    if kind == 'ok':
+        return bool(d.get('ok')), json.dumps(d)[:200]
     return False, 'unknown check'
 
 

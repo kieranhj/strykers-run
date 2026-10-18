@@ -129,3 +129,15 @@ extrapolated, about `&C300-&C590` for the whole world. Kept as it is: layer 4 pu
 below `&C700` (decision 29). KC, 2026-10-17: leave it (decision 31) - the mountains stay as the
 enhanced version draws them, from whatever HAZEL holds at `&C300`; nothing may be put in
 `&C300-&C6FF`.
+
+## 11. Observer mode's keys dead: grind G0038 removed the TXA `check_for_keypress` jumped past (step 2 grind; FIXED in layer 4)
+
+Found 2026-10-18 by the level map's capture harness (`tools/worldshots.mjs`, jsbeeb 2.5.0, Master
+128). Grind round 1's G0038 (`d96cb3f`) made `keydown_int` take the key number in X and dropped its
+leading TXA, so it now starts with a 2-byte `LDY #`; `check_for_keypress` (observer mode's three
+key tests: RIGHT, LEFT, ESCAPE) still did `JSR keydown_int + 1`, into that instruction's operand.
+No key worked in observer mode (`tools/observer.mjs` on the broken build: the view stayed at 0 for
+150 frames of RIGHT, ESCAPE never left). Play, the front end and define controls never take this
+path, so none of the gate's checks ran it, and G0038's skeptics missed the `+ 1` caller. Fixed: the
+same ten bytes now `TXA : EOR #&FF : TAX : JSR keydown_int : EOR #&80 : RTS` (RIGHT 0 -> 76, LEFT
+back to 37, ESCAPE to the title). `tools/observer.mjs` is now one of `tools/grind.py`'s checks.

@@ -64,6 +64,8 @@ CHECKS = (
     ('helicopter 5', ['node', 'tools/helilock.mjs', '{ctl}', '{test}', '3000', '5'], 'helilock'),
     ('helicopter 2', ['node', 'tools/helilock.mjs', '{ctl}', '{test}', '3000', '2'], 'helilock'),
     ('front end', ['node', 'tools/frontend.mjs', '{ship}'], 'frontend'),
+    # observer mode's keys go through check_for_keypress, which play never calls (BUGS #11)
+    ('observer mode', ['node', 'tools/observer.mjs', '{ship}'], 'ok'),
 )
 QUICK = ('state+screen seed 1',)
 PARALLEL = 4

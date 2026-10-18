@@ -117,6 +117,9 @@ For a grind in particular:
   and so does everything from `&3400` up in main RAM (BUGS #1, #2). A byte the annotations show
   dead may be reused as a temporary only if nothing else - the interrupt included - can read it
   in between, and the skeptics agree.
+- **Entries past a label** (`JSR name + 1`, `BMI main_game_loop + 15`): grep `name *+` across
+  `src/` before changing the first bytes of any routine. Round 1's G0038 removed `keydown_int`'s
+  first instruction and broke a `JSR keydown_int + 1` nobody checked (BUGS #11).
 - **Self-modifying code** (`name = * + 1` labels; the disassembly's `actually` notes; stores to
   `label + 1` anywhere): the operand some code writes must still be where it writes it.
 - **Paging.** Code in bank 4 runs with ROMSEL `&84` (ANDY in) or `&04`; compiled kinds with their own
@@ -158,7 +161,8 @@ per commit (`build/grind/ctl-<commit>/`); the test is the working tree. Every bu
 grind_config.BUILDS must assemble, then CHECKS run (at most 4 emulators at once): state and shown
 screen identical to the control over 6,000 passes on seed 1 and 4,000 on seed 3, the test's
 DEBUG_FULLREDRAW twin identical to it over 4,000 on seed 5, both helicopter flights with no frame
-differing, and the front end's 15 checks. Then MEASURE: pcprof's work a pass (the wait for the
+differing, the front end's 15 checks, and observer mode's keys (`tools/observer.mjs`: a key path
+play never takes, which round 1's G0038 broke unseen - BUGS #11). Then MEASURE: pcprof's work a pass (the wait for the
 flip excluded) on seed 1 and holding RIGHT, against the control's - deterministic, so a difference
 is exact. `gate --quick` runs seed 1 only, for trying something by hand.
 
