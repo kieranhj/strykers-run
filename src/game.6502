@@ -1843,12 +1843,18 @@ ENDIF
     EOR ground_edge_top_pixel_values,X
     STA column_buffer + 23
     LDY #&15
-.add_ground_to_column_buffer_loop
+.add_ground_to_column_buffer_loop   \ step 2 (grind): two columns a turn, Y odd at the top (&15 or &13)
     LDA (result),Y                  \ &0000,Y, &0001,Y, &0004,Y or &0009,Y
     AND #&07
     TAX
     LDA ground_pixel_values,X
     STA column_buffer,Y             \ Add ground to column buffe
+    DEY
+    LDA (result),Y
+    AND #&07
+    TAX
+    LDA ground_pixel_values,X
+    STA column_buffer,Y
     DEY
     BPL add_ground_to_column_buffer_loop
 .leave_1c4e

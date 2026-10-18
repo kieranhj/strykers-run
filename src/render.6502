@@ -1302,16 +1302,10 @@ header_hi = * + 1
     LDA viewport_left_low
     SEC
     SBC movers_x_low,X
-    STA dm_jmin
-    LDA viewport_left_high
+    LDA viewport_left_high          \ (the low byte only for its borrow: left_of_view redoes it)
     SBC movers_x_high,X
     BCS left_of_view                \ viewport_left >= x
     STZ dm_jmin                     \ 65C02 opcode
-    BRA jmin_done                   \ 65C02 opcode
-.left_of_view
-    BEQ jmin_done                   \ high 0: the low byte is it
-    LDA #&FF
-    STA dm_jmin
 .jmin_done
     LDA viewport_right_low
     SEC
@@ -1321,6 +1315,16 @@ header_hi = * + 1
     SBC movers_x_high,X
     BCS not_right_of_view
     RTS                             \ the mover starts right of the viewport
+.left_of_view
+    BEQ jmin_low                    \ high 0: the low byte is it
+    LDA #&FF
+    BRA jmin_store                  \ 65C02 opcode
+.jmin_low
+    LDA viewport_left_low           \ C set (BCS): the low byte again
+    SBC movers_x_low,X
+.jmin_store
+    STA dm_jmin
+    BRA jmin_done                   \ 65C02 opcode
 .not_right_of_view
     BEQ jmax_done
     LDA #&FF
