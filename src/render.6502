@@ -1911,6 +1911,9 @@ lo_imm = * + 1
     CMP rb_end + 1
     BNE more
     RTS
+.cells_next_page                    \ v_ptr + 11 crossed a page (rare): off the hot path
+    INC v_ptr + 1
+    BRA cells_on_page               \ 65C02 opcode
 .more
     LDY #10                         \ the record
     LDA (v_ptr),Y
@@ -1926,8 +1929,7 @@ lo_imm = * + 1
     CLC
     ADC #11
     STA v_ptr
-    BCC cells_on_page
-    INC v_ptr + 1
+    BCS cells_next_page             \ the hot path falls through
 .cells_on_page
     TXA
     AND #&F8
