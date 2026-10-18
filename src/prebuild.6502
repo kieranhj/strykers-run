@@ -29,9 +29,12 @@ PRE_LAYERS_N = scenery_layer_addresses_low + 8 - scenery_layer_sprite_banks
 ASSERT PRE_LAYERS_N = 57
 PRE_HIGH = scenery_layer_sprite_addresses_high - scenery_layer_sprite_banks   \ 0: a layer is idle
 PRE_ZP_N = 16
-PRE_T2_MIN = &D6                    \ one field to go: start only if User VIA T2's high byte is at
-                                    \ least this (about 9,000 us of the field left; a prebuild
-                                    \ takes about 2,500)
+PRE_T2_MIN = &C8                    \ one field to go: start only if User VIA T2's high byte is at
+                                    \ least this (about 5,600 us of the field left). Layer 4,
+                                    \ measured on ca825e3 (seed 1, 332 prebuilds, interrupts in): a
+                                    \ prebuild takes 9.0k cycles (4.5 ms) at the median, 11.1k at
+                                    \ p90, 14.4k at most; was &D6 (9,200 us), which left 60 of 400
+                                    \ scrolls unbuilt for want of time
 
 .pre_zp_list                        \ the zero page the walk writes (measured)
     EQUB &A7, &B4, &B5, &B7, &B8, &B9, &C8, &C9, &CB, &CC, &CD, &CE, &CF, &D0, &F8, &F9

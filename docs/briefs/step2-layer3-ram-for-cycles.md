@@ -1,7 +1,7 @@
 # Plan: step 2, layer 3 - trading RAM for cycles
 
 **BUILT** (2026-10-17): items 1, 3 and 4 built; 2 built for the player in layer 4; 5 set aside; 7
-built in layer 4; 6 and 8 still open (PLAN.md). What landed: "Landed" at the end.
+built in layer 4; 6 built differently in layer 4 (decision 39); 8 still open (PLAN.md). What landed: "Landed" at the end.
 
 KC, 2026-10-17: "we should never be waiting for the vsync when there is work to do", and the
 memory map shows room to spend. **The aim: no late passes.** Every pass's work inside 2 fields
@@ -120,7 +120,8 @@ numbers above, and bring 5 to KC with numbers.
 - **7**, the front end's music packed: built in layer 4 (decision 29), not as planned here - the
   tunes are packed on the disc and unpacked into their own place at start-up, which freed their
   area on the disc for HAZEL's compiled code. Unpacking at each front end start was not needed.
-- **6** (scenery runs translated) and **8** (music in the game): open, in PLAN.md.
+- **6**, scenery runs translated: built differently in layer 4 (decision 39, `docs/step2-layer4-scroll.md`) - the data kept, the unpacker deciding each run on its own bits: the unpack 35% cheaper for no extra data.
+- **8** (music in the game): open, in PLAN.md.
 
 The "not doable" note on the mountains above was wrong: they read HAZEL at `&C300`, not the MOS
 ROM (BUGS #9).

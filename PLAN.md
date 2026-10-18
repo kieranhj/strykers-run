@@ -33,10 +33,11 @@ excluded) 38,462 on seed 1 and 44,855 holding RIGHT, of the 79,872 two fields gi
 - **Main RAM is the tight region** (20 bytes up to `&3400`): R2/R3 of the rearrangement study (tables
   into HAZEL and the low pages) give 855, at +165 cycles a pass unless the `movers_*` tables are
   placed page-aware (`docs/decisions.md` 32-34 for the moves already made).
-- **D's rest:** building the scroll column (`add_column_of_scenery_to_column_buffer`, the edge
-  movers' addresses: ~4.5k on a scrolling pass). `docs/step2-layer3.md` "Next".
-- **Scenery runs translated at build time** (RAM for cycles item 6): about half the 3.3k unpack,
-  for ~25% more scenery data. `docs/briefs/step2-layer3-ram-for-cycles.md`.
+- **The scroll column's rest** (D's rest and RAM for cycles item 6 done on branch
+  `layer4-scroll-scenery`, decisions 38-39, `docs/step2-layer4-scroll.md`: a scroll 3.9k / 3.6k
+  -> 2.0k / 1.4k): the ground loop (~520 a scroll, with BUGS #1), the left edge's movers, each
+  layer's next column address kept, `history_push`'s 200-row copy when the column was not
+  prebuilt.
 - **Tools with stale addresses:** `tools/soundfx.mjs` (a stub at `&0C00`) and
   `tools/tracediff.mjs` (the game ending at `&46E0`), since decisions 32-34.
 
