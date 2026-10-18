@@ -1708,13 +1708,13 @@ ENDIF
     TXA
     ADC delta_high                  \ delta + address high: the same sum, C, V, N and Z
     STX delta_high
-    BPL skip_wraparound_1d46
-    SEC
-    SBC #&40
-.skip_wraparound_1d46
+    BMI wrap_add_delta_g4566        \ grind: the (rare) wrap out of line, so the common case falls through
     TAX
     TYA
     RTS                             \ Leave with A = address_low, X = address_high
+.wrap_add_delta_g4566
+    SBC #&3F                        \ grind: C = 0 here (a negative sum cannot carry, deltas_high_table <= &3E), so A - &40 with C and V as SEC : SBC #&40
+    BRA skip_wraparound_1d66        \ 65C02 opcode; TAX : TYA : RTS
 
 .subtract_delta_from_screen_address_in_AX    \ # Called with A = address_low, X = address_high
     STX delta_high                  \ grind: in-line, delta_high the high byte's temporary
@@ -2995,18 +2995,18 @@ move_mover_routine_address_high = * + 2
 .leave_25ae
     RTS                             \ ***
 
-.update_player
-    LDY #&00                        \ MOVER_PLAYER
-    STY mover_to_update
-    LDA player_helicopter_explosion \ Zero if player helicopter is not exploding
-    BEQ not_in_exploding_helicopter
 .update_player_in_exploding_helicopter
+    STZ mover_to_update             \ grind: MOVER_PLAYER (Y holds the explosion here, not zero)
     LDA movers_x_high + 17          \ movers_x_high + &11 (MOVER_PLAYER_BULLET)
     BPL leave_25f3                  \ Positive if explosion animation hasn't finished
-    STY player_helicopter_explosion \ Set to zero to indicate explosion has finished
-    STY player_jump_direction
+    STZ player_helicopter_explosion \ Set to zero to indicate explosion has finished
+    STZ player_jump_direction
     LDY player_helicopter
     JMP set_player_as_soldier
+.update_player
+    LDY player_helicopter_explosion \ Zero if player helicopter is not exploding (grind: so Y = 0 = MOVER_PLAYER)
+    BNE update_player_in_exploding_helicopter
+    STY mover_to_update
 .not_in_exploding_helicopter
     LDA movers_type_and_colour
     CMP #&0D                        \ MOVER_TYPE_SKELETON
