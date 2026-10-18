@@ -27,20 +27,23 @@ KC_T2_MIN = &BB                     \ one field to the flip: build a column (or 
                                     \ User VIA T2's high byte is at least this (~2.4 ms of the field
                                     \ left; a column takes under 1 ms, the start about 1.5 ms)
 
-\ The slots: each an offsets, a masks and a pixels array of its capacity, in HAZEL (paged in through
-\ play, decision 29) where decision 40's tables and decision 31's mountains leave room: after
-\ hazel_b (the compiled kinds and decision 40's tables), and &C200-&C2FE (after times_78).
-KC_HI = hazel_b_end
+\ The slots: each an offsets, a masks and a pixels array of its capacity, where they can be read as
+\ the renderer draws (ROMSEL &84, ACCCON's X bit set for the shadow screen): slot 0 (any 12-column
+\ sprite: &15 has 257 bytes) at the end of the save arena, which put_on keeps blocks below, in main
+\ and shadow RAM alike (kc_build writes both copies); slot 1 in HAZEL (paged in through play,
+\ decision 29), its offsets at &C200-&C2FE (times_78 is at &C000-&C1FF, decision 40; the mountains
+\ at &C300, decision 31), its masks and pixels after hazel_b.
 KC_CAP0 = 257                       \ the biggest 12-column sprite (&15)
-KC_Y0 = KC_HI
+KC_Y0 = save_arena_end - 3 * KC_CAP0
 KC_M0 = KC_Y0 + KC_CAP0
 KC_P0 = KC_M0 + KC_CAP0
-KC_M1 = KC_P0 + KC_CAP0
+KC_ARENA_END = KC_Y0                \ the save blocks end below it (put_on)
+KC_Y1 = &C200
+KC_M1 = hazel_b_end
 KC_CAP1 = (&E000 - KC_M1) DIV 2
 KC_P1 = KC_M1 + KC_CAP1
-KC_Y1 = &C200                       \ times_78 is at &C000-&C1FF (decision 40), the mountains at &C300
-ASSERT KC_CAP1 >= 167 AND KC_CAP1 <= &FF, "slot 1 holds ", KC_CAP1, " bytes, from ", ~KC_M1
-ASSERT KC_Y1 + KC_CAP1 <= &C2FF AND KC_P1 + KC_CAP1 <= &E000
+ASSERT KC_CAP1 >= 214, "slot 1 holds ", KC_CAP1, " bytes, from ", ~KC_M1, " (&45, 214 bytes, wants one)"
+ASSERT KC_CAP1 <= &FF AND KC_Y1 + KC_CAP1 <= &C2FF AND KC_P1 + KC_CAP1 <= &E000
 
 .kc_ybl         EQUB LO(KC_Y0 - 1), LO(KC_Y1 - 1)   \ (less 1: X counts down to 1)
 .kc_ybh         EQUB HI(KC_Y0 - 1), HI(KC_Y1 - 1)

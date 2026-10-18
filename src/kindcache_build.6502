@@ -39,7 +39,7 @@ kg_line = kc_q                      \ the line: kc_q is the draw's, not live in 
 .resume
     JSR kg_paged
 .each_column
-    JSR kg_column
+    JSR kg_both
     JSR kg_next_column
     BEQ finished
     JSR kg_time
@@ -183,14 +183,6 @@ kg_line = kc_q                      \ the line: kc_q is the draw's, not live in 
     CPX #KC_GROUPS
     BNE counts
     JSR kg_rowbases                 \ where each row's arrays go
-    LDA kb_mlo                      \ the tables the fill reads
-    STA kg_column.gm + 1
-    LDA kb_mhi
-    STA kg_column.gm + 2
-    LDA kb_plo
-    STA kg_column.gp + 1
-    LDA kb_phi
-    STA kg_column.gp + 2
     JSR kg_start                    \ back to the first column (kb_col)
     CLC
     RTS
@@ -367,9 +359,55 @@ kg_line = kc_q                      \ the line: kc_q is the draw's, not live in 
     STA kg_column.dp + 1
     LDA kg_bph,X
     STA kg_column.dp + 2
+    LDA kb_mlo                      \ and the tables it reads (here, not once a build: kg_both
+    STA kg_column.gm + 1            \ runs the fill from main RAM's copy and from shadow's)
+    LDA kb_mhi
+    STA kg_column.gm + 2
+    LDA kb_plo
+    STA kg_column.gp + 1
+    LDA kb_phi
+    STA kg_column.gp + 2
     LDA kg_e,X
     TAX
     RTS
+}
+
+\ kg_both: fill the column (kg_column); slot 0, at the save arena's end, in both copies, main RAM's
+\ and shadow's, the second with ACCCON's X bit set. This code from &3000 on then runs from shadow's
+\ copy of it (render_reset makes it), the same bytes but for the operands kg_bases patches, which it
+\ patches there in that pass. The interrupt's code and variables are below &3000.
+kg_e2 = need + 8                    \ (KC_GROUPS: kg_e, kept for the second pass)
+.kg_both
+{
+    LDA kg_slot
+    BNE once                        \ slot 1, in HAZEL: one copy
+    LDX #KC_GROUPS - 1
+.keep
+    LDA kg_e,X
+    STA kg_e2,X
+    DEX
+    BPL keep
+    JSR kg_column
+    LDX #KC_GROUPS - 1
+.again
+    LDA kg_e2,X
+    STA kg_e,X
+    DEX
+    BPL again
+    SEI
+    LDA acccon
+    ORA #&04
+    STA acccon
+    CLI
+    JSR kg_column
+    SEI
+    LDA acccon
+    AND #&FB
+    STA acccon
+    CLI
+    RTS
+.once
+    JMP kg_column
 }
 
 \ kg_rowbases: where each character row's arrays start in the slot being built (kg_slot): the

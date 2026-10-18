@@ -1208,10 +1208,10 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     ORA boff                        \ slot + boff: slot < &40, boff 0 or 64
     STA dm_index
     LDX back                        \ room for its block, or make some: arena_top + MAX_BLOCK
-    LDA arena_top_lo,X              \ below save_arena_end's page, as one 16-bit compare
-    CMP #LO(HI(save_arena_end) * 256 - MAX_BLOCK)
+    LDA arena_top_lo,X              \ below the arena's end (the kind cache's slot 0 after it:
+    CMP #LO(KC_ARENA_END - MAX_BLOCK)   \ src/kindcache.6502), as one 16-bit compare
     LDA arena_top_hi,X
-    SBC #HI(HI(save_arena_end) * 256 - MAX_BLOCK)
+    SBC #HI(KC_ARENA_END - MAX_BLOCK)
     BCC room                        \ X = back
     JSR compact
     LDX back

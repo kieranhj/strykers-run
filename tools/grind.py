@@ -375,14 +375,15 @@ def measure(img):
 
 
 def control():
-    head = sh(['git', 'rev-parse', '--short', 'HEAD']).stdout.strip()
+    # GRIND_CONTROL: another commit as the control (a merge whose HEAD does not build alone, say)
+    head = sh(['git', 'rev-parse', '--short', os.environ.get('GRIND_CONTROL', 'HEAD')]).stdout.strip()
     into = GRIND / f'ctl-{head}'
     done = into / 'done.json'
     if done.exists():
         return json.loads(done.read_text())
     wt = GRIND / 'wt'
     sh(['git', 'worktree', 'remove', '--force', str(wt)])
-    r = sh(['git', 'worktree', 'add', '--force', '--detach', str(wt), 'HEAD'])
+    r = sh(['git', 'worktree', 'add', '--force', '--detach', str(wt), head])
     if r.returncode:
         sys.exit('worktree: ' + r.stderr)
     try:
