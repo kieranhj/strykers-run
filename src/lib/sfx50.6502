@@ -94,22 +94,29 @@
     JSR ramp
     BEQ ended
     STA sfx_n,X
-    INY
-    JSR ramp
+    LDA sfx_ptr_hi,X                \ the other five bytes inline: each load's operand is the ramp's
+    STA nr_c1_b1 + 2                \ page and the byte's offset, Y the ramp's low byte (a page is
+    STA nr_c1_b2 + 2                \ crossed exactly where ramp's LDA &FFFF,Y would cross one)
+    STA nr_c1_b3 + 2
+    STA nr_c1_b4 + 2
+    STA nr_c1_b5 + 2
+    LDY sfx_ptr_lo,X
+.nr_c1_b1
+    LDA &FF01,Y                     \ self-modified: the ramp's page
     STA sfx_p_lo,X
-    INY
-    JSR ramp
+.nr_c1_b2
+    LDA &FF02,Y                     \ self-modified: the ramp's page
     STA sfx_p_hi,X
-    INY
-    JSR ramp
+.nr_c1_b3
+    LDA &FF03,Y                     \ self-modified: the ramp's page
     STA sfx_dp,X
-    INY
-    JSR ramp
+.nr_c1_b4
+    LDA &FF04,Y                     \ self-modified: the ramp's page
     STA sfx_v,X
-    INY
-    JSR ramp
+.nr_c1_b5
+    LDA &FF05,Y                     \ self-modified: the ramp's page
     STA sfx_dv,X
-    LDA sfx_ptr_lo,X
+    TYA                             \ the next ramp, 6 bytes on (Y = sfx_ptr_lo)
     CLC
     ADC #6
     STA sfx_ptr_lo,X

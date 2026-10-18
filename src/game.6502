@@ -5632,9 +5632,7 @@ SECTION moved_0a20, org = &0A20, cmos = TRUE
     STZ multiplicand                \ 65C02 opcode
     STZ multiplier_low
     LDX #&4E
-    STX multiplier_high
-    CLC
-    LDY #&00
+    STX multiplier_high             \ grind: C, Y, N and Z are dead at the RTS (the one caller reloads Y; its callee writes C before reading it)
     RTS
 
 \ rows_up: subtract_Y_rows_from_screen_address_in_AX's rows (unused_0076 of them, 1 or more) in
