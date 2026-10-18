@@ -126,15 +126,16 @@
     AND #&0F
     ORA sfx_channel_bits,X
     JSR sfx_write
-    LDA sfx_p_hi,X                  \ ...then its high 6 bits: the period >> 4
-    STA sfx_t
-    LDA sfx_p_lo,X
-    LDY #4
-.shift
-    LSR sfx_t
-    ROR A
-    DEY
-    BNE shift
+    LDA sfx_p_hi,X                  \ ...then its high 6 bits, the period >> 4: the high nibble of
+    EOR sfx_p_lo,X                  \ the period's low byte with the low nibble of its high byte
+    AND #&0F
+    EOR sfx_p_lo,X
+    ASL A                           \ nibbles swapped
+    ADC #&80
+    ROL A
+    ASL A
+    ADC #&80
+    ROL A
     AND #&3F
     JSR sfx_write
     BRA amplitude                   \ 65C02 opcode

@@ -3787,7 +3787,13 @@ cm_x_max_low_operand = * + 1
     CMP movers_x_low,X              \ own first test)
     LDA mover_x_max_high
     SBC movers_x_high,X
-    BCC check_next_mover
+    BCS cm_not_right                \ grind: right of the range: the loop's tail inline
+    DEX
+    CPX last_mover
+    BNE check_for_mover_collision_with_range_of_movers_loop
+    CLC                             \ Leave with carry clear to indicate no collision
+    RTS
+.cm_not_right
     LDA movers_x_low,X              \ left of it even at the widest type: x < its left - &0B
     CMP cm_left_low
     LDA movers_x_high,X

@@ -1054,27 +1054,31 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     \ falls through
 .list_finish                        \ A = y; list_type, list_x: entry X's rectangle
 {
-    STA list_y
-    SEC
+    SEC                             \ y1 = y - 2 (or 0)
     SBC #2
-    BCS y1_ok
-    LDA #0
-.y1_ok
+    BCC y_low
     STA list_y1,X
     LDY list_type
-    LDA list_y
-    CLC
-    ADC mover_types_height_table,Y
+    ADC mover_types_height_table,Y  \ C set: y - 2 + height + 1
     BCS y2_top
-    ADC #2
+    ADC #3                          \ y2 = y + height + 2 (or &FF)
     BCC y2_ok
+    BCS y2_top                      \ always
+.y_low                              \ y < 2: A = y - 2 + 256, C clear
+    ADC #2                          \ A = y, C set
+    STZ list_y1,X                   \ 65C02 opcode
+    LDY list_type
+    ADC mover_types_height_table,Y  \ y + height + 1
+    BCS y2_top
+    INC A                           \ 65C02 opcode
+    BNE y2_ok                       \ wrapped to 0: y + height + 2 = 256
 .y2_top
     LDA #&FF
+    CLC
 .y2_ok
-    STA list_y2,X
+    STA list_y2,X                   \ C clear on every path
     LDA list_x_lo                   \ x1 = x - 1
-    SEC
-    SBC #1
+    SBC #0                          \ (C clear: the - 1)
     STA list_x1_lo,X
     LDA list_x_hi
     SBC #0
