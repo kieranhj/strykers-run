@@ -1444,12 +1444,10 @@ header_hi = * + 1
     LDA dm_scr_lo                   \ the part's bottom, raised once
     LDX dm_scr_hi                   \ Y: still the rows it is raised
     JSR raise_address
-    TAY
+    STA b_ptr                       \ the cell (its line cleared below)
     AND #&07
     STA ds_line
-    TYA
-    AND #&F8
-    STA b_ptr
+    TRB b_ptr                       \ 65C02 opcode: b_ptr AND &F8
     STX b_ptr + 1
     LDA dm_slot                     \ step 2 layer 4: the player's part, if it cannot be clipped,
     ORA ds_clip                     \ may be one of the kinds compiled to code
@@ -1873,11 +1871,11 @@ lo_imm = * + 1
     LDA save_start_lo,Y
     CLC
     ADC rb_part2,X
-    STA rb_p8
+    STA v_ptr                       \ v_ptr is dead here: set to the result below
     LDA save_start_hi,Y
     ADC rb_part2 + 1,X
     STA rb_p8 + 1
-    LDA rb_p8
+    LDA v_ptr
     SEC
     SBC #8
     STA v_ptr
