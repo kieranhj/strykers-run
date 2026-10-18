@@ -1499,23 +1499,22 @@ header_hi = * + 1
     INC col_ptr + 1
 .to_next
     JMP next
-.clip_test                          \ j = n - c unflipped, c - 1 flipped (c = columns left)
-    LDA ds_c
-    BIT dm_flip
-    BMI flipped_j
+.unflipped_j                        \ (after JMP next: reached only from clip_test)
     LDA ds_n
     SEC
     SBC ds_c
     BRA have_j                      \ 65C02 opcode
-.flipped_j
+.clip_test                          \ j = n - c unflipped, c - 1 flipped (c = columns left)
+    BIT dm_flip
+    BPL unflipped_j
+    LDA ds_c
     DEC A                           \ 65C02 opcode
 .have_j
     CMP dm_jmin
     BCC to_next                     \ left of the viewport
-    STA ds_j
-    LDA dm_jmax
-    CMP ds_j
-    BCS visible                     \ not right of it
+    CMP dm_jmax
+    BCC visible                     \ not right of it: j < jmax...
+    BEQ visible                     \ ...or j = jmax
     JMP next
 .each
     LDY #1
