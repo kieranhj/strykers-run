@@ -747,17 +747,17 @@ INCLUDE "lives_digits.6502"
     BEQ done
     TAX
     LDA edge_screen_address_low     \ down a character row: &280, round the 16K screen
-    CLC
-    ADC #&80
+    ADC #&7F                        \ C = 1 from the SBC (X >= 16 here): + &80
     STA edge_screen_address_low
     LDA edge_screen_address_high
     ADC #&02
-    BPL in_ring
-    SEC
-    SBC #&40
-.in_ring
+    BMI wrap                        \ the hot path falls through
     STA edge_screen_address_high
-    JMP group
+    BRA group                       \ 65C02 opcode
+.wrap
+    EOR #&C0                        \ &80-&82 -> &40-&42: - &40
+    STA edge_screen_address_high
+    BRA group                       \ 65C02 opcode
 .done
     RTS
 }
@@ -1795,28 +1795,25 @@ pix_operand_2 = * + 1
 \ cell's top line it is the cell above's bottom line.
 .raise_address
 {
-    STX ra_hi                       \ RAM for cycles 4: in one step, not a cell at a time
-    STA ra_lo
-    STY ra_rows
+    STA lo_imm                      \ RAM for cycles 4: in one step, not a cell at a time
+    STY rows_imm                    \ self-modified: lo and rows into the operands below
     AND #&07                        \ the line in the cell
-    CMP ra_rows
+rows_imm = * + 1
+    CMP #&00                        \ self-modified: rows
     BCC up
-    LDA ra_lo                       \ it stays in the cell
-    SEC
-    SBC ra_rows
-    LDX ra_hi
-    RTS
+lo_imm = * + 1
+    LDA #&00                        \ self-modified: lo. It stays in the cell (C = 1)
+    SBC rows_imm
+    RTS                             \ X is still hi
 .up                                 \ d = rows - line - 1: 0 is the cell above's bottom line
-    EOR #&FF
-    CLC
-    ADC ra_rows
+    STX ra_hi
+    EOR #&FF                        \ C = 0 from the BCC
+    ADC rows_imm
     TAY
+    EOR lo_imm                      \ lo AND &F8, OR the line it ends on: 7 - (d AND 7)
     AND #&07
-    EOR #&07                        \ the line it ends on: 7 - (d AND 7)
-    STA ra_rows
-    LDA ra_lo
-    AND #&F8
-    ORA ra_rows
+    EOR #&07
+    EOR lo_imm
     STA ra_lo
     TYA
     LSR A
