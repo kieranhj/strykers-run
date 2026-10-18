@@ -6,11 +6,11 @@ rebuilds the BBC Master 128 enhanced version as [Baron](https://github.com/waiti
 source - byte for byte identical to the original at the tag `step1-identical` - and is now
 making it run smoothly and without its sprite flicker.
 
-**Where it stands** (2026-10-17): the game draws into two screens in turn (shadow RAM), its
+**Where it stands** (2026-10-18): the game draws into two screens in turn (shadow RAM), its
 sprites masked, so nothing flickers, and runs at a steady 25 frames a second - the speed the
-original was designed for - in all but about 1 frame in 70 on a busy scripted game, against the
-original's 15-17 and its flicker. 50 Hz was costed and does not fit; whether to stay at 25 is
-the next decision. What has landed is in `docs/done.md`, what is left in `PLAN.md`. Seen in the
+original was designed for - in all but 6 frames of 2,000 on a busy scripted game, and every
+frame holding RIGHT, against the original's 15-17 and its flicker. 25 Hz is the target (decision
+35): 50 Hz was costed and does not fit. What has landed is in `docs/done.md`, what is left in `PLAN.md`. Seen in the
 jsbeeb emulator only so far, not yet on real hardware.
 
 The game remains the copyright of its authors and publisher. This repository is for study and
@@ -31,7 +31,7 @@ preservation; it does not include the original disc images or the disassembly it
 
 | | Source | Build | Image |
 |---|---|---|---|
-| **The optimised version** (step 2, in progress: 50 Hz, no flicker) | `main` | `make`, or `.\build.ps1` | `build/strykers.ssd` |
+| **The optimised version** (step 2, in progress: a steady 25 Hz, no flicker) | `main` | `make`, or `.\build.ps1` | `build/strykers.ssd` |
 | **The original**, byte for byte the Stairway to Hell disc's game | the tag `step1-identical` (`762a0d2`) | `make original`, or the tag's own `build.ps1` in a worktree of it (below) | `build/strykers-original.ssd` |
 
 `make original` exports the tag's `src/` and `tools/` into `build/original/` (`git archive`, so it

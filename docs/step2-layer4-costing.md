@@ -1,5 +1,7 @@
 # Step 2, layer 4: costing option 2 (50 Hz for the cheap things)
 
+**Decided** (2026-10-18, decision 35): a steady 25 Hz. 50 Hz is off the table, on this costing.
+
 2026-10-17. The costing itself built nothing: it is a measurement and a model. What was built
 after it is in the sections headed "Built" (and in `docs/done.md`), each with the build it was measured on. The costing was measured
 on **jsbeeb 2.5.0, Master 128 (MOS 3.20)**, build `07ef49c` made with `-Shift 256 -ShiftEnd

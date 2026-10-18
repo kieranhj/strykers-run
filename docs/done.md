@@ -67,9 +67,10 @@ measurements in `docs/step2-layer3.md`: compiled enemy sprites (later done for t
 4), the logic a pass ahead (RAM for cycles 5), a room check by mover type, an exact copy of the
 MOS's sound, skipping transparent bytes, building the column on the pass before.
 
-### Layer 4 - 50 Hz: costed, and the heaviest frames (2026-10-17; in progress)
+### Layer 4 - a steady 25 Hz: 50 Hz costed and set aside, the heaviest frames (2026-10-17 to 18; in progress)
 
-`docs/step2-layer4-costing.md`.
+`docs/step2-layer4-costing.md`. 50 Hz is off the table: a steady 25 Hz is the target (decision
+35, 2026-10-18).
 
 - **Costed** (`7cd0704`): option 2 (50 Hz for the cheap things) and full 50 Hz do not fit. With
   no logic at all, the render alone makes 412-634 of 2,999 frames late on seed 1 (285-446 of
@@ -85,6 +86,15 @@ MOS's sound, skipping transparent bytes, building the column on the pass before.
   decision 29): late frames 22 (seed 1), 2 (holding RIGHT); 50 Hz option 2 364 / 200.
 - **The compiled kind found by index** (`6cc44ba`): `compiled_part` 617 -> 248 cycles a player
   draw; late frames 21 (seed 1, 24.86 passes/s), 1 (holding RIGHT, 25.02).
+- **Micro-optimisation grind, round 1** (the beeb-micro-grind skill; `801966e` to `99185f2`): 96 of
+  177 candidates kept, each batch gated; work a pass (pcprof, the wait excluded) 43,036 -> 39,112
+  on seed 1, 49,857 -> 45,570 holding RIGHT; late frames (passbench) 21 -> 7 of 1,998, 1 -> 0 of
+  598. Every candidate and its fate: `docs/grind/README.md`.
+- **RAM rearranged** (decisions 32-34: `69f9321`, `0e4a24d`, `acd4c4a`; tag `step2-grind1`): the
+  renderer's variables in its workspace holes (render.6502's room 68 -> 797 bytes), `MGAME`'s
+  start-up code carried in the save arena's bytes (its room 33 -> 2,271), the renderer's 48
+  hottest variables in the zero-page unpacker's dead body: work a pass 38,462 (seed 1), 44,855
+  (holding RIGHT); late frames 6 of 1,998 and 0 of 598.
 
 ## Tooling
 
