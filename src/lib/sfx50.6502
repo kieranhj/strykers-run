@@ -106,7 +106,7 @@
     STZ sfx_n,X
     LDA sfx_channel_bits,X
     ORA #&9F                        \ attenuation 15: off
-    JMP sfx_write
+    BRA sfx_write                   \ 65C02 opcode
 .ramp
     LDA &FFFF,Y                     \ self-modified: this ramp
     RTS
