@@ -4520,9 +4520,9 @@ ASSERT shown_screen < &3000
     LDY mover_to_update             \ grind: get_mover_type inlined (Y = &03, A = type)
     LDA movers_type_and_colour,Y
     AND #&7F
-    CMP #&13                        \ MOVER_TYPE_MINE                           # If the mover is a mine,
-    BCS leave_with_mover_to_update  \ Leave with carry set to indicate no update required
-    CMP #&0D                        \ MOVER_TYPE_SKELETON                       # If the mover is not an explosion or a skeleton,
+    ADC #&6C                        \ grind: C=1 here, so A = type + &6D, no carry out (at most &EC): N=1 if a mine or above
+    BMI leave_30b2                  \ Leave with carry clear to indicate it can be updated (was CMP #&13: BCS to CLC: RTS)
+    CMP #&7A                        \ MOVER_TYPE_SKELETON + &6D                # If the mover is not an explosion or a skeleton,
     BCC leave_with_carry_set_30af + 1\ Leave with carry clear to indicate it can be updated
 .animate_explosion_or_skeleton
     JSR plot_mover                  \ Unplot explosion or skeleton
