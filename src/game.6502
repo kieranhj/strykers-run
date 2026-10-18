@@ -3436,7 +3436,15 @@ cm_x_max_high_operand = * + 1
 .calculate_mover_x_max_and_y_max
     LDA &C5
     STA mover_x_max_high
-    JSR get_mover_X_type_and_height
+    LDA movers_type_and_colour,X    \ grind: get_mover_X_type_and_height inlined (JSR calculate_mover_x_max_and_y_max + 4 lands here)
+    AND #&7F
+    TAY
+    LDA movers_frame_and_flip,X
+    AND #&7F
+    CMP #&0D                        \ MOVER_TYPE_SKELETON
+    BEQ cmxy_skeleton_height        \ the common case falls through
+    LDA mover_types_height_table,Y
+.cmxy_add_height
     CLC
     ADC mover_y
     STA mover_y_max
@@ -3448,6 +3456,9 @@ cm_x_max_high_operand = * + 1
 .skip_overflow_287c
     STA mover_x_max_low
     RTS
+.cmxy_skeleton_height
+    LDA #&11
+    BRA cmxy_add_height             \ 65C02 opcode
 
 .check_for_player_collision_with_mover_Y
     JSR get_mover_Y_x_and_y
