@@ -2632,7 +2632,7 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
 .skip_setting_velocity
     LDA #&0C                        \ FRAME_THROWING
     STA frame
-    JSR plot_grenade_and_play_sound
+    JMP plot_grenade_and_play_sound
 .leave_2354
     RTS
 
@@ -4938,14 +4938,15 @@ ASSERT shown_screen < &3000
     LDA game_over_text + 24         \ ***
     CLC                             \ ***
     ADC mover_type_scoring_tens_table,Y\ ***
-    STA game_over_text + 24         \ ***
-    LDX #&05
+    LDX #&04                        \ the units digit is never added to: start at the tens, A = its new value
     LDY #&00
+    BRA update_score_tens_d
 .update_score_loop
     TYA
     LDY #&00
     CLC
     ADC game_over_text + 20,X
+.update_score_tens_d
     CMP #&A8                        \ "9" + 6
     BCC skip_overflow_3352
     SBC #&3C                        \ "9" - "0" + 6

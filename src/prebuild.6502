@@ -190,42 +190,48 @@ PRE_T2_MIN = &C8                    \ one field to go: start only if User VIA T2
     STA pc_dst2 + 2
     STA pc_dst3 + 2
     STA pc_dst4 + 2
+    INC A                           \ 65C02 opcode: grind: the operands below are 32 bytes on,
+    STA pc_dst1 + 2                 \ into the slot's own page (hist_dst_hi is the page before)
+    STA pc_dst2 + 2
+    STA pc_dst3 + 2
+    STA pc_dst4 + 2
     STA pc_dst5 + 2
     STA pc_dst6 + 2
     STA pc_dst7 + 2
     STA pc_dst8 + 2
-    LDX #200
+ASSERT HI(hist0 - 8) + 1 = HI(hist0 + 31) AND HI(hist1 - 8) + 1 = HI(hist1 + 31)
+ASSERT HI(column_buffer + 24) = HI(column_buffer + 199)
+    LDX #200 - 32                   \ X = 168, 160 ... 0: the rows less 32
+    SEC                             \ C = 1 throughout: only the SBC past 0 borrows
 .pc_copy
-    LDA column_buffer - 1,X
+    LDA column_buffer + 31,X        \ grind: rows X + 24 to X + 31, no read crossing a page
 .pc_dst1
-    STA hist0 - 1,X
-    LDA column_buffer - 2,X
+    STA hist0 + 31,X
+    LDA column_buffer + 30,X
 .pc_dst2
-    STA hist0 - 2,X
-    LDA column_buffer - 3,X
+    STA hist0 + 30,X
+    LDA column_buffer + 29,X
 .pc_dst3
-    STA hist0 - 3,X
-    LDA column_buffer - 4,X
+    STA hist0 + 29,X
+    LDA column_buffer + 28,X
 .pc_dst4
-    STA hist0 - 4,X
-    LDA column_buffer - 5,X
+    STA hist0 + 28,X
+    LDA column_buffer + 27,X
 .pc_dst5
-    STA hist0 - 5,X
-    LDA column_buffer - 6,X
+    STA hist0 + 27,X
+    LDA column_buffer + 26,X
 .pc_dst6
-    STA hist0 - 6,X
-    LDA column_buffer - 7,X
+    STA hist0 + 26,X
+    LDA column_buffer + 25,X
 .pc_dst7
-    STA hist0 - 7,X
-    LDA column_buffer - 8,X
+    STA hist0 + 25,X
+    LDA column_buffer + 24,X
 .pc_dst8
-    STA hist0 - 8,X
+    STA hist0 + 24,X
     TXA
-    SEC
     SBC #8
     TAX
-    CMP #24
-    BNE pc_copy
+    BCS pc_copy
     LDX hist_next
     INX
     STX pre_hist

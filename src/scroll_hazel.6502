@@ -150,25 +150,23 @@
     BRA next
 .merge3
     STA scenery_mask
-    LDA (pixel_table_address),Y
-    STA pixel
     LDA column_buffer,X
     AND scenery_mask
-    EOR pixel
+    EOR (pixel_table_address),Y
     STA column_buffer,X
     INX
     LDA column_buffer,X
     AND scenery_mask
-    EOR pixel
+    EOR (pixel_table_address),Y
     STA column_buffer,X
     INX
     LDA column_buffer,X
     AND scenery_mask
-    EOR pixel
+    EOR (pixel_table_address),Y
     STA column_buffer,X
     INX
     LDY scenery_data_offset
-    JMP next
+    BRA next                        \ 65C02 opcode: in range now (-127)
 
 .short_or_long
     BPL long
