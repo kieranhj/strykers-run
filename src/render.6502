@@ -1491,10 +1491,12 @@ header_hi = * + 1
     CLC
     ADC #2
     STA col_ptr
-    BCC to_next
-    INC col_ptr + 1
+    BCS empty_hi                    \ the page crossed (rare)
 .to_next
     JMP next
+.empty_hi
+    INC col_ptr + 1
+    BRA to_next                     \ 65C02 opcode
 .unflipped_j                        \ (after JMP next: reached only from clip_test)
     LDA ds_n
     SEC
@@ -1989,17 +1991,22 @@ lo_imm = * + 1
     LDY #1
     LDA (v_ptr),Y
     STA &C1
-    LDA ck_restore_lo,X
-    STA compiled_vec
-    LDA ck_restore_hi,X
-    STA compiled_vec + 1
     LDA ck_bank,X
     BEQ in_hazel                    \ bank 0: HAZEL
+    LDY ck_restore_lo,X             \ Y, not A: A is the bank
+    STY compiled_vec
+    LDY ck_restore_hi,X
+    STY compiled_vec + 1
     LDX #&04                        \ bank 4 again after
     JSR compiled_call
     JMP columns
-.in_hazel
-    JSR compiled_direct
+.in_hazel                           \ straight into the kind: no JMP (compiled_vec)
+    LDA ck_restore_lo,X
+    STA hazel_restore + 1
+    LDA ck_restore_hi,X
+    STA hazel_restore + 2
+.hazel_restore
+    JSR hazel_restore               \ self-modified: the kind's restore
     JMP columns
 .blocks_done
     LDX back                        \ the block is free; the arena shrinks if it was the last
