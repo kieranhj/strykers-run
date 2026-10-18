@@ -2843,6 +2843,22 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     JSR move_mover_down
     JMP move_mover_left
 
+    \ grind: the four routines are picked by branches, not the tables (which stay, unread): up or
+    \ down is +0 or +6 from the same page, so only the low byte varies and X builds it
+    ASSERT move_mover_down_and_right = move_mover_up_and_right + 6
+    ASSERT move_mover_down_and_left = move_mover_up_and_left + 6
+    ASSERT HI(move_mover_up_and_right) = HI(move_mover_down_and_left)
+.move_mover_y_down_43fa                 \ A = y_delta (bit 7 set), X = LO(move_mover_up_and_...)
+    AND #&7F
+    STA y_delta
+    INX                                 \ X + 6 = LO(move_mover_down_and_...); C and V untouched
+    INX
+    INX
+    INX
+    INX
+    INX
+    BRA move_mover_set_43fa
+
 .unplot_and_move_mover
     LDY mover_to_update
     JSR plot_mover                  \ Unplot mover
@@ -2852,27 +2868,22 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     LDY mover_to_update
     JSR get_mover_Y_x
 .move_mover
-    LDA x_delta
-    AND #&80
-    STA flip
-    ASL A
-    ROL A
-    LDX y_delta                     \ grind: C = y direction (bit 7), A keeps the x direction
-    CPX #&80
-    ROL A
-    TAX
-    LDA move_mover_routine_addresses_high_table,X
-    STA move_mover_routine_address_high
-    LDA move_mover_routine_addresses_low_table,X
-    STA move_mover_routine_address_low
+    LDX #LO(move_mover_up_and_right)
     LDA x_delta
     STA x_edge_size_and_direction   \ ***
-    AND #&7F
-    STA x_delta
+    AND #&80
+    STA flip                        \ N = x direction
+    BPL move_mover_x_done_43fa
+    TRB x_delta                     \ A = &80: x_delta AND &7F
+    LDX #LO(move_mover_up_and_left)
+.move_mover_x_done_43fa
     LDA y_delta
     STA y_edge_size_and_direction   \ ***
-    AND #&7F
-    STA y_delta
+    BMI move_mover_y_down_43fa      \ (y_delta AND &7F = y_delta when going up)
+.move_mover_set_43fa
+    LDA #HI(move_mover_up_and_right)
+    STA move_mover_routine_address_high
+    STX move_mover_routine_address_low
     JSR animate_mover               \ Returns A = mover_y
 move_mover_routine_address_low = * + 1
 move_mover_routine_address_high = * + 2
@@ -4543,13 +4554,15 @@ ASSERT shown_screen < &3000
     LDA movers_firing_cooldown - 1,X
     BEQ can_fire
     DEC movers_firing_cooldown - 1,X
-    SEC
-    BNE leave_3160
+    BNE leave_with_carry_set_30af   \ grind: its SEC; RTS (C is dead on the fall-through into can_fire)
 .can_fire
-    JSR get_mover_frame_and_flip
+    LDA movers_frame_and_flip,X     \ grind: get_mover_frame_and_flip inlined (X = mover_to_update; Y dead)
+    STA frame_and_flip
     LDA #&22                        \ Consider targets in front of mover
     JSR search_for_target_with_offset\ Returns carry clear if target found
-    JSR get_mover_type              \ Returns A = mover type
+    LDY mover_to_update             \ grind: get_mover_type inlined (Y = &03, A = type, C kept)
+    LDA movers_type_and_colour,Y
+    AND #&7F
     TAX
     STX &7C
     BCC found_target_3110
