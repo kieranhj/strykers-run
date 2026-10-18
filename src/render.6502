@@ -1546,8 +1546,7 @@ header_hi = * + 1
     STA s_ptr + 1
     TXA                             \ ...raised by its first row
     BPL raised
-.up_cell
-    TAX
+.up_cell                            \ X = the line, negative: a cell up for each 8
     LDA s_ptr
     SEC
     SBC #&80
@@ -1562,9 +1561,9 @@ header_hi = * + 1
     TXA
     CLC
     ADC #8
-    BCC up_cell
-.raised                             \ A = the line of the lowest byte drawn
     TAX
+    BCC up_cell
+.raised                             \ A = X = the line of the lowest byte drawn
     ORA s_ptr                       \ the record's address
     LDY #9
     STA (v_ptr),Y
