@@ -97,6 +97,11 @@ disassembly's `actually`/`also` notes say what an operand really is.
   logic by group and mover, render by slot and type, what changed and who wrote it; then 50 Hz schedules field by field
   (`docs/step2-layer4-costing.md`)
 - `tools/passcost.mjs DISC [FROM] [FRAMES] [--right]`, `tools/passhist.mjs` - a pass's cycles by phase; each pass's work against the bytes it drew
+- `tools/sidebyside.mjs ORIGINAL.ssd STEP2.ssd OUT.mp4 [--fields 3000] [--seed 1]` - the comparison video: `make original`'s build
+  and the shipping build playing the same game (keys by pass; the original's four User VIA T2 random reads given `random`'s bytes
+  in A by the emulator, its writes to `&92`/`&93` mirrored into that generator), each field's displayed screen side by side,
+  both machines' sound left and right; game state and random bytes compared every pass (OUT.json). Needs `make original`'s
+  symbols beside its disc (`build/strykers-original.symbols.json`)
 - `tools/helilock.mjs CONTROL TEST [PASSES] [VARIANT]` - two builds in step through a helicopter flight (board, fly, shot down), state and newest frame every pass; passlock's scripts never board one
 - `tools/worldcheck.mjs DISC [--world]` - the renderer's world position of each record against the mover's x/y (BUGS #7, #10); `--world`, start to completion screen
 - `tools/scrollleft.mjs CONTROL TEST [--left K] [--still S] [--place]` - BUGS #10's cases: the whole world with LEFT held (then no key) wherever a mover is clipped at the left edge, state and newest frame against CONTROL (the `DEBUG_FULLREDRAW` twin) every pass; `--place` moves a lower-slot soldier over the clipped mover
