@@ -1042,6 +1042,7 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     LDY ren_i
     TYA
     STA list_slot,X
+    STY dm_slot                     \ world_of_address's slot (BUGS #10); put_on sets its own
     LDA movers_type_and_colour,Y
     AND #&7F
     STA list_type
@@ -2205,6 +2206,16 @@ lo_imm = * + 1
 \ (movers_y's sense: &C7 at the top row) of that byte, by the view in zero page (its screen
 \ start and viewport_left). A character row is &280 bytes: the row is guessed from the offset's
 \ high byte (wa_rows_guess, out by at most one) and settled against wa_rows_base.
+\ BUGS #10: a mover clipped at the view's left edge (x 1-11 left of viewport_left) has its
+\ address left of its row's first column, which is the end of the row above (column 69-79) - or,
+\ in the first row, the ring's hidden 48 columns past the last (row 25): placed there it would be
+\ 80 columns right and 8 lines up. Column 69-79 is the row above only if the mover is not left of
+\ the view (dm_slot = its slot: its x, 80 columns left of that place if it is); row 25 is always
+\ the first row's left. Its place is then the address's column in the row below, left of the
+\ view (draw_mover clips by x from the address, so it draws in that row). At the right edge
+\ nothing wraps: a mover goes on only with x <= viewport_right, so its address is in its row
+\ (BUGS #7's explosion, drawn 6 columns right of its x, could land at the start of the row
+\ below, and would be placed there: where it is drawn).
 .world_of_address
 {
     SEC
@@ -2236,23 +2247,58 @@ lo_imm = * + 1
     CPX #1                          \ C = bit 1
     ROR A
     LSR A                           \ the column, 0..&4F
+    CMP #80 - 11                    \ BUGS #10: 69-79 may be a mover left of the view
+    BCS late_column                 \ (and C clear on the way on, for the add)
+.column_known
+    ADC viewport_left_low
+    STA wa_x_lo
+    LDA viewport_left_high
+    ADC #0
+    STA wa_x_hi
+.y_of_row
+    TYA                             \ y = &C7 - (row * 8 + the line in the cell)
+    ASL A
+    ASL A
+    ASL A                           \ C = 0: row <= 25
+    EOR #&FF
+    ADC #&C8                        \ &C7 - row * 8, its low 3 bits 111; C clear only for row 25
+    BCC row_25
+.y_known
+    STA wa_y
+    LDA wa_off
+    AND #&07
+    TRB wa_y                        \ less the line in the cell (65C02 opcode)
+    RTS
+.late_column                        \ A = the column, 69-79; C set
     CLC
     ADC viewport_left_low
     STA wa_x_lo
     LDA viewport_left_high
     ADC #0
     STA wa_x_hi
-    TYA                             \ y = &C7 - (row * 8 + the line in the cell)
-    ASL A
-    ASL A
-    ASL A                           \ C = 0: row <= 25
-    EOR #&FF
-    ADC #&C8                        \ &C7 - row * 8, its low 3 bits 111
-    STA wa_y
-    LDA wa_off
-    AND #&07
-    TRB wa_y                        \ less the line in the cell (65C02 opcode)
-    RTS
+    LDX dm_slot                     \ in this row, the mover is at or right of viewport_left + 69;
+    LDA wa_x_lo                     \ its x is 0 columns left of that (6: BUGS #7's explosion),
+    SEC                             \ or, left of the view, 80 (86): x < viewport_left, as a
+    SBC movers_x_low,X              \ byte (the two are 74 apart, so the low bytes tell them)
+    CMP #40
+    BCC y_of_row                    \ in the view: the row above is its row
+    LDA wa_x_lo                     \ C set: in the row below, 80 columns left
+    SBC #80
+    STA wa_x_lo
+    BCS left_x
+    DEC wa_x_hi
+.left_x
+    INY                             \ the row below
+    BRA y_of_row                    \ 65C02 opcode
+.row_25                             \ C clear: the first row's left, 48 columns left (&4000 -
+    LDA wa_x_lo                     \ 25 rows of &280 is 48 columns of 8)
+    SBC #48 - 1
+    STA wa_x_lo
+    BCS row_25_x
+    DEC wa_x_hi
+.row_25_x
+    LDA #&C7                        \ the first row's y
+    BRA y_known                     \ 65C02 opcode
 }
 .wa_rows_guess                      \ by the offset's high byte h: floor(h * 256 / &280)
 FOR h = 0..63

@@ -134,7 +134,7 @@ below `&C700` (decision 29). KC, 2026-10-17: leave it (decision 31) - the mounta
 enhanced version draws them, from whatever HAZEL holds at `&C300`; nothing may be put in
 `&C300-&C6FF`.
 
-## 10. A mover clipped at the view's left edge is placed 80 columns right and a row up (layer 3, `c5d760b`; OPEN)
+## 10. A mover clipped at the view's left edge is placed 80 columns right and a row up (layer 3, `c5d760b`; FIXED in layer 4)
 
 Found 2026-10-18 by `tools/worldcheck.mjs`, once it read the records at all (jsbeeb 2.5.0,
 `d879af0`). `world_of_address` (`src/render.6502`, BUGS #7's fix) turns a mover's screen address
@@ -144,27 +144,57 @@ row above. So `record_live` records it, and `list_live` lists it, 80 columns rig
 (e.g. a soldier at x 30, y 24 with the view at 31: screen address `&77F7`, screen start `&4378`,
 offset `&347F` - row 20, column 79 - recorded at x 110, y 32). Those world positions are what
 `span_in_zone` (the scroll's arriving and leaving columns, the lives digit's columns) and
-`close_over_overlaps` test, so for such a mover both can miss: a stationary, unchanged mover at
-the left edge would not be redrawn when the column arriving on a scroll left, or the lives digit,
-is written over it, and an overlap with a neighbour at the left edge would not be seen.
-- Measured: seed 1's script (`tools/worldcheck.mjs DISC 12000`): 106 records of the run
-  disagree, every one this case (x 1 to 11 left of the view, +80 columns, +8 y). The whole world
-  (`--world`, `-Shift 256 -ShiftEnd -Define DEBUG_LIVES`, 12,233 passes): 984 of 29,847 records,
-  all 984 this case, none other; 17 types (soldiers, helicopters, mines, the tank, bullets).
-  The `99185f2` build (before decisions 32-34) does the same, and decision 40's `eb8fb4f` (46 of
-  1,330 records over 4,000 frames of seed 1, all this case).
-- Not seen on screen: over the whole world (`tools/worldrun.mjs --control ... --screen`, running
-  right) the newest frame is identical to the `DEBUG_FULLREDRAW` oracle's on all 12,233 passes, and
-  `passlock --screen` against it found none (seeds 2, 3, 5 in layer 3; seed 7, 4,000 passes, now). The case that could
-  show is a scroll left past a stationary mover clipped at the left edge.
-- `tools/worldcheck.mjs` never compared anything before this: `rec_*` are assignments
+`close_over_overlaps` test.
+- Measured (2026-10-18, layer 4's `8ae47e4`, the bench build `-Shift 256 -ShiftEnd -Define
+  DEBUG_LIVES`): the whole world (`--world`, 12,233 passes) 984 of 29,847 records disagree, all
+  984 this case, none other; 17 types (soldiers, helicopters, mines, the tank, bullets). Seed 1's
+  script (`tools/worldcheck.mjs DISC 12000`) 521 of 9,132. The `99185f2` build (before decisions
+  32-34) does the same, and decision 40's `eb8fb4f` (46 of 1,330 records over 4,000 frames).
+- **Scrolling left past it does not show** (`tools/scrollleft.mjs`, the bench build against its
+  `DEBUG_FULLREDRAW` twin, state and newest frame every pass): over the whole world with LEFT held
+  for 60 passes wherever a mover is clipped at the left edge, 62 episodes, 1,734 scrolls left,
+  3,094 passes with such a mover: 0 of 19,019 frames differ; holding still after the scroll, or
+  instead of it, 0 of 20,000 and 0 of 16,803. The +80 is why: on a scroll the zone holds the
+  arriving column at one edge and the leaving column at the other, and the column one left of the
+  view is, in memory, the last column of the row above - so the misplaced rectangle always takes in
+  the other edge's zone column, and the mover is redrawn when it should be. The lives digit's
+  columns, the one zone with no partner, are tested alone only when the count changes without a
+  scroll, and the digit is in the top row, where no clipped mover was seen.
+- **An overlap at the left edge does show.** `close_over_overlaps` misses a clipped mover's
+  overlap with a neighbour, so a lower slot that changes (taken off and put back every pass) over a
+  higher one that stays wipes it with its save block, and nothing puts it back. Hardly met in play
+  (a lower slot over a clipped mover on 3 passes of the 19,019, no frame differing; an overlap
+  either way on none of the 36,803 holding still); made by `scrollleft.mjs --left 0
+  --still 40 --place` (each time a mover is clipped at the left edge, the lowest-slot soldier below
+  it moved onto it: x + 1, its y, its screen address + 8, in both machines; then no key for 40
+  passes): over 4,000 passes, 73 frames differ from the oracle (up to 130 bytes), in 2 episodes of
+  20 - the red helicopter (type 8, slot 24, x 748, view 749) with soldier 6 walking over it,
+  passes 1,521-1,560, and a type &0B (slot 25, x 1,382) with officer 5 over it, from pass 2,850.
+  State identical throughout.
+- Right-clipped movers: nothing wraps. A mover goes on only with x <= `viewport_right`
+  (`check_if_mover_is_on_screen`), so its address is in its own row; only BUGS #7's explosion,
+  given an address 6 columns right of its x, could land in the next row's first columns - and is
+  drawn there (`draw_mover` clips by x from the address), so that is the place to record.
+- **Fixed** in `world_of_address`: a column of 69-79 is the row above only if the mover is in the
+  view; if its x is 80 columns left of that place (the low bytes tell: the two cases are 74 apart)
+  it is the next row, 80 columns left. A row-25 address (the ring's 48 hidden columns past the
+  last row: a mover clipped at the left of the first row) is the first row, 48 columns left. The
+  slot comes in `dm_slot` (`put_on` sets it; `list_live` now does, 3 cycles). By the code, the
+  fast path costs 4 cycles a call (the column test replaces a CLC; row 25 is the y sum's carry), a
+  column of 69-79 in the view 20 more. Measured, work a pass (pcprof, the gate's measure, against `8ae47e4`): 38,446.3 -> 38,432.2
+  on seed 1 (14.1 fewer: fewer needless redraws of the misplaced records), 44,844.0 -> 44,846.0
+  holding RIGHT (2.0 more). Over the whole world 29,829 records against 29,847: 18 fewer redraws,
+  the play the same.
+- Proven: worldcheck 0 of 29,829 records over the whole world, 0 of 9,132 on seed 1; the
+  constructed overlap 0 of 4,000 frames differing from the oracle (73 before), the scroll-left runs
+  0 of 19,019; `tools/grind.py gate` with `8ae47e4` as control: every build assembles, state and
+  screen identical over 6,000 passes of seed 1 and 4,000 of seed 3, the `DEBUG_FULLREDRAW` twin
+  identical over 4,000 of seed 5, both helicopter flights with no frame differing, the front end's
+  15 checks, observer mode.
+- `tools/worldcheck.mjs` never compared anything before this was found: `rec_*` are assignments
   (`REN_BASE + n`) in Baron's symbol dump, not labels, and it read only labels, so every address
   was `undefined` and both sides read the same byte. It now reads both (`tools/playscript.mjs`
   `loadSyms`) and counts this case apart from any other.
-- The fix would be in `world_of_address` (or its callers): for an offset whose column comes out
-  80 or more, the row above is the right one only if the mover is right of the view; a mover's x
-  below `viewport_left` wants the next row and the column less 80. Not fixed: game code, and the
-  renderer is being changed by other work.
 
 ## 11. Observer mode's keys dead: grind G0038 removed the TXA `check_for_keypress` jumped past (step 2 grind; FIXED in layer 4)
 
