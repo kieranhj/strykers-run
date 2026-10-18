@@ -4465,9 +4465,8 @@ ASSERT shown_screen < &3000
     LDA #&00
     STA y_delta
 .move_and_replot_mover
-.wait_to_move_mover
-    JSR check_if_raster_is_in_mover \ Returns carry set if raster is in mover
-    BCS wait_to_move_mover
+\ grind: JSR check_if_raster_is_in_mover (only CLC: RTS since step 2 layer 2) and its never-taken
+\ BCS dropped here: C is dead into unplot_and_move_mover (plot_mover sets it before reading it)
     JSR unplot_and_move_mover
     LDY mover_to_update             \ grind: get_mover_frame_and_flip inlined (Y = &03, frame_and_flip = its frame)
     LDA movers_frame_and_flip,Y
