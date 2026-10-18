@@ -207,6 +207,15 @@ MAX_BLOCK   = &2A0                  \ more than any mover's save block: 636 byte
     STA save_start_hi,X
     DEX
     BPL no_blocks
+    LDX #KC_SLOTS - 1               \ layer 4: no kinds built (src/kindcache.6502), none in use,
+    LDA #&FF                        \ none asked for: the front end may have used HAZEL
+.no_kinds
+    STA kc_sprite,X
+    STZ kc_ref,X                    \ 65C02 opcode
+    DEX
+    BPL no_kinds
+    STA kc_want
+    STZ kb_active                   \ 65C02 opcode: no build under way
     LDX #1
 .each_screen
     LDA #LO(save_arena)             \ each screen's arena empty
@@ -316,6 +325,8 @@ MAX_BLOCK   = &2A0                  \ more than any mover's save block: 636 byte
 .render
 {
     JSR prebuild                    \ RAM for cycles 1: the next scroll column, if there is time
+    INC kc_clock                    \ layer 4: a big part's kind asked for, built if there is time
+    JSR kc_build                    \ (src/kindcache.6502)
     JSR wait_for_flip               \ the hidden screen is the one the last frame went to until
     JSR save_game_zp                \ it is shown (decision 26)
     LDA shown_screen                \ draw into the screen not being shown
@@ -1421,6 +1432,7 @@ header_hi = * + 1
 {
     TAX
     STX ds_sprite
+    STY kc_raise                    \ (src/kindcache.6502: only a mover's first part, not raised)
     LDA straight_sprite_hi,X
     BNE known
     RTS                             \ an unused table entry
@@ -1448,11 +1460,19 @@ header_hi = * + 1
     STA ds_line
     TRB b_ptr                       \ 65C02 opcode: b_ptr AND &F8
     STX b_ptr + 1
-    LDA dm_slot                     \ step 2 layer 4: the player's part, if it cannot be clipped,
-    ORA ds_clip                     \ may be one of the kinds compiled to code
-    BNE generic
+    LDA ds_clip                     \ step 2 layer 4: a part that cannot be clipped may be one of
+    BNE generic                     \ the player's kinds compiled to code (tools/compiled.py), or
+    LDA dm_slot                     \ a big part's kind built at run time (src/kindcache.6502,
+    BNE cached                      \ decision 36)
     JSR compiled_part
-    BCS generic                     \ not a kind, or a row that would pass &7FFF
+    BCC drawn                       \ (carry set: not a kind, or a row that would pass &7FFF)
+.cached
+    LDA ds_n
+    CMP #KC_COLUMNS
+    BNE generic
+    JSR kc_part
+    BCS generic                     \ not held (now asked for), or a row would pass &7FFF
+.drawn
     RTS
 .generic
     BIT dm_flip
@@ -1975,6 +1995,8 @@ lo_imm = * + 1
     BPL part_byte
     JMP columns
 .compiled                           \ its entry: the kind, then the part's bottom left cell
+    CMP #KC_MARK                    \ (or a cached part's: src/kindcache.6502)
+    BEQ cached
     LDA v_ptr
     CLC
     ADC #11
@@ -2003,6 +2025,9 @@ lo_imm = * + 1
     STA hazel_restore + 2
 .hazel_restore
     JSR hazel_restore               \ self-modified: the kind's restore
+    JMP columns
+.cached                             \ X = the slot
+    JSR kc_restore
     JMP columns
 .blocks_done
     LDX back                        \ the block is free; the arena shrinks if it was the last
@@ -2280,6 +2305,8 @@ NEXT
 FOR k = 0..26
     EQUB HI(k * &280)
 NEXT
+
+INCLUDE "kindcache.6502"            \ layer 4 (decision 36): the big parts' kinds, built at run time
 
 \ ---- the renderer's variables: in src/render_bss.6502 (its workspace), not in the file ----
 .render_end

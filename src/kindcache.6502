@@ -1,0 +1,363 @@
+\ kindcache.6502 - step 2 layer 4 (decision 36): the big parts' kinds, built at run time.
+\
+\ The helicopters' bodies (12-column sprites, up to 257 bytes) are most of the bytes drawn in the
+\ frames that come late (docs/step2-layer4-costing.md "Built: the kind cache"), and each flies at
+\ one height for most of its life, so its sprite, flip and line in the character cell repeat pass
+\ after pass. Compiled code for every line would be ~16 bytes a sprite byte for each of 8 lines
+\ and 2 flips (no room). Instead, the kind a part asks for is built (src/kindcache_build.6502, in
+\ the waits for the flip) into a slot in HAZEL: its bytes by the character row they fall in (q, 0
+\ at the part's bottom), each its offset Y from that row's left cell (8 * column + line), its mask
+\ and its pixel. Drawn from a slot, a byte is LDY yo,X : LDA (s),Y : STA save,X : AND m,X :
+\ EOR p,X : STA (s),Y (33 cycles, against draw_column's ~54 for these sprites); put back, LDY yo,X :
+\ LDA save,X : STA (s),Y (19, against ~26). The same bytes are saved and written as the generic
+\ path saves and writes them, so the screen is the same.
+\
+\ A part is cached when it is not clipped, its sprite has KC_COLUMNS columns, and it is a mover's
+\ first part (not raised: the bodies, not the rotors). A slot in use by a live save block (kc_ref)
+\ is never rebuilt. The slots are emptied at every game start (render_reset): the front end may
+\ use HAZEL. Entry in a save block (restore_block): count - 1 = KC_MARK, the slot, then the part's
+\ bottom left cell and the saved bytes, by character row.
+
+KC_SLOTS = 2
+KC_GROUPS = 5                       \ the character rows a part can reach: rows + 7 <= 8 * KC_GROUPS
+KC_COLUMNS = 12                     \ the sprites cached: 12 columns, so Y <= 8 * 11 + 7
+KC_YMAX = 8 * KC_COLUMNS - 1
+KC_MARK = &FD                       \ the save block's record count - 1 for a cached part
+KC_T2_MIN = &BB                     \ one field to the flip: build a column (or start a build) only if
+                                    \ User VIA T2's high byte is at least this (~2.4 ms of the field
+                                    \ left; a column takes under 1 ms, the start about 1.5 ms)
+
+\ The slots: each an offsets, a masks and a pixels array of its capacity, in HAZEL (paged in through
+\ play, decision 29) where decision 40's tables and decision 31's mountains leave room: after
+\ hazel_b (the compiled kinds and decision 40's tables), and &C200-&C2FE (after times_78).
+KC_HI = hazel_b_end
+KC_CAP0 = 257                       \ the biggest 12-column sprite (&15)
+KC_Y0 = KC_HI
+KC_M0 = KC_Y0 + KC_CAP0
+KC_P0 = KC_M0 + KC_CAP0
+KC_M1 = KC_P0 + KC_CAP0
+KC_CAP1 = (&E000 - KC_M1) DIV 2
+KC_P1 = KC_M1 + KC_CAP1
+KC_Y1 = &C200                       \ times_78 is at &C000-&C1FF (decision 40), the mountains at &C300
+ASSERT KC_CAP1 >= 167 AND KC_CAP1 <= &FF, "slot 1 holds ", KC_CAP1, " bytes, from ", ~KC_M1
+ASSERT KC_Y1 + KC_CAP1 <= &C2FF AND KC_P1 + KC_CAP1 <= &E000
+
+.kc_ybl         EQUB LO(KC_Y0 - 1), LO(KC_Y1 - 1)   \ (less 1: X counts down to 1)
+.kc_ybh         EQUB HI(KC_Y0 - 1), HI(KC_Y1 - 1)
+.kc_mbl         EQUB LO(KC_M0 - 1), LO(KC_M1 - 1)
+.kc_mbh         EQUB HI(KC_M0 - 1), HI(KC_M1 - 1)
+.kc_pbl         EQUB LO(KC_P0 - 1), LO(KC_P1 - 1)
+.kc_pbh         EQUB HI(KC_P0 - 1), HI(KC_P1 - 1)
+.kc_cap_lo      EQUB LO(KC_CAP0), LO(KC_CAP1)
+.kc_cap_hi      EQUB HI(KC_CAP0), HI(KC_CAP1)
+.kc_g0          EQUB 0, KC_GROUPS   \ a slot's first entry in kc_gcnt
+
+\ the builder's scratch: renderer zero page that is dead in the wait (need is set by classify)
+kg_col      = need                  \ the sprite column (2)
+kg_i        = need + 2              \ the data index of the next byte (top-down: the column + 2 + i)
+kg_y        = need + 3              \ 8 * column + line
+kg_k        = need + 4              \ bytes left in this segment
+kg_rem      = need + 5              \ bytes left in this column
+kg_q        = need + 6              \ the character row
+\ (what a build keeps from one wait to the next is in the workspace: src/render_bss.6502)
+
+\ ---- kc_rows: kc_pl/kc_ph[q] = kc_pl/kc_ph[0] - q * &280, round the 16K screen (keeps X) --------
+.kc_rows
+{
+    LDY #0
+.rows
+    LDA kc_pl,Y
+    SEC
+    SBC #&80
+    STA kc_pl + 1,Y
+    LDA kc_ph,Y
+    SBC #&02
+    CMP #&40
+    BCS in_ring
+    ADC #&40
+.in_ring
+    STA kc_ph + 1,Y
+    INY
+    CPY #KC_GROUPS - 1
+    BNE rows
+    RTS
+}
+
+\ ---- kc_find: the part about to be drawn (ds_sprite, ds_line, draw_column's pixel table): the
+\ slot holding its kind in X, carry clear; carry set if none ------------------------------------
+.kc_find
+{
+    LDX #KC_SLOTS - 1
+.each
+    LDA kc_sprite,X
+    CMP ds_sprite
+    BNE next
+    LDA kc_line,X
+    CMP ds_line
+    BNE next
+    LDA kc_plo,X
+    CMP draw_column.pix_operand
+    BNE next
+    LDA kc_phi,X
+    CMP draw_column.pix_operand + 1
+    BEQ found
+.next
+    DEX
+    BPL each
+    SEC
+    RTS
+.found
+    CLC
+    RTS
+}
+
+\ ---- kc_part: from ren_draw_sprite, an unclipped part of a KC_COLUMNS-column sprite. Drawn from
+\ its slot (carry clear), or carry set with nothing drawn: no slot holds it (a mover's first part
+\ is then asked for, for the waits to build), or a character row would run past &7FFF -----------
+.kc_part
+{
+    JSR kc_find
+    BCC kc_draw                     \ (its carry is kc_part's)
+    LDA kc_raise
+    BNE none                        \ raised: not a body
+    LDA ds_sprite
+    STA kc_want
+    LDA ds_line
+    STA kc_want_line
+    LDA draw_column.pix_operand
+    STA kc_want_plo
+    LDA draw_column.pix_operand + 1
+    STA kc_want_phi
+    LDA draw_column.mask_operand
+    STA kc_want_mlo
+    LDA draw_column.mask_operand + 1
+    STA kc_want_mhi
+    LDA dm_flip
+    STA kc_want_flip
+.none
+    SEC
+    RTS
+}
+.kc_draw                            \ X = the slot (kc_part's hit)
+{
+    STX kc_cur
+    LDA b_ptr                       \ the character rows' left cells
+    STA kc_pl
+    LDA b_ptr + 1
+    STA kc_ph
+    JSR kc_rows
+    LDY kc_g0,X                     \ none may run past &7FFF: a row in page &7F whose last byte
+    LDX #0                          \ would pass the page
+.check
+    LDA kc_gcnt,Y
+    BEQ checked
+    LDA kc_ph,X
+    CMP #&7F
+    BNE checked
+    LDA kc_pl,X
+    CMP #&100 - KC_YMAX
+    BCC checked
+    RTS                             \ carry set: unsafe, nothing drawn
+.checked
+    INY
+    INX
+    CPX #KC_GROUPS
+    BNE check
+    LDY #8                          \ the entry: KC_MARK and the slot, as a column's record...
+    LDA #KC_MARK
+    STA (v_ptr),Y
+    INY
+    LDA kc_cur
+    STA (v_ptr),Y
+    JSR kc_past_record              \ ...then, after it, the part's bottom left cell
+    LDA b_ptr
+    STA (v_ptr)                     \ 65C02 opcode
+    LDY #1
+    LDA b_ptr + 1
+    STA (v_ptr),Y
+    JSR kc_begin                    \ and the saved bytes
+.group
+    LDX kc_gi
+    LDA kc_gcnt,X
+    BEQ next_group
+    JSR kc_bases                    \ s_ptr, the offsets, masks and pixels; X = the count
+    LDA kc_sv
+    SEC
+    SBC #1
+    STA so + 1
+    LDA kc_sv + 1
+    SBC #0
+    STA so + 2
+.byte
+.yo
+    LDY &FFFF,X                     \ self-modified: the offsets
+    LDA (s_ptr),Y
+.so
+    STA &FFFF,X                     \ self-modified: the saves
+.mo
+    AND &FFFF,X                     \ self-modified: the masks
+.po
+    EOR &FFFF,X                     \ self-modified: the pixels
+    STA (s_ptr),Y
+    DEX
+    BNE byte
+    JSR kc_on                       \ the next group's place in the arrays and the saves
+.next_group
+    INC kc_gi
+    INC kc_q
+    LDA kc_q
+    CMP #KC_GROUPS
+    BNE group
+    JSR kc_end
+    INC kc_ref,X
+    LDA kc_clock
+    STA kc_age,X
+    CLC
+    RTS
+}
+
+\ kc_past_record: v_ptr += 11, past an entry's record to where its cell would be
+.kc_past_record
+{
+    LDA v_ptr
+    CLC
+    ADC #11
+    STA v_ptr
+    BCC on_page
+    INC v_ptr + 1
+.on_page
+    RTS
+}
+
+\ kc_begin: the saves from v_ptr + 2, the arrays from their start, the first row
+.kc_begin
+    LDA v_ptr
+    CLC
+    ADC #2
+    STA kc_sv
+    LDA v_ptr + 1
+    ADC #0
+    STA kc_sv + 1
+    STZ kc_off                      \ 65C02 opcode
+    STZ kc_off + 1                  \ 65C02 opcode
+    LDX kc_cur
+    LDA kc_g0,X
+    STA kc_gi
+    STZ kc_q                        \ 65C02 opcode
+    RTS
+
+\ kc_bases: A = the count of row kc_q (kc_gcnt); s_ptr = the row's left cell; the draw's and the
+\ restore's operands at the slot's arrays + kc_off (less 1); X = the count
+.kc_bases
+{
+    STA kc_cnt
+    LDX kc_q
+    LDA kc_pl,X
+    STA s_ptr
+    LDA kc_ph,X
+    STA s_ptr + 1
+    LDX kc_cur
+    LDA kc_ybl,X
+    CLC
+    ADC kc_off
+    STA kc_draw.yo + 1
+    STA kc_restore.ryo + 1
+    LDA kc_ybh,X
+    ADC kc_off + 1
+    STA kc_draw.yo + 2
+    STA kc_restore.ryo + 2
+    LDA kc_mbl,X
+    CLC
+    ADC kc_off
+    STA kc_draw.mo + 1
+    LDA kc_mbh,X
+    ADC kc_off + 1
+    STA kc_draw.mo + 2
+    LDA kc_pbl,X
+    CLC
+    ADC kc_off
+    STA kc_draw.po + 1
+    LDA kc_pbh,X
+    ADC kc_off + 1
+    STA kc_draw.po + 2
+    LDX kc_cnt
+    RTS
+}
+
+\ kc_on: past a row: kc_off and kc_sv on by its count
+.kc_on
+{
+    LDA kc_off
+    CLC
+    ADC kc_cnt
+    STA kc_off
+    BCC off_page
+    INC kc_off + 1
+.off_page
+    LDA kc_sv
+    CLC
+    ADC kc_cnt
+    STA kc_sv
+    BCC sv_page
+    INC kc_sv + 1
+.sv_page
+    RTS
+}
+
+\ kc_end: the block goes on after the saves (the next record at kc_sv); X = the slot
+.kc_end
+    LDA kc_sv
+    SEC
+    SBC #8
+    STA v_ptr
+    LDA kc_sv + 1
+    SBC #0
+    STA v_ptr + 1
+    LDX kc_cur
+    RTS
+
+\ ---- kc_restore: restore_block's entry for a cached part (count - 1 = KC_MARK): X = the slot,
+\ v_ptr = the record's base (the record at v_ptr + 8). The saved bytes go back; v_ptr moves past
+\ them, as draw_column's records leave it ----------------------------------------------------------
+.kc_restore
+{
+    STX kc_cur
+    JSR kc_past_record
+    LDA (v_ptr)                     \ 65C02 opcode: the bottom left cell it was drawn from
+    STA kc_pl
+    LDY #1
+    LDA (v_ptr),Y
+    STA kc_ph
+    JSR kc_rows
+    JSR kc_begin
+.group
+    LDX kc_gi
+    LDA kc_gcnt,X
+    BEQ next_group
+    JSR kc_bases
+    LDA kc_sv
+    SEC
+    SBC #1
+    STA rso + 1
+    LDA kc_sv + 1
+    SBC #0
+    STA rso + 2
+.byte
+.ryo
+    LDY &FFFF,X                     \ self-modified: the offsets
+.rso
+    LDA &FFFF,X                     \ self-modified: the saves
+    STA (s_ptr),Y
+    DEX
+    BNE byte
+    JSR kc_on
+.next_group
+    INC kc_gi
+    INC kc_q
+    LDA kc_q
+    CMP #KC_GROUPS
+    BNE group
+    JSR kc_end
+    DEC kc_ref,X
+    RTS
+}

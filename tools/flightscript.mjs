@@ -8,7 +8,21 @@
 //   keys = f.keys(p);                           // after reaching pass p; f.done once it is over
 //
 // The same choices as helilock.mjs (keep the two in step), so `--flight 5` is helilock's game.
+// VARIANT 100 is the whole world instead: tools/worldrun.mjs's WorldBot (playscript.mjs), to the
+// headquarters (done once the player is within a column of it).
+import { WorldBot } from "./playscript.mjs";
+export const WORLD = 100;
 export function makeFlight(VARIANT, syms, rd) {
+    if (VARIANT === WORLD) {
+        const bot = new WorldBot(), f = { done: false, log: [] };
+        f.keys = (p) => {
+            const st = { px: rd(syms.movers_x_high) * 256 + rd(syms.movers_x_low), py: rd(syms.movers_y),
+                view: rd(0xb2) + 256 * rd(0xba), helicopter: rd(0x84), lives: rd(0x95) };   // zero page (src/zp.6502)
+            if (st.px >= 0x1cec) { f.done = true; f.log.push(`pass ${p}: at the headquarters`); }
+            return bot.step(p, st);
+        };
+        return f;
+    }
     const x = (i) => rd(syms.movers_x_high + i) * 256 + rd(syms.movers_x_low + i);
     const f = { phase: "run", target: null, exploded: null, boardedAt: null, done: false, log: [] };
     f.keys = (p) => {
