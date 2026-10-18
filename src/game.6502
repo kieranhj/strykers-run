@@ -2830,11 +2830,11 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
 \ This is the kit's keydown_inkey (src/lib/keydown.6502), the same ten bytes the OSBYTE took.
 .check_for_keypress
     TXA
-    EOR #&FF                        \ INKEY number -> internal key number
-    TAX
-    JSR keydown_int                 \ A = &80 if down, else 0
+    EOR #&FF                        \ INKEY number -> internal key number, in A for
+    JSR keydown_int + 1             \ keydown_int past its own TXA: A = &80 if down, else 0
     EOR #&80                        \ Z set = down
     RTS
+    EQUB &EA                        \ spare (was the TAX): the ten bytes kept, so nothing after moves
 
 .scroll_into_world
     JSR reset_screen_scroll

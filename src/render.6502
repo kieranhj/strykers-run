@@ -1260,14 +1260,13 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
 
 \ mark_part2, mark_part3: the part about to be drawn starts at v_ptr + 8 (its first record),
 \ as an offset from the block's start (base = the start - 8), into the block's header (put_on
-\ set the operands). Keeps A, X, Y.
-.mark_part2
-    PHY
-    LDY #0
-    BRA mark_part                   \ 65C02 opcode
+\ set the operands). Keeps A and Y; X = 0 or 2 (both callers go straight on to
+\ ren_draw_sprite, which sets X from A before reading it).
 .mark_part3
-    PHY
-    LDY #2
+    LDX #2
+    BRA mark_part                   \ 65C02 opcode
+.mark_part2
+    LDX #0
 .mark_part
 {
     PHA
@@ -1276,14 +1275,13 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
 base_lo = * + 1
     SBC #0                          \ self-modified: the block's start - 8
 header_lo = * + 1
-    STA &FFFF,Y                     \ self-modified: the header
+    STA &FFFF,X                     \ self-modified: the header
     LDA v_ptr + 1
 base_hi = * + 1
     SBC #0
 header_hi = * + 1
-    STA &FFFF,Y
+    STA &FFFF,X
     PLA
-    PLY
     RTS
 }
 
