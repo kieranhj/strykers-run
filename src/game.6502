@@ -315,58 +315,13 @@
     EQUB &23, &96, &17    \ SCENERY_SLIM_RED_TOWER
     EQUB &07, &96, &17    \ SCENERY_SIGNPOST
 
-.trigger_points_x_low_table
-    EQUB &FF, &44, &08, &90, &1C, &AE, &30, &C2, &80, &28, &D7, &58, &B5, &DD, &48, &C7
-    EQUB &CB, &52, &D0, &8E, &80, &FA, &B1, &64, &F0, &0C, &82, &78, &16, &20, &FA, &AC
-    EQUB &66, &3E, &CD, &7A, &02
-
-.trigger_points_x_high_table
-    EQUB &FE, &01, &02, &02, &03, &03, &04, &04, &05, &07, &07, &08, &08, &09, &0A, &0A
-    EQUB &0B, &0C, &0C, &0D, &0E, &0E, &0F, &10, &10, &12, &12, &13, &14, &15, &15, &16
-    EQUB &17, &18, &18, &19, &1A, &63
-
-.new_movers_type
-    EQUB &01, &13, &01, &83, &13, &83, &01, &83, &83, &83, &01, &83, &83, &83, &83, &13
-    EQUB &01, &83, &89, &83, &83, &83, &82, &8C, &83, &82, &83, &82, &84, &83, &8C, &82
-    EQUB &8C, &8C, &8C, &82, &0A, &83, &84, &89, &84, &82, &8A, &8C, &83, &8C, &8C, &84
-    EQUB &83, &82, &8A, &95, &83, &02, &01, &84, &82, &8A, &83, &8C, &83, &84, &8C, &83
-    EQUB &01, &09, &01, &13, &83, &13, &95, &83, &13, &84, &83, &8C, &8C, &83, &84, &83
-    EQUB &8A, &82, &13, &83, &89, &83, &83, &82, &8A, &84, &83, &83, &89, &8C, &83, &8A
-    EQUB &83, &82, &83, &8C, &83, &83, &8A, &82, &83, &13, &83, &84, &83, &84, &89, &83
-    EQUB &01, &02, &83, &82, &01
-
-.new_movers_initial_x_low
-    EQUB &1E, &BC, &D2, &FA, &04, &0A, &38, &6E, &82, &8C, &C1, &26, &42, &74, &B6, &DC
-    EQUB &3A, &5A, &64, &82, &B4, &F6, &32, &3C, &5A, &B4, &DA, &1A, &2C, &BE, &E6, &24
-    EQUB &46, &80, &92, &A0, &30, &3C, &5E, &AA, &B5, &BE, &04, &1E, &50, &40, &58, &70
-    EQUB &96, &BC, &C8, &16, &AA, &D2, &1A, &42, &6E, &90, &FC, &12, &1E, &8C, &AA, &DC
-    EQUB &00, &DC, &E6, &FA, &02, &46, &6E, &A0, &00, &28, &76, &B4, &C8, &F8, &3C, &5E
-    EQUB &66, &74, &82, &AA, &D0, &06, &82, &C6, &F0, &0A, &64, &02, &46, &6E, &9E, &BA
-    EQUB &8E, &A0, &AA, &FA, &46, &6E, &B4, &01, &32, &8C, &B4, &DC, &1F, &6E, &8C, &C8
-    EQUB &08, &2E, &50, &78, &96
-
-.new_movers_initial_x_high_and_flags
-    EQUB &80, &00, &40, &80, &01, &81, &41, &41, &81, &41, &81, &42, &42, &82, &82, &02
-    EQUB &43, &83, &03, &83, &43, &43, &84, &04, &84, &44, &44, &45, &45, &85, &05, &46
-    EQUB &06, &07, &07, &87, &08, &88, &88, &08, &88, &88, &09, &09, &49, &0A, &0A, &4A
-    EQUB &4A, &8A, &0A, &0B, &4B, &8B, &4C, &8C, &4C, &0C, &8C, &0D, &8D, &4D, &0D, &4D
-    EQUB &8E, &0E, &4E, &0E, &4F, &0F, &8F, &4F, &10, &50, &50, &10, &10, &50, &51, &91
-    EQUB &11, &52, &12, &52, &12, &93, &53, &53, &13, &54, &54, &55, &15, &15, &55, &15
-    EQUB &56, &56, &96, &16, &57, &57, &17, &98, &58, &18, &58, &58, &59, &99, &19, &59
-    EQUB &9A, &5A, &9A, &5A, &9A
-
-.new_helicopter_types
-    EQUB &85    \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_MISSILE
-    EQUB &86    \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER
-    EQUB &96    \ MOVER_TYPE_ENEMY | MOVER_TYPE_GREEN_WHITE_HELICOPTER
-    EQUB &87    \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_SOLDIER
-    EQUB &97    \ MOVER_TYPE_ENEMY | MOVER_TYPE_GREEN_WHITE_CRAFT_ONE
-    EQUB &9A    \ MOVER_TYPE_ENEMY | MOVER_TYPE_GREEN_WHITE_HELICOPTER_WITH_MISSILE
-    EQUB &99    \ MOVER_TYPE_ENEMY | MOVER_TYPE_FLYING_SCOOTER
-    EQUB &98    \ MOVER_TYPE_ENEMY | MOVER_TYPE_GREEN_WHITE_CRAFT_TWO
-
-.movers_firing_cooldown
-    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00
+\ Decision 40: the level tables (trigger_points_x_low_table .. new_helicopter_types) are in moved_0a20
+\ (after its code), the mover type tables and player_helicopter_types_vertical_speed .. player_helicopters_
+\ initial_x_high in HAZEL (hazel_b). What stays is placed by its reads (measured: every indexed read's
+\ base and address on passbench's two games):
+\ the scenery tables first, then movers_firing_cooldown and the unflipped mover sprite addresses, the
+\ movers run page-aligned (no read of it crosses a page, its &FF read of movers_type_and_colour
+\ included), then the flipped mover sprite addresses.
 
 .scenery_layer_sprite_banks
     EQUB &00, &00, &00, &00, &00, &00, &00, &00
@@ -684,6 +639,9 @@
     EQUB &0B, &0A, &0B, &24, &1D, &1B, &2F, &3B, &0A, &0B, &0B, &0B, &0B, &23, &2F, &23    \ &30
     EQUB &0A, &0B    \ &40
 
+.movers_firing_cooldown
+    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00
+
 \ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 .unflipped_mover_sprite_addresses_low_table
     EQUB LO(dummy_sprite)                        \ &00
@@ -841,6 +799,71 @@
     EQUB HI(dummy_sprite)                        \ &49
     EQUB HI(dummy_sprite)                        \ &4A
     EQUB HI(dummy_sprite)                        \ &4B
+
+    SKIP (&100 - LO(*)) AND &FF       \ decision 40: the movers run from a page boundary
+
+\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+.movers_type_and_colour
+    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &00
+    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &10
+    EQUB &00, &00    \ &20
+
+\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+.movers_frame_and_flip
+    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &00
+    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &10
+    EQUB &00, &00    \ &20
+
+\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+.movers_x_low
+    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &00
+    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &10
+    EQUB &00, &00    \ &20
+
+\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+.movers_x_high
+    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &00
+    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &10
+    EQUB &00, &00    \ &20
+
+\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+.movers_y
+    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &00
+    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &10
+    EQUB &00, &00    \ &20
+
+\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+.movers_screen_address_low
+    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &00
+    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &10
+    EQUB &00, &00    \ &20
+
+\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+.movers_screen_address_high
+    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &00
+    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &10
+    EQUB &00, &00    \ &20
+
+\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+.movers_raster_y
+    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &00
+    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &10
+    EQUB &00, &00    \ &20
+
+.projectiles_x_velocity
+    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00
+
+.projectiles_y_velocity
+    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00
+
+.projectiles_is_rocket
+    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00
+
+.projectiles_ttl
+    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00
+
+.movers_state_end                   \ the end of the movers and projectiles (passlock, helilock)
+    ASSERT LO(movers_type_and_colour) = 0, "decision 40: the movers run starts a page"
 
 \ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 .flipped_mover_sprite_addresses_high_table
@@ -1000,317 +1023,9 @@
     EQUB LO(dummy_sprite)                  \ &4A
     EQUB LO(dummy_sprite)                   \ &4B
 
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.movers_type_and_colour
-    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &00
-    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &10
-    EQUB &00, &00    \ &20
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.movers_frame_and_flip
-    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &00
-    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &10
-    EQUB &00, &00    \ &20
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.movers_x_low
-    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &00
-    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &10
-    EQUB &00, &00    \ &20
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.movers_x_high
-    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &00
-    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &10
-    EQUB &00, &00    \ &20
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.movers_y
-    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &00
-    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &10
-    EQUB &00, &00    \ &20
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.movers_screen_address_low
-    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &00
-    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &10
-    EQUB &00, &00    \ &20
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.movers_screen_address_high
-    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &00
-    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &10
-    EQUB &00, &00    \ &20
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.movers_raster_y
-    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &00
-    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &10
-    EQUB &00, &00    \ &20
-
-.projectiles_x_velocity
-    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00
-
-.projectiles_y_velocity
-    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00
-
-.projectiles_is_rocket
-    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00
-
-.projectiles_ttl
-    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.mover_types_parts
-    EQUB &00, &00, &00, &00, &00, &01, &01, &01, &01, &01, &01, &02, &02, &02, &02, &02    \ &00
-    EQUB &02, &02, &02, &02, &01, &02, &01, &02, &02, &02, &01, &02    \ &10
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.mover_types_first_sprite_animation_offsets
-    EQUB &00, &00, &00, &00, &00, &2C, &33, &3A, &4C, &5E, &5E, &53, &61, &40, &44, &49    \ &00
-    EQUB &4A, &4B, &62, &63, &64, &6F, &70, &76, &77, &78, &79, &7F, &0E, &1C, &0E, &1C    \ &10
-    EQUB &55, &25, &25, &25, &25, &5F, &60, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &20
-    EQUB &68, &00, &25, &00, &00, &00, &25, &00    \ &30
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-MOVER_WIDEST = &0B                  \ step 2 (layer 3): the largest entry below (the collision searches' early test)
-.mover_types_width_table
-    EQUB &06, &06, &06, &06, &06, &0B, &0B, &0B, &0B, &09, &09, &0B, &0B, &06, &06, &02    \ &00
-    EQUB &02, &03, &02, &03, &0B, &0B, &0B, &0B, &0B, &0B, &0B, &02    \ &10
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.mover_types_height_table
-    EQUB &1E, &1C, &1F, &1C, &1C, &1C, &1B, &1C, &1C, &16, &16, &17, &17, &1D, &0F, &03    \ &00
-    EQUB &04, &04, &0D, &05, &20, &18, &1C, &18, &18, &18, &1C, &02    \ &10
-
-.mover_types_third_sprite
-    EQUB &09, &0C, &0E, &20, &20
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.mover_types_second_sprite_offset
-    EQUB &00, &00, &00, &00, &00, &0E, &0E, &15, &15, &1C, &1D, &00, &00, &00, &00, &00    \ &00
-    EQUB &00, &00, &00, &00, &1E, &00, &0E, &00, &00, &00, &0E, &00    \ &10
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.mover_types_animation_frame
-    EQUB &06, &06, &06, &06, &06, &06, &06, &06, &06, &01, &01, &01, &01, &04, &05, &01    \ &00
-    EQUB &01, &01, &01, &01, &03, &01, &06, &01, &01, &01, &06, &01    \ &10
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.mover_types_new_grenade_bomb_or_rocket_y_offset
-    EQUB &22, &22, &22, &22, &22, &01, &01, &01, &01, &22, &00, &01, &22, &00, &00, &00    \ &00
-    EQUB &00, &00, &00, &00, &00, &00, &01, &01, &01, &00, &01    \ &10
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.mover_types_new_bullet_y_offset
-    EQUB &10, &10, &10, &10, &10, &10, &0F, &14, &10, &00, &18, &10, &00, &00, &00, &00    \ &00
-    EQUB &00, &00, &00, &00, &20, &1C, &10, &10, &10, &10, &10    \ &10
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.mover_types_new_grenade_bomb_or_rocket_type
-    EQUB &10, &00, &10, &00, &00, &11, &10, &11, &11, &10, &00, &00, &12, &00, &00, &00    \ &00
-    EQUB &00, &00, &00, &00, &00, &00, &11, &11, &10, &00, &10    \ &10
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.mover_types_new_grenade_bomb_or_rocket_y_velocity
-    EQUB &06, &00, &06, &00, &00, &80, &80, &80, &80, &08, &00, &80, &01, &00, &00, &00    \ &00
-    EQUB &00, &00, &00, &00, &00, &00, &80, &80, &80, &00, &80    \ &10
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.mover_types_new_bullet_type
-    EQUB &0F, &0F, &0F, &0F, &11, &0F, &0F, &0F, &00, &00, &0F, &0F, &00, &00, &00, &00    \ &00
-    EQUB &00, &00, &00, &00, &1B, &1B, &0F, &0F, &0F, &0F, &0F    \ &10
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.mover_types_new_bullet_y_velocity
-    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &00
-    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &10
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.mover_types_maximum_firing_cooldown
-    EQUB &0A, &0A, &0A, &0A, &0A, &05, &06, &02, &05, &00, &02, &00, &00, &00, &00, &00    \ &00
-    EQUB &00, &00, &00, &00, &05, &05, &04, &03, &02, &03, &06    \ &10
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.player_helicopter_types_vertical_speed
-    EQUB &04, &03, &02, &02, &00, &00, &04, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &00
-    EQUB &00, &03, &00, &00, &00, &02    \ &10
-
-.animation_table
-    EQUB &00    \ &00 &00 : SPRITE_LEGS_ONE
-    EQUB &01    \ &01 : SPRITE_LEGS_TWO
-    EQUB &02    \ &02 : SPRITE_LEGS_THREE
-    EQUB &00    \ &03 : SPRITE_LEGS_ONE
-    EQUB &03    \ &04 : SPRITE_LEGS_FOUR
-    EQUB &04    \ &05 : SPRITE_LEGS_FIVE
-    EQUB &0A    \ &06 : SPRITE_LEGS_SIX
-    EQUB &0D    \ &07 : SPRITE_LEGS_SEVEN
-    EQUB &0A    \ &08 : SPRITE_LEGS_SIX
-    EQUB &1B    \ &09 : SPRITE_LEGS_NINE
-    EQUB &1C    \ &0a : SPRITE_LEGS_TEN
-    EQUB &1A    \ &0b : SPRITE_LEGS_EIGHT
-    EQUB &0A    \ &0c : SPRITE_LEGS_SIX
-    EQUB &0D    \ &0d : SPRITE_LEGS_SEVEN
-
-    EQUB &05    \ &0e &00 : SPRITE_TORSO_WITH_PISTOL_ONE
-    EQUB &06    \ &01 : SPRITE_TORSO_WITH_PISTOL_TWO
-    EQUB &05    \ &02 : SPRITE_TORSO_WITH_PISTOL_ONE
-    EQUB &08    \ &03 : SPRITE_TORSO_WITH_PISTOL_FOUR
-    EQUB &07    \ &04 : SPRITE_TORSO_WITH_PISTOL_THREE
-    EQUB &08    \ &05 : SPRITE_TORSO_WITH_PISTOL_FOUR
-    EQUB &0F    \ &06 : SPRITE_TORSO_WITH_PISTOL_FIVE
-    EQUB &0F    \ &07 : SPRITE_TORSO_WITH_PISTOL_FIVE
-    EQUB &05    \ &08 : SPRITE_TORSO_WITH_PISTOL_ONE
-    EQUB &1D    \ &09 : SPRITE_TORSO_WITH_PISTOL_SIX
-    EQUB &05    \ &0a : SPRITE_TORSO_WITH_PISTOL_ONE
-    EQUB &1E    \ &0b : SPRITE_TORSO_WITH_PISTOL_SEVEN
-    EQUB &1F    \ &0c : SPRITE_TORSO_WITH_PISTOL_EIGHT
-    EQUB &05    \ &0d : SPRITE_TORSO_WITH_PISTOL_ONE
-
-    EQUB &10    \ &1c &00 : SPRITE_TORSO_WITH_RIFLE_ONE
-    EQUB &10    \ &01 : SPRITE_TORSO_WITH_RIFLE_ONE
-    EQUB &10    \ &02 : SPRITE_TORSO_WITH_RIFLE_ONE
-    EQUB &10    \ &03 : SPRITE_TORSO_WITH_RIFLE_ONE
-    EQUB &10    \ &04 : SPRITE_TORSO_WITH_RIFLE_ONE
-    EQUB &10    \ &05 : SPRITE_TORSO_WITH_RIFLE_ONE
-    EQUB &0B    \ &06 : SPRITE_TORSO_WITH_RIFLE_ZERO
-    EQUB &0B    \ &07 : SPRITE_TORSO_WITH_RIFLE_ZERO
-    EQUB &10    \ &08 : SPRITE_TORSO_WITH_RIFLE_ONE
-
-    EQUB &16    \ &25 &00 : SPRITE_ROTORS_ONE
-    EQUB &17    \ &01 : SPRITE_ROTORS_TWO
-    EQUB &19    \ &02 : SPRITE_ROTORS_FOUR
-    EQUB &18    \ &03 : SPRITE_ROTORS_THREE
-    EQUB &19    \ &04 : SPRITE_ROTORS_FOUR
-    EQUB &17    \ &05 : SPRITE_ROTORS_TWO
-    EQUB &42    \ &06 : SPRITE_ROTORS_WRECK
-
-    EQUB &12    \ &2c &00 : SPRITE_HELICOPTER_WITH_MISSILE_BODY
-    EQUB &12    \ &01 : SPRITE_HELICOPTER_WITH_MISSILE_BODY
-    EQUB &12    \ &02 : SPRITE_HELICOPTER_WITH_MISSILE_BODY
-    EQUB &12    \ &03 : SPRITE_HELICOPTER_WITH_MISSILE_BODY
-    EQUB &12    \ &04 : SPRITE_HELICOPTER_WITH_MISSILE_BODY
-    EQUB &12    \ &05 : SPRITE_HELICOPTER_WITH_MISSILE_BODY
-    EQUB &40    \ &06 : SPRITE_HELICOPTER_WITH_MISSILE_BODY_WRECK
-
-    EQUB &11    \ &33 &00 : SPRITE_HELICOPTER_BODY
-    EQUB &11    \ &01 : SPRITE_HELICOPTER_BODY
-    EQUB &11    \ &02 : SPRITE_HELICOPTER_BODY
-    EQUB &11    \ &03 : SPRITE_HELICOPTER_BODY
-    EQUB &11    \ &04 : SPRITE_HELICOPTER_BODY
-    EQUB &11    \ &05 : SPRITE_HELICOPTER_BODY
-    EQUB &43    \ &06 : SPRITE_HELICOPTER_BODY_WRECK
-
-    EQUB &15    \ &3a &00 : SPRITE_HELICOPTER_WITH_SOLDIER_BODY
-    EQUB &15    \ &01 : SPRITE_HELICOPTER_WITH_SOLDIER_BODY
-    EQUB &15    \ &02 : SPRITE_HELICOPTER_WITH_SOLDIER_BODY
-    EQUB &15    \ &03 : SPRITE_HELICOPTER_WITH_SOLDIER_BODY
-    EQUB &15    \ &04 : SPRITE_HELICOPTER_WITH_SOLDIER_BODY
-    EQUB &15    \ &05 : SPRITE_HELICOPTER_WITH_SOLDIER_BODY
-
-    EQUB &24    \ &40 &00 : SPRITE_SKELETON_FOUR
-    EQUB &23    \ &01 : SPRITE_SKELETON_THREE
-    EQUB &22    \ &02 : SPRITE_SKELETON_TWO
-    EQUB &21    \ &03 : SPRITE_SKELETON_ONE
-
-    EQUB &29    \ &44 &00 : SPRITE_EXPLOSION_FIVE
-    EQUB &28    \ &01 : SPRITE_EXPLOSION_FOUR
-    EQUB &27    \ &02 : SPRITE_EXPLOSION_THREE
-    EQUB &26    \ &03 : SPRITE_EXPLOSION_TWO
-    EQUB &25    \ &04 : SPRITE_EXPLOSION_ONE
-
-    EQUB &2A    \ &49 &00 : SPRITE_BULLET
-
-    EQUB &2B    \ &4a &00 : SPRITE_GRENADE
-
-    EQUB &2C    \ &4b &00 : SPRITE_BOMB
-
-    EQUB &14    \ &4c &00 : SPRITE_RED_HELICOPTER_BODY
-    EQUB &14    \ &01 : SPRITE_RED_HELICOPTER_BODY
-    EQUB &14    \ &02 : SPRITE_RED_HELICOPTER_BODY
-    EQUB &14    \ &03 : SPRITE_RED_HELICOPTER_BODY
-    EQUB &14    \ &04 : SPRITE_RED_HELICOPTER_BODY
-    EQUB &14    \ &05 : SPRITE_RED_HELICOPTER_BODY
-    EQUB &41    \ &00 : SPRITE_RED_HELICOPTER_BODY_WRECK
-
-    EQUB &13    \ &53 &00 : SPRITE_BLUE_CRAFT
-    EQUB &3E    \ &00 : SPRITE_BLUE_CRAFT_WRECK
-
-    EQUB &2D    \ &55 &00 : SPRITE_TORSO_WITH_BAZOOKA
-    EQUB &2D    \ &01 : SPRITE_TORSO_WITH_BAZOOKA
-    EQUB &2D    \ &02 : SPRITE_TORSO_WITH_BAZOOKA
-    EQUB &2D    \ &03 : SPRITE_TORSO_WITH_BAZOOKA
-    EQUB &2D    \ &04 : SPRITE_TORSO_WITH_BAZOOKA
-    EQUB &2D    \ &05 : SPRITE_TORSO_WITH_BAZOOKA
-    EQUB &2D    \ &06 : SPRITE_TORSO_WITH_BAZOOKA
-    EQUB &2D    \ &07 : SPRITE_TORSO_WITH_BAZOOKA
-    EQUB &2D    \ &08 : SPRITE_TORSO_WITH_BAZOOKA
-
-    EQUB &34    \ &5e &00 : SPRITE_MORTAR_OR_MACHINE_GUN_SOLDIER
-
-    EQUB &33    \ &5f &00 : SPRITE_MORTAR
-
-    EQUB &35    \ &60 &00 : SPRITE_MACHINE_GUN
-
-    EQUB &37    \ &61 &00 : SPRITE_SAM
-
-    EQUB &38    \ &62 &00 : SPRITE_ROCKET
-
-    EQUB &2E    \ &63 &00 : SPRITE_MINE
-
-    EQUB &39    \ &64 &00 : SPRITE_TANK_WHEELS_ONE
-    EQUB &3A    \ &01 : SPRITE_TANK_WHEELS_TWO
-    EQUB &3B    \ &02 : SPRITE_TANK_WHEELS_THREE
-    EQUB &39    \ &03 : SPRITE_TANK_WHEELS_ONE
-
-    EQUB &3C    \ &68 &00 : SPRITE_TANK_BODY
-    EQUB &3C    \ &01 : SPRITE_TANK_BODY
-    EQUB &3C    \ &02 : SPRITE_TANK_BODY
-    EQUB &4A    \ &03 : SPRITE_TANK_BODY_WRECK
-
-    EQUB &3D    \ &6c &00 : SPRITE_VEHICLE_BODY                            # Unused
-    EQUB &3D    \ &01 : SPRITE_VEHICLE_BODY
-    EQUB &3D    \ &02 : SPRITE_VEHICLE_BODY
-
-    EQUB &44    \ &6f &03 : SPRITE_HEAVY_GUN
-
-    EQUB &45    \ &70 &00 : SPRITE_GREEN_WHITE_HELICOPTER_BODY
-    EQUB &45    \ &00 : SPRITE_GREEN_WHITE_HELICOPTER_BODY
-    EQUB &45    \ &00 : SPRITE_GREEN_WHITE_HELICOPTER_BODY
-    EQUB &45    \ &00 : SPRITE_GREEN_WHITE_HELICOPTER_BODY
-    EQUB &45    \ &00 : SPRITE_GREEN_WHITE_HELICOPTER_BODY
-    EQUB &45    \ &00 : SPRITE_GREEN_WHITE_HELICOPTER_BODY
-
-    EQUB &46    \ &76 &00 : SPRITE_GREEN_WHITE_CRAFT_ONE
-
-    EQUB &47    \ &77 &00 : SPRITE_GREEN_WHITE_CRAFT_TWO
-
-    EQUB &48    \ &78 &00 : SPRITE_FLYING_SCOOTER
-
-    EQUB &49    \ &79 &00 : SPRITE_GREEN_WHITE_CRAFT_WITH_MISSILE
-    EQUB &49    \ &00 : SPRITE_GREEN_WHITE_CRAFT_WITH_MISSILE
-    EQUB &49    \ &00 : SPRITE_GREEN_WHITE_CRAFT_WITH_MISSILE
-    EQUB &49    \ &00 : SPRITE_GREEN_WHITE_CRAFT_WITH_MISSILE
-    EQUB &49    \ &00 : SPRITE_GREEN_WHITE_CRAFT_WITH_MISSILE
-    EQUB &49    \ &00 : SPRITE_GREEN_WHITE_CRAFT_WITH_MISSILE
-
-    EQUB &4B    \ &7f &00 : SPRITE_SHELL
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.sprites_y_offset
-    EQUB &0C, &0B, &0A, &0C, &0B, &0A, &0C, &06, &0C, &0A, &0A, &09, &0C, &04, &15, &15    \ &00
-    EQUB &15, &15, &15, &15, &15, &17, &17, &17, &17, &17, &17, &17, &00, &00, &05, &06    \ &10
-    EQUB &07, &05    \ &20
-
-.player_helicopters_type
-    EQUB &08, &0B, &06, &05, &06, &08, &05, &05, &0B, &14
-
-.player_helicopters_initial_x_low
-    EQUB &EC, &66, &C8, &DA, &43, &4F, &C1, &EA, &CF, &08
-
-.player_helicopters_initial_x_high
-    EQUB &02, &05, &32, &09, &0E, &0E, &11, &11, &14, &08
+\ decision 40: the code keeps the page phase it had before the tables moved (it starts at LO = &DF,
+\ 1,024 bytes lower), so no branch in it changes whether it crosses a page
+    SKIP (&DF - LO(*)) AND &FF
 
 .scroll_screen_left
     LDX #&FF                        \ step 2 (layer 3): this scroll's direction
@@ -2826,11 +2541,11 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
 \ This is the kit's keydown_inkey (src/lib/keydown.6502), the same ten bytes the OSBYTE took.
 .check_for_keypress
     TXA
-    EOR #&FF                        \ INKEY number -> internal key number, in A for
-    JSR keydown_int + 1             \ keydown_int past its own TXA: A = &80 if down, else 0
+    EOR #&FF                        \ INKEY number -> internal key number
+    TAX                             \ in X, as keydown_int takes it (no TXA there since grind
+    JSR keydown_int                 \ G0038: BUGS #11); A = &80 if down, else 0
     EOR #&80                        \ Z set = down
-    RTS
-    EQUB &EA                        \ spare (was the TAX): the ten bytes kept, so nothing after moves
+    RTS                             \ the same ten bytes, so nothing after moves
 
 .scroll_into_world
     JSR reset_screen_scroll
@@ -5727,12 +5442,20 @@ target_address_high = * + 2
     STA sound_data_0880 - 1,X
     DEX
     BNE move_4600_to_46df_loop
-    LDX #MOVED_0A20_SIZE            \ step 2 (RAM for cycles 4): the block at &0A20
+    LDX #0                          \ decision 40: the block at &0A20, its whole hole (&0A20-&0CFF)
 .move_0a20_loop
-    LDA moved_0a20_load - 1,X
-    STA &0A20 - 1,X
-    DEX
+    LDA moved_0a20_load,X
+    STA &0A20,X
+    LDA moved_0a20_load + &100,X
+    STA &0B20,X
+    INX
     BNE move_0a20_loop
+    LDX #&E0
+.move_0a20_loop_2
+    LDA moved_0a20_load + &200 - 1,X
+    STA &0C20 - 1,X
+    DEX
+    BNE move_0a20_loop_2
     JSR unpack_for_play             \ step 2 layer 4: HAZEL's compiled kinds, the tunes
     JMP initialisation
 
@@ -5893,8 +5616,9 @@ ENDSECTION
 
 .moved_0a20_load     \ step 2 (RAM for cycles 4): carried in the save arena (decision 33), copied to &0A20 at start-up
 SECTION moved_0a20, org = &0A20, cmos = TRUE
-\ &0982-&0CFF is never read or written after start-up (front end and play, 50,000 frames,
-\ 2026-10-17); &0A00-&0A1F is kept clear: the relocation test builds read it as the ground.
+\ &0982-&0CFF is never read or written after start-up but by the game (front end and play, 50,000
+\ frames, 2026-10-17); &0A00-&0A1F is kept clear: the relocation test builds read it as the ground.
+\ Decision 40: the section fills the hole to &0CFF (times_78 is in HAZEL) and the level tables are in it.
 
 \ multiply_by_78: A x &4E as multiply_A_by_X_2f1e with X = &4E leaves everything: the result,
 \ multiplicand and multiplier_low 0, multiplier_high &4E, A = result_high, X = &4E, Y = 0, C clear,
@@ -5990,10 +5714,63 @@ SECTION moved_0a20, org = &0A20, cmos = TRUE
     EQUB &00
 .ru_d
     EQUB &00
+\ Decision 40: the level tables, from the main block. Read-only, and read only when a mover or a
+\ trigger comes up (under 0.05 times a pass on both measured games), so their page crossings cost
+\ nothing measurable and they follow the code with no gap.
+.trigger_points_x_low_table
+    EQUB &FF, &44, &08, &90, &1C, &AE, &30, &C2, &80, &28, &D7, &58, &B5, &DD, &48, &C7
+    EQUB &CB, &52, &D0, &8E, &80, &FA, &B1, &64, &F0, &0C, &82, &78, &16, &20, &FA, &AC
+    EQUB &66, &3E, &CD, &7A, &02
+
+.trigger_points_x_high_table
+    EQUB &FE, &01, &02, &02, &03, &03, &04, &04, &05, &07, &07, &08, &08, &09, &0A, &0A
+    EQUB &0B, &0C, &0C, &0D, &0E, &0E, &0F, &10, &10, &12, &12, &13, &14, &15, &15, &16
+    EQUB &17, &18, &18, &19, &1A, &63
+
+.new_movers_type
+    EQUB &01, &13, &01, &83, &13, &83, &01, &83, &83, &83, &01, &83, &83, &83, &83, &13
+    EQUB &01, &83, &89, &83, &83, &83, &82, &8C, &83, &82, &83, &82, &84, &83, &8C, &82
+    EQUB &8C, &8C, &8C, &82, &0A, &83, &84, &89, &84, &82, &8A, &8C, &83, &8C, &8C, &84
+    EQUB &83, &82, &8A, &95, &83, &02, &01, &84, &82, &8A, &83, &8C, &83, &84, &8C, &83
+    EQUB &01, &09, &01, &13, &83, &13, &95, &83, &13, &84, &83, &8C, &8C, &83, &84, &83
+    EQUB &8A, &82, &13, &83, &89, &83, &83, &82, &8A, &84, &83, &83, &89, &8C, &83, &8A
+    EQUB &83, &82, &83, &8C, &83, &83, &8A, &82, &83, &13, &83, &84, &83, &84, &89, &83
+    EQUB &01, &02, &83, &82, &01
+
+.new_movers_initial_x_low
+    EQUB &1E, &BC, &D2, &FA, &04, &0A, &38, &6E, &82, &8C, &C1, &26, &42, &74, &B6, &DC
+    EQUB &3A, &5A, &64, &82, &B4, &F6, &32, &3C, &5A, &B4, &DA, &1A, &2C, &BE, &E6, &24
+    EQUB &46, &80, &92, &A0, &30, &3C, &5E, &AA, &B5, &BE, &04, &1E, &50, &40, &58, &70
+    EQUB &96, &BC, &C8, &16, &AA, &D2, &1A, &42, &6E, &90, &FC, &12, &1E, &8C, &AA, &DC
+    EQUB &00, &DC, &E6, &FA, &02, &46, &6E, &A0, &00, &28, &76, &B4, &C8, &F8, &3C, &5E
+    EQUB &66, &74, &82, &AA, &D0, &06, &82, &C6, &F0, &0A, &64, &02, &46, &6E, &9E, &BA
+    EQUB &8E, &A0, &AA, &FA, &46, &6E, &B4, &01, &32, &8C, &B4, &DC, &1F, &6E, &8C, &C8
+    EQUB &08, &2E, &50, &78, &96
+
+.new_movers_initial_x_high_and_flags
+    EQUB &80, &00, &40, &80, &01, &81, &41, &41, &81, &41, &81, &42, &42, &82, &82, &02
+    EQUB &43, &83, &03, &83, &43, &43, &84, &04, &84, &44, &44, &45, &45, &85, &05, &46
+    EQUB &06, &07, &07, &87, &08, &88, &88, &08, &88, &88, &09, &09, &49, &0A, &0A, &4A
+    EQUB &4A, &8A, &0A, &0B, &4B, &8B, &4C, &8C, &4C, &0C, &8C, &0D, &8D, &4D, &0D, &4D
+    EQUB &8E, &0E, &4E, &0E, &4F, &0F, &8F, &4F, &10, &50, &50, &10, &10, &50, &51, &91
+    EQUB &11, &52, &12, &52, &12, &93, &53, &53, &13, &54, &54, &55, &15, &15, &55, &15
+    EQUB &56, &56, &96, &16, &57, &57, &17, &98, &58, &18, &58, &58, &59, &99, &19, &59
+    EQUB &9A, &5A, &9A, &5A, &9A
+
+.new_helicopter_types
+    EQUB &85    \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_MISSILE
+    EQUB &86    \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER
+    EQUB &96    \ MOVER_TYPE_ENEMY | MOVER_TYPE_GREEN_WHITE_HELICOPTER
+    EQUB &87    \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_SOLDIER
+    EQUB &97    \ MOVER_TYPE_ENEMY | MOVER_TYPE_GREEN_WHITE_CRAFT_ONE
+    EQUB &9A    \ MOVER_TYPE_ENEMY | MOVER_TYPE_GREEN_WHITE_HELICOPTER_WITH_MISSILE
+    EQUB &99    \ MOVER_TYPE_ENEMY | MOVER_TYPE_FLYING_SCOOTER
+    EQUB &98    \ MOVER_TYPE_ENEMY | MOVER_TYPE_GREEN_WHITE_CRAFT_TWO
+
 .moved_0a20_end
 ENDSECTION
 MOVED_0A20_SIZE = moved_0a20_end - &0A20
-ASSERT MOVED_0A20_SIZE <= &E0
+ASSERT MOVED_0A20_SIZE <= &2E0, "moved_0a20 overruns &0CFF by ", MOVED_0A20_SIZE - &2E0   \ decision 40: to &0CFF
 
 \ ---- Step 2 layer 4: run once from entry_point, carried in the save arena (decision 33) ----
 \ unpack_for_play: the player's compiled sprite kinds that live in HAZEL (tools/compiled.py) copied
@@ -6091,6 +5868,264 @@ save_arena_end = *
 .hazel_b_load
 SECTION hazel_b, org = hazel_a_end, cmos = TRUE
     INCLUDE "compiled_hazel_b.6502"
+\ Decision 40: read-only tables only play reads (HAZEL is paged in through play), from the main block,
+\ placed so that no read crosses a page: player_helicopter_types_vertical_speed (read from 5 below
+\ it) .. player_helicopters_initial_x_high (read from 24 below) in one page from LO = 5, then the
+\ mover type tables with the page boundary at the start of the tenth.
+    SKIP (&105 - LO(*)) AND &FF
+\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+.player_helicopter_types_vertical_speed
+    EQUB &04, &03, &02, &02, &00, &00, &04, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &00
+    EQUB &00, &03, &00, &00, &00, &02    \ &10
+
+.animation_table
+    EQUB &00    \ &00 &00 : SPRITE_LEGS_ONE
+    EQUB &01    \ &01 : SPRITE_LEGS_TWO
+    EQUB &02    \ &02 : SPRITE_LEGS_THREE
+    EQUB &00    \ &03 : SPRITE_LEGS_ONE
+    EQUB &03    \ &04 : SPRITE_LEGS_FOUR
+    EQUB &04    \ &05 : SPRITE_LEGS_FIVE
+    EQUB &0A    \ &06 : SPRITE_LEGS_SIX
+    EQUB &0D    \ &07 : SPRITE_LEGS_SEVEN
+    EQUB &0A    \ &08 : SPRITE_LEGS_SIX
+    EQUB &1B    \ &09 : SPRITE_LEGS_NINE
+    EQUB &1C    \ &0a : SPRITE_LEGS_TEN
+    EQUB &1A    \ &0b : SPRITE_LEGS_EIGHT
+    EQUB &0A    \ &0c : SPRITE_LEGS_SIX
+    EQUB &0D    \ &0d : SPRITE_LEGS_SEVEN
+
+    EQUB &05    \ &0e &00 : SPRITE_TORSO_WITH_PISTOL_ONE
+    EQUB &06    \ &01 : SPRITE_TORSO_WITH_PISTOL_TWO
+    EQUB &05    \ &02 : SPRITE_TORSO_WITH_PISTOL_ONE
+    EQUB &08    \ &03 : SPRITE_TORSO_WITH_PISTOL_FOUR
+    EQUB &07    \ &04 : SPRITE_TORSO_WITH_PISTOL_THREE
+    EQUB &08    \ &05 : SPRITE_TORSO_WITH_PISTOL_FOUR
+    EQUB &0F    \ &06 : SPRITE_TORSO_WITH_PISTOL_FIVE
+    EQUB &0F    \ &07 : SPRITE_TORSO_WITH_PISTOL_FIVE
+    EQUB &05    \ &08 : SPRITE_TORSO_WITH_PISTOL_ONE
+    EQUB &1D    \ &09 : SPRITE_TORSO_WITH_PISTOL_SIX
+    EQUB &05    \ &0a : SPRITE_TORSO_WITH_PISTOL_ONE
+    EQUB &1E    \ &0b : SPRITE_TORSO_WITH_PISTOL_SEVEN
+    EQUB &1F    \ &0c : SPRITE_TORSO_WITH_PISTOL_EIGHT
+    EQUB &05    \ &0d : SPRITE_TORSO_WITH_PISTOL_ONE
+
+    EQUB &10    \ &1c &00 : SPRITE_TORSO_WITH_RIFLE_ONE
+    EQUB &10    \ &01 : SPRITE_TORSO_WITH_RIFLE_ONE
+    EQUB &10    \ &02 : SPRITE_TORSO_WITH_RIFLE_ONE
+    EQUB &10    \ &03 : SPRITE_TORSO_WITH_RIFLE_ONE
+    EQUB &10    \ &04 : SPRITE_TORSO_WITH_RIFLE_ONE
+    EQUB &10    \ &05 : SPRITE_TORSO_WITH_RIFLE_ONE
+    EQUB &0B    \ &06 : SPRITE_TORSO_WITH_RIFLE_ZERO
+    EQUB &0B    \ &07 : SPRITE_TORSO_WITH_RIFLE_ZERO
+    EQUB &10    \ &08 : SPRITE_TORSO_WITH_RIFLE_ONE
+
+    EQUB &16    \ &25 &00 : SPRITE_ROTORS_ONE
+    EQUB &17    \ &01 : SPRITE_ROTORS_TWO
+    EQUB &19    \ &02 : SPRITE_ROTORS_FOUR
+    EQUB &18    \ &03 : SPRITE_ROTORS_THREE
+    EQUB &19    \ &04 : SPRITE_ROTORS_FOUR
+    EQUB &17    \ &05 : SPRITE_ROTORS_TWO
+    EQUB &42    \ &06 : SPRITE_ROTORS_WRECK
+
+    EQUB &12    \ &2c &00 : SPRITE_HELICOPTER_WITH_MISSILE_BODY
+    EQUB &12    \ &01 : SPRITE_HELICOPTER_WITH_MISSILE_BODY
+    EQUB &12    \ &02 : SPRITE_HELICOPTER_WITH_MISSILE_BODY
+    EQUB &12    \ &03 : SPRITE_HELICOPTER_WITH_MISSILE_BODY
+    EQUB &12    \ &04 : SPRITE_HELICOPTER_WITH_MISSILE_BODY
+    EQUB &12    \ &05 : SPRITE_HELICOPTER_WITH_MISSILE_BODY
+    EQUB &40    \ &06 : SPRITE_HELICOPTER_WITH_MISSILE_BODY_WRECK
+
+    EQUB &11    \ &33 &00 : SPRITE_HELICOPTER_BODY
+    EQUB &11    \ &01 : SPRITE_HELICOPTER_BODY
+    EQUB &11    \ &02 : SPRITE_HELICOPTER_BODY
+    EQUB &11    \ &03 : SPRITE_HELICOPTER_BODY
+    EQUB &11    \ &04 : SPRITE_HELICOPTER_BODY
+    EQUB &11    \ &05 : SPRITE_HELICOPTER_BODY
+    EQUB &43    \ &06 : SPRITE_HELICOPTER_BODY_WRECK
+
+    EQUB &15    \ &3a &00 : SPRITE_HELICOPTER_WITH_SOLDIER_BODY
+    EQUB &15    \ &01 : SPRITE_HELICOPTER_WITH_SOLDIER_BODY
+    EQUB &15    \ &02 : SPRITE_HELICOPTER_WITH_SOLDIER_BODY
+    EQUB &15    \ &03 : SPRITE_HELICOPTER_WITH_SOLDIER_BODY
+    EQUB &15    \ &04 : SPRITE_HELICOPTER_WITH_SOLDIER_BODY
+    EQUB &15    \ &05 : SPRITE_HELICOPTER_WITH_SOLDIER_BODY
+
+    EQUB &24    \ &40 &00 : SPRITE_SKELETON_FOUR
+    EQUB &23    \ &01 : SPRITE_SKELETON_THREE
+    EQUB &22    \ &02 : SPRITE_SKELETON_TWO
+    EQUB &21    \ &03 : SPRITE_SKELETON_ONE
+
+    EQUB &29    \ &44 &00 : SPRITE_EXPLOSION_FIVE
+    EQUB &28    \ &01 : SPRITE_EXPLOSION_FOUR
+    EQUB &27    \ &02 : SPRITE_EXPLOSION_THREE
+    EQUB &26    \ &03 : SPRITE_EXPLOSION_TWO
+    EQUB &25    \ &04 : SPRITE_EXPLOSION_ONE
+
+    EQUB &2A    \ &49 &00 : SPRITE_BULLET
+
+    EQUB &2B    \ &4a &00 : SPRITE_GRENADE
+
+    EQUB &2C    \ &4b &00 : SPRITE_BOMB
+
+    EQUB &14    \ &4c &00 : SPRITE_RED_HELICOPTER_BODY
+    EQUB &14    \ &01 : SPRITE_RED_HELICOPTER_BODY
+    EQUB &14    \ &02 : SPRITE_RED_HELICOPTER_BODY
+    EQUB &14    \ &03 : SPRITE_RED_HELICOPTER_BODY
+    EQUB &14    \ &04 : SPRITE_RED_HELICOPTER_BODY
+    EQUB &14    \ &05 : SPRITE_RED_HELICOPTER_BODY
+    EQUB &41    \ &00 : SPRITE_RED_HELICOPTER_BODY_WRECK
+
+    EQUB &13    \ &53 &00 : SPRITE_BLUE_CRAFT
+    EQUB &3E    \ &00 : SPRITE_BLUE_CRAFT_WRECK
+
+    EQUB &2D    \ &55 &00 : SPRITE_TORSO_WITH_BAZOOKA
+    EQUB &2D    \ &01 : SPRITE_TORSO_WITH_BAZOOKA
+    EQUB &2D    \ &02 : SPRITE_TORSO_WITH_BAZOOKA
+    EQUB &2D    \ &03 : SPRITE_TORSO_WITH_BAZOOKA
+    EQUB &2D    \ &04 : SPRITE_TORSO_WITH_BAZOOKA
+    EQUB &2D    \ &05 : SPRITE_TORSO_WITH_BAZOOKA
+    EQUB &2D    \ &06 : SPRITE_TORSO_WITH_BAZOOKA
+    EQUB &2D    \ &07 : SPRITE_TORSO_WITH_BAZOOKA
+    EQUB &2D    \ &08 : SPRITE_TORSO_WITH_BAZOOKA
+
+    EQUB &34    \ &5e &00 : SPRITE_MORTAR_OR_MACHINE_GUN_SOLDIER
+
+    EQUB &33    \ &5f &00 : SPRITE_MORTAR
+
+    EQUB &35    \ &60 &00 : SPRITE_MACHINE_GUN
+
+    EQUB &37    \ &61 &00 : SPRITE_SAM
+
+    EQUB &38    \ &62 &00 : SPRITE_ROCKET
+
+    EQUB &2E    \ &63 &00 : SPRITE_MINE
+
+    EQUB &39    \ &64 &00 : SPRITE_TANK_WHEELS_ONE
+    EQUB &3A    \ &01 : SPRITE_TANK_WHEELS_TWO
+    EQUB &3B    \ &02 : SPRITE_TANK_WHEELS_THREE
+    EQUB &39    \ &03 : SPRITE_TANK_WHEELS_ONE
+
+    EQUB &3C    \ &68 &00 : SPRITE_TANK_BODY
+    EQUB &3C    \ &01 : SPRITE_TANK_BODY
+    EQUB &3C    \ &02 : SPRITE_TANK_BODY
+    EQUB &4A    \ &03 : SPRITE_TANK_BODY_WRECK
+
+    EQUB &3D    \ &6c &00 : SPRITE_VEHICLE_BODY                            # Unused
+    EQUB &3D    \ &01 : SPRITE_VEHICLE_BODY
+    EQUB &3D    \ &02 : SPRITE_VEHICLE_BODY
+
+    EQUB &44    \ &6f &03 : SPRITE_HEAVY_GUN
+
+    EQUB &45    \ &70 &00 : SPRITE_GREEN_WHITE_HELICOPTER_BODY
+    EQUB &45    \ &00 : SPRITE_GREEN_WHITE_HELICOPTER_BODY
+    EQUB &45    \ &00 : SPRITE_GREEN_WHITE_HELICOPTER_BODY
+    EQUB &45    \ &00 : SPRITE_GREEN_WHITE_HELICOPTER_BODY
+    EQUB &45    \ &00 : SPRITE_GREEN_WHITE_HELICOPTER_BODY
+    EQUB &45    \ &00 : SPRITE_GREEN_WHITE_HELICOPTER_BODY
+
+    EQUB &46    \ &76 &00 : SPRITE_GREEN_WHITE_CRAFT_ONE
+
+    EQUB &47    \ &77 &00 : SPRITE_GREEN_WHITE_CRAFT_TWO
+
+    EQUB &48    \ &78 &00 : SPRITE_FLYING_SCOOTER
+
+    EQUB &49    \ &79 &00 : SPRITE_GREEN_WHITE_CRAFT_WITH_MISSILE
+    EQUB &49    \ &00 : SPRITE_GREEN_WHITE_CRAFT_WITH_MISSILE
+    EQUB &49    \ &00 : SPRITE_GREEN_WHITE_CRAFT_WITH_MISSILE
+    EQUB &49    \ &00 : SPRITE_GREEN_WHITE_CRAFT_WITH_MISSILE
+    EQUB &49    \ &00 : SPRITE_GREEN_WHITE_CRAFT_WITH_MISSILE
+    EQUB &49    \ &00 : SPRITE_GREEN_WHITE_CRAFT_WITH_MISSILE
+
+    EQUB &4B    \ &7f &00 : SPRITE_SHELL
+
+\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+.sprites_y_offset
+    EQUB &0C, &0B, &0A, &0C, &0B, &0A, &0C, &06, &0C, &0A, &0A, &09, &0C, &04, &15, &15    \ &00
+    EQUB &15, &15, &15, &15, &15, &17, &17, &17, &17, &17, &17, &17, &00, &00, &05, &06    \ &10
+    EQUB &07, &05    \ &20
+
+.player_helicopters_type
+    EQUB &08, &0B, &06, &05, &06, &08, &05, &05, &0B, &14
+
+.player_helicopters_initial_x_low
+    EQUB &EC, &66, &C8, &DA, &43, &4F, &C1, &EA, &CF, &08
+
+.player_helicopters_initial_x_high
+    EQUB &02, &05, &32, &09, &0E, &0E, &11, &11, &14, &08
+    ASSERT HI(player_helicopter_types_vertical_speed - 5) = HI(* - 1), "decision 40: the helicopter and animation tables cross a page"
+    SKIP (&101 - LO(*)) AND &FF
+.mover_types_parts
+    EQUB &00, &00, &00, &00, &00, &01, &01, &01, &01, &01, &01, &02, &02, &02, &02, &02    \ &00
+    EQUB &02, &02, &02, &02, &01, &02, &01, &02, &02, &02, &01, &02    \ &10
+
+\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+.mover_types_first_sprite_animation_offsets
+    EQUB &00, &00, &00, &00, &00, &2C, &33, &3A, &4C, &5E, &5E, &53, &61, &40, &44, &49    \ &00
+    EQUB &4A, &4B, &62, &63, &64, &6F, &70, &76, &77, &78, &79, &7F, &0E, &1C, &0E, &1C    \ &10
+    EQUB &55, &25, &25, &25, &25, &5F, &60, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &20
+    EQUB &68, &00, &25, &00, &00, &00, &25, &00    \ &30
+
+\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+MOVER_WIDEST = &0B                  \ step 2 (layer 3): the largest entry below (the collision searches' early test)
+.mover_types_width_table
+    EQUB &06, &06, &06, &06, &06, &0B, &0B, &0B, &0B, &09, &09, &0B, &0B, &06, &06, &02    \ &00
+    EQUB &02, &03, &02, &03, &0B, &0B, &0B, &0B, &0B, &0B, &0B, &02    \ &10
+
+\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+.mover_types_height_table
+    EQUB &1E, &1C, &1F, &1C, &1C, &1C, &1B, &1C, &1C, &16, &16, &17, &17, &1D, &0F, &03    \ &00
+    EQUB &04, &04, &0D, &05, &20, &18, &1C, &18, &18, &18, &1C, &02    \ &10
+
+.mover_types_third_sprite
+    EQUB &09, &0C, &0E, &20, &20
+
+\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+.mover_types_second_sprite_offset
+    EQUB &00, &00, &00, &00, &00, &0E, &0E, &15, &15, &1C, &1D, &00, &00, &00, &00, &00    \ &00
+    EQUB &00, &00, &00, &00, &1E, &00, &0E, &00, &00, &00, &0E, &00    \ &10
+
+\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+.mover_types_animation_frame
+    EQUB &06, &06, &06, &06, &06, &06, &06, &06, &06, &01, &01, &01, &01, &04, &05, &01    \ &00
+    EQUB &01, &01, &01, &01, &03, &01, &06, &01, &01, &01, &06, &01    \ &10
+
+\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+.mover_types_new_grenade_bomb_or_rocket_y_offset
+    EQUB &22, &22, &22, &22, &22, &01, &01, &01, &01, &22, &00, &01, &22, &00, &00, &00    \ &00
+    EQUB &00, &00, &00, &00, &00, &00, &01, &01, &01, &00, &01    \ &10
+
+\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+.mover_types_new_bullet_y_offset
+    EQUB &10, &10, &10, &10, &10, &10, &0F, &14, &10, &00, &18, &10, &00, &00, &00, &00    \ &00
+    EQUB &00, &00, &00, &00, &20, &1C, &10, &10, &10, &10, &10    \ &10
+
+\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+.mover_types_new_grenade_bomb_or_rocket_type
+    EQUB &10, &00, &10, &00, &00, &11, &10, &11, &11, &10, &00, &00, &12, &00, &00, &00    \ &00
+    EQUB &00, &00, &00, &00, &00, &00, &11, &11, &10, &00, &10    \ &10
+
+\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+.mover_types_new_grenade_bomb_or_rocket_y_velocity
+    EQUB &06, &00, &06, &00, &00, &80, &80, &80, &80, &08, &00, &80, &01, &00, &00, &00    \ &00
+    EQUB &00, &00, &00, &00, &00, &00, &80, &80, &80, &00, &80    \ &10
+
+\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+.mover_types_new_bullet_type
+    EQUB &0F, &0F, &0F, &0F, &11, &0F, &0F, &0F, &00, &00, &0F, &0F, &00, &00, &00, &00    \ &00
+    EQUB &00, &00, &00, &00, &1B, &1B, &0F, &0F, &0F, &0F, &0F    \ &10
+
+\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+.mover_types_new_bullet_y_velocity
+    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &00
+    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &10
+
+\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+.mover_types_maximum_firing_cooldown
+    EQUB &0A, &0A, &0A, &0A, &0A, &05, &06, &02, &05, &00, &02, &00, &00, &00, &00, &00    \ &00
+    EQUB &00, &00, &00, &00, &05, &05, &04, &03, &02, &03, &06    \ &10
+    ASSERT LO(mover_types_new_grenade_bomb_or_rocket_type) = 0 AND HI(mover_types_parts) = HI(mover_types_new_grenade_bomb_or_rocket_type - 1) AND HI(mover_types_new_grenade_bomb_or_rocket_type) = HI(* - 1), "decision 40: a mover type table crosses a page"
+    ASSERT * <= &DC00, "decision 40: hazel_b's tables reach &DC00 by ", * - &DC00
 .hazel_b_end
 ENDSECTION
     INCLUDE "music_packed.6502"

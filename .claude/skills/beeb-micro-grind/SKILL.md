@@ -55,7 +55,10 @@ the hottest windows first: most of the cycles are in a few windows, and later ro
    hour). Best claim first, one candidate per region of a file in a batch of four: apply, gate,
    keep and commit if every check passes and neither game is slower and something is gained, else
    revert and bisect down to the candidate that fails. A candidate whose old text is gone (an
-   earlier one changed it) is marked stale and its window comes back next round.
+   earlier one changed it) is marked stale and its window comes back next round. A single
+   candidate's failure is classified: `stale` (a kept change took its label or callee), `no room`
+   (its region's ASSERT; `run --retry 'no room'` once the region has grown), `failed` (a check),
+   `no gain` (within NOISE), `slower`.
 7. **Report** (`grind.py report`, then commit): candidates by status, what was kept and what it saved.
 8. **Iterate:** re-profile and re-annotate the new build, cut the windows again (changed code has
    new hashes, so it is evaluated afresh; unchanged code is not), and go round. Stop when a round
@@ -76,6 +79,10 @@ annotations exist so that facts the code re-establishes can be used instead. Wha
   BIT zp,X), self-modified immediates or operands in place of zero-page loads, loops unrolled or
   split where the bytes are there, work hoisted out of a loop, indexes counted down to zero;
 - page crossings on indexed reads in hot loops.
+What round 1's gate rejected most (`docs/grind/README.md`): a branch rearranged for the wrong
+common case (check the measured cycles, not intuition); a byte or two saved in hot code that
+slides a hot branch or table read across a page (20-60 cycles a pass lost); two alternatives
+defining the same new label.
 Claims: cycles saved an execution on the hot path (count both paths if they differ), executions a
 pass (the line's measured cycles ÷ its cycles an execution), their product, and bytes saved
 (positive = smaller). The argument for equivalence covers every entry, every exit and everything
@@ -110,6 +117,9 @@ For a grind in particular:
   and so does everything from `&3400` up in main RAM (BUGS #1, #2). A byte the annotations show
   dead may be reused as a temporary only if nothing else - the interrupt included - can read it
   in between, and the skeptics agree.
+- **Entries past a label** (`JSR name + 1`, `BMI main_game_loop + 15`): grep `name *+` across
+  `src/` before changing the first bytes of any routine. Round 1's G0038 removed `keydown_int`'s
+  first instruction and broke a `JSR keydown_int + 1` nobody checked (BUGS #11).
 - **Self-modifying code** (`name = * + 1` labels; the disassembly's `actually` notes; stores to
   `label + 1` anywhere): the operand some code writes must still be where it writes it.
 - **Paging.** Code in bank 4 runs with ROMSEL `&84` (ANDY in) or `&04`; compiled kinds with their own
@@ -120,20 +130,21 @@ For a grind in particular:
 
 ## Room
 
-Where each source's code lives, and its free space on branch `ram-2026-10-18` after decisions
-32-34 (2026-10-18, shipping build; read the current figure off the build's listing, the SKIP that pads
+Where each source's code lives, and its free space after decisions 32-34 and 40 (2026-10-18,
+shipping build; read the current figure off the build's listing, the SKIP that pads
 the region):
 
 | Source | Region | Free | Listing line |
 |---|---|---|---|
-| `game.6502`, `lib/keydown.6502` | main RAM, up to `&3400` | 20 | `SKIP unused_3400_original - *` |
-| `game.6502` `moved_0a20` | `&0A20-&0AFF` | 76 | `moved_0a20_end` to `&0B00` |
+| `game.6502`, `lib/keydown.6502` | main RAM, up to `&3400` | 1,044 | `SKIP unused_3400_original - *` |
+| `game.6502` `moved_0a20` | `&0A20-&0CFF` | 154 | `moved_0a20_end` to `&0D00` |
 | `render.6502` | bank 4, `&9000-&B3FF` | 797 | `SKIP PAD_END` in DATA1 |
 | `render_zp.6502`, `prebuild.6502`, `render_bss_zero.6502` | bank 4 under ANDY | 110 | `SKIP &9000 + PAD_START - *` |
 | zero page | `&1F-&75` (`ren_zp`, decision 34) | 0 | `ren_zp_end` (ASSERTed below `&76`) |
 | `bank5.6502`, `lib/sfx50.6502` | bank 5 | 437 | `SKIP PAD_END` in DATA2 |
-| the start-up block (MGAME's file) | to `&5A80` at load | 2,271 | `mgame_end` (`MGAME would load over the loading picture` ASSERT) |
-| start-up code carried in the save arena | `&354A-&3FFF` | 501 | `arena_carried_end` (decision 33) |
+| the start-up block (MGAME's file) | to `&5A80` at load | 1,542 | `mgame_end` (`MGAME would load over the loading picture` ASSERT) |
+| start-up code carried in the save arena | `&354A-&3FFF` | 50 | `arena_carried_end` (decision 33) |
+| `game.6502` `hazel_b`'s tables (play-only data, decision 40) | HAZEL, to `&DC00` | 121 | `hazel_b_end` (ASSERTed below `&DC00`) |
 
 The renderer's variables (`src/render_bss.6502`, decision 32) are in workspace holes, not the
 file: a new one goes in a section with room (each is ASSERTed to its hole). The 48 hottest are in
@@ -150,7 +161,8 @@ per commit (`build/grind/ctl-<commit>/`); the test is the working tree. Every bu
 grind_config.BUILDS must assemble, then CHECKS run (at most 4 emulators at once): state and shown
 screen identical to the control over 6,000 passes on seed 1 and 4,000 on seed 3, the test's
 DEBUG_FULLREDRAW twin identical to it over 4,000 on seed 5, both helicopter flights with no frame
-differing, and the front end's 15 checks. Then MEASURE: pcprof's work a pass (the wait for the
+differing, the front end's 15 checks, and observer mode's keys (`tools/observer.mjs`: a key path
+play never takes, which round 1's G0038 broke unseen - BUGS #11). Then MEASURE: pcprof's work a pass (the wait for the
 flip excluded) on seed 1 and holding RIGHT, against the control's - deterministic, so a difference
 is exact. `gate --quick` runs seed 1 only, for trying something by hand.
 

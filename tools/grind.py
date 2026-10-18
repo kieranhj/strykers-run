@@ -409,6 +409,8 @@ def judge(kind, out):
         return bool(ok), f"passes {d.get('passes')}, identical {d.get('identical')}, screen {d.get('screenPassesIdentical')}, first screen diff {d.get('screenFirstDiffPass')}"
     if kind == 'helilock':
         return d.get('boarded') and d.get('framesDiffering') == 0, f"boarded {d.get('boarded')}, frames differing {d.get('framesDiffering')}"
+    if kind == 'ok':
+        return bool(d.get('ok')), json.dumps(d)[:200]
     return False, 'unknown check'
 
 
@@ -450,6 +452,21 @@ def log(msg):
         f.write(msg + '\n')
 
 
+def verdict(v):
+    """A candidate that failed its gate alone, by cause (round 1: 7 of 13 'failed' were out of
+    room, 3 clashed with a change kept before them, 1 of 11 'slower' gained nothing)."""
+    why = v.get('why', '')
+    if not v['ok']:
+        if re.search(r'Duplicate symbol|Undefined symbol', why):
+            return 'stale'                  # a change kept before it took its label or its callee
+        if 'overruns' in why:
+            return 'no room'                # its region's ASSERT: worth trying again with more room
+        return 'failed'
+    if all(abs(s) <= CFG.NOISE for s in v['saved'].values()):
+        return 'no gain'
+    return 'slower'
+
+
 def try_batch(cands, batch):
     """Apply `batch`, gate it; keep (commit) or bisect. Returns the candidates kept."""
     live = []
@@ -487,7 +504,7 @@ def try_batch(cands, batch):
         revert(c)
     if len(live) == 1:
         c = live[0]
-        c['status'] = 'failed' if not v['ok'] else 'slower'
+        c['status'] = verdict(v)
         c['gate'] = v
         save(cands)
         log(f"  {c['id']}: {c['status']}: " + ('; '.join(f"{x['name']}: {x['what']}" for x in v.get('checks', []) if not x['ok']) or v.get('why', '') or str(v.get('saved'))))
@@ -503,6 +520,13 @@ def cmd_run(a):
     if sh(['git', 'status', '--porcelain', 'src']).stdout.strip():
         sys.exit('src/ has uncommitted changes: commit or stash them first')
     GRIND.mkdir(parents=True, exist_ok=True)
+    if a.retry:                             # e.g. --retry 'no room' once a region has grown
+        cands = load()
+        for c in cands:
+            if c['status'] in a.retry:
+                c['note'] = f"was {c['status']}; retried"
+                c['status'] = 'approved'
+        save(cands)
     done = 0
     while a.max is None or done < a.max:
         cands = load()
@@ -562,6 +586,7 @@ def main():
     r = s.add_parser('run')
     r.add_argument('--batch', type=int, default=4)
     r.add_argument('--max', type=int)
+    r.add_argument('--retry', nargs='*', default=[], help="statuses to queue again, e.g. 'no room'")
     s.add_parser('report')
     a = p.parse_args()
     {'windows': cmd_windows, 'add': cmd_add, 'queue': cmd_queue, 'apply': cmd_apply,

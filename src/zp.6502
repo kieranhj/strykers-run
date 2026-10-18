@@ -172,8 +172,8 @@ irq_accumulator                              = &FC
 
 \ ---- fixed workspace (not part of any file) ----
 column_buffer                                = &0300
-times_78_lo                                  = &0B00      \ step 2: n x &4E (multiply_by_78); &0982-&0CFF
-times_78_hi                                  = &0C00      \ is not read or written after start-up
+times_78_lo                                  = &C000      \ step 2: n x &4E (multiply_by_78), made at start-up;
+times_78_hi                                  = &C100      \ HAZEL, page-aligned, read in play only (decision 40)
 movers_helicopter_fuel_high                  = &0960
 \ bank 5 &8000-&83FF held the player's save-under and its edge buffers; free since layer 2
 os_rom                                       = &C000
