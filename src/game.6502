@@ -2185,7 +2185,7 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     TAY
     INC mover_x_low
     INC columns_to_clip_from_left
-    JMP clip_unflipped_mover_loop
+    BRA clip_unflipped_mover_loop   \ 65C02 opcode (grind: a byte for the flipped loop's count)
 .leave_with_carry_set_2031
     SEC                             \ Leave with carry set to indicate mover is on edge
     RTS
@@ -2194,23 +2194,27 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     STA &CE
     LDA flipped_mover_sprite_addresses_high_table,X
     STA &CF
-    LDA #&00
-    STA pixel_table_address_low     \ Set to zero to use flipped pixel table
-.clip_flipped_mover_loop
-    LDY #&00
-    LDA mover_x_low
-    CMP edge_x_low
-    BEQ leave_with_sprite_address_and_carry_set
-    LDA &CE
+    STZ pixel_table_address_low     \ 65C02 opcode: zero to use flipped pixel table
+.clip_flipped_mover_loop            \ Grind: the n = edge_x_low - mover_x_low columns counted in X
+    LDA edge_x_low
     SEC
-    SBC (&CE),Y                     \ Move back a column of sprite data
+    SBC mover_x_low
+    BEQ leave_with_sprite_address_and_carry_set
+    STA columns_to_clip_from_left   \ n: zero on entry (both callers zero it), as n INCs left it
+    TAX
+    LDA edge_x_low
+    STA mover_x_low                 \ + n, as n INCs left it
+    SEC
+.clip_flipped_column_c1
+    LDA &CE
+    SBC (&CE)                       \ 65C02 opcode: move back a column of sprite data (C = 1)
     STA &CE
     BCS skip_page_2054
     DEC &CF
+    SEC
 .skip_page_2054
-    INC mover_x_low
-    INC columns_to_clip_from_left
-    JMP clip_flipped_mover_loop
+    DEX
+    BNE clip_flipped_column_c1
 .leave_with_sprite_address_and_carry_set
     LDY &CE
     LDX &CF
@@ -3235,15 +3239,16 @@ move_mover_routine_address_high = * + 2
 .skip_killing_player
     JSR plot_player
 .skip_plotting_player
-    JSR update_player_buffer        \ *** Unbuffer edge buffers to main player buffer
-    LDA #&04
+    LDA #&04                        \ grind: update_player_buffer (an RTS in step 2) no longer called
     STA os_ram_copy_of_currently_selected_rom
     STA romsel                      \ Paged ROM latch
-    JSR check_if_player_is_on_ground
+    LDA movers_y                    \ check_if_player_is_on_ground inlined: A = movers_y, C/Z from CMP #&18
+    CMP #&18
     BNE not_on_ground
     LDX player_y_velocity
     BNE end_jump
-    BEQ leave_27b8                  \ Always branches
+    RTS                             \ was BEQ leave_27b8 (always)
+    EQUB &EA, &EA                   \ spare: the 21 bytes kept, so nothing after moves
 .not_on_ground
     LDX player_y_velocity
     BNE not_starting_to_fall
