@@ -2750,7 +2750,7 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     CMP #&0D                        \ MOVER_TYPE_SKELETON
     BCC leave_with_carry_clear_242d \ Player can walk through all friendly movers
     CMP #&8C                        \ MOVER_TYPE_ENEMY | MOVER_TYPE_SAM
-    BEQ leave_with_carry_clear_242d \ Player can walk through enemy SAM
+    BEQ leave_not_hostile_clc_g8c37 \ Player can walk through enemy SAM
     BNE leave_with_carry_set_2429   \ Everything else is hostile to player; always branches
 .not_player_241b
     CPY #&0C                        \ MOVER_FIRST_PROJECTILE
@@ -2759,13 +2759,14 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     CMP #&13                        \ MOVER_TYPE_MINE
     BCS leave_with_carry_set_2429   \ All collisions involving mines are hostile
     CMP #&0C                        \ MOVER_TYPE_SAM
-    BCS leave_with_carry_clear_242d \ Ignore collisions with skeletons, explosions and projectiles
+    BCS leave_not_hostile_clc_g8c37 \ Ignore collisions with skeletons, explosions and projectiles
 .leave_with_carry_set_2429
     STX hostile_mover
     SEC                             \ Leave with carry set to indicate hostile collision
     RTS
-.leave_with_carry_clear_242d
+.leave_not_hostile_clc_g8c37       \ grind: from the C = 1 paths (BEQ after CMP #&8C, BCS after CMP #&0C)
     CLC                             \ Leave with carry clear to indicate not hostile
+.leave_with_carry_clear_242d       \ grind: reached only by BCC (C = 0 already): the CLC skipped
     RTS
 
 .move_mover_left
