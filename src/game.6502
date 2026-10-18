@@ -1885,45 +1885,40 @@ ENDIF
     JMP unpack_column_of_sprite
 
 .get_mover_type_and_colour
-    LDA #HI(unflipped_green_pixel_table)\ &0440 = unflipped_green_pixel_table
-    STA pixel_table_address_high
+    \ (grind) get_mover_type_and_colour and get_mover_Y_x are inlined into plot_mover below; these
+    \ 12 bytes, never executed, keep everything after plot_mover's TAX where it was
+    SKIP 12
+not_white = leave_1e3e - 4                \ plot_mover's BCS not_white + 4 lands on an RTS
+.plot_player
+    LDY #&00                        \ MOVER_PLAYER
+.plot_mover
+    LDA #&04                        \ ***
+    STA os_ram_copy_of_currently_selected_rom\ ***
+    STA romsel                      \ Paged ROM latch                      ***
+    ASSERT HI(unflipped_green_pixel_table) = &04
+    STA pixel_table_address_high    \ &0440 = unflipped_green_pixel_table
+    LDA viewport_left_low
+    STA edge_x_low
+    STY mover
+    LDA movers_x_low,Y              \ get_mover_Y_x, inline
+    STA mover_x_low
+    LDA movers_x_high,Y
+    STA &C5
     ASSERT LO(unflipped_green_pixel_table) <> 0   \ the low byte doubles as the "not flipped" flag
     LDA #LO(unflipped_green_pixel_table)
     STA pixel_table_address_low     \ Non-zero to indicate not flipped by default
     LDA movers_type_and_colour,Y    \ Positive if ally, negative if enemy
-    BPL not_white
+    BPL pm_not_white_g0b1b
+    CMP #&95                        \ MOVER_TYPE_ENEMY | MOVER_TYPE_HEAVY_GUN *** (first: the commonest)
+    BCS pm_not_white_g0b1b          \ ***
     CMP #&85                        \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_MISSILE
-    BEQ not_white
-    CMP #&95                        \ MOVER_TYPE_ENEMY | MOVER_TYPE_HEAVY_GUN ***
-    BCS not_white                   \ ***
+    BEQ pm_not_white_g0b1b
     CMP #&87                        \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_SOLDIER
-    BEQ not_white
+    BEQ pm_not_white_g0b1b
     INC pixel_table_address_high    \ Use white pixel table for most enemies
-.not_white
-    AND #&7F
+.pm_not_white_g0b1b
+    AND #&7F                        \ A = mover type
     STA &7A
-    RTS
-
-.plot_player
-    LDY #&00                        \ MOVER_PLAYER
-.plot_mover_Y0
-    LDA #&B1                        \ LDA (&c8),Y ; mask_table_address          # Plot with mask
-    LDX #&C8
-    BRA set_mask_table_lookup_opcode\ 65C02 opcode
-.plot_mover
-    TYA
-    BEQ plot_mover_Y0
-    LDA #&A9                        \ LDA #&ff                                  # Plot without mask
-    LDX #&FF
-.set_mask_table_lookup_opcode
-    LDA #&04                        \ ***
-    STA os_ram_copy_of_currently_selected_rom\ ***
-    STA romsel                      \ Paged ROM latch                      ***
-    LDA viewport_left_low
-    STA edge_x_low
-    STY mover
-    JSR get_mover_Y_x
-    JSR get_mover_type_and_colour   \ Returns A = mover type
     TAX
     JSR check_if_mover_is_on_screen \ Returns carry set if mover not on screen
     BCS not_white + 4
@@ -3388,7 +3383,12 @@ move_mover_routine_address_high = * + 2
     STA cm_full_below_operand       \ grind: cm_full_below lives in the CPX's operand
     LDA mover_x_max_low             \ grind: and the range's right (low) in the LDA's
     STA cm_x_max_low_operand
+    LDA mover_x_max_high            \ grind: and its right (high) in the SBC's LDA (nothing in the loop writes it)
+    STA cm_x_max_high_operand
     JSR set_cm_left
+    INX                             \ grind: into the loop through cm_right_next's DEX (X back to first_mover)
+.cm_right_next                      \ grind: right of the range: next mover. Never the last: X >= last_mover + 3
+    DEX                             \ here (last_mover is &17 or &FF), so the DEX cannot reach last_mover
 .check_for_mover_collision_with_range_of_movers_loop
 cm_full_below_operand = * + 1
     CPX #&00                        \ actually CPX #(last_mover + 3), set above
@@ -3396,14 +3396,10 @@ cm_full_below_operand = * + 1
 cm_x_max_low_operand = * + 1
     LDA #&00                        \ actually LDA #mover_x_max_low, set above: right of the range: x > the range's right (the original's
     CMP movers_x_low,X              \ own first test)
-    LDA mover_x_max_high
+cm_x_max_high_operand = * + 1
+    LDA #&00                        \ actually LDA #mover_x_max_high, set above
     SBC movers_x_high,X
-    BCS cm_not_right                \ grind: right of the range: the loop's tail inline
-    DEX
-    CPX last_mover
-    BNE check_for_mover_collision_with_range_of_movers_loop
-    CLC                             \ Leave with carry clear to indicate no collision
-    RTS
+    BCC cm_right_next               \ grind: right of the range: the hot path, taken
 .cm_not_right
     LDA movers_x_low,X              \ left of it even at the widest type: x < its left - &0B
     CMP cm_left_low
@@ -3745,13 +3741,26 @@ ENDIF
 .replot_projectile
     JSR plot_mover                  \ Plot projectile or explosion
 .consider_next_projectile
-    LDY mover_to_update
+    LDA mover_to_update             \ grind: the slots below this one walked by Y = slot - &0C,
+    SEC                             \ the empty ones skipped here without update_projectiles_loop's
+    SBC #&0D                        \ STY and its BMI's JMP back (mover_to_update set below for a
+    TAY                             \ live one, and on leaving)
+    BMI leave_2a8c                  \ this was MOVER_FIRST_PROJECTILE: mover_to_update already &0C
+.cnp_next_slot_f3edc
+    LDA movers_x_high + &0C,Y       \ Negative if no projectile in slot
+    BPL cnp_found_f3edc
     DEY
-    CPY #&0C                        \ MOVER_FIRST_PROJECTILE
-    BCC leave_2a8c
-    JMP update_projectiles_loop
+    BPL cnp_next_slot_f3edc
+    LDA #&0C                        \ MOVER_FIRST_PROJECTILE: leave with mover_to_update as the
+    STA mover_to_update             \ original's last STY left it (A, Y and flags are dead: update_movers)
 .leave_2a8c
     RTS
+.cnp_found_f3edc
+    TYA                             \ C=1 from the SBC (no borrow: Y >= 0 there), so + &0C
+    ADC #&0B
+    TAY
+    STY mover_to_update
+    JMP update_projectiles_loop + 7 \ grind: past its STY (2 bytes), LDA movers_x_high,Y (3) and BMI (2)
 
 .calculate_mover_x_max_from_offset_getting_frame_and_flip
     JSR get_mover_frame_and_flip
@@ -4252,21 +4261,28 @@ ASSERT shown_screen < &3000
     EQUB &C8    \ &80 (KEY_PAUSE)   : P
 
 .check_for_player_input
-    LDA #LO(keys)
-    STA check_for_player_input_key
+    LDY #&00                        \ grind: Y indexes the keys (keydown_int inlined below)
     LDA #&80                        \ grind: a sentinel, shifted out into C by the eighth ROR
     STA keys_pressed_bitmap
 .check_for_player_input_loop
-check_for_player_input_key = * + 1
-    LDA keys                        \ actually LDA keys + key number (self-modified)
+    LDA keys,Y                      \ the key's INKEY number
     EOR #&FF                        \ INKEY number -> internal key number (check_for_keypress, inlined)
-    TAX
-    JSR keydown_int                 \ A = &80 if down, else 0
-    ASL A                           \ C = down
+    TAX                             \ keydown_int (src/lib/keydown.6502) inlined: X = the key number
+    LDA #&03                        \ KBD_LATCH_OFF: latch line 3 = 0
+    SEI                             \ every caller runs with I = 0 (the play loop), so CLI after
+    STA sysvia_orb                  \ stop the free-running scan...
+    LDA #&7F                        \ KBD_DDRA_SCAN: PA0-PA6 out, PA7 in
+    STA sysvia_ddra                 \ every key: the interrupt's sound writes set DDRA too
+    STX sysvia_ora_nh               \ ask about this key
+    LDA sysvia_ora_nh               \ PA7 is the answer
+    ASL A                           \ C = down (PA7)
+    LDA #&0B                        \ KBD_LATCH_ON
+    STA sysvia_orb                  \ ...and hand it back
+    CLI
     ROR keys_pressed_bitmap         \ key in at bit 7: after eight, key N is bit N
-    INC check_for_player_input_key
+    INY
     BCC check_for_player_input_loop \ C = 1 only when the sentinel falls out
-    ASSERT HI(keys) = HI(keys + 7)  \ the INC walks the low byte only
+    ASSERT HI(keys) = HI(keys + 7)  \ LDA keys,Y never crosses a page
 .leave_2f89
     RTS
 
