@@ -3291,22 +3291,29 @@ move_mover_routine_address_high = * + 2
 .update_movers
     \ Step 2 (decision 18): the original started System VIA T2 here as a stopwatch for
     \ wait_for_timer_281a's floor; the pass is now locked to the field counter instead.
-    LDY movers_to_update_base
+    \ grind: the loop unrolled, slot 2 first as before, the next enemy soldier (9 -> 1) from um_next
+    \ (X and Y take turns, as LDX abs,Y and LDY abs,X are all there are). The base is 1-9 always.
+    BRA um_populate
+.um_next    \ the mover after mover i (1-9): i + 1, MOVER_FIRST_ENEMY after MOVER_LAST_ENEMY_SOLDIER
+    EQUB &02, &03, &04, &05, &06, &07, &08, &09, &01
+    ASSERT HI(um_next - 1) == HI(um_next + 8)   \ um_next - 1,Y/X (1-9) must not cross a page
+.um_populate
     LDX #&02
     STX movers_to_update_count
-.populate_movers_to_update_loop
+    LDY movers_to_update_base
     LDA movers_raster_y,Y
-    STA movers_to_update_raster_y,X
-    TYA
-    STA movers_to_update,X
-    INY
-    CPY #&0A                        \ MOVER_LAST_ENEMY_SOLDIER + 1
-    BCC skip_wraparound_27e6
-    LDY #&01                        \ MOVER_FIRST_ENEMY
-.skip_wraparound_27e6
-    DEX
-    BPL populate_movers_to_update_loop
-    STY movers_to_update_base
+    STA movers_to_update_raster_y + 2
+    STY movers_to_update + 2
+    LDX um_next - 1,Y
+    LDA movers_raster_y,X
+    STA movers_to_update_raster_y + 1
+    STX movers_to_update + 1
+    LDY um_next - 1,X
+    LDA movers_raster_y,Y
+    STA movers_to_update_raster_y
+    STY movers_to_update
+    LDX um_next - 1,Y
+    STX movers_to_update_base
 .update_movers_loop
     LDX #&02                        \ grind: the last slot holding the lowest raster y, as the
     LDA movers_to_update_raster_y + 1 \ original's search found it (a later slot wins a tie)
@@ -4372,8 +4379,12 @@ ASSERT shown_screen < &3000
 .update_enemy_helicopter
     JSR check_if_mover_can_be_updated\ Returns carry clear if mover can be updated
     BCS leave_2f89
-    JSR get_mover_frame_and_flip
-    JSR get_mover_x_and_y
+    LDA movers_frame_and_flip,Y     \ grind: get_mover_frame_and_flip inlined (Y = mover_to_update: check_if_mover_can_be_updated's C=0 exits)
+    STA frame_and_flip
+    LDA movers_x_low,Y              \ grind: get_mover_Y_x inlined; mover_y is set below
+    STA mover_x_low
+    LDA movers_x_high,Y
+    STA &C5
     LDA #&55                        \ Consider targets in air, in front of helicopter
     STA mover_y
     LDA #&B0
