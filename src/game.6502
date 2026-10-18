@@ -1138,19 +1138,20 @@
     LDY #&00
     LDA (scenery_data_address),Y
 .get_sprite_and_flip
-    PHA
+    BMI gsf_flipped_w2a             \ N is bit 7 of A: both entries (get_scenery_type, to_get_sprite_and_flip) have just loaded it
+    TAX                             \ Top bit clear: A is the sprite type as it stands
+    LDA #&40                        \ not flipped
+    BNE gsf_store_w2a               \ Always branches
+.gsf_flipped_w2a
     AND #&7F                        \ Low seven bits specify scenery or sprite type
     TAX
-    PLA
-    AND #&80                        \ Top bit set if horizontally flipped
-    LSR A
-    EOR #&40
+    LDA #&00                        \ Top bit set if horizontally flipped
+.gsf_store_w2a
     STA scenery_layer_flip
     RTS                             \ Leave with X = sprite, A = flip
 
 .get_mountain_or_cloud_type
-    LDY #&00
-    LDA (scenery_data_address),Y
+    LDA (scenery_data_address)      \ 65C02 opcode (Y is dead after both callers' returns)
     AND #&03
     TAX
     LDA clouds_y_table,X            \ ***
@@ -4032,16 +4033,19 @@ stf_x_max_high_operand_s = * + 1
     LDA movers_frame_and_flip,Y
     AND #&80
     STA movers_frame_and_flip + 12,X\ movers_frame_and_flip + &c (MOVERS_FIRST_PROJECTILE)
-    STA firing_direction
+    STA firing_direction            \ A = 0 or &80 (the AND #&80 above)
     LDX #&05
-    LDA #&01                        \ Set projectiles_is_rocket to non-zero if rocket
     LDY firing_mover_type
     CPY #&0C                        \ MOVER_TYPE_SAM
-    BEQ skip_offset
+    BNE grind_w03ce_not_sam
+    ROL A                           \ Grind: SAM: A = 1 (C = 1 from the CPY), projectiles_is_rocket non-zero
+    CLC                             \ C = 0: add the offset
+    BCC skip_offset                 \ Always branches
+.grind_w03ce_not_sam
     LDX mover_types_width_table,Y
     INX
     INX
-    LDA #&00                        \ Set projectiles_is_rocket to zero if not rocket
+    ASL A                           \ Grind: A = 0 (not a rocket), C = 1 if firing left (subtract)
 .skip_offset
     LDY projectile_slot
     STA projectiles_is_rocket,Y
@@ -4052,20 +4056,15 @@ stf_x_max_high_operand_s = * + 1
     LDY mover_to_update
     LDA movers_x_low,Y
     LDX movers_x_high,Y
-    LDY firing_mover_type
-    CPY #&0C                        \ MOVER_TYPE_SAM
-    BEQ add_x_offset
-    LDY firing_direction
-    BMI subtract_x_offset
+    BCS subtract_x_offset           \ Grind: C from above (no instruction between touches it)
 .add_x_offset
-    CLC
-    ADC projectile_x_offset
+    ADC projectile_x_offset         \ C = 0
     BCC calculate_bullet_screen_address
     INX
     BPL calculate_bullet_screen_address\ Always branches
+    SKIP 9                          \ Grind: keeps the code after this where it was
 .subtract_x_offset
-    SEC
-    SBC #&04
+    SBC #&04                        \ C = 1
     BCS calculate_bullet_screen_address
     DEX
 .calculate_bullet_screen_address
