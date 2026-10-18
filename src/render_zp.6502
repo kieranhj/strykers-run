@@ -126,9 +126,8 @@
     LDA zp_save + 20
     STA &B1
     LDA zp_save + 21
-    STA &B2
-    LDA zp_save + 22
-    STA &B3
+    \ &B2/&B3/&BA/&BB (the viewport) need nothing: render's buffer_to_view (slot 2) put back
+    \ the values saved here (A = zp_save + 21, unused)
     LDA zp_save + 23
     STA &B4
     LDA zp_save + 24
@@ -141,10 +140,6 @@
     STA &B8
     LDA zp_save + 28
     STA &B9
-    LDA zp_save + 29
-    STA &BA
-    LDA zp_save + 30
-    STA &BB
     LDA zp_save + 31
     STA &C0
     LDA zp_save + 32
