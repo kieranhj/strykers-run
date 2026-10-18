@@ -1169,15 +1169,13 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     LDA need,X
     BPL out
     TXA
-    CLC
-    ADC boff
+    ORA boff                        \ slot + boff: slot < &40, boff 0 or 64
     TAY
     LDA rec_xh,Y
-    CMP #&FF
+    INC A                           \ 65C02 opcode: &FF, none recorded?
     BEQ out
-    JSR restore_block
-    LDY rb_index
-    LDA #&FF
+    JSR restore_block               \ returns Y = rb_index, A = 0
+    DEC A                           \ 65C02 opcode: &FF
     STA rec_xh,Y
 .out
     RTS
