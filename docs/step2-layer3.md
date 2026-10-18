@@ -302,7 +302,7 @@ is over 2 fields (79,872 cycles), and by how much:
   bookkeeping (`mark_to_draw`, `close_over_overlaps`, ~4.5k a pass), the collisions (~4.8k).
 
 - D's rest: building the column (`add_column_of_scenery_to_column_buffer`, `history_push`, the
-  edge movers' addresses: ~4.5k on a scrolling pass).
+  edge movers' addresses: ~4.5k on a scrolling pass). Done in layer 4: `docs/step2-layer4-scroll.md`.
 - A test with helicopters: done since, `tools/helilock.mjs` (boards one, flies, is shot down; two
   builds compared every pass).
 - Later work on the heavy frames is in layer 4 (`docs/step2-layer4-costing.md`); what is still open

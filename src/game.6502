@@ -1205,12 +1205,7 @@
     LDA scenery_layer_sprite_banks,Y\ ***
     STA os_ram_copy_of_currently_selected_rom\ ***
     STA romsel                      \ Paged ROM latch                      ***
-    LDA scenery_layers_y,Y
-    PHA
-    LDX scenery_layer_sprite_addresses_high,Y
-    LDA scenery_layer_sprite_addresses_low,Y
-    TAY
-    JMP add_column_of_scenery_sprite_to_column_buffer
+    JMP unpack_scenery_column       \ layer 4 (decision 39): src/scroll_hazel.6502
 
 .get_scenery_y_sprite_and_flip_for_layer_Y
     LDY edge_and_layer
@@ -1536,7 +1531,7 @@
     AND #&03
     TAX
     PHA
-    JSR multiply_A_by_X_2f1e
+    JSR ground_square               \ layer 4: multiply_A_by_X_2f1e's A x X from a table (HAZEL)
 IF SHIFT
     \ Relocation test builds only: the ground's texture is whatever bytes are at &0000-&001C,
     \ which include the sprite unpacker's self-modified sprite address (BUGS.md #1), so it
@@ -1662,95 +1657,6 @@ ENDIF
     LDY edge_and_layer
     RTS                             \ Leave with AX = scenery_sprite_address
 
-.add_column_of_scenery_sprite_to_column_buffer
-    LDA #&B1                        \ LDA (&c8),Y ; scenery_sprite_address      # Plot with mask
-    STA plot_scenery_mask_opcode
-    LDA #&C8
-    STA plot_scenery_mask_opcode + 1
-    PLA
-.add_column_of_sprite_to_column_buffer    \ # Called with A = y position
-    JSR set_scenery_sprite_address_from_XY
-    STA end_of_run_offset
-.unpack_scenery_loop
-    INY
-    LDA (scenery_sprite_address),Y  \ Get byte of scenery data
-    BEQ move_to_next_column         \ Zero indicates end of column
-    TAX
-    BPL is_positive_1cce
-.is_negativ
-    ASL A
-    BMI is_run_length_3_1cc9
-.is_run_length_1_1cc4
-    TXA                             \ 10 ...... run length 1
-    LDX #&01
-    BNE unpack_scenery_run          \ Always branches
-.is_run_length_3_1cc9
-    TXA                             \ 11 ...... run length 1
-    LDX #&03
-    BNE unpack_scenery_run          \ Always branches
-.is_positive_1cce
-    ASL A
-    BPL is_variable_run_length_1cd6
-.is_run_length_2_1cd1
-    TXA                             \ 01 ...... run length 2
-    LDX #&02
-    BNE unpack_scenery_run          \ Always branches
-.is_variable_run_length_1cd6
-    INY                             \ 00 ...... use next byte for run length
-    LDA (scenery_sprite_address),Y
-.unpack_scenery_run
-    STY scenery_data_offset
-    AND #&3F
-    TAY
-    LDA (pixel_table_address),Y
-    STA scenery_pixel_value
-.plot_scenery_mask_opcode
-    LDA (mask_table_address),Y      \ if adding scenery
-\ #     also     LDA #&ff                                             # if adding movers
-    STA scenery_mask
-    \ Step 2 (layer 3, D): a run that cannot change the buffer (mask &FF, pixel 0) is passed
-    \ over, and one that replaces it (mask 0) is a fill; X, end_of_run_offset, scenery_mask
-    \ and the pixel are left as the loop leaves them.
-    INC A                           \ 65C02 opcode: mask &FF?
-    BNE run_not_clear
-    LDA scenery_pixel_value
-    BNE run_not_clear
-    TXA                             \ a clear run: only the offset moves
-    CLC
-    ADC end_of_run_offset
-    STA end_of_run_offset
-    TAX
-    SEC                             \ C as the loop's last CPX leaves it
-    LDY scenery_data_offset
-    BNE unpack_scenery_loop         \ always
-.run_not_clear
-    TXA
-    CLC
-    ADC end_of_run_offset
-    LDX end_of_run_offset
-    STA end_of_run_offset
-    LDA scenery_mask
-    BEQ unpack_scenery_fill
-.unpack_scenery_run_loop
-    LDA column_buffer,X
-    AND &A7
-    EOR pixel
-    STA column_buffer,X             \ Add scenery sprite to background buffer
-    INX
-    CPX end_of_run_offset
-    BNE unpack_scenery_run_loop
-    LDY scenery_data_offset
-    BNE unpack_scenery_loop         \ Always branche
-.unpack_scenery_fill                \ step 2: mask 0, the run is the pixel
-    LDA pixel
-.unpack_scenery_fill_loop
-    STA column_buffer,X
-    INX
-    CPX end_of_run_offset
-    BNE unpack_scenery_fill_loop
-    LDY scenery_data_offset
-    BNE unpack_scenery_loop         \ Always branches
-
 .initialise_column_buffer
     LDX #20                         \ step 2 (layer 3, D): ten 20-byte strips, X 20 down to 1;
 .initialise_column_buffer_loop      \ the flags as the original's loop left them (C and V untouched)
@@ -1861,18 +1767,11 @@ ENDIF
     \ are what the routine leaves. Grind: one loop for each edge (&CF read once, not every
     \ mover), the last (&21) taken in full by a tail call: Y is left &21, the flags as it
     \ leaves them (both callers go on to add_movers_to_column_buffer, then load X and Y)
+    \ Layer 4: the right edge by x low byte, unrolled, in HAZEL (src/scroll_hazel.6502 edge_right)
     LDY #&00                        \ MOVER_FIRST                               # Bug: player is never on edge, so should be &01
     LDX &CF                         \ Zero for left edge, non-zero for right edge
     BEQ edge_left_loop
-.edge_right_loop
-    LDA movers_x_high,Y
-    CMP edge_x_high
-    BNE edge_right_next             \ the right edge: x itself
-    JSR calculate_screen_addresses_for_mover_on_edge
-.edge_right_next
-    INY
-    CPY #&21                        \ MOVER_LAST                            *** Enhanced version adds tank
-    BCC edge_right_loop
+    JMP edge_right
 .edge_last
     JMP calculate_screen_addresses_for_mover_on_edge
 .edge_left_loop
@@ -2219,13 +2118,10 @@ walk_d = walk_ptr + 1
     \ Step 2 (layer 2): the edge column is scenery only; the renderer draws the movers that
     \ overlap it. What the original's loop left behind is set as it left it (the bank, the
     \ column plotter's mask opcode, the unflipped pixel table, mover_to_update past the last).
+    \ Layer 4 (decision 39): the column plotter is src/scroll_hazel.6502's, with no opcode to set.
     LDA #&04
     STA os_ram_copy_of_currently_selected_rom
     STA romsel                      \ Paged ROM latch
-    LDA #&A9                        \ LDA #&ff                                  # Plot without mask
-    STA plot_scenery_mask_opcode
-    LDA #&FF
-    STA plot_scenery_mask_opcode + 1
     LDA #&40
     STA pixel_table_address_low
     LDA #&22                        \ MOVER_LAST + 1
@@ -2624,6 +2520,7 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     RTS
 
 .reset_screen_scroll
+    JSR pre_cancel                  \ decision 38: a column built ahead undone, its state put back
     STZ pre_valid                   \ step 2 (layer 3): no column built ahead, no scroll yet
     STZ last_dir
     LDX #&0D                        \ R13: Displayed screen start address register (low)
@@ -5111,17 +5008,16 @@ check_for_player_input_key = * + 1
     LDA #&00
     RTS
 .start_clear
+    JSR pre_cancel                  \ decision 38: a walk built for another scroll undone (HAZEL)
     STZ pre_valid                   \ 65C02 opcode
     STZ pre_use
     PLP
     JMP initialise_column_buffer
-\ install_prebuilt, in place of the walk: the state the prebuild's walk left, and the bank it
-\ left paged. A = Y = &FF, N and C set, as the walk leaves them (X is written before it is read).
+\ install_prebuilt, in place of the walk: the prebuild's walk left its state in place (decision
+\ 38); page the bank it left paged. A = Y = &FF, N and C set, as the walk leaves them (X is
+\ written before it is read).
 .install_prebuilt
-    LDA #&04
-    STA os_ram_copy_of_currently_selected_rom
-    STA romsel                      \ Paged ROM latch
-    JSR put_prebuilt_state          \ bank 4; A = the bank
+    LDA pre_bank
     STA os_ram_copy_of_currently_selected_rom
     STA romsel                      \ Paged ROM latch
     LDA #&FF
@@ -6126,6 +6022,8 @@ MOVER_WIDEST = &0B                  \ step 2 (layer 3): the largest entry below 
     EQUB &00, &00, &00, &00, &05, &05, &04, &03, &02, &03, &06    \ &10
     ASSERT LO(mover_types_new_grenade_bomb_or_rocket_type) = 0 AND HI(mover_types_parts) = HI(mover_types_new_grenade_bomb_or_rocket_type - 1) AND HI(mover_types_new_grenade_bomb_or_rocket_type) = HI(* - 1), "decision 40: a mover type table crosses a page"
     ASSERT * <= &DC00, "decision 40: hazel_b's tables reach &DC00 by ", * - &DC00
+    INCLUDE "scroll_hazel.6502"     \ layer 4: the scroll column's code (decisions 38, 39)
 .hazel_b_end
+    ASSERT hazel_b_end <= &E000, "HAZEL overruns by ", hazel_b_end - &E000
 ENDSECTION
     INCLUDE "music_packed.6502"
