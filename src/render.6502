@@ -1220,27 +1220,27 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     STA mark_part.header_lo + 1
     SBC #0
     STA v_ptr + 1
-    LDA v_ptr                       \ mark_part's base: the start - 8
-    SEC
+    LDA v_ptr                       \ mark_part's base: the start - 8 (C = 1: the high byte did not borrow)
     SBC #4
     STA mark_part.base_lo
     LDA v_ptr + 1
     SBC #0
     STA mark_part.base_hi
     LDA arena_top_lo,X
-    CLC
-    ADC #1
+    ADC #0                          \ C = 1 (no borrow above): the start + 1
     STA mark_part.header_hi
     LDA arena_top_hi,X
     ADC #0
     STA mark_part.header_hi + 1
     LDA #0
-    LDY #7
-.no_parts
-    STA (v_ptr),Y                   \ the header, at v_ptr + 4 to + 7
+    LDY #7                          \ the header, at v_ptr + 4 to + 7
+    STA (v_ptr),Y
     DEY
-    CPY #4
-    BCS no_parts
+    STA (v_ptr),Y
+    DEY
+    STA (v_ptr),Y
+    DEY
+    STA (v_ptr),Y
     JSR draw_mover                  \ (draw_column moves v_ptr on)
     LDX back                        \ the block ends after the last cell: v_ptr + 8
     LDY dm_index
