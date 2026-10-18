@@ -2675,7 +2675,9 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     LDA #&80
     STA hostile_mover               \ Set to negative to indicate no hostile mover
     STA mover_had_hostile_collision \ Set to negative to indicate no hostile collision
-    JSR get_mover_type              \ Returns A = mover type
+    LDY mover_to_update             \ grind: get_mover_type inlined (Y = &03, A = type)
+    LDA movers_type_and_colour,Y
+    AND #&7F
     CMP #&0D                        \ MOVER_TYPE_SKELETON
     BEQ skip_animation
     TAX
@@ -2687,17 +2689,13 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     LDA helicopter_fuel_high        \ ***
     BMI skip_animation              \ *** Don't animate player helicopter if out of fuel
 .not_player_23b1
-    LDA mover_types_animation_frame,X
-    STA frames
-    LDA movers_frame_and_flip,Y
-    AND #&7F
-    TAX
-    INX
-    CPX frames
+    LDA movers_frame_and_flip,Y     \ grind: the next frame kept in A and compared with the type's
+    AND #&7F                        \ frame count in place (frames, &C6, no longer written: nothing
+    INC A                           \ 65C02 opcode; else reads it)
+    CMP mover_types_animation_frame,X
     BCC skip_wraparound_23c3
-    LDX #&00
+    LDA #&00
 .skip_wraparound_23c3
-    TXA
     ORA flip
     STA movers_frame_and_flip,Y
 .skip_animation
@@ -2708,11 +2706,11 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     LDA mover_x_low
     CLC
     ADC x_delta
-    TAX
-    LDA &C5
-    ADC #&00
-    TAY
-    JSR check_for_collision_after_horizontal_move\ Returns carry set if hostile collision occurred
+    LDY &C5                         \ grind: Y = the new x high (&C5 + C) and A keeps the new x low,
+    BCC mmr_x_high_g1               \ so no TAX/TAY here and no TXA in the callee
+    INY
+.mmr_x_high_g1
+    JSR cchm_with_a_g1              \ Returns carry set if hostile collision occurred
     BCS skip_changing_screen_address_23e5
     LDY x_delta
     DEY
@@ -2725,7 +2723,9 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
 
 .check_for_collision_after_horizontal_move
     TXA
+.cchm_with_a_g1                    \ grind: move_mover_right enters here with A = the new x low
     JSR check_for_mover_collision_with_movers\ Returns carry set if collision, X = mover collided with
+    BCC not_hostile                 \ grind: no collision is not hostile (C = 0); both callers reload Y
     JSR check_for_hostile_collision \ Returns carry set if collision was hostile
     BCC not_hostile
     DEC mover_had_hostile_collision \ Set to positive to indicate hostile collisio
