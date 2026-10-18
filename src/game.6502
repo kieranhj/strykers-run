@@ -3278,10 +3278,10 @@ move_mover_routine_address_high = * + 2
     RTS
 
 .end_jump
-    LDA #&00
-    STA player_y_velocity
+    STZ player_y_velocity           \ grind: 65C02 STZ for LDA #&00 : STA
     LDA #&28                        \ Play sound for landing
-    JSR play_sound
+    JMP play_sound                  \ grind: tail call (its RTS returns to our caller)
+    SKIP 2                          \ grind: never run; keeps leave_27b8 and all after it in place
 .leave_27b8
     RTS
 
@@ -4720,13 +4720,14 @@ ASSERT shown_screen < &3000
 .add_new_movers    \ # Called with X = new movers offset
     LDA #&03
     JSR multiply_A_by_X_2f1e        \ Add three movers in slots 1, 4 and 7
-    LDY new_movers_offset           \ or 2, 5 and 8
-    LDX new_movers_offset           \ or 3, 6 and 9
-    INY
-    CPY #&04
-    BCC add_new_movers + 16
-    LDY #&01
-    STY new_movers_offset
+    LDX new_movers_offset           \ or 2, 5 and 8, or 3, 6 and 9
+    TXA
+    INC A                           \ 65C02 opcode
+    CMP #&04
+    BCC anm_store_offset_b
+    LDA #&01
+.anm_store_offset_b
+    STA new_movers_offset
 .skip_wraparound_31db
     LDY result_low
 .add_movers_loop
@@ -4844,6 +4845,8 @@ ASSERT shown_screen < &3000
 .leave_plot_lives
     RTS
 
+    SKIP 8                          \ grind: never run (after RTS); the row loop below is 8 bytes
+                                    \ shorter, so everything from its end on stays in place
 .plot_character    \ # Called with A = font offset for characte
     TAX
     CLC
@@ -4855,18 +4858,16 @@ ASSERT shown_screen < &3000
     LDA font_data,X
     STA &C9
     LDY #&07
+\ grind: new = screen EOR ((screen EOR bits) AND mask), bits &3C or 0: the screen keeps the
+\ other pixel and takes this one's bits, as (screen AND NOT mask) EOR (bits AND mask) did
 .plot_character_row_loop
-    LDA #&00
     ROL &C9
-    BCC set_pixel_value_32b8 + 2
-    LDA #&3C
-.set_pixel_value_32b8
+    LDA (text_screen_address),Y
+    BCC plot_character_bit_clear
+    EOR #&3C
+.plot_character_bit_clear
     AND &C5
-    STA &C6
-    LDA &C5
-    EOR #&FF
-    AND (text_screen_address),Y
-    EOR &C6
+    EOR (text_screen_address),Y
     STA (text_screen_address),Y
     DEY
     BPL plot_character_row_loop
