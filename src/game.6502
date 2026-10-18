@@ -2931,7 +2931,7 @@ move_mover_routine_address_high = * + 2
     BPL to_scroll_screen_right
     JMP scroll_screen_left
 .to_scroll_screen_right
-    JSR scroll_screen_right
+    JMP scroll_screen_right         \ grind: a tail call; the RTS (to_scroll_screen_right + 3) stays
     RTS
 
 .use_player_position_for_mover_Y
@@ -4696,26 +4696,21 @@ ASSERT shown_screen < &3000
     CMP #&80
     BEQ animate_stationery_mover    \ If mover flags is &80, mover is stationary but lifts gun
     LDA frame_and_flip              \ Otherwise, mover moves between two limits
-    AND #&80
-    TAX
-    INX
-    STX x_delta
-    LDX x_delta
-    TYA
-    DEX
-    BMI is_moving_left_31ae
-.is_moving_right_31ab
-    CLC
-    ADC #&09                        \ movers_maximum_x_low - movers_minimum_x_low
-.is_moving_left_31ae
-    TAX
+    BMI patrol_left_f1bcb          \ grind: x_delta &01 (right, to the maximum) or &81 (left, to the minimum)
+    LDX #&01
     LDA mover_x_low
-    CMP movers_minimum_x_low - 1,X
-    BNE skip_changing_direction
-    LDA x_delta
-    EOR #&80
-    STA x_delta
-.skip_changing_direction
+    CMP movers_maximum_x_low - 1,Y
+    BNE patrol_store_f1bcb
+    LDX #&81                        \ at the limit: turn
+    BRA patrol_store_f1bcb          \ 65C02 opcode
+.patrol_left_f1bcb
+    LDX #&81
+    LDA mover_x_low
+    CMP movers_minimum_x_low - 1,Y
+    BNE patrol_store_f1bcb
+    LDX #&01                        \ at the limit: turn
+.patrol_store_f1bcb
+    STX x_delta
     JMP move_horizontally_and_replot_mover
 
 .decrement_new_movers_offset
