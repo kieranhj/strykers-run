@@ -1513,18 +1513,18 @@
 .move_forward_through_sprite
     LDA scenery_layer_sprite_addresses_low,Y
     TAY
-    JSR move_to_next_column_in_XY
+    JSR move_to_next_column_in_XY   \ Leaves AX the next column, Y = edge_and_layer
     STA scenery_layer_sprite_addresses_low,Y
+    STA scenery_sprite_address_low  \ step 2 (grind): use_scenery_sprite_address_for_layer_Y in line
     TXA
     STA scenery_layer_sprite_addresses_high,Y
-    JSR use_scenery_sprite_address_for_layer_Y
-    LDA (scenery_sprite_address),Y
-    BPL leave_1c0e
-    TYA
-    BEQ set_scenery_layer_Y_sprite_address_high
-.leave_1c0e
-    LDY edge_and_layer
+    STA scenery_sprite_address_high
+    LDA (scenery_sprite_address)    \ 65C02 opcode; Y stays edge_and_layer
+    BMI move_forward_end_of_sprite_r2ebb
     RTS
+.move_forward_end_of_sprite_r2ebb
+    LDA #&00
+    BEQ set_scenery_layer_Y_sprite_address_high + 2\ Always branches
 
 .add_ground_to_column_buffer
     LDX ground_left_x_low,Y
@@ -3722,11 +3722,11 @@ ENDIF
     LDA movers_y,X
     CMP #&19
     BCC explode_projectile          \ Explode grenades and bombs on ground
+    CMP #&AE                        \ grind: the height first: below the top (the usual case) skips the type
+    BCC skip_top_check
     LDY movers_type_and_colour,X
-    CPY #&0F                        \ MOVER_TYPE_BULLET
-    BEQ skip_top_check              \ ***
-    CMP #&AE
-    BCS explode_projectile          \ Explode rocket at top of screen
+    CPY #&0F                        \ MOVER_TYPE_BULLET                       *** bullets are not exploded at the top
+    BNE explode_projectile          \ Explode rocket at top of screen
 .skip_top_check
     LDY mover_to_update
     CPY #&11                        \ MOVER_FIRST_BULLET
@@ -5106,10 +5106,9 @@ ASSERT shown_screen < &3000
     LDA #1
     STA pre_use                     \ the walk's state from the prebuild (install_prebuilt)
     STZ pre_valid                   \ 65C02 opcode
-    PLP
-    LDX #&00
-    LDA #&00
-    RTS
+    PLP                             \ grind: pops the PHP; A, X, N and Z are dead here (both callers
+    RTS                             \ load or INC first), so not set as initialise_column_buffer sets them
+    EQUB &00, &00, &00, &00         \ grind: pad, so nothing after moves
 .start_clear
     JSR pre_cancel                  \ decision 38: a walk built for another scroll undone (HAZEL)
     STZ pre_valid                   \ 65C02 opcode
