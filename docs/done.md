@@ -95,6 +95,10 @@ MOS's sound, skipping transparent bytes, building the column on the pass before.
   start-up code carried in the save arena's bytes (its room 33 -> 2,271), the renderer's 48
   hottest variables in the zero-page unpacker's dead body: work a pass 38,462 (seed 1), 44,855
   (holding RIGHT); late frames 6 of 1,998 and 0 of 598.
+- **BUGS #10 fixed** (2026-10-18, on `8ae47e4`): every record's world position right (worldcheck
+  0 of 29,829 over the whole world, from 984 of 29,847); a constructed overlap at the left edge
+  (`tools/scrollleft.mjs --place`) 0 frames from the oracle, from 73 of 4,000; the gate's checks
+  identical; work a pass 14.1 cycles less on seed 1, 2.0 more holding RIGHT.
 
 ## Tooling
 

@@ -374,9 +374,8 @@ def measure(img):
     return out
 
 
-def control():
-    # GRIND_CONTROL: another commit as the control (a merge whose HEAD does not build alone, say)
-    head = sh(['git', 'rev-parse', '--short', os.environ.get('GRIND_CONTROL', 'HEAD')]).stdout.strip()
+def control(rev='HEAD'):
+    head = sh(['git', 'rev-parse', '--short', rev]).stdout.strip()
     into = GRIND / f'ctl-{head}'
     done = into / 'done.json'
     if done.exists():
@@ -415,8 +414,8 @@ def judge(kind, out):
     return False, 'unknown check'
 
 
-def gate(quick=False):
-    ctl = control()
+def gate(quick=False, rev='HEAD'):
+    ctl = control(rev)
     imgs, err = build_set(ROOT, GRIND / 'test')
     if not imgs:
         return dict(ok=False, why=err, control=ctl['commit'])
@@ -440,7 +439,7 @@ def gate(quick=False):
 
 
 def cmd_gate(a):
-    print(json.dumps(gate(a.quick), indent=1))
+    print(json.dumps(gate(a.quick, a.control), indent=1))
 
 
 # ---------------------------------------------------------------- the serial run
@@ -584,6 +583,7 @@ def main():
     s.add_parser('revert').add_argument('ids', nargs='+')
     g = s.add_parser('gate')
     g.add_argument('--quick', action='store_true')
+    g.add_argument('--control', default='HEAD', help='the commit to prove against (e.g. HEAD^1 for a merge)')
     r = s.add_parser('run')
     r.add_argument('--batch', type=int, default=4)
     r.add_argument('--max', type=int)

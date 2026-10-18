@@ -43,9 +43,6 @@ excluded) 38,462 on seed 1 and 44,855 holding RIGHT, of the 79,872 two fields gi
 
 ## Checks not yet made
 
-- **Scrolling left past a mover clipped at the left edge** (BUGS #10): the one case where the
-  misplaced record could show. The whole-world run only runs right; passlock's seeds (2, 3, 5, 7
-  against the oracle) found nothing.
 - **The whole world, both builds' late frames** (below) want a closer look before layer 4 closes.
 
 ## The whole world (2026-10-18, jsbeeb 2.5.0, `d879af0` and decision 40's `eb8fb4f`)
@@ -61,7 +58,8 @@ shipping build plays the same game with infinite lives poked in (`kill_player`'s
   `DEBUG_FULLREDRAW` twin, every pass: state identical on 12,233 of 12,233, the newest frame
   identical on 12,233 of 12,233 (`d879af0` and `eb8fb4f` alike).
 - **worldcheck** (`--world`): 984 of 29,847 records placed elsewhere than the mover's x/y, every
-  one a mover clipped at the left edge: BUGS #10. (It had never compared anything before.)
+  one a mover clipped at the left edge: BUGS #10, since fixed (0 of 29,829). (It had never
+  compared anything before.)
 - **HAZEL** (`tools/hazelreach.mjs`): the mountain layer reads `&C301-&C56C` over the whole world
   (BUGS #9); nothing else in HAZEL is read but the compiled kinds and, from decision 40, its tables.
 - **Late frames** (passbench's measure, passes 2 to 12,233): 701 of 12,231 frames shown 3 or more

@@ -97,13 +97,13 @@ disassembly's `actually`/`also` notes say what an operand really is.
 - `--flight V` on passbench, pcprof, fieldcost and drawprof (`tools/flightscript.mjs`): helilock's flight V's keys, or with 100 the
   whole world (worldrun's WorldBot); passbench lists the pass of each late frame. `tools/latefr.py FC.json` - each late frame of a
   fieldcost run and why; `tools/latesim.py FC.json ...` - the late frames replayed with parts of the render recosted.
-  `GRIND_CONTROL=COMMIT python tools/grind.py gate` - the gate against another commit than HEAD
 - `tools/fieldcost.mjs DISC [--hold RIGHT] --out PER.json`, `tools/fieldsim.py PER.json [--report]` - passbench's game by pass:
   logic by group and mover, render by slot and type, what changed and who wrote it; then 50 Hz schedules field by field
   (`docs/step2-layer4-costing.md`)
 - `tools/passcost.mjs DISC [FROM] [FRAMES] [--right]`, `tools/passhist.mjs` - a pass's cycles by phase; each pass's work against the bytes it drew
 - `tools/helilock.mjs CONTROL TEST [PASSES] [VARIANT]` - two builds in step through a helicopter flight (board, fly, shot down), state and newest frame every pass; passlock's scripts never board one
 - `tools/worldcheck.mjs DISC [--world]` - the renderer's world position of each record against the mover's x/y (BUGS #7, #10); `--world`, start to completion screen
+- `tools/scrollleft.mjs CONTROL TEST [--left K] [--still S] [--place]` - BUGS #10's cases: the whole world with LEFT held (then no key) wherever a mover is clipped at the left edge, state and newest frame against CONTROL (the `DEBUG_FULLREDRAW` twin) every pass; `--place` moves a lower-slot soldier over the clipped mover
 - `tools/worldrun.mjs DISC [--control CONTROL [--screen]] [--shots DIR]` - the whole world, start to completion screen (WorldBot: run, jump, grenade what blocks):
   frames as passbench (late frames by world column, ground or air); with `--control`, state and newest frame against CONTROL every pass (the `DEBUG_FULLREDRAW` twin)
 - `tools/zplive.mjs DISC` - the zero-page bytes the logic reads first after a render (what `restore_game_zp` must keep)
