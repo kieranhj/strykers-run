@@ -13,145 +13,147 @@
 \ sprite unpacker's code at &04-&1E (the renderer never writes it), the MOS's (&E7-&ED), and
 \ what the vsync interrupt counts meanwhile (field_count &90, game_over_cooldown &96); plus
 \ the rest of &B0-&BB and &F8/&F9 (the plotter's leftovers) for margin. Pass lockstep proves it.
+\ Decision 32: kept packed, the n-th byte saved at zp_save + n (34 bytes), so the rest of zp_save's
+\ page holds the renderer's variables (src/render_bss.6502). A byte added here goes on the end.
 .save_game_zp
     LDA &00
-    STA zp_save + &00
+    STA zp_save + 0
     LDA &01
-    STA zp_save + &01
+    STA zp_save + 1
     LDA &02
-    STA zp_save + &02
+    STA zp_save + 2
     LDA &03
-    STA zp_save + &03
+    STA zp_save + 3
     LDA &7E
-    STA zp_save + &7E
+    STA zp_save + 4
     LDA &7F
-    STA zp_save + &7F
+    STA zp_save + 5
     LDA &80
-    STA zp_save + &80
+    STA zp_save + 6
     LDA &82
-    STA zp_save + &82
+    STA zp_save + 7
     LDA &83
-    STA zp_save + &83
+    STA zp_save + 8
     LDA &84
-    STA zp_save + &84
+    STA zp_save + 9
     LDA &8E
-    STA zp_save + &8E
+    STA zp_save + 10
     LDA &8F
-    STA zp_save + &8F
+    STA zp_save + 11
     LDA &92
-    STA zp_save + &92
+    STA zp_save + 12
     LDA &93
-    STA zp_save + &93
+    STA zp_save + 13
     LDA &94
-    STA zp_save + &94
+    STA zp_save + 14
     LDA &95
-    STA zp_save + &95
+    STA zp_save + 15
     LDA &9B
-    STA zp_save + &9B
+    STA zp_save + 16
     LDA &9F
-    STA zp_save + &9F
+    STA zp_save + 17
     LDA &A0
-    STA zp_save + &A0
+    STA zp_save + 18
     LDA &B0
-    STA zp_save + &B0
+    STA zp_save + 19
     LDA &B1
-    STA zp_save + &B1
+    STA zp_save + 20
     LDA &B2
-    STA zp_save + &B2
+    STA zp_save + 21
     LDA &B3
-    STA zp_save + &B3
+    STA zp_save + 22
     LDA &B4
-    STA zp_save + &B4
+    STA zp_save + 23
     LDA &B5
-    STA zp_save + &B5
+    STA zp_save + 24
     LDA &B6
-    STA zp_save + &B6
+    STA zp_save + 25
     LDA &B7
-    STA zp_save + &B7
+    STA zp_save + 26
     LDA &B8
-    STA zp_save + &B8
+    STA zp_save + 27
     LDA &B9
-    STA zp_save + &B9
+    STA zp_save + 28
     LDA &BA
-    STA zp_save + &BA
+    STA zp_save + 29
     LDA &BB
-    STA zp_save + &BB
+    STA zp_save + 30
     LDA &C0
-    STA zp_save + &C0
+    STA zp_save + 31
     LDA &F8
-    STA zp_save + &F8
+    STA zp_save + 32
     LDA &F9
-    STA zp_save + &F9
+    STA zp_save + 33
     RTS
 
 .restore_game_zp
-    LDA zp_save + &00
+    LDA zp_save + 0
     STA &00
-    LDA zp_save + &01
+    LDA zp_save + 1
     STA &01
-    LDA zp_save + &02
+    LDA zp_save + 2
     STA &02
-    LDA zp_save + &03
+    LDA zp_save + 3
     STA &03
-    LDA zp_save + &7E
+    LDA zp_save + 4
     STA &7E
-    LDA zp_save + &7F
+    LDA zp_save + 5
     STA &7F
-    LDA zp_save + &80
+    LDA zp_save + 6
     STA &80
-    LDA zp_save + &82
+    LDA zp_save + 7
     STA &82
-    LDA zp_save + &83
+    LDA zp_save + 8
     STA &83
-    LDA zp_save + &84
+    LDA zp_save + 9
     STA &84
-    LDA zp_save + &8E
+    LDA zp_save + 10
     STA &8E
-    LDA zp_save + &8F
+    LDA zp_save + 11
     STA &8F
-    LDA zp_save + &92
+    LDA zp_save + 12
     STA &92
-    LDA zp_save + &93
+    LDA zp_save + 13
     STA &93
-    LDA zp_save + &94
+    LDA zp_save + 14
     STA &94
-    LDA zp_save + &95
+    LDA zp_save + 15
     STA &95
-    LDA zp_save + &9B
+    LDA zp_save + 16
     STA &9B
-    LDA zp_save + &9F
+    LDA zp_save + 17
     STA &9F
-    LDA zp_save + &A0
+    LDA zp_save + 18
     STA &A0
-    LDA zp_save + &B0
+    LDA zp_save + 19
     STA &B0
-    LDA zp_save + &B1
+    LDA zp_save + 20
     STA &B1
-    LDA zp_save + &B2
+    LDA zp_save + 21
     STA &B2
-    LDA zp_save + &B3
+    LDA zp_save + 22
     STA &B3
-    LDA zp_save + &B4
+    LDA zp_save + 23
     STA &B4
-    LDA zp_save + &B5
+    LDA zp_save + 24
     STA &B5
-    LDA zp_save + &B6
+    LDA zp_save + 25
     STA &B6
-    LDA zp_save + &B7
+    LDA zp_save + 26
     STA &B7
-    LDA zp_save + &B8
+    LDA zp_save + 27
     STA &B8
-    LDA zp_save + &B9
+    LDA zp_save + 28
     STA &B9
-    LDA zp_save + &BA
+    LDA zp_save + 29
     STA &BA
-    LDA zp_save + &BB
+    LDA zp_save + 30
     STA &BB
-    LDA zp_save + &C0
+    LDA zp_save + 31
     STA &C0
-    LDA zp_save + &F8
+    LDA zp_save + 32
     STA &F8
-    LDA zp_save + &F9
+    LDA zp_save + 33
     STA &F9
     RTS
 

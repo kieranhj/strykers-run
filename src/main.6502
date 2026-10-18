@@ -95,6 +95,7 @@ SECTION DATA1, org = &8000, load = &FFFF1900, exec = &FFFF1900, filename = "DATA
     INCLUDE "bank4.6502"
     INCLUDE "prebuild.6502"         \ step 2 layer 3: the next column built in the wait (ROMSEL &04 only)
     INCLUDE "render_zp.6502"        \ the renderer's zero page save and restore (ROMSEL &04 only)
+    INCLUDE "render_bss_zero.6502"  \ decision 32: its variables zeroed at start-up (ROMSEL &04)
     \ step 2 layer 3: the renderer draws with ANDY paged over &8000-&8FFF, so it, its tables and
     \ its sprites start at &9000; below it, only scenery data (read by the scroll, with bank 4 alone)
     ASSERT * <= &9000 + PAD_START
@@ -106,6 +107,8 @@ SECTION DATA1, org = &8000, load = &FFFF1900, exec = &FFFF1900, filename = "DATA
     ASSERT * <= REN_BASE, "bank 4 overruns the renderer's workspace by ", * - REN_BASE   \ (its records would overwrite the sprites)
     SKIP PAD_END
 ENDSECTION
+\ decision 32: the renderer's variables, in bytes of its workspace no table uses (not in the file)
+INCLUDE "render_bss.6502"
 
 SECTION DATA2, org = &8400, load = &FFFF1D00, exec = &FFFF1D00, filename = "DATA2", cmos = TRUE
     SKIP PAD_START

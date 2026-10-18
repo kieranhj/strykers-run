@@ -120,16 +120,21 @@ For a grind in particular:
 
 ## Room
 
-Where each source's code lives, and its free space at `6cc44ba` (2026-10-17; read the current
-figure off the build's listing, the SKIP that pads the region):
+Where each source's code lives, and its free space on branch `ram-2026-10-18` after decision 32
+(2026-10-18, shipping build; read the current figure off the build's listing, the SKIP that pads
+the region):
 
 | Source | Region | Free | Listing line |
 |---|---|---|---|
-| `game.6502`, `lib/keydown.6502` | main RAM, up to `&3400` | 31 | `SKIP unused_3400_original - *` |
-| `game.6502` `moved_0a20` | `&0A20-&0AFF` | 86 | `&0AAA-&0AFF` (CLAUDE.md) |
-| `render.6502` | bank 4, `&9000-&B3FF` | 102 | `SKIP PAD_END` in DATA1 |
-| `render_zp.6502`, `prebuild.6502` | bank 4 under ANDY | 137 | `SKIP &9000 + PAD_START - *` |
-| `bank5.6502`, `lib/sfx50.6502` | bank 5 | 424 | `SKIP PAD_END` in DATA2 |
+| `game.6502`, `lib/keydown.6502` | main RAM, up to `&3400` | 4 | `SKIP unused_3400_original - *` |
+| `game.6502` `moved_0a20` | `&0A20-&0AFF` | 76 | `moved_0a20_end` to `&0B00` |
+| `render.6502` | bank 4, `&9000-&B3FF` | 573 | `SKIP PAD_END` in DATA1 |
+| `render_zp.6502`, `prebuild.6502`, `render_bss_zero.6502` | bank 4 under ANDY | 106 | `SKIP &9000 + PAD_START - *` |
+| `bank5.6502`, `lib/sfx50.6502` | bank 5 | 437 | `SKIP PAD_END` in DATA2 |
+| the start-up block (MGAME's file) | to `&5A80` at load | 30 | `mgame_end` (`MGAME would load over the loading picture` ASSERT) |
+
+The renderer's variables (`src/render_bss.6502`, decision 32) are in workspace holes, not the
+file: a new one goes in a section with room (each is ASSERTed to its hole).
 
 A candidate that grows its region past the free space fails to assemble (the regions are
 ASSERTed), and the gate reports it.

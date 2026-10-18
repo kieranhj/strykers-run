@@ -1,0 +1,26 @@
+\ render_bss_zero.6502 - decision 32: the renderer's variables (src/render_bss.6502) are not in the
+\ file, so zero_render_vars zeroes the workspace holes they live in, once at start-up, as the file's
+\ zeros were. unpack_for_play calls it with ROMSEL &04: it is in bank 4 under ANDY, after
+\ render_zp.6502. Whole holes: also bytes no table uses, and zp_save (written before it is read).
+.zero_render_vars
+    LDA #0
+    LDY #&7F
+.zero_rv_128
+    STA REN_BASE + &380,Y           \ ren_vars_a and the rest of that hole
+    STA REN_BASE + &800,Y           \ zp_save and ren_vars_z
+    STA REN_BASE + &880,Y
+    STA REN_BASE + &A80,Y           \ ren_vars_d
+    DEY
+    BPL zero_rv_128
+    LDY #&37
+.zero_rv_56
+    STA REN_BASE + &4C8,Y           \ ren_vars_h0: hist0's page after its 200 bytes
+    STA REN_BASE + &5C8,Y           \ ren_vars_h1: hist1's
+    DEY
+    BPL zero_rv_56
+    RTS
+ASSERT ren_vars_a_start >= REN_BASE + &380 AND ren_vars_a_end <= REN_BASE + &400
+ASSERT ren_vars_z_start >= REN_BASE + &800 AND ren_vars_z_end <= REN_BASE + &900
+ASSERT ren_vars_d_start >= REN_BASE + &A80 AND ren_vars_d_end <= REN_BASE + &B00
+ASSERT ren_vars_h0_start >= REN_BASE + &4C8 AND ren_vars_h0_end <= REN_BASE + &500
+ASSERT ren_vars_h1_start >= REN_BASE + &5C8 AND ren_vars_h1_end <= REN_BASE + &600

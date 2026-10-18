@@ -6077,6 +6077,7 @@ up_n  = &C8
     LDA #&04
     STA os_ram_copy_of_currently_selected_rom
     STA romsel
+    JSR zero_render_vars            \ decision 32: the renderer's variables (bank 4, ROMSEL &04)
     RTS
 .copy                               \ up_n bytes from (zxsrc) to (zxdst), both moved on
     LDY #0

@@ -1,0 +1,149 @@
+\ render_bss.6502 - the renderer's variables (decision 32): not in the
+\ file; in bytes of the renderer's workspace (render.6502, REN_BASE on) that no table uses, and
+\ zeroed once at start-up (src/render_bss_zero.6502, from unpack_for_play) as the file's zeros were. Each region
+\ is within one page, so no table here crosses one.
+
+SECTION ren_vars_z, org = REN_BASE + &822, cmos = TRUE
+.ren_vars_z_start
+.back           SKIP 1              \ the screen being drawn: 0 main, 1 shadow
+.acc_main       SKIP 1              \ ACCCON with the CPU on main RAM, and on shadow
+.acc_shadow     SKIP 1
+.boff           SKIP 1              \ 64 * back
+.hist_next      SKIP 1              \ the history slot written next
+.hist_seq       SKIP 1              \ pushes so far
+.last_vl_lo     SKIP 1
+.last_vl_hi     SKIP 1
+.hist_edge_lo   SKIP 2
+.hist_edge_hi   SKIP 2
+.hist_ss_lo     SKIP 2
+.hist_ss_hi     SKIP 2
+.hist_crtc_lo   SKIP 2
+.hist_crtc_hi   SKIP 2
+.hist_vl_lo     SKIP 2
+.hist_vl_hi     SKIP 2
+.hist_vr_lo     SKIP 2
+.hist_vr_hi     SKIP 2
+.hist_dir       SKIP 2
+.hist_seqs      SKIP 2
+\ per screen (0, 1), and slot 2 for the logic's live view while a screen is drawn
+.buf_seq        SKIP 2
+.buf_lives      SKIP 2
+.buf_ss_lo      SKIP 3
+.buf_ss_hi      SKIP 3
+.buf_crtc_lo    SKIP 3
+.buf_crtc_hi    SKIP 3
+.buf_vl_lo      SKIP 3
+.buf_vl_hi      SKIP 3
+.buf_vr_lo      SKIP 3
+.buf_vr_hi      SKIP 3
+.pending_n      SKIP 1
+.pending_slot   SKIP 2
+.lives_redraw   SKIP 1
+.zone_n         SKIP 1
+.zone_lo        SKIP 12
+.zone_hi        SKIP 12
+.zone_tmp_lo    SKIP 1
+.zone_tmp_hi    SKIP 1
+.zone_count     SKIP 1
+.span_x_lo      SKIP 1
+.span_x_hi      SKIP 1
+.span_w2        SKIP 1
+.span_d         SKIP 2
+.ren_i          SKIP 1
+.ren_k          SKIP 1
+.need           SKIP MOVER_SLOTS
+\ the masked renderer's
+.arena_top_lo   SKIP 2           \ per screen: the end of its arena's used part
+.arena_top_hi   SKIP 2
+.list_n         SKIP 1
+.act_n          SKIP 1
+.act            SKIP MOVER_SLOTS
+.list_b         SKIP 1
+.list_changed   SKIP 1
+.list_type      SKIP 1
+.list_x_lo      SKIP 1
+.list_x_hi      SKIP 1
+.list_y         SKIP 1
+.dm_slot        SKIP 1
+.rl_index       SKIP 1
+.wa_off         SKIP 2
+.wa_t           SKIP 1
+.wa_x_lo        SKIP 1
+.wa_x_hi        SKIP 1
+.wa_y           SKIP 1
+.dm_index       SKIP 1
+.dm_typecol     SKIP 1
+.dm_type        SKIP 1
+.dm_flip        SKIP 1
+.dm_frame       SKIP 1
+.dm_scr_lo      SKIP 1
+.dm_scr_hi      SKIP 1
+.dm_jmin        SKIP 1
+.dm_jmax        SKIP 1
+.dm_raise       SKIP 1
+.ds_raise       SKIP 1
+.ds_sprite      SKIP 1              \ the part's sprite
+.ck_kind        SKIP 1              \ compiled_part: the kind found
+.ds_n           SKIP 1
+.ds_j           SKIP 1
+.ds_fr          SKIP 1
+.ds_clip        SKIP 1
+.ra_rows        SKIP 1
+.ra_lo          SKIP 1
+.ra_hi          SKIP 1
+.rb_index       SKIP 1
+.rb_part2       SKIP 2           \ the header: part 2's start, part 3's (offsets)
+.rb_part3       SKIP 2
+.rb_end         SKIP 2
+.rb_p8          SKIP 2
+.cp_cursor_lo   SKIP 1
+.cp_cursor_hi   SKIP 1
+.cp_best        SKIP 1
+.cp_best_slot   SKIP 1
+.ren_vars_z_end
+ENDSECTION
+ASSERT ren_vars_z_end - ren_vars_z_start <= &DE, "ren_vars_z overruns its hole"
+ASSERT HI(ren_vars_z_start) = HI(ren_vars_z_end - 1)
+
+SECTION ren_vars_a, org = REN_BASE + &380, cmos = TRUE
+.ren_vars_a_start
+.list_slot      SKIP MOVER_SLOTS + 1
+.list_x1_lo     SKIP MOVER_SLOTS + 1
+.list_x1_hi     SKIP MOVER_SLOTS + 1
+.ren_vars_a_end
+ENDSECTION
+ASSERT ren_vars_a_end - ren_vars_a_start <= &78, "ren_vars_a overruns its hole"
+ASSERT HI(ren_vars_a_start) = HI(ren_vars_a_end - 1)
+
+SECTION ren_vars_d, org = REN_BASE + &A80, cmos = TRUE
+.ren_vars_d_start
+.list_x2_lo     SKIP MOVER_SLOTS + 1
+.list_x2_hi     SKIP MOVER_SLOTS + 1
+.list_y1        SKIP MOVER_SLOTS + 1
+.ren_vars_d_end
+ENDSECTION
+ASSERT ren_vars_d_end - ren_vars_d_start <= &80, "ren_vars_d overruns its hole"
+ASSERT HI(ren_vars_d_start) = HI(ren_vars_d_end - 1)
+
+SECTION ren_vars_h0, org = REN_BASE + &4C8, cmos = TRUE
+.ren_vars_h0_start
+.list_y2        SKIP MOVER_SLOTS + 1
+.ren_vars_h0_end
+ENDSECTION
+ASSERT ren_vars_h0_end - ren_vars_h0_start <= &38, "ren_vars_h0 overruns its hole"
+ASSERT HI(ren_vars_h0_start) = HI(ren_vars_h0_end - 1)
+
+SECTION ren_vars_h1, org = REN_BASE + &5C8, cmos = TRUE
+.ren_vars_h1_start
+.cp_moved       SKIP MOVER_SLOTS
+.cp_best_lo     SKIP 1
+.cp_best_hi     SKIP 1
+.cp_len_lo      SKIP 1
+.cp_len_hi      SKIP 1
+.cp_next_lo     SKIP 1
+.cp_next_hi     SKIP 1
+.ren_vars_h1_end
+ENDSECTION
+ASSERT ren_vars_h1_end - ren_vars_h1_start <= &38, "ren_vars_h1 overruns its hole"
+ASSERT HI(ren_vars_h1_start) = HI(ren_vars_h1_end - 1)
+

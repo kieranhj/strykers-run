@@ -42,7 +42,7 @@ let inLoop = 0;
 const pcs = new Map();
 const trail = [];
 let brkSeen = null, codeWrite = null;
-const renLo = syms.history_push, renHi = syms.back;
+const renLo = syms.history_push, renHi = syms.render_end;   // the code and its tables (decision 32: its variables are in the workspace)
 let watchCode = false;
 const smc = syms["write_column.column_source"] + 2;
 cpu.debugWrite.add((a, v) => { if (watchCode && !codeWrite && a !== smc && a >= renLo && a < renHi && (cpu.romsel & 15) === 4 && !(cpu.acccon & 0)) codeWrite = { a, v, pc: cpu.pc, trail: trail.slice(-25), ss: s.readMemory(0, 2), tsa: s.readMemory(0xce, 2) }; return false; });
