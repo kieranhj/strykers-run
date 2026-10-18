@@ -2028,23 +2028,20 @@ ENDIF
     BNE unpack_scenery_loop         \ Always branches
 
 .initialise_column_buffer
-    PHP                             \ step 2 (layer 3, D): 8 bytes a time; the flags as the
-    LDX #&C8                        \ original's loop left them (C and V untouched)
-.initialise_column_buffer_loop
+    LDX #20                         \ step 2 (layer 3, D): ten 20-byte strips, X 20 down to 1;
+.initialise_column_buffer_loop      \ the flags as the original's loop left them (C and V untouched)
     STZ column_buffer - 1,X
-    STZ column_buffer - 2,X
-    STZ column_buffer - 3,X
-    STZ column_buffer - 4,X
-    STZ column_buffer - 5,X
-    STZ column_buffer - 6,X
-    STZ column_buffer - 7,X
-    STZ column_buffer - 8,X
-    TXA
-    SEC
-    SBC #8
-    TAX
+    STZ column_buffer + 19,X
+    STZ column_buffer + 39,X
+    STZ column_buffer + 59,X
+    STZ column_buffer + 79,X
+    STZ column_buffer + 99,X
+    STZ column_buffer + 119,X
+    STZ column_buffer + 139,X
+    STZ column_buffer + 159,X
+    STZ column_buffer + 179,X
+    DEX
     BNE initialise_column_buffer_loop
-    PLP
     LDA #&00                        \ A = X = 0, Z set, N clear
     RTS
 

@@ -849,18 +849,20 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     STA span_w2
     LDX zone_n
     BEQ none
+    LDA span_x_lo                   \ span_x -= 1 once (span_x is the caller's, dead after):
+    BNE no_borrow                   \ then d = column - span_x
+    DEC span_x_hi
+.no_borrow
+    DEC span_x_lo
 .each
     DEX
-    LDA zone_lo,X                   \ d = column - span_x + 1
-    SEC
-    SBC span_x_lo
-    STA span_d
-    LDA zone_hi,X
+    LDA zone_hi,X                   \ d's high byte less 1 into span_d + 1 ...
+    CLC
     SBC span_x_hi
     STA span_d + 1
-    LDA span_d
-    CLC
-    ADC #1
+    LDA zone_lo,X                   \ ... its low byte in A, C clear if it borrowed (ADC #0 below
+    SEC                             \ makes span_d + 1 + C the high byte)
+    SBC span_x_lo
     STA span_d
     LDA span_d + 1
     ADC #0
@@ -944,8 +946,7 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     STY ren_k
     LDX act,Y
     STX ren_i
-    TXA
-    CLC
+    TXA                             \ C = 0: CPY act_n found Y < act_n
     ADC boff
     TAY
     LDA rec_xh,Y
