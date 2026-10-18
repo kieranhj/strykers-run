@@ -1771,21 +1771,18 @@ ENDIF
     LDX &CF                         \ Zero for left edge, non-zero for right edge
     BEQ edge_left_loop
     JMP edge_right
-.edge_last
-    JMP calculate_screen_addresses_for_mover_on_edge
-.edge_left_loop
-    LDA edge_x_high                 \ the left edge: x or x + 1 (mod 256), so edge_x_high - x is 0 or 1
-    SEC
-    SBC movers_x_high,Y
-    CMP #&02
-    BCS edge_left_next
+.edge_leave_a1                      \ grind: an RTS in this page for the BNEs below (leave_1e0f is over the page, 4 cycles taken)
+    RTS
+.edge_left_loop                     \ C = 0 here: on entry (ground_square's CLC, via add_ground_to_column_buffer) and from the BCC
+    LDA movers_x_high,Y             \ the left edge: x or x + 1 (mod 256), so x - edge_x_high - 1 is &FF or &FE
+    SBC edge_x_high
+    CMP #&FE
+    BCC edge_left_next
     JSR calculate_screen_addresses_for_mover_on_edge
 .edge_left_next
     INY
     CPY #&21
-    BCC edge_left_loop
-    BCS edge_last                   \ Always branches
-    RTS
+    BCC edge_left_loop              \ the last (&21) falls through, taken in full
 .calculate_screen_addresses_for_mover_on_edge
     LDA movers_x_high,Y
     STA &D0
@@ -1798,14 +1795,19 @@ ENDIF
     BNE skip_adding_width
     CLC                             \ Consider right edge of mover for left edge of screen
     ADC movers_x_low,Y              \ A = mover_width: the same sum and flags as x_low + width
-    BCC skip_overflow_1dc4
+    BCS edge_overflow_a1
+    CMP edge_x_low                  \ Is the edge of the mover on the edge of the screen?
+    BNE edge_leave_a1
+    BEQ edge_hit_a1                 \ Always
+.edge_overflow_a1
     INC &D0
     BCS skip_overflow_1dc4          \ Always: C=1 from the ADC, INC leaves it
 .skip_adding_width
     LDA movers_x_low,Y
 .skip_overflow_1dc4
     CMP edge_x_low                  \ Is the edge of the mover on the edge of the screen?
-    BNE leave_1e0f
+    BNE edge_leave_a1
+.edge_hit_a1
     LDA &D0
     CMP edge_x_high
     BNE leave_1e0f
