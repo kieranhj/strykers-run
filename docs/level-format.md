@@ -439,6 +439,22 @@ Rebuild, then check that:
 
 **Preview:** `tools/worldmap.py` for the whole world, observer mode in the emulator (`tools/observer.mjs`; fixed, BUGS #11), and `tools/worldshots.mjs` for crops.
 
+## The editor, v1 (decision 41, KC 2026-10-18)
+
+- **The app:** Python and PyGame, scrolling controls, a swatch to select and place items.
+- **Output:** source, a generated include; the build checks it.
+- **Placed by the editor:** scenery (existing sprites only), movers (y fixed at `&18`, patrols within a
+  256-column page), triggers, boardable craft, enemy helicopter types, and the level's length (the
+  completion point).
+- **Not placed:** clouds, ground and mountains (effectively random, or from data bytes).
+- **v1.1:** enemy helicopters' positions and heights more precisely.
+- **The original's slips are fixed:** the craft at 13,000, scenery two's missing sentinel, scenery
+  one's half record.
+- **Left-scroll consistency:** the editor writes only consistent worlds, and the build checks it.
+- **Verification:** code changes are always proved against the original level; new levels are
+  experimental.
+- **Open:** chained or absolute scenery records (question 7 below).
+
 ## Open questions for an editor
 
 1. **Clouds, helicopter types, ground and mountains are not level data.** The clouds are scenery
