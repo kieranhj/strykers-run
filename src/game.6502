@@ -2909,6 +2909,7 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     RTS
 
 .reset_screen_scroll
+    JSR pre_cancel                  \ decision 38: a column built ahead undone, its state put back
     STZ pre_valid                   \ step 2 (layer 3): no column built ahead, no scroll yet
     STZ last_dir
     LDX #&0D                        \ R13: Displayed screen start address register (low)
@@ -5396,17 +5397,16 @@ check_for_player_input_key = * + 1
     LDA #&00
     RTS
 .start_clear
+    JSR pre_cancel                  \ decision 38: a walk built for another scroll undone (HAZEL)
     STZ pre_valid                   \ 65C02 opcode
     STZ pre_use
     PLP
     JMP initialise_column_buffer
-\ install_prebuilt, in place of the walk: the state the prebuild's walk left, and the bank it
-\ left paged. A = Y = &FF, N and C set, as the walk leaves them (X is written before it is read).
+\ install_prebuilt, in place of the walk: the prebuild's walk left its state in place (decision
+\ 38); page the bank it left paged. A = Y = &FF, N and C set, as the walk leaves them (X is
+\ written before it is read).
 .install_prebuilt
-    LDA #&04
-    STA os_ram_copy_of_currently_selected_rom
-    STA romsel                      \ Paged ROM latch
-    JSR put_prebuilt_state          \ bank 4; A = the bank
+    LDA pre_bank
     STA os_ram_copy_of_currently_selected_rom
     STA romsel                      \ Paged ROM latch
     LDA #&FF
@@ -6091,6 +6091,8 @@ save_arena_end = *
 .hazel_b_load
 SECTION hazel_b, org = hazel_a_end, cmos = TRUE
     INCLUDE "compiled_hazel_b.6502"
+    INCLUDE "scroll_hazel.6502"     \ layer 4: the scroll column's code (decisions 38, 39)
 .hazel_b_end
+    ASSERT hazel_b_end <= &E000, "HAZEL overruns by ", hazel_b_end - &E000
 ENDSECTION
     INCLUDE "music_packed.6502"

@@ -1,0 +1,28 @@
+\ scroll_hazel.6502 - step 2 layer 4: the scroll column's code that lives in HAZEL (decisions 38,
+\ 39), after the compiled kinds (hazel_b, carried in MGAME after &4000 and copied in by
+\ unpack_for_play with them). HAZEL is paged in through play (ACCCON's Y bit), whatever ROMSEL
+\ holds, so this runs from the scroll with any bank paged; main RAM has no room for it.
+
+\ pre_cancel: decision 38. A column built ahead in the wait (src/prebuild.6502) left the walk's
+\ state in place for the scroll it was built for; for any other scroll (start_column), or when a
+\ game starts or ends (reset_screen_scroll), the state goes back as it was. pre_valid 1 or &FF:
+\ built, its state in place; 0 nothing built, &80 tried and already undone. ROMSEL and its MOS copy
+\ are left as they came. A, X changed; Y kept.
+.pre_cancel
+{
+    LDA pre_valid
+    BEQ done
+    CMP #&80
+    BEQ done
+    LDA os_ram_copy_of_currently_selected_rom
+    PHA
+    LDA #&04                        \ pre_undo is bank 4's, below &9000 (no ANDY)
+    STA os_ram_copy_of_currently_selected_rom
+    STA romsel
+    JSR pre_undo
+    PLA
+    STA os_ram_copy_of_currently_selected_rom
+    STA romsel
+.done
+    RTS
+}
