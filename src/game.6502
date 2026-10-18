@@ -2364,20 +2364,20 @@ ENDIF
     LDA pixel_table_address_low
     ORA #&80
     STA mask_table_address_low
-    LDY #&01
     \ Step 2 (layer 2): only the renderer draws. The game's own calls still work out the
     \ sprite and the address, and walk the sprite as the plotter would, but write nothing.
     BIT drawing
     BMI unpack_sprite
-    JSR walk_column
-    BRA skip_unpacking              \ 65C02 opcode
-.unpack_sprite
-    JSR unpack_column_of_sprite
+    JSR walk_column                 \ (walk_column sets its own Y)
 .skip_unpacking
     LDA #&40
     STA pixel_table_address_low
 .leave_1f08
     RTS
+.unpack_sprite
+    LDY #&01
+    JSR unpack_column_of_sprite
+    BRA skip_unpacking              \ 65C02 opcode
 
 \ Step 2 (layer 2, then layer 3 option C): what unpack_column_of_sprite leaves behind, for the
 \ game's own calls, which no longer draw. The original's logic reads it: mover_x_low, stepped on
@@ -4838,7 +4838,9 @@ check_for_player_input_key = * + 1
     CMP mover_x_low                 \ If the mover is beyond the right edge of the screen,
     BCC leave_with_carry_set_30af   \ Leave with carry set to indicate no update required
 .is_on_screen
-    JSR get_mover_type              \ Returns A = mover type
+    LDY mover_to_update             \ grind: get_mover_type inlined (Y = &03, A = type)
+    LDA movers_type_and_colour,Y
+    AND #&7F
     CMP #&13                        \ MOVER_TYPE_MINE                           # If the mover is a mine,
     BCS leave_with_mover_to_update  \ Leave with carry set to indicate no update required
     CMP #&0D                        \ MOVER_TYPE_SKELETON                       # If the mover is not an explosion or a skeleton,

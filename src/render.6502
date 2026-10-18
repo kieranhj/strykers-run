@@ -468,32 +468,27 @@ ENDIF
 .taken_off
 
     \ ---- 5. the scroll, oldest column first, each with its view and the lives digit ----
-    LDY #0
     LDA pending_n
     BEQ scrolled
+    LDY #0
     CMP #2
     BEQ apply_entries
     INY
 .apply_entries
     STY ren_k
     LDX pending_slot,Y
-    JSR write_column
-    LDY ren_k
-    LDX pending_slot,Y
-    JSR history_to_view
-    JSR ren_plot_lives
-    LDX back
-    LDA lives
-    STA buf_lives,X
-    LDY ren_k
-    LDX pending_slot,Y
+    JSR history_to_view             \ (keeps X, Y; changes only A): the view after this scroll
     LDA hist_seqs,X
-    LDX back
-    STA buf_seq,X
+    LDY back
+    STA buf_seq,Y
+    LDA lives
+    STA buf_lives,Y
+    JSR write_column                \ X = the slot still
+    JSR ren_plot_lives
     LDY ren_k
+    BNE scrolled                    \ entry 1 (pending_slot + 1) is always the last
     INY
-    CPY #2
-    BNE apply_entries
+    BRA apply_entries               \ 65C02 opcode
 .scrolled
     LDX #2                          \ the logic's view again; it is this screen's now
     JSR buffer_to_view
@@ -1253,9 +1248,7 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     STA arena_top_hi,X
     STA save_end_hi,Y
     LDX dm_slot
-    JSR record_live                 \ X = slot, Y = slot + boff
-.out
-    RTS
+    JMP record_live                 \ X = slot, Y = slot + boff (its RTS returns from put_on)
 }
 
 \ mark_part2, mark_part3: the part about to be drawn starts at v_ptr + 8 (its first record),
