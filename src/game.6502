@@ -3022,7 +3022,8 @@ move_mover_routine_address_high = * + 2
 .leave_25f3
     RTS
 .not_firing_25f4
-    JSR check_if_player_is_on_ground
+    LDA movers_y                    \ check_if_player_is_on_ground, inlined
+    CMP #&18
     BNE skip_entering_or_leaving
     LDA keys_pressed_bitmap
     AND #&40                        \ KEY_ENTER
@@ -3032,8 +3033,7 @@ move_mover_routine_address_high = * + 2
     LDA #&FF                        \ ***
     STA entering_or_leaving         \ *** Set to non-zero to suppress auto-repeat
     JMP enter_or_leave_helicopter
-.not_entering_or_leaving_helicopter
-    LDA #&00                        \ ***
+.not_entering_or_leaving_helicopter    \ A = 0 here: the AND #&40 above, whose BEQ is the only way in
     STA entering_or_leaving         \ *** Set to zero to permit entering or leaving
 .skip_entering_or_leaving
     LDA movers_frame_and_flip
@@ -3193,20 +3193,11 @@ move_mover_routine_address_high = * + 2
     STA movers_frame_and_flip
 .skip_animating_player
     LDA frame                       \ Negative if moving left or right
-    BPL not_scrolling
-    LDA x_delta
-    BEQ not_scrolling
+    BPL skip_rebuffering_player     \ grind: not scrolling. The raster wait (check_if_raster_is_in_mover,
+    LDA x_delta                     \ CLC : RTS) and the unbuffers (unbuffer_player, an RTS) went; C, Y, N
+    BEQ skip_rebuffering_player     \ and Z are dead here (LDY hostile_mover, then CMP or CPY first)
     \ Step 2 (layer 2): the original waited for vsync here, to move the screen start between frames
-    JSR unbuffer_player
-    JSR update_screen
-    JSR plot_lives
-    BRA skip_rebuffering_player     \ *** 65C02 opcode
-.not_scrolling
-    LDY #&00                        \ MOVER_PLAYER
-.wait_to_unplot_player
-    JSR check_if_raster_is_in_mover \ Returns carry set if raster is in mover
-    BCS not_scrolling
-    JSR unbuffer_player
+    JSR update_screen               \ grind: plot_lives went too (it returns at once: `drawing` is never set)
 .skip_rebuffering_player
     LDY hostile_mover               \ Positive if player touching hostile mover
     BMI skip_killing_player
@@ -3231,6 +3222,8 @@ move_mover_routine_address_high = * + 2
     LDY #&00                        \ MOVER_PLAYER
     JSR kill_mover_Y
     JMP skip_plotting_player
+    EQUB &EA, &EA, &EA, &EA, &EA, &EA, &EA, &EA, &EA    \ spare (grind): the 18 bytes freed above, kept so skip_killing_player and all after stay put
+    EQUB &EA, &EA, &EA, &EA, &EA, &EA, &EA, &EA, &EA
 .skip_killing_player
     JSR plot_player
 .skip_plotting_player

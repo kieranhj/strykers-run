@@ -19,10 +19,15 @@
 
 .sfx_tick
 {
-    LDX #3
-.channel
+    LDA sfx_request                 \ any request this tick? (most ticks have none: 19 cycles, not 28)
+    ORA sfx_request + 1
+    ORA sfx_request + 2
+    ORA sfx_request + 3
+    BEQ sfx_t_req_none
+    LDX #3                          \ the requests first, all four channels (no effect's first ramp
+.sfx_t_req_each                     \ is empty, so this writes nothing to the chip)
     LDA sfx_request,X
-    BEQ no_request
+    BEQ sfx_t_req_next
     STZ sfx_request,X               \ (a request in between these two is lost: the next replaces it)
     TAY                             \ E + 1: the tables are read one byte early
     LDA sfx_effect_lo - 1,Y
@@ -31,7 +36,12 @@
     STA sfx_ptr_hi,X
     STA sfx_noise_written,X         \ the noise control is written when it changes: not yet (an address's high byte, never 0-7)
     JSR sfx_next_ramp
-.no_request
+.sfx_t_req_next
+    DEX
+    BPL sfx_t_req_each
+.sfx_t_req_none
+    LDX #3                          \ then each channel's step
+.channel
     LDA sfx_n,X
     BEQ next
     JSR sfx_output
