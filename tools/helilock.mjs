@@ -4,25 +4,21 @@
 // on both, as tools/passlock.mjs does; the game state and the newest frame are compared every pass.
 // The scripted games of passlock never board a helicopter (BUGS #7 was a helicopter explosion).
 //
-//   node tools/helilock.mjs CONTROL.ssd TEST.ssd [PASSES] [VARIANT 0-9]
+//   node tools/helilock.mjs CONTROL.ssd TEST.ssd [PASSES] [VARIANT 0-9] [--unclobber]
 //
 // For the renderer: TEST = a build, CONTROL = its DEBUG_FULLREDRAW twin (or the build before a
 // change). Both DEBUG_LIVES. Prints where the flight got to and the first frame that differs.
-import { readFileSync } from "node:fs";
+// --unclobber: as tools/passlock.mjs's (BUGS #12), so a build from before the fix is the control
+// for one after it; the generator's state is read where each build keeps it.
 import { loadMachineSession } from "./jsbeeb_src.mjs";
-import { makeScript, applyEvents, bootMaster, gameKey, moverTables } from "./playscript.mjs";
+import { makeScript, applyEvents, bootMaster, gameKey, moverTables, loadSyms, prngAt, prngClobber } from "./playscript.mjs";
 const MS = await loadMachineSession();
-const [discA, discB, passesArg, variantArg] = process.argv.slice(2);
+const argv = process.argv.slice(2), UNCLOBBER = argv.includes("--unclobber");
+const [discA, discB, passesArg, variantArg] = argv.filter((a) => a !== "--unclobber");
 // VARIANT: how the flight goes - climbing for VARIANT * 10 passes in each 100, grenades (DELETE)
 // every 7th pass of the rest, so the grenade slot the explosion reuses has a y of its own
 const VARIANT = parseInt(variantArg || "5", 10);
 const PASSES = parseInt(passesArg || "2500", 10);
-const loadSyms = (disc) => {
-    const o = {};
-    for (const sec of JSON.parse(readFileSync(disc.replace(/\.ssd$/, ".symbols.json"), "utf8")).assemblies[0].sections)
-        for (const [k, v] of Object.entries(sec.labels || {})) if (v && typeof v.value === "number") o[k] = v.value;
-    return o;
-};
 async function start(disc) {
     const syms = loadSyms(disc), s = await bootMaster(MS, disc), cpu = s._machine.processor;
     const m = { s, cpu, syms, passes: 0, target: 1, lastStop: -1, held: [] };
@@ -42,9 +38,10 @@ async function start(disc) {
 }
 async function toPass(m, n) { m.target = n; for (let i = 0; m.passes < n; i++) { if (i === 150) return false; await m.s.runFor(400000); } return true; }
 const rdm = (m, a, n = 1) => [...m.s.readMemory(a, n, { shadow: false })];
-// passlock's game variables (not field_count &90 or game_over_cooldown &96: they count fields)
-const ZP = [0x00, 0x01, 0x7e, 0x7f, 0x80, 0x82, 0x83, 0x84, 0x8e, 0x8f, 0x92, 0x93, 0x94, 0x95, 0x9f, 0xa0, 0xb0, 0xb1, 0xb2, 0xba, 0xb3, 0xbb, 0xc0];
-const state = (m) => JSON.stringify([rdm(m, ...moverTables(m.syms)), ZP.map((a) => rdm(m, a)[0])]);
+// passlock's game variables (not field_count &90 or game_over_cooldown &96: they count fields),
+// and the generator's two bytes, where the build keeps them
+const ZP = [0x00, 0x01, 0x7e, 0x7f, 0x80, 0x82, 0x83, 0x84, 0x8e, 0x8f, 0x94, 0x95, 0x9f, 0xa0, 0xb0, 0xb1, 0xb2, 0xba, 0xb3, 0xbb, 0xc0];
+const state = (m) => JSON.stringify([rdm(m, ...moverTables(m.syms)), [...ZP, ...prngAt(m.syms)].map((a) => rdm(m, a)[0])]);
 function newest(m) {
     const pending = rdm(m, m.syms.flip_pending)[0] & 0x80;
     const shadow = pending ? !!rdm(m, m.syms.flip_screen)[0] : !!(m.cpu.acccon & 1);
@@ -53,12 +50,13 @@ function newest(m) {
 const press = (m, keys) => { for (const k of m.held) if (!keys.includes(k)) m.s.keyUpRaw(gameKey(m.s, k)); for (const k of keys) if (!m.held.includes(k)) m.s.keyDownRaw(gameKey(m.s, k)); m.held = keys; };
 
 const A = await start(discA), B = await start(discB);
+const clobbers = [A, B].map((m) => prngClobber(m, { undo: UNCLOBBER }));
 const x = (i) => rdm(A, A.syms.movers_x_high + i)[0] * 256 + rdm(A, A.syms.movers_x_low + i)[0];
-let phase = "run", target = null, exploded = null, firstDiff = null, diffs = 0;
+let phase = "run", target = null, exploded = null, firstDiff = null, diffs = 0, stateDiffers = null;
 const log = [];
 for (let p = 1; p <= PASSES; p++) {
     if (!(await toPass(A, p)) || !(await toPass(B, p))) { log.push(`pass ${p}: a machine stopped making passes`); break; }
-    if (state(A) !== state(B)) { log.push(`pass ${p}: game state differs`); break; }
+    if (state(A) !== state(B)) { log.push(`pass ${p}: game state differs`); stateDiffers = p; break; }
     const a = newest(A), b = newest(B);
     let d = 0; for (let i = 0; i < 0x4000; i++) if (a[i] !== b[i]) d++;
     if (d) { diffs++; if (firstDiff === null) firstDiff = `pass ${p} (${phase}): ${d} bytes`; }
@@ -95,4 +93,4 @@ for (let p = 1; p <= PASSES; p++) {
     press(A, keys); press(B, keys);
 }
 console.log(log.join("\n"));
-console.log(JSON.stringify({ passes: A.passes, phase, boarded: log.some((l) => l.includes("in helicopter")), exploded, framesDiffering: diffs, firstDiff }));
+console.log(JSON.stringify({ passes: A.passes, phase, boarded: log.some((l) => l.includes("in helicopter")), exploded, framesDiffering: diffs, firstDiff, stateDiffers, clobbers: { control: clobbers[0], test: clobbers[1] } }));

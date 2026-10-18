@@ -91,7 +91,7 @@ disassembly's `actually`/`also` notes say what an operand really is.
 - `tools/observer.mjs DISC` - observer mode's RIGHT, LEFT and ESCAPE (a key path play never takes: BUGS #11); one of the grind's checks
 - `tools/split.mjs DISC FROM FRAMES`, `tools/splitscroll.mjs DISC` - when the palette writes land after vsync, every field / on scrolling fields
 - `tools/soundfx.mjs DISC OUT.json` - each sound effect's SN76489 writes, for comparing two builds (fired from the pause loop by a faked JSR: no stub in RAM)
-- `tools/passlock.mjs CONTROL TEST [PASSES] [SEED] [--screen]` - two builds in step by pass (same keys per pass), game state compared every pass, and the shown screen (`--trace`, `--dump`, `WATCH=` to chase a difference). Layer 2's oracle: build both `-Shift 256 -ShiftEnd` so the ground pattern is fixed
+- `tools/passlock.mjs CONTROL TEST [PASSES] [SEED] [--screen] [--unclobber]` - two builds in step by pass (same keys per pass), game state compared every pass, and the shown screen (`--trace`, `--dump`, `WATCH=` to chase a difference). Layer 2's oracle: build both `-Shift 256 -ShiftEnd` so the ground pattern is fixed. `--unclobber` (also `helilock.mjs`, `worldrun.mjs`, `pcprof.mjs`; the gate passes it): a control from before BUGS #12's fix has the dying mover's `STY &92` undone in the emulator (`playscript.mjs` `prngClobber`), so it plays the fixed build's game
 - `tools/shadowaudit.mjs DISC` - what the renderer reads in `&3000-&3FFF` with ACCCON's X bit set, against what play writes there:
   a read is stale if shadow's copy differs from main's then (the arena and `player_save` are per screen, not judged)
 - `tools/kcguard.mjs ORACLE TEST [PASSES] [SEED] [END]` - the kind cache's arena guard forced (slot 0 moved into the arena, the
@@ -106,15 +106,16 @@ disassembly's `actually`/`also` notes say what an operand really is.
 - `tools/passcost.mjs DISC [FROM] [FRAMES] [--right]`, `tools/passhist.mjs` - a pass's cycles by phase; each pass's work against the bytes it drew
 - `tools/sidebyside.mjs ORIGINAL.ssd STEP2.ssd OUT.mp4 [--fields 3000] [--seed 1]` - the comparison video: `make original`'s build
   and the shipping build playing the same game (keys by pass; the original's four User VIA T2 random reads given `random`'s bytes
-  in A by the emulator, its writes to `&92`/`&93` mirrored into that generator), each field's displayed screen side by side,
+  in A by the emulator; for a step 2 build from before BUGS #12's fix, its writes to `&92`/`&93` mirrored into that generator), each field's displayed screen side by side,
   both machines' sound left and right; game state and random bytes compared every pass (OUT.json). Needs `make original`'s
   symbols beside its disc (`build/strykers-original.symbols.json`)
 - `tools/helilock.mjs CONTROL TEST [PASSES] [VARIANT]` - two builds in step through a helicopter flight (board, fly, shot down), state and newest frame every pass; passlock's scripts never board one
 - `tools/worldcheck.mjs DISC [--world]` - the renderer's world position of each record against the mover's x/y (BUGS #7, #10); `--world`, start to completion screen
 - `tools/scrollleft.mjs CONTROL TEST [--left K] [--still S] [--place]` - BUGS #10's cases: the whole world with LEFT held (then no key) wherever a mover is clipped at the left edge, state and newest frame against CONTROL (the `DEBUG_FULLREDRAW` twin) every pass; `--place` moves a lower-slot soldier over the clipped mover
-- `tools/worldrun.mjs DISC [--control CONTROL [--screen]] [--shots DIR]` - the whole world, start to completion screen (WorldBot: run, jump, grenade what blocks):
+- `tools/worldrun.mjs DISC [--control CONTROL [--screen] [--unclobber]] [--shots DIR]` - the whole world, start to completion screen (WorldBot: run, jump, grenade what blocks):
   frames as passbench (late frames by world column, ground or air); with `--control`, state and newest frame against CONTROL every pass (the `DEBUG_FULLREDRAW` twin)
 - `tools/zplive.mjs DISC` - the zero-page bytes the logic reads first after a render (what `restore_game_zp` must keep)
+- `ZPWATCH=a2-a6,bc-bd node --import ./tools/zpwatch.mjs tools/HARNESS.mjs ...` - every write, read and execute at those addresses in any harness's machines, by phase (boot, front end, game) and the code that made it (BUGS #12)
 - `tools/analyse.py report|annotate` - beebgame's static analyses of the build (liveness, known values, ranges,
   register ABIs; `build/dataflow/`): `tools/dataflow/` vendored, `tools/baron_dbg.py` reads a Baron build,
   `tools/dataflow_config.py` and `tools/isr_model.py` describe this game's interrupts (the beeb-dataflow skill)
@@ -148,7 +149,9 @@ its first bytes kept as the ground's, the rest the renderer's variables - decisi
 end, decision 40); `&0E00-&3FFF` code and data; `&4000-&46FF` start-up code (step 2: mostly in the save arena, decision 33), then the screen `&4000-&7FFF` (16K, MODE 2,
 hardware-scrolled by the CRTC). Bank 5 `&8000-&83FF` is the player buffer.
 
-Step 2 additions: zero page `&90` (`field_count`), `&92`/`&93` (the PRNG), `&9B` (`drawing`),
+Step 2 additions: zero page `&90` (`field_count`), `&BC`/`&BD` (the PRNG, seeded just before
+`start_game`; not `&92`/`&93`, where it was until BUGS #12: `&92` is the original's scratch in
+`set_dying_mover_type_and_frame`), `&9B` (`drawing`),
 `&9C/&9D` (the sprite walk's and the renderer's pointer), `&9E` (`plot_sprite`); `&1F-&75`, the
 unpacker's dead body, the renderer's hottest variables (`ren_zp` in `moved_0004`, decision 34;
 `&0004-&001E` stay as the ground's bytes, BUGS #1); the renderer's

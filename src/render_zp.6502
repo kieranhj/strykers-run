@@ -15,6 +15,10 @@
 \ the rest of &B0-&BB and &F8/&F9 (the plotter's leftovers) for margin. Pass lockstep proves it.
 \ Decision 32: kept packed, the n-th byte saved at zp_save + n (34 bytes), so the rest of zp_save's
 \ page holds the renderer's variables (src/render_bss.6502). A byte added here goes on the end.
+\ BUGS #12 (2026-10-18): zp_save + 12 and + 13 kept &92/&93, the generator's state, which moved
+\ to &BC/&BD (src/zp.6502), where the renderer never writes; &92 is now only
+\ set_dying_mover_type_and_frame's scratch, written before it is read. So the two are no longer
+\ kept, and their slots are unused.
 .save_game_zp
     LDA &00
     STA zp_save + 0
@@ -40,10 +44,6 @@
     STA zp_save + 10
     LDA &8F
     STA zp_save + 11
-    LDA &92
-    STA zp_save + 12
-    LDA &93
-    STA zp_save + 13
     LDA &94
     STA zp_save + 14
     LDA &95
@@ -111,10 +111,6 @@
     STA &8E
     LDA zp_save + 11
     STA &8F
-    LDA zp_save + 12
-    STA &92
-    LDA zp_save + 13
-    STA &93
     LDA zp_save + 14
     STA &94
     LDA zp_save + 15

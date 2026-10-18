@@ -99,6 +99,11 @@ MOS's sound, skipping transparent bytes, building the column on the pass before.
   0 of 29,829 over the whole world, from 984 of 29,847); a constructed overlap at the left edge
   (`tools/scrollleft.mjs --place`) 0 frames from the oracle, from 73 of 4,000; the gate's checks
   identical; work a pass 14.1 cycles less on seed 1, 2.0 more holding RIGHT.
+- **BUGS #12 fixed** (2026-10-18, on `72ab52b`): the generator's state moved from `&92`/`&93`
+  (`&92` is the original's scratch: every death set its low byte) to `&BC`/`&BD`, which nothing
+  else touches in a game (`tools/zpwatch.mjs`). Against the control with the clobber undone in the
+  emulator (`--unclobber`): seeds 1, 3 and 5, both helicopter flights and the whole world, state
+  and screen identical; work a pass 33.0 cycles less on seed 1, 28.3 holding RIGHT.
 
 ## Tooling
 

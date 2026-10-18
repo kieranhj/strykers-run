@@ -207,3 +207,80 @@ No key worked in observer mode (`tools/observer.mjs` on the broken build: the vi
 path, so none of the gate's checks ran it, and G0038's skeptics missed the `+ 1` caller. Fixed: the
 same ten bytes now `TXA : EOR #&FF : TAX : JSR keydown_int : EOR #&80 : RTS` (RIGHT 0 -> 76, LEFT
 back to 37, ESCAPE to the title). `tools/observer.mjs` is now one of `tools/grind.py`'s checks.
+
+## 12. The generator's low byte was the original's scratch: every death set it to the dying mover's slot (step 2, decision 17; FIXED in layer 4)
+
+Found 2026-10-18 by `tools/sidebyside.mjs` (jsbeeb 2.5.0, Master 128: the original and step 2
+playing the same game by pass), on seed 1's script: the two parted at pass 571. Decision 17 put
+`random`'s 16-bit xorshift state at `&92`/`&93` on a watch that saw "no access after boot in
+30,000 frames" (2026-10-16), but the original's own `set_dying_mover_type_and_frame` keeps the
+dying mover's slot in `&92` across a call: `STY &92 : LDX &92 : JSR
+check_for_player_collision_with_mover_Y : LDY &92`. So each time a mover died the generator's
+low byte became the slot. A game still replayed exactly from its input (the clobber is as
+deterministic as the rest), but from the first death the numbers were not decision 17's
+generator's: each death put a slot (1-&21) in the low byte. And one case would stick it: the player
+(slot 0) dying with the high byte 0 leaves the state 0, from which `random` returns 0 for ever.
+By the code that is only the player's last death (`kill_player` reaches
+`set_dying_mover_type_and_frame` only when `lives` reaches 0), so the game ends soon after and
+`start_game` re-seeds; it was not seen.
+- Measured on the control (`72ab52b`, the bench build `-Shift 256 -ShiftEnd -Define
+  DEBUG_LIVES`), with `tools/passlock.mjs`'s new clobber count (`tools/playscript.mjs`
+  `prngClobber`): seed 1, 24 clobbers in 6,000 passes, the first at pass 571; seed 3, 19 in
+  4,000 (first at 667); seed 5, 15 in 4,000 (first at 480); the helicopter flights 17 and 13 (first
+  at 225); the whole world 98 in 12,237 passes (first at 225). Every one changed the low byte.
+- **Fixed**: the state is at **`&BC`/`&BD`** (`src/zp.6502`), and `take_irq_for_play` seeds it
+  last, after its two OSBYTEs, just before `JMP start_game`, so the bytes need last only through
+  the game. `&92` stays the original's scratch, untouched. `save_game_zp`/`restore_game_zp` no
+  longer keep `&92`/`&93` (they were kept for the generator; `&92` is now written before it is
+  read, and the renderer never writes either): `zp_save + 12` and `+ 13` are unused.
+- **Why `&BC`/`&BD`**: a watch of every write, read and execute of `&92-&93`, `&A2-&A6`,
+  `&A8-&AF`, `&BC-&BF` and `&D2-&E6` (`tools/zpwatch.mjs`, new: any harness, by phase - boot,
+  front end, game - and the code that made each access) over the front end's 15 checks (two games,
+  game over, high score entry, define controls, pause), seed 1's 6,000 passes, both helicopter
+  flights (to the explosion and after) and the whole world to the completion text, on the control
+  and on the fixed build (the fixed build's seed 1, 3 and 5 runs below watched `&92`/`&93` and
+  `&BC`/`&BD` only). In games (from `start_game` to the title's `give_irq_back`) nothing
+  touched any of those bytes on the control but `&92`/`&93` (`random`, `save_game_zp`,
+  `restore_game_zp`, `set_dying_mover_type_and_frame`); on the fixed build nothing touched
+  `&BC`/`&BD` but `random` (and the seeding in `take_irq_for_play`, on the front end), and nothing
+  touched the others at all. On the front end after the boot, no write to any of them. The MOS
+  (ROM 15) and the DFS (ROM 9, and its NMI code at `&0D00`) write them all while booting, which
+  does not matter: `start_game` re-seeds. jsbeeb reports a zero-page read with its address but not
+  its value, so reads were counted by address; by the source, no instruction names `&BC`-`&BF`,
+  and the only indexed zero-page store (`STA screen_start_address,X`) has X 0-1. Of the candidates,
+  `&BC`/`&BD` are the filing system's scratch, next to the `&B0-&BB` the game already takes from it,
+  and in play nothing calls a filing system (the NMI workspace `&A0-&A7`, which an Econet
+  interrupt could use, and the VDU's and MOS's `&D0-&E6` were passed over).
+- **Proven** (jsbeeb 2.5.0, 2026-10-18; control `72ab52b`, test the fix, both the bench build):
+  - Up to the first clobber the fix changes nothing: `passlock.mjs CONTROL TEST 600 1 --screen`
+    has state and screen identical for passes 1-571 and the first difference at the start of pass
+    572, `rnd_seed` only (`&53 &FC` against `&84 &5D`): the first clobber was in pass 571, the first
+    of the game in both builds.
+  - Against the control with the clobber undone in the emulator (`--unclobber`: after the `LDY
+    &92`, the generator's byte put back, which is what the fix does by never losing it), the same
+    game: `passlock.mjs` state and screen identical over 6,000 passes of seed 1 (24 undone), 4,000 of
+    seed 3 (19) and 4,000 of seed 5 (15); `helilock.mjs` both flights, state every pass and no
+    frame differing (variant 5: boarded at 1,201, shot down at 1,251, 1,552 passes, 17 undone;
+    variant 2: boarded at 1,201, flying at 3,000, 13 undone); `worldrun.mjs TEST --control CONTROL
+    --screen --unclobber` the whole world, both at the completion screen at pass 12,237, state
+    identical every pass and 0 of 12,237 frames differing (98 undone).
+  - `tools/grind.py gate` against `72ab52b` (its control checks now pass `--unclobber`, which does
+    nothing for a control after the fix): every build assembles; state and screen identical over
+    6,000 passes of seed 1 and 4,000 of seed 3; the `DEBUG_FULLREDRAW` twin identical over 4,000 of
+    seed 5; both helicopter flights with no frame differing; the front end's 15 checks; observer
+    mode.
+- **Work a pass** (pcprof, the gate's measure, on the same game: the control with `--unclobber`,
+  which `tools/pcprof.mjs` now takes too; `build/grind`'s images of the control and the test):
+  seed 1 37,967.3 -> 37,934.3 (33.0 fewer), holding RIGHT 44,196.6 -> 44,168.3 (28.3 fewer); by
+  pass, 26-30 fewer on almost every pass: the 28 cycles of the two bytes `save_game_zp` and
+  `restore_game_zp` no longer keep. The gate's own figures (37,934.3
+  and 44,168.3 against the control's 37,862.7 and 43,669.3, "71.6 and 499.0 more") compared
+  different games: its measure did not undo the clobber, so from the first death the control
+  played another game. Its measure now passes `--unclobber` too (`tools/grind_config.py`).
+- `tools/sidebyside.mjs` mirrors the original's writes to `&92`/`&93` into its generator only for a
+  step 2 build that keeps the state there (one from before this fix); for the fixed build there is
+  nothing to mirror. Seed 1, 4,000 fields, against `make original`: the fixed shipping build plays
+  the original's game, state identical over the 1,290 passes both reached and the 492 random bytes
+  the same, nothing mirrored; the control, 2 writes mirrored (`&92` at `&294C`), identical over
+  1,295 passes. `passlock.mjs`, `helilock.mjs` and `worldrun.mjs` read the generator where each
+  build keeps it (`playscript.mjs` `prngAt`), so a fixed build compares with one from before.

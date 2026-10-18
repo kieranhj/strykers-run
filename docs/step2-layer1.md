@@ -120,7 +120,9 @@ define controls run under the MOS as before (KC: eventually everything, start wi
   titles (`DEBUG_LIVES`, before the change) saw none.
 - Zero page `&90`, `&92`, `&93`: a watch of `&90`, `&92`, `&93`, `&A2-&A6` and `&BC-&BF` from
   frame 300 to 30,000 saw no access to the first three (DFS and the NMI code use the others while
-  loading).
+  loading). **Wrong for `&92` (BUGS #12, 2026-10-18):** the original's
+  `set_dying_mover_type_and_frame` writes a slot there each time a mover dies; the generator is
+  now at `&BC`/`&BD`.
 - Bank 5 `&A3FA-&A463`, after everything else in the bank (its music is page-aligned).
 
 ## 3. Checks

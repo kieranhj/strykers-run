@@ -2,7 +2,7 @@
 // game state compared at the start of every pass. The check that a change to how the game DRAWS
 // left what it PLAYS alone (step 2 layer 2: the single-screen control against double buffering).
 //
-//   node tools/passlock.mjs CONTROL.ssd TEST.ssd [PASSES] [SEED] [--screen]
+//   node tools/passlock.mjs CONTROL.ssd TEST.ssd [PASSES] [SEED] [--screen] [--unclobber]
 //
 // Both boot on a Master and start a game with tools/playscript.mjs's title presses. From the first
 // main_game_loop on, each machine is stopped at the start of every pass, given that pass's keys
@@ -22,9 +22,14 @@
 // symbol, with +N, or hex; BANK a sideways bank or "-" for as paged), to force a path in a test:
 // tools/kcguard.mjs. PASSLOCK_COUNT=LABEL[,LABEL] counts each label's executions in TEST (bank 4's
 // above &8000) and reports them as "counted".
+// The generator's state is read where each build keeps it (playscript.mjs prngAt: &92/&93 before
+// BUGS #12's fix). Each machine's writes of a dying mover's slot to &92 are counted (`clobbers`:
+// all, those that changed a generator kept there, and the passes of the first of each);
+// --unclobber puts the generator's byte back after each (playscript.mjs prngClobber) on a build
+// that keeps it at &92, so a build from before the fix is the control for one after it.
 import { readFileSync } from "node:fs";
 import { loadMachineSession } from "./jsbeeb_src.mjs";
-import { KEY, makeScript, applyEvents, bootMaster, gameKey, moverTables } from "./playscript.mjs";
+import { KEY, makeScript, applyEvents, bootMaster, gameKey, moverTables, loadSyms, prngAt, prngClobber } from "./playscript.mjs";
 const MachineSession = await loadMachineSession();
 
 const args = process.argv.slice(2);
@@ -32,6 +37,8 @@ const screenAt = args.indexOf("--screen");
 const SCREEN = screenAt >= 0; if (SCREEN) args.splice(screenAt, 1);
 const dumpAt = args.indexOf("--dump");
 const DUMP = dumpAt >= 0 ? args.splice(dumpAt, 2)[1].split(",").map(Number) : [];
+const unclobberAt = args.indexOf("--unclobber");
+const UNCLOBBER = unclobberAt >= 0; if (UNCLOBBER) args.splice(unclobberAt, 1);
 const traceAt = args.indexOf("--trace");
 const TRACE = traceAt >= 0 ? parseInt(args.splice(traceAt, 2)[1], 10) : 0;
 const [discA, discB, passesArg, seedArg] = args;
@@ -40,18 +47,12 @@ const PASSES = parseInt(passesArg || "2000", 10);
 const SEED = parseInt(seedArg || "1", 10);
 const CTRL = !!process.env.PASSLOCK_CTRL;             // also press CTRL (ENTER) now and then
 
-const loadSyms = (disc) => {
-    const out = {};
-    for (const sec of JSON.parse(readFileSync(disc.replace(/\.ssd$/, ".symbols.json"), "utf8")).assemblies[0].sections)
-        for (const [k, v] of Object.entries(sec.labels || {})) if (v && typeof v.value === "number") out[k] = v.value;
-    return out;
-};
 // zero-page game state that lives from pass to pass (not the routines' scratch, not game_over_cooldown,
 // which the interrupt counts down, so it follows time, not passes)
 const ZP = {
     screen_start: [0x00, 0x01], trigger_offset: [0x7e], new_movers_offset: [0x7f], helicopter_to_update: [0x80],
     player_y_velocity: [0x82], player_jump_direction: [0x83], player_helicopter: [0x84],
-    player_firing_cooldown: [0x8e], player_helicopter_explosion: [0x8f], rnd_seed: [0x92, 0x93],
+    player_firing_cooldown: [0x8e], player_helicopter_explosion: [0x8f],
     bottom_palette: [0x94], lives: [0x95], helicopter_fuel: [0x97, 0x98], top_palette: [0x9f], firing_frame: [0xa0],
     crtc_start: [0xb0, 0xb1], viewport_left: [0xb2, 0xba], viewport_right: [0xb3, 0xbb], movers_to_update_base: [0xc0],
 };
@@ -104,6 +105,7 @@ function state(m) {
     out.score = rd(syms.game_over_text + 20, 6);
     out.fuel = rd(0x0960, 0x22);
     for (const [k, addrs] of Object.entries(ZP)) out[k] = addrs.map((a) => rd(a, 1)[0]);
+    out.rnd_seed = prngAt(syms).map((a) => rd(a, 1)[0]);      // where this build keeps it (BUGS #12)
     // &97/&98 is the title tune's pointer until the player first takes a helicopter
     if (out.player_helicopter[0] === 0) out.helicopter_fuel = [0, 0];
     return out;
@@ -136,6 +138,8 @@ function passKeys(n) {
 }
 
 const A = await start(discA), B = await start(discB, true);
+const clobbers = [A, B].map((m) => prngClobber(m, { undo: UNCLOBBER }));
+const clobberReport = () => ({ control: clobbers[0], test: clobbers[1] });
 const keysAt = passKeys(PASSES + 2);
 let held = [];
 const screenDiffs = [];
@@ -190,7 +194,10 @@ for (let p = 1; p <= PASSES; p++) {
         if (JSON.stringify(sa[k]) !== JSON.stringify(sb[k])) {
             const diff = [];
             sa[k].forEach((v, i) => { if (v !== sb[k][i]) diff.push(`+${i}: ${v.toString(16)} vs ${sb[k][i].toString(16)}`); });
-            console.log(JSON.stringify({ firstDifference: p, what: k, bytes: diff.slice(0, 12) }));
+            // with --screen, what the passes before this one showed: each pass's newest frame
+            const screens = SCREEN ? { screenPassesCompared: screenDiffs.length, screenPassesIdentical: screenDiffs.filter((d) => d === 0).length,
+                screenFirstDiffPass: screenDiffs.findIndex((d) => d > 0) + 1 || null } : {};
+            console.log(JSON.stringify({ firstDifference: p, what: k, bytes: diff.slice(0, 12), ...screens, clobbers: clobberReport() }));
             process.exit(1);
         }
     }
@@ -229,7 +236,7 @@ for (let p = 1; p <= PASSES; p++) {
     if (p % 500 === 0) console.log(`pass ${p}: state identical` + (SCREEN ? `, screen bytes differing this pass ${screenDiffs[screenDiffs.length - 1]}` : ""));
 }
 const end = state(A);
-const out = { passes: stalledAt ? stalledAt - 1 : PASSES, stalledAt, identical: true, viewportLeft: end.viewport_left[1] * 256 + end.viewport_left[0], lives: end.lives[0], passesInHelicopter: inHelicopter, score: end.score.map((d) => d.toString(16)).join(" ") };
+const out = { passes: stalledAt ? stalledAt - 1 : PASSES, stalledAt, identical: true, clobbers: clobberReport(),viewportLeft: end.viewport_left[1] * 256 + end.viewport_left[0], lives: end.lives[0], passesInHelicopter: inHelicopter, score: end.score.map((d) => d.toString(16)).join(" ") };
 if (SCREEN) {
     out.screenPassesIdentical = screenDiffs.filter((d) => d === 0).length;
     out.screenMaxDiff = Math.max(...screenDiffs);

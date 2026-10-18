@@ -9,13 +9,15 @@
 // either renderer, and the bytes of each compiled kind drawn: src/compiled_bank*.6502).
 import { readFileSync } from "node:fs";
 import { loadMachineSession } from "./jsbeeb_src.mjs";
-import { KEY, makeScript, applyEvents, bootMaster, gameKey } from "./playscript.mjs";
+// --unclobber: BUGS #12's clobber of the generator undone on a build from before the fix
+// (tools/passlock.mjs's), so it plays the same game as a build after it and the two measure alike.
+import { KEY, makeScript, applyEvents, bootMaster, gameKey, loadSyms, prngClobber } from "./playscript.mjs";
 import { makeFlight } from "./flightscript.mjs";
 const MachineSession = await loadMachineSession();
 const args = process.argv.slice(2);
 const opt = (name, dflt) => { const i = args.indexOf(name); if (i < 0) return dflt; const v = args[i + 1]; args.splice(i, 2); return parseInt(v, 10); };
 const flag = (name) => { const i = args.indexOf(name); if (i < 0) return false; args.splice(i, 1); return true; };
-const FROM = opt("--from", 500), N = opt("--passes", 2000), SEED = opt("--seed", 1), CTRL = flag("--ctrl");
+const FROM = opt("--from", 500), N = opt("--passes", 2000), SEED = opt("--seed", 1), CTRL = flag("--ctrl"), UNCLOBBER = flag("--unclobber");
 // --hold A,RIGHT: those keys (the original's names for the actions) held from the first pass on,
 // in place of the script; --detail: where each pass's cycles went, and what it did
 const holdAt = args.indexOf("--hold"); const HOLD = holdAt >= 0 ? args.splice(holdAt, 2)[1].split(",") : null;
@@ -50,6 +52,7 @@ for (const disc of discs) {
     const s = await bootMaster(MachineSession, disc);
     const cpu = s._machine.processor;
     const m = { passes: 0, target: 1, lastStop: -1, at: [] };
+    if (UNCLOBBER) m.clobbers = prngClobber({ s, syms: loadSyms(disc), get passes() { return m.passes; } }, { undo: true });
     cpu.debugInstruction.add((pc) => {
         if (pc !== syms.main_game_loop) return false;
         const c = s.elapsedCycles;

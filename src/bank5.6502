@@ -1357,10 +1357,6 @@ RND_SEED = &7A31                    \ decision 17: every game starts the generat
 \ grows only at its end: its music is page-aligned). ORDER MATTERS: irq_owned goes on before the
 \ MOS is told to ignore vsync, or a vsync handed to a MOS that ignores it is never acknowledged.
 .take_irq_for_play
-    LDA #LO(RND_SEED)
-    STA rnd_seed_low
-    LDA #HI(RND_SEED)
-    STA rnd_seed_high
     SEI
     LDA sysvia_ier                  \ the MOS's keyboard (CA2), ADC (CB1) and 100 Hz tick (T1)
     AND #&51                        \ enables, for later
@@ -1384,6 +1380,10 @@ RND_SEED = &7A31                    \ decision 17: every game starts the generat
     LDY #&00
     JSR osbyte                      \ OSBYTE
     STX saved_keyboard_semaphore
+    LDA #LO(RND_SEED)               \ last, after the OSBYTEs (BUGS #12): the generator's bytes
+    STA rnd_seed_low                \ need last only through the game
+    LDA #HI(RND_SEED)
+    STA rnd_seed_high
     JMP start_game
 
 \ Called at the start of every title_screen in place of clear_title_screen, which it ends in;
