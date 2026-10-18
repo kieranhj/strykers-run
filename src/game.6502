@@ -3052,17 +3052,17 @@ move_mover_routine_address_high = * + 2
     LDA movers_frame_and_flip
     AND #&80
     STA flip
-    TAX
     LDA keys_pressed_bitmap
     AND #&0C                        \ KEY_RIGHT | KEY_LEFT
-    BEQ set_x_delta_262c
-    CMP #&0C                        \ KEY_RIGHT | KEY_LEFT
-    BEQ set_x_delta_262c
     DEY                             \ &ff                                            # Set to negative to indicate moving horizontally
     LDX #&01                        \ Set player moving right
     CMP #&04                        \ KEY_RIGHT
     BEQ set_x_delta_262c
     LDX #&81                        \ Set player moving left
+    CMP #&08                        \ KEY_LEFT
+    BEQ set_x_delta_262c
+    INY                             \ neither or both: not moving, Y back to zero
+    LDX flip                        \ and x_delta = flip, as before
 .set_x_delta_262c
     STX x_delta
     STY frame                       \ Set to zero if player is not moving, &ff if moving
