@@ -947,9 +947,11 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     RTS
 }
 
-\ close_over_overlaps: a shown mover that overlaps one coming off or going on comes off and
-\ goes back on too, so overlapping movers are always drawn in slot order and taken off in
-\ reverse (a mover's save block holds what was under it, earlier movers included). Over a
+\ close_over_overlaps: a shown mover that overlaps one coming off or going on, drawn before it
+\ (decision 37: below it, in the order movers are drawn), comes off and goes back on too, so
+\ overlapping movers are always drawn in slot order and taken off in reverse (a mover's save block
+\ holds what was under it, earlier movers included; one drawn after it, over it, holds its bytes in
+\ its own save, so it can come off and go back on alone). Over a
 \ short list of the slots that matter: each one shown or going on, with a rectangle covering
 \ where it is shown and where it goes, a column and two rows to spare.
 .close_over_overlaps
@@ -1008,6 +1010,13 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     TAY
     LDA need,Y
     BEQ next_b                      \ staying too: no reason
+    TYA                             \ decision 37: only if b is drawn before a (below it). Over a,
+    BEQ next_b                      \ b's save holds a's bytes, so b comes off and on alone. The
+    CMP list_slot,X                 \ player (slot 0) is drawn last, over everything; the movers
+    BCC below                       \ in slot order (C clear: b's slot below a's)
+    LDY list_slot,X
+    BNE next_b                      \ (a the player: b is below it)
+.below
     LDY list_b
     JSR list_overlap                \ X, Y list entries: C set if they overlap
     BCC next_b

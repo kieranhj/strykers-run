@@ -13,18 +13,20 @@ excluded) 38,462 on seed 1 and 44,855 holding RIGHT, of the 79,872 two fields gi
 - **b2 and real hardware.** The flip, ACCCON's X bit and HAZEL left paged in (Y) are seen in
   jsbeeb only (`docs/step2-layer2.md` "Open").
 - **When layer 4 is closed.** Proposed: no late frames on both passbench games, and the whole
-  world played through: it now is (below), with 701 late frames of 12,231.
+  world played through: it now is (below), with 701 late frames of 12,231 (414 on
+  `layer4-late-frames`).
 
 ## Layer 4 - a steady 25 Hz (decision 35)
 
-- **The late frames left are heavy renders** (400-500 bytes). Options, with their costing in
-  `docs/step2-layer4-costing.md` "The heaviest frames":
-  - the player standing, jumping and facing left compiled (~1K a part; room at `acd4c4a`: bank 4
-    797 bytes, HAZEL 2.6K, banks 5-7 about 1.4K, and `MGAME` 2,271 bytes to carry it - the
-    build's listing);
-  - compaction kept out of the frame; a delta redraw for movers that stay in place;
-  - the renderer's bookkeeping (`mark_to_draw`, `close_over_overlaps`);
-  - the helicopters as compiled code (~20K: no room).
+- **The late frames left** (branch `layer4-late-frames`, decisions 36-37: the kind cache and the
+  overlap rule by draw order; `docs/step2-layer4-costing.md` "Built: the late frames"): the whole
+  world 644 -> 414 of 12,231, seeds 1/3/5/7 6/2/44/13 -> 2/1/36/3, RIGHT 0, flights 0/2/5/8
+  21/21/36/38 -> 15/15/29/25. They come in bursts, 1-34% over budget, of helicopters' bodies
+  with soldiers and the scroll; what is left to try, by its costing:
+  - a third kind cache slot (600-800 bytes readable while the renderer draws: HAZEL is full);
+  - the generic column path's overhead (~40% of its cost a column; ~1-2k a pass in the bursts);
+  - the logic in the bursts (20-30k a pass: the collision and target searches);
+  - compiled bodies (~3-4K a kind and line: no room).
 - **The grind, round 2** (the beeb-micro-grind skill): the windows offset by 16, the code round 1
   changed, the colder windows, and `write_column`'s history reads, which cross a page on every
   load (about 300 cycles a pass, code only). Before it: the skill's fixes in
