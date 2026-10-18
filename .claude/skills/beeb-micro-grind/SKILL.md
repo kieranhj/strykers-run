@@ -55,7 +55,10 @@ the hottest windows first: most of the cycles are in a few windows, and later ro
    hour). Best claim first, one candidate per region of a file in a batch of four: apply, gate,
    keep and commit if every check passes and neither game is slower and something is gained, else
    revert and bisect down to the candidate that fails. A candidate whose old text is gone (an
-   earlier one changed it) is marked stale and its window comes back next round.
+   earlier one changed it) is marked stale and its window comes back next round. A single
+   candidate's failure is classified: `stale` (a kept change took its label or callee), `no room`
+   (its region's ASSERT; `run --retry 'no room'` once the region has grown), `failed` (a check),
+   `no gain` (within NOISE), `slower`.
 7. **Report** (`grind.py report`, then commit): candidates by status, what was kept and what it saved.
 8. **Iterate:** re-profile and re-annotate the new build, cut the windows again (changed code has
    new hashes, so it is evaluated afresh; unchanged code is not), and go round. Stop when a round
@@ -76,6 +79,10 @@ annotations exist so that facts the code re-establishes can be used instead. Wha
   BIT zp,X), self-modified immediates or operands in place of zero-page loads, loops unrolled or
   split where the bytes are there, work hoisted out of a loop, indexes counted down to zero;
 - page crossings on indexed reads in hot loops.
+What round 1's gate rejected most (`docs/grind/README.md`): a branch rearranged for the wrong
+common case (check the measured cycles, not intuition); a byte or two saved in hot code that
+slides a hot branch or table read across a page (20-60 cycles a pass lost); two alternatives
+defining the same new label.
 Claims: cycles saved an execution on the hot path (count both paths if they differ), executions a
 pass (the line's measured cycles ÷ its cycles an execution), their product, and bytes saved
 (positive = smaller). The argument for equivalence covers every entry, every exit and everything
