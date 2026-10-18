@@ -1050,25 +1050,23 @@
     JSR subtract_delta_from_screen_address_in_AX
     STX screen_start_address_high
     STA screen_start_address_low
-    LDX crtc_start_address_high
-    LDY crtc_start_address_low
-    DEY
-    CPY #&FF
-    BNE skip_underflow_crtc
-    DEX
-.skip_underflow_crtc
-    CPX #&07
-    BNE skip_wraparound_191a
-    LDX #&0F
-.skip_wraparound_191a
-    STX crtc_start_address_high
-    STY crtc_start_address_low
-    JSR layers_left_or_prebuilt     \ step 2 (layer 3, RAM for cycles 1): the walk, or the state
+    LDA crtc_start_address_low      \ grind: the CRTC start back a column; the high byte is always
+    BNE crtc_left_1cb4a_low         \ &08-&0F, so only an underflow touches it, and 7 OR 8 = &0F wraps
+    LDA crtc_start_address_high
+    DEC A                           \ 65C02 opcode
+    ORA #&08
+    STA crtc_start_address_high
+.crtc_left_1cb4a_low
+    DEC crtc_start_address_low
+    LDA pre_use                     \ step 2 (layer 3, RAM for cycles 1): the walk, or the state
+    BEQ layers_left_1cb4a_walk
+    LDA pre_bank                    \ grind: install_prebuilt in line (A, Y and C are dead here:
+    STA os_ram_copy_of_currently_selected_rom\ layers_left_done sets each before reading it)
+    STA romsel                      \ Paged ROM latch
     BRA layers_left_done            \ the renderer's prebuilt walk left (65C02 opcode)
-.layers_left_or_prebuilt
-    LDA pre_use
-    BEQ layers_left
-    JMP install_prebuilt
+.layers_left_1cb4a_walk
+    JSR layers_left
+    BRA layers_left_done            \ 65C02 opcode
 .layers_left                        \ a subroutine: src/prebuild.6502 runs it ahead
     LDY #&07                        \ *** Enhanced version has extra layer for clouds
     STY edge_and_layer
@@ -2776,9 +2774,10 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     SEC
     SBC x_delta
     TAX
-    LDA &C5
-    SBC #&00
-    TAY
+    LDY &C5                         \ grind: the high byte less the borrow, without A
+    BCS mml_high_done_g8c37
+    DEY
+.mml_high_done_g8c37
     JSR check_for_collision_after_horizontal_move\ Returns carry set if hostile collision occurred
     BCS skip_changing_screen_address_2447
     LDY x_delta
@@ -5094,8 +5093,7 @@ ASSERT shown_screen < &3000
     LDA #1                          \ a column built, not yet pushed (history_push)
     STA col_fresh
     PHP
-    TXA
-    EOR pre_valid                   \ 0 only if built for this direction (&80: unusable)
+    CPX pre_valid                   \ equal only if built for this direction (&80: unusable)
     BNE start_clear
     LDA pre_view_low
     CMP viewport_left_low
