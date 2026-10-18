@@ -1574,15 +1574,15 @@ header_hi = * + 1
     CLC
     ADC #11
     STA v_ptr
-    BCC save_on_page
+    BCC save_on_page                \ C = 0 on the common path
     INC v_ptr + 1
-.save_on_page
+    CLC                             \ (the page-crossing path: C was 1)
+.save_on_page                       \ C = 0 here (TXA, TAY, EOR leave it)
     \ the data: the byte for line Y of the first cell is data[count - 1 - (line - Y)], so
     \ d_ptr = the column + 2 + count - 1 - line = col_ptr - 1 - line = col_ptr + (line EOR &FF) - &100
     TXA
     TAY                             \ Y = the line
     EOR #&FF
-    CLC
     ADC col_ptr
     STA d_ptr
     LDA col_ptr + 1

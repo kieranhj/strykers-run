@@ -2392,20 +2392,18 @@ walk_n = walk_ptr                   \ scratch (zero page, not read by the logic)
 walk_d = walk_ptr + 1
 .walk_column
     LDY mover
-    LDA mover_x_low
-    SEC
-    SBC movers_x_low,Y              \ columns clipped at the left
-    STA walk_n
     LDX plot_sprite
     LDA sprite_column_count,X       \ (bank 4, which plot_mover pages in)
+    CLC
+    ADC movers_x_low,Y              \ less the columns clipped at the left:
     SEC
-    SBC walk_n
+    SBC mover_x_low                 \ count - (mover_x_low - movers_x_low)
     STA walk_n                      \ n: columns from here
+    TAX
     LDA viewport_right_low
     SEC
     SBC mover_x_low
     STA walk_d                      \ d (low bytes, as the plotter compares them)
-    LDX walk_n
     DEX                             \ n - 1
     CPX walk_d
     BCC moved_on                    \ n - 1 < d: the common case
@@ -2654,17 +2652,18 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     LDA mover_types_width_table,X
     CLC
     ADC mover_x_low
-    BCC skip_overflow_20a8
-    INY
+    BCS overflow_20a8               \ Grind: the rare carry out of line, so the hot path falls through
 .skip_overflow_20a8
-    CPY viewport_left_high
-    BCC leave_with_carry_set_2097
-    BNE leave_with_carry_clear_20b2
-    CMP viewport_left_low
+    CMP viewport_left_low           \ Grind: Y:A >= viewport_left as one 16-bit compare (C = 1 if so)
+    TYA
+    SBC viewport_left_high
     BCC leave_with_carry_set_2097
 .leave_with_carry_clear_20b2
     CLC                             \ Leave with carry clear to indicate mover is on screen
     RTS
+.overflow_20a8
+    INY
+    BRA skip_overflow_20a8          \ 65C02 opcode
 
 .completion_screen
     JSR render_finish               \ Step 2 (layer 2): the text goes on the main screen, up to date
@@ -3745,11 +3744,12 @@ move_mover_routine_address_high = * + 2
     LDA movers_frame_and_flip,X
     AND #&7F
     CMP #&0D                        \ MOVER_TYPE_SKELETON
-    BNE use_height_table
-    LDA #&11
-    BNE use_height_table + 3        \ Always branches
+    BEQ skeleton_height             \ grind: the common case falls through
 .use_height_table
     LDA mover_types_height_table,Y
+    RTS
+.skeleton_height
+    LDA #&11
     RTS
 
 .check_for_mover_Y_collision_with_player    \ # Called with X = 0 (MOVER_PLAYER)
