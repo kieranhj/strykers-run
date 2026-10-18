@@ -11,6 +11,7 @@
 import { readFileSync } from "node:fs";
 import { loadMachineSession } from "./jsbeeb_src.mjs";
 import { KEY, makeScript, applyEvents, bootMaster, gameKey } from "./playscript.mjs";
+import { makeFlight } from "./flightscript.mjs";
 const MachineSession = await loadMachineSession();
 const args = process.argv.slice(2);
 const opt = (name, dflt) => { const i = args.indexOf(name); if (i < 0) return dflt; const v = args[i + 1]; args.splice(i, 2); return parseInt(v, 10); };
@@ -20,6 +21,9 @@ const FROM = opt("--from", 500), N = opt("--passes", 2000), SEED = opt("--seed",
 // in place of the script; --detail: where each pass's cycles went, and what it did
 const holdAt = args.indexOf("--hold"); const HOLD = holdAt >= 0 ? args.splice(holdAt, 2)[1].split(",") : null;
 const DETAIL = flag("--detail");
+// --flight V: tools/helilock.mjs's helicopter flight (tools/flightscript.mjs), keys chosen each pass from
+// the state, in place of the script; the run ends N passes after FROM or 300 passes after the explosion
+const FLIGHT = opt("--flight", -1);
 const discs = args;
 
 function passKeys(n) {      // tools/passlock.mjs's generator
@@ -54,6 +58,7 @@ for (const disc of discs) {
         const c = s.elapsedCycles;
         if (c === m.lastStop) return false;
         m.passes++;
+        if (m.passes === 1 && FLIGHT >= 0) s.writeMemory(0x0960, new Array(0x22).fill(0));   // as helilock.mjs
         m.at[m.passes] = { c, field: s.readMemory(0x90, 1)[0] };
         if (m.onPass) m.onPass(m.passes, c);
         if (m.passes >= m.target) { m.lastStop = c; return true; }
@@ -129,12 +134,14 @@ for (const disc of discs) {
     }
     const vl = [];
     let held = [], stalled = null;
+    const flight = FLIGHT >= 0 ? makeFlight(FLIGHT, syms, (a) => s.readMemory(a, 1, { shadow: false })[0]) : null;
     for (let p = 1; p <= FROM + N; p++) {
         m.target = p;
         for (let i = 0; m.passes < p; i++) { if (i === 150) { stalled = p; break; } await s.runFor(400000); }
         if (stalled) break;
         vl[p] = s.readMemory(0xb2, 1)[0] + 256 * s.readMemory(0xba, 1)[0];
-        const want = keysAt[p] || [];
+        if (flight && flight.done) { stalled = p + 1; break; }
+        const want = flight ? flight.keys(p) : keysAt[p] || [];
         for (const k of held) if (!want.includes(k)) s.keyUpRaw(gameKey(s, k));
         for (const k of want) if (!held.includes(k)) s.keyDownRaw(gameKey(s, k));
         held = want;
@@ -146,12 +153,15 @@ for (const disc of discs) {
     const n = last - FROM;
     const per = (v) => Math.round(v / n);
     const moved = vl[last] - vl[FROM];
-    console.log(`${disc}: passes ${FROM}-${last} (${HOLD ? "holding " + HOLD.join("+") : "seed " + SEED}${CTRL ? ", CTRL" : ""}${stalled ? `; stopped making passes at ${stalled}` : ""}): ${(n / (cyc / 2e6)).toFixed(2)} passes/s, ${Math.round(cyc / n)} cycles a pass, fields ${JSON.stringify(fields)}; the view moved ${moved} columns, ${(moved / (cyc / 2e6)).toFixed(1)} a second`);
+    console.log(`${disc}: passes ${FROM}-${last} (${flight ? `flight ${FLIGHT}: ${flight.log.join(", ")}` : HOLD ? "holding " + HOLD.join("+") : "seed " + SEED}${CTRL ? ", CTRL" : ""}${stalled && !(flight && flight.done) ? `; stopped making passes at ${stalled}` : ""}): ${(n / (cyc / 2e6)).toFixed(2)} passes/s, ${Math.round(cyc / n)} cycles a pass, fields ${JSON.stringify(fields)}; the view moved ${moved} columns, ${(moved / (cyc / 2e6)).toFixed(1)} a second`);
     // the frames: how many fields each stayed on screen (a frame shown for 3 or more is late)
     const fl = m.flips.filter((f) => f.pass > FROM && f.pass <= last), shownFor = {};
     for (let i = 1; i < fl.length; i++) { const g = (fl[i].field - fl[i - 1].field + 256) & 255; shownFor[g] = (shownFor[g] || 0) + 1; }
     const lateFrames = Object.entries(shownFor).filter(([g]) => +g > 2).reduce((t, [, k]) => t + k, 0);
     console.log(`  frames: ${fl.length - 1}, shown for (fields) ${JSON.stringify(shownFor)}; late frames ${lateFrames}`);
+    // which: the pass under way when each late frame's successor was flipped in
+    const lateAt = []; for (let i = 1; i < fl.length; i++) if (((fl[i].field - fl[i - 1].field + 256) & 255) > 2) lateAt.push(fl[i].pass);
+    if (lateAt.length) console.log(`  late frames' successors flipped in passes: ${lateAt.join(" ")}`);
     if (DETAIL) {
         // each pass's work (everything but the wait for the flip): over 2 fields (79,872) the
         // frame cannot be on time

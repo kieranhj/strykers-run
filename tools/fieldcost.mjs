@@ -22,10 +22,13 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { loadMachineSession } from "./jsbeeb_src.mjs";
 import { makeScript, applyEvents, bootMaster, gameKey } from "./playscript.mjs";
+import { makeFlight } from "./flightscript.mjs";
 const MachineSession = await loadMachineSession();
 const args = process.argv.slice(2);
 const opt = (name, dflt) => { const i = args.indexOf(name); if (i < 0) return dflt; const v = args[i + 1]; args.splice(i, 2); return v; };
 const FROM = +opt("--from", 500), N = +opt("--passes", 1500), SEED = +opt("--seed", 1), HOLD = opt("--hold", null), OUT = opt("--out", null);
+// --flight V: tools/helilock.mjs's helicopter flight (tools/flightscript.mjs) in place of the script
+const FLIGHT = +opt("--flight", -1);
 const disc = args[0];
 const syms = {}, bankOf = {};
 for (const sec of JSON.parse(readFileSync(disc.replace(/\.ssd$/, ".symbols.json"), "utf8")).assemblies[0].sections)
@@ -49,7 +52,7 @@ const ENTRY = {
     update_player: "player", update_projectiles: "proj", update_movers: "movers",
     update_mover: "um", update_enemy_helicopter: "eh",
     scroll_screen_right: "scroll", scroll_screen_left: "scroll", update_screen: "push", plot_lives: "lives",
-    render_pass: "render", wait_for_flip: "wait", prebuild: "pre", put_on: "on", take_off: "off",
+    render_pass: "render", wait_for_flip: "wait", prebuild: "pre", put_on: "on", "put_on.going_on": "on", take_off: "off",
     write_column: "col", ren_plot_lives: "rlives", compact: "compact",
 };
 for (const k of ["check_for_collision_after_horizontal_move", "check_for_hostile_collision", "check_for_collision_after_vertical_move",
@@ -71,6 +74,7 @@ cpu.debugInstruction.add((pc) => {
     const c = s.elapsedCycles;
     if (c === lastStop) return false;
     passes++;
+    if (passes === 1 && FLIGHT >= 0) s.writeMemory(0x0960, new Array(0x22).fill(0));   // as helilock.mjs
     if (passes > FROM && passes <= FROM + N) startPass(c);    // here: after a stop the other hooks do not see this instruction
     if (passes >= target) { lastStop = c; return true; }
     return false;
@@ -190,10 +194,12 @@ cpu.debugInstruction.add((pc, op) => {
     return false;
 });
 let held = [];
+const flight = FLIGHT >= 0 ? makeFlight(FLIGHT, syms, (a) => s.readMemory(a, 1, { shadow: false })[0]) : null;
 for (let p = 1; p <= FROM + N + 1; p++) {
     target = p;
     for (let i = 0; passes < p && i < 150; i++) await s.runFor(400000);
-    const want = keysAt[p] || [];
+    if (flight && flight.done) break;
+    const want = flight ? flight.keys(p) : keysAt[p] || [];
     for (const k of held) if (!want.includes(k)) s.keyUpRaw(gameKey(s, k));
     for (const k of want) if (!held.includes(k)) s.keyDownRaw(gameKey(s, k));
     held = want;
@@ -204,7 +210,7 @@ const n = done.length;
 const lg = {}; for (const x of done) for (const [k, v] of Object.entries(x.logic)) lg[k] = (lg[k] || 0) + v;
 const cg = {}; for (const x of done) for (const [k, v] of Object.entries(x.coll)) cg[k] = (cg[k] || 0) + v;
 const r = (v) => Math.round(v / n);
-console.log(`${disc}: ${n} passes (${HOLD ? "holding " + HOLD : "seed " + SEED}, from ${FROM})`);
+console.log(`${disc}: ${n} passes (${FLIGHT >= 0 ? "flight " + FLIGHT : HOLD ? "holding " + HOLD : "seed " + SEED}, from ${FROM})`);
 console.log(`  logic a pass: ${Object.entries(lg).map(([k, v]) => `${k} ${r(v)}`).join(", ")}; collisions in: ${Object.entries(cg).map(([k, v]) => `${k} ${r(v)}`).join(", ")}`);
 console.log(`  render a pass: on ${r(sum((x) => x.ops.filter((o) => o.k === "on").reduce((t, o) => t + o.cyc, 0)))}, off ${r(sum((x) => x.ops.filter((o) => o.k === "off").reduce((t, o) => t + o.cyc, 0)))}, columns ${r(sum((x) => x.colc))} (${(sum((x) => x.col) / n).toFixed(2)}), lives ${r(sum((x) => x.rlc))} (${(sum((x) => x.rl) / n).toFixed(2)}), book ${r(sum((x) => x.book))}, compact ${r(sum((x) => x.cmp.reduce((t, k) => t + k.cyc, 0)))} (${sum((x) => x.cmp.length)} calls); wait ${r(sum((x) => x.wait))} (pre ${r(sum((x) => x.pre))}); interrupts ${r(sum((x) => x.irq))}`);
 if (OUT) writeFileSync(OUT, JSON.stringify({ disc, seed: SEED, hold: HOLD, from: FROM, passes: done }));

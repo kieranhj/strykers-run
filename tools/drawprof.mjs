@@ -13,10 +13,13 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { loadMachineSession } from "./jsbeeb_src.mjs";
 import { makeScript, applyEvents, bootMaster, gameKey } from "./playscript.mjs";
+import { makeFlight } from "./flightscript.mjs";
 const MachineSession = await loadMachineSession();
 const args = process.argv.slice(2);
 const opt = (name, dflt) => { const i = args.indexOf(name); if (i < 0) return dflt; const v = args[i + 1]; args.splice(i, 2); return v; };
 const FROM = +opt("--from", 500), N = +opt("--passes", 1500), SEED = +opt("--seed", 1), HOLD = opt("--hold", null), OUT = opt("--out", null);
+// --flight V: tools/helilock.mjs's helicopter flight (tools/flightscript.mjs) in place of the script
+const FLIGHT = +opt("--flight", -1);
 const disc = args[0];
 const syms = {}, labels = [];
 for (const sec of JSON.parse(readFileSync(disc.replace(/\.ssd$/, ".symbols.json"), "utf8")).assemblies[0].sections)
@@ -50,6 +53,7 @@ cpu.debugInstruction.add((pc) => {
     const c = s.elapsedCycles;
     if (c === lastStop) return false;
     passes++;
+    if (passes === 1 && FLIGHT >= 0) s.writeMemory(0x0960, new Array(0x22).fill(0));   // as helilock.mjs
     if (passes >= target) { lastStop = c; return true; }
     return false;
 });
@@ -90,18 +94,21 @@ cpu.debugInstruction.add((pc, opc) => {
         }
         op = null;
     }
-    if (!op && (pc === A.put_on || pc === A.take_off))
-        op = { k: pc === A.put_on ? "on" : "off", slot: cpu.x, type: rd(A.movers_type_and_colour + cpu.x) & 0x7f, frame: rd(A.movers_frame_and_flip + cpu.x),
+    if (!op && (pc === A.put_on || pc === A["put_on.going_on"] || pc === A.take_off))   // render calls put_on.going_on for all but the player
+        op = { k: pc !== A.take_off ? "on" : "off", slot: cpu.x, type: rd(A.movers_type_and_colour + cpu.x) & 0x7f, frame: rd(A.movers_frame_and_flip + cpu.x),
                pass: passes, screen: rd(A.back), sp: cpu.s, cyc: 0, by: {}, parts: 0, cols: 0, cells: 0, bytes: 0, restored: 0,
                tr: 0, op: 0, mx: 0, same: 0, sameIdx: 0, drawn: new Map(), partList: [],
                sa: rd(A.movers_screen_address_low + cpu.x) + 256 * rd(A.movers_screen_address_high + cpu.x) };
     if (!op) return false;
     lastName = routine(pc);
-    if (pc === A.ren_draw_sprite) { op.parts++; op.partList.push([cpu.a, op.frame >> 7, -1, 0]); }
+    if (pc === A.ren_draw_sprite) { op.parts++; op.partList.push([cpu.a, op.frame >> 7, -1, 0, 0]); }
+    else if (pc === A["ren_draw_sprite.clips"] && op.partList.length) op.partList[op.partList.length - 1][4] = 1;   // the part can clip
     else if (pc === A.draw_column && op.partList.length) op.partList[op.partList.length - 1][2] = rd(0xcd);   // ds_line (render.6502: zero page)
     else if (pc === A["ren_draw_sprite.chunk"] && op.partList.length && op.partList[op.partList.length - 1][2] < 0)
         op.partList[op.partList.length - 1][2] = rd(0xc2) & 7;                  // row-major: the bottom row's line in its cell
-    else if (pc === A["draw_column.each"] || pc === A["ren_draw_sprite.fast"] || pc === A.slow_row) op.cols++;   // columns, or rows
+    else if (pc === A["draw_column.each"] || pc === A["ren_draw_sprite.fast"] || pc === A.slow_row) { op.cols++;   // columns, or rows
+        // ds_line: render.6502 enters the column loop at .each, not at draw_column
+        if (pc === A["draw_column.each"] && op.partList.length && op.partList[op.partList.length - 1][2] < 0) op.partList[op.partList.length - 1][2] = rd(0xcd); }
     else if (pc === A["draw_column.cell"]) op.cells++;
     else if (pc === A["draw_column.byte"] || pc === A["draw_column.part_byte"] || pc === A["ren_draw_sprite.byte"] || pc === A["slow_row.draw_byte"]) {
         // the byte's index and screen address: the column loop's (Y the line in the cell), the
@@ -119,17 +126,19 @@ cpu.debugInstruction.add((pc, opc) => {
     return false;
 });
 let held = [];
+const flight = FLIGHT >= 0 ? makeFlight(FLIGHT, syms, (a) => s.readMemory(a, 1, { shadow: false })[0]) : null;
 for (let p = 1; p <= FROM + N + 1; p++) {
     target = p;
     for (let i = 0; passes < p && i < 150; i++) await s.runFor(400000);
-    const want = keysAt[p] || [];
+    if (flight && flight.done) break;
+    const want = flight ? flight.keys(p) : keysAt[p] || [];
     for (const k of held) if (!want.includes(k)) s.keyUpRaw(gameKey(s, k));
     for (const k of want) if (!held.includes(k)) s.keyDownRaw(gameKey(s, k));
     held = want;
 }
 // the report: by slot group, drawing and restoring
 const G = [["player", (x) => x === 0], ["enemies", (x) => x >= 1 && x <= 9], ["enemy helicopters", (x) => x === 10 || x === 11], ["projectiles", (x) => x >= 12 && x <= 23]];
-console.log(`${disc}: ${N} passes (${HOLD ? "holding " + HOLD : "seed " + SEED}, from ${FROM}); cycles and counts a pass`);
+console.log(`${disc}: ${N} passes (${FLIGHT >= 0 ? "flight " + FLIGHT : HOLD ? "holding " + HOLD : "seed " + SEED}, from ${FROM}); cycles and counts a pass`);
 for (const [name, f] of G) for (const k of ["on", "off"]) {
     const sel = ops.filter((o) => o.k === k && f(o.slot)); if (!sel.length) continue;
     const sum = (key) => sel.reduce((t, o) => t + o[key], 0), cyc = sum("cyc"), b = k === "on" ? sum("bytes") : sum("restored");
