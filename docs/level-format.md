@@ -437,8 +437,7 @@ Rebuild, then check that:
 - the game state passes the usual gates (`tools/passlock.mjs` etc. play the world, so a changed
   level changes their reference games).
 
-**Preview:** `tools/worldmap.py` for the whole world, observer mode in the emulator (once
-`check_for_keypress` is fixed), and `tools/worldshots.mjs` for crops.
+**Preview:** `tools/worldmap.py` for the whole world, observer mode in the emulator (`tools/observer.mjs`; fixed, BUGS #11), and `tools/worldshots.mjs` for crops.
 
 ## Open questions for an editor
 
@@ -463,5 +462,5 @@ Rebuild, then check that:
    or for changing?
 7. **The original's slips:** the boardable helicopter at 13,000, scenery two's missing
    sentinel, and scenery one's half record. Keep them byte for byte, or fix them?
-8. **Observer mode** is the natural in-game preview, and it is broken (G0038). It also draws the
-   player as a ghost. Fixing it is a source change.
+8. **Observer mode** is the natural in-game preview. Its keys work again (BUGS #11), but it draws the
+   player as a ghost.
