@@ -137,7 +137,15 @@
     ADC #&80
     ROL A
     AND #&3F
-    JSR sfx_write                   \ the tone falls through to its amplitude
+    JSR sfx_write.ddra_set_c046b    \ DDRA still &FF from the low byte's write (interrupts off)
+    LDA sfx_v,X                     \ the tone's amplitude, DDRA still &FF (.amplitude below: the noise's)
+    LSR A
+    LSR A
+    LSR A
+    LSR A
+    EOR #&1F                        \ the chip takes attenuation; &10: an amplitude latch byte
+    ORA sfx_channel_bits,X
+    BRA sfx_write.ddra_set_c046b    \ 65C02 opcode
 .amplitude
     LDA sfx_v,X
     LSR A
@@ -146,7 +154,7 @@
     LSR A
     EOR #&1F                        \ the chip takes attenuation; &10: an amplitude latch byte
     ORA sfx_channel_bits,X
-noise = sfx_write.noise             \ after sfx_write's RTS, so the tone path needs no branch
+noise = sfx_write.noise             \ after sfx_write's RTS
 }
     \ falls through
 \ A to the chip, as MOS 3.20 writes it (&F5E6). Keeps X.
@@ -154,6 +162,7 @@ noise = sfx_write.noise             \ after sfx_write's RTS, so the tone path ne
 {
     LDY #&FF
     STY sysvia_ddra
+.ddra_set_c046b                     \ entered with DDRA already &FF (sfx_output's tone)
     STA sysvia_ora_nh
     STZ sysvia_orb                  \ latch line 0 low: write enable
     LDY #2

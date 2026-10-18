@@ -4395,7 +4395,8 @@ ASSERT shown_screen < &3000
     JSR search_for_target           \ Returns carry clear if target found
     LDY mover_to_update
     BCC keep_vertical_position
-    JSR get_mover_frame_and_flip
+    LDA movers_frame_and_flip,Y     \ grind: get_mover_frame_and_flip inlined (Y = mover_to_update already)
+    STA frame_and_flip
     BCS keep_vertical_position      \ Always branches
 .move_helicopter_towards_target_vertically
     LDA movers_y,X
@@ -4416,19 +4417,18 @@ ASSERT shown_screen < &3000
     CPX #&69                        \ Enemy helicopters can't fall below top of mountains
     BCS consider_horizontal_direction
 .keep_vertical_position
-    LDA #&00
-    STA y_delta
+    STZ y_delta                     \ 65C02 opcode
 .consider_horizontal_direction
-    TYA
-    AND #&01
-    STA which_helicopter
     LDA frame_and_flip
     AND #&80
     PHA                             \ helicopter direction
-    ASL A                           \ Set carry if helicopter is flipped
-    ROL A                           \ Set &01 if helicopter is flipped
-    ASL A                           \ Set &02 if helicopter is flipped
-    EOR which_helicopter
+    ASL A                           \ grind: C = 1 if helicopter is flipped
+    TYA
+    AND #&01
+    STA which_helicopter
+    BCC cand_1080b_unflipped
+    ORA #&02                        \ &02 if helicopter is flipped
+.cand_1080b_unflipped
     TAX
     JSR get_mover_x_and_y
     LDA mover_x_low
