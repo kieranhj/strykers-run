@@ -26,7 +26,8 @@ s.keyDownRaw(gameKey(s, "P")); await s.runFrames(10); s.keyUpRaw(gameKey(s, "P")
 const cpu = s._machine.processor; const cyc = () => cpu.currentCycles + cpu.cycleSeconds * 2000000;
 const chip = cpu.soundChip; const orig = chip.poke.bind(chip);
 let log = null; chip.poke = (v) => { if (log) log.push([cyc(), v]); return orig(v); };
-const W = syms.wait_for_unpause, PS = syms.play_sound, CP = syms.check_for_player_input, STUB = 0x0c00;
+// the stub goes in moved_0a20's free tail (decision 40: &0C00 holds the level tables now)
+const W = syms.wait_for_unpause, PS = syms.play_sound, CP = syms.check_for_player_input, STUB = syms.moved_0a20_end ?? 0x0c00;
 let fired = [];
 cpu.debugInstruction.add((pc) => { if (pc === STUB) { s.writeMemory(W + 1, [CP & 255, CP >> 8]); fired.push(cyc()); } return false; });
 // the MOS's ticks: entries to the IRQ vector with System VIA T1's flag up

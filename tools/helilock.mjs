@@ -44,7 +44,7 @@ async function toPass(m, n) { m.target = n; for (let i = 0; m.passes < n; i++) {
 const rdm = (m, a, n = 1) => [...m.s.readMemory(a, n, { shadow: false })];
 // passlock's game variables (not field_count &90 or game_over_cooldown &96: they count fields)
 const ZP = [0x00, 0x01, 0x7e, 0x7f, 0x80, 0x82, 0x83, 0x84, 0x8e, 0x8f, 0x92, 0x93, 0x94, 0x95, 0x9f, 0xa0, 0xb0, 0xb1, 0xb2, 0xba, 0xb3, 0xbb, 0xc0];
-const state = (m) => JSON.stringify([rdm(m, m.syms.movers_type_and_colour, m.syms.mover_types_parts - m.syms.movers_type_and_colour), ZP.map((a) => rdm(m, a)[0])]);
+const state = (m) => JSON.stringify([rdm(m, m.syms.movers_type_and_colour, (m.syms.movers_state_end ?? m.syms.mover_types_parts) - m.syms.movers_type_and_colour), ZP.map((a) => rdm(m, a)[0])]);
 function newest(m) {
     const pending = rdm(m, m.syms.flip_pending)[0] & 0x80;
     const shadow = pending ? !!rdm(m, m.syms.flip_screen)[0] : !!(m.cpu.acccon & 1);

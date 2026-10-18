@@ -116,8 +116,9 @@ disassembly's `actually`/`also` notes say what an operand really is.
 
 `&0000-&00FF` zero page, with game code at `&0004-&0077` (the sprite column unpacker; step 2: dead,
 its first bytes kept as the ground's, the rest the renderer's variables - decision 34);
-`&0300` column buffer; `&0400-&07FF` and `&0880-&095F` copied-down code and data; `&0E00-&3FFF`
-code and data; `&4000-&46FF` start-up code (step 2: mostly in the save arena, decision 33), then the screen `&4000-&7FFF` (16K, MODE 2,
+`&0300` column buffer; `&0400-&07FF` and `&0880-&095F` copied-down code and data (step 2: and
+`&0A20-&0CFF`, `moved_0a20`: `multiply_by_78`, `rows_up` and the level tables, 154 bytes free at its
+end, decision 40); `&0E00-&3FFF` code and data; `&4000-&46FF` start-up code (step 2: mostly in the save arena, decision 33), then the screen `&4000-&7FFF` (16K, MODE 2,
 hardware-scrolled by the CRTC). Bank 5 `&8000-&83FF` is the player buffer.
 
 Step 2 additions: zero page `&90` (`field_count`), `&92`/`&93` (the PRNG), `&9B` (`drawing`),
@@ -127,9 +128,13 @@ unpacker's dead body, the renderer's hottest variables (`ren_zp` in `moved_0004`
 scratch `&C0-&CD` (given back by `restore_game_zp` only where the logic reads). `&354A-&3FFF` is
 the save arena (main and shadow, one per screen), after `player_save` (`&34D5`, 117 bytes a screen:
 the compiled kinds' saves, shared by kinds never drawn together); ANDY `&8000-&8FFF` holds 53 sprites, paged in while the renderer draws.
-The keyboard read, PRNG, `render_pass` and `pass_start` are at `&3301` on, `compiled_call` (the stub
+Decision 40 took 1,038 bytes of read-only tables out of the main block and placed what stays by its
+reads: the scenery tables, `movers_firing_cooldown`, the unflipped mover sprite addresses, the movers
+and projectiles from `&1300` (page-aligned, ASSERTed; `movers_state_end` ends them), the flipped mover
+sprite addresses; the code starts at `&14DF`, 1,024 lower than the original's `&18DF`. The keyboard read
+(`keydown_int`, `&2F0E`), PRNG, `render_pass` and `pass_start` follow, `compiled_call` (the stub
 that pages a compiled kind's bank) after them, and what is free up to `&33FF` is the listing's `SKIP
-unused_3400_original` (20 bytes on 2026-10-18, after decision 34); everything from `&3400` stays
+unused_3400_original` (1,044 bytes on 2026-10-18, after decision 40, from `&2FEC`); everything from `&3400` stays
 where the original had it (BUGS #1, #2). The interrupt's variables are below `&3000` (the renderer
 draws with ACCCON's X bit set when the target is shadow). Bank 4: the renderer `&9000-`, then its
 sprites and tables (below `REN_BASE`, `&B400`, ASSERTed in `src/main.6502`: BUGS #6); workspace
@@ -139,12 +144,16 @@ zeroed at start-up by `zero_render_vars`, decision 32); under ANDY, the
 prebuild, `save_game_zp`/`restore_game_zp` and `zero_render_vars` (ROMSEL `&04` only). Banks 5-7
 end with 8 of the player's compiled sprite kinds (`tools/compiled.py`; each bank's end ASSERTed);
 the other 6 are in HAZEL at `&C700-&D8AD`, which the MOS leaves paged in through play (ACCCON's Y
-bit); HAZEL `&C300` on is the mountain layer's data (BUGS #9) and stays untouched. On the disc they
+bit); HAZEL `&C300` on is the mountain layer's data (BUGS #9) and stays untouched. Decision 40's HAZEL
+tables: `times_78_lo/hi` at `&C000/&C100` (made at start-up), and in `hazel_b` after the kinds
+`player_helicopter_types_vertical_speed` .. `player_helicopters_initial_x_high` (`&D905-&D9DA`) and
+the mover type tables (`&DA01-&DB86`), read in play only; 121 bytes left under `hazel_b`'s `&DC00` ASSERT. On the disc they
 ride in bank 5's music area and the start-up block; `unpack_for_play` copies them in and unpacks the
 front end's tunes (`src/music.6502` -> `tools/packmusic.py` -> `src/music_packed.6502`, ZX02) to
 `&9300`. The start-up code and the blocks it copies down ride in the save arena's bytes
-(`&354A-&3E0B`, decision 33: nothing touches the arena before the first `render_reset`); `hazel_b`
-and the packed tunes follow `&4000` to `mgame_end` (`&46A1`), so `MGAME` loads to `&51A1`, 2,271
+(`&354A-&3FCD`, decision 33: nothing touches the arena before the first `render_reset`; 50 bytes of it
+left as a carrier after decision 40); `hazel_b`
+and the packed tunes follow `&4000` to `mgame_end` (`&497A`), so `MGAME` loads to `&547A`, 1,542
 bytes under the loading picture at `&5A80` (ASSERTed). Bank 5's `&8000-&83FF` (the player buffer) is free:
 masked drawing made it unnecessary.
 Bank 5 grows only at its end (its music is page-aligned). In play the game's `irq1_handler` owns
