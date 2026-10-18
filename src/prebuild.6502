@@ -38,8 +38,7 @@ PRE_T2_MIN = &D6                    \ one field to go: start only if User VIA T2
 .pre_old_layers SKIP PRE_LAYERS_N   \ the layers' state before the walk (pre_undo)
 .pre_old_y      SKIP 8
 .pre_old_zp     SKIP PRE_ZP_N
-.pre_old_ops    SKIP 4              \ the walk's two flip opcodes, plot_scenery_mask_opcode and its
-                                    \ operand
+.pre_old_ops    SKIP 2              \ the walk's two flip opcodes
 .pre_old_view   SKIP 2              \ viewport_left_low, viewport_right_low
 .pre_first      SKIP 1
 .pre_hist       SKIP 1              \ item 3: 1 + the history slot holding rows 24-199 of the column,
@@ -90,10 +89,6 @@ PRE_T2_MIN = &D6                    \ one field to go: start only if User VIA T2
     STA pre_old_ops
     LDA use_flipped_or_unflipped_scenery_sprite_opcode_two
     STA pre_old_ops + 1
-    LDA plot_scenery_mask_opcode
-    STA pre_old_ops + 2
-    LDA plot_scenery_mask_opcode + 1
-    STA pre_old_ops + 3
     LDA viewport_left_low           \ the edges as the scroll will move them: the walk reads only
     STA pre_old_view                \ their low bytes (&00B2,Y)
     CLC
@@ -109,9 +104,8 @@ PRE_T2_MIN = &D6                    \ one field to go: start only if User VIA T2
     JSR prebuild_layers             \ main RAM: the walk; bank 4 again after, pre_bank what it left
 
     \ Decision 38: the walk's state stays where it is (pre_old_* holds it as it was); the zero page
-    \ and the opcodes go back as they were. (The flip opcodes are this direction's anyway - the
-    \ last scroll's walk set them - and plot_scenery_mask_opcode is set by each of its users before
-    \ it runs: put back so the code is as it was.)
+    \ and the flip opcodes go back as they were (this direction's anyway: the last scroll's walk
+    \ set them).
     LDX #PRE_ZP_N - 1
 .keep_zp
     LDY pre_zp_list,X
@@ -123,10 +117,6 @@ PRE_T2_MIN = &D6                    \ one field to go: start only if User VIA T2
     STA use_flipped_or_unflipped_scenery_sprite_opcode_one
     LDA pre_old_ops + 1
     STA use_flipped_or_unflipped_scenery_sprite_opcode_two
-    LDA pre_old_ops + 2
-    STA plot_scenery_mask_opcode
-    LDA pre_old_ops + 3
-    STA plot_scenery_mask_opcode + 1
     LDA pre_old_view
     STA viewport_left_low
     LDA pre_old_view + 1
