@@ -1105,9 +1105,8 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     LDA #MOVER_SLOTS                \ build the live one in the spare entry...
     STA list_n
     JSR list_live
-    PLA
-    STA list_n
-    TAX                             \ ...and take the union
+    PLX
+    STX list_n                      \ ...and take the union
     LDY #MOVER_SLOTS
     LDA list_x1_lo,Y
     CMP list_x1_lo,X

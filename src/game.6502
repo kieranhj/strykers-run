@@ -2122,21 +2122,19 @@ ENDIF
     STY unused_0076
 .next_row_1d84
     BEQ leave_1d68                  \ *** Leave if no rows to add (not present in standard version)
-    TAY
-    AND #&07
-    CMP #&07
+.add_row
+    INC A                           \ 65C02 opcode; grind: the next row's low byte, Z below if the
+    BIT #&07                        \ 65C02 opcode     row was the last of its group (low byte 7 mod 8)
     BEQ next_group_1d94
-    INY
-    TYA
-    DEC unused_0076
 .to_next_row
-    BNE next_row_1d84 + 2
+    DEC unused_0076
+    BNE add_row
     RTS
 .next_group_1d94
-    TYA
+    DEC A                           \ 65C02 opcode; back to the group's last row
     LDY #&03                        \ &0279
     JSR add_delta_to_screen_address_in_AX
-    JMP next_row_1d84 + 11
+    BRA to_next_row                 \ 65C02 opcode
 
 .calculate_screen_addresses_for_movers_on_edge
     \ Step 2 (layer 3, D): a mover whose x high byte cannot put its edge on the screen's
