@@ -1426,7 +1426,6 @@ header_hi = * + 1
 \ keeps the bottom's cell (b_ptr) and raises from there.
 .ren_draw_sprite
 {
-    STY ds_raise
     TAX
     STX ds_sprite
     LDA straight_sprite_hi,X
@@ -1440,17 +1439,16 @@ header_hi = * + 1
     STA ds_c                        \ columns left
     STA ds_n
     STZ ds_clip                     \ 65C02 opcode: whether any column can be clipped: not if
-    LDA dm_jmin                     \ jmin is 0 and jmax n - 1 or more
+    LDX dm_jmin                     \ jmin is 0 and jmax n - 1 or more (X: the sprite, done with)
     BNE clips
-    LDA dm_jmax
-    CMP ds_c
-    BCS no_clip
+    CMP dm_jmax                     \ A = n: no clip if n <= jmax
+    BCC no_clip
+    BEQ no_clip
 .clips
     DEC ds_clip                     \ &FF
 .no_clip
     LDA dm_scr_lo                   \ the part's bottom, raised once
-    LDX dm_scr_hi
-    LDY ds_raise
+    LDX dm_scr_hi                   \ Y: still the rows it is raised
     JSR raise_address
     TAY
     AND #&07
@@ -1848,24 +1846,28 @@ lo_imm = * + 1
 .restore_block
 {
     STY rb_index
-    LDA save_start_lo,Y             \ the header: where parts 2 and 3 start
-    STA v_ptr
-    LDA save_start_hi,Y
-    STA v_ptr + 1
-    LDY #3
-.header
-    LDA (v_ptr),Y
-    STA rb_part2,Y
-    DEY
-    BPL header
-    LDY rb_index                    \ the walk ends when v_ptr + 8 is the block's end
-    LDA save_end_lo,Y
+    LDA save_end_lo,Y               \ the walk ends when v_ptr + 8 is the block's end
     SEC
     SBC #8
     STA rb_end
     LDA save_end_hi,Y
     SBC #0
     STA rb_end + 1
+    LDA save_start_lo,Y             \ the header: where parts 2 and 3 start
+    STA v_ptr
+    LDA save_start_hi,Y
+    STA v_ptr + 1
+    LDY #3                          \ the four bytes, unrolled
+    LDA (v_ptr),Y
+    STA rb_part2 + 3
+    DEY
+    LDA (v_ptr),Y
+    STA rb_part2 + 2
+    DEY
+    LDA (v_ptr),Y
+    STA rb_part2 + 1
+    LDA (v_ptr)                     \ 65C02 opcode
+    STA rb_part2
     LDX #2                          \ part 3, then part 2: from its start to rb_end
 .each_part
     LDA rb_part2,X
