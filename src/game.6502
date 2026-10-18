@@ -3916,14 +3916,24 @@ stf_x_max_high_operand_s = * + 1
     BCC search_prefilter_next      \ X >= 2, so X >= 1 after the DEX
 .search_in_full
     JSR check_for_mover_collision_with_mover_X\ Returns carry set if collision, i.e. mover in range
-    BCC consider_next_enemy
+    BCS search_hit_g493a            \ grind: a miss (most checks) falls through to the DEX
+.consider_next_enemy
+    DEX
+    BPL search_for_target_loop
+.search_done
+    LDX target
+    BPL check_if_friendly           \ Leave with carry clear if unfriendly target found (grind: in a branch's reach here)
+.no_target
+    SEC                             \ Leave with carry set to indicate no target found
+    RTS
+.search_hit_g493a
     JSR check_if_friendly           \ *** Returns carry set if friendly
-    BCC not_friendly                \ ***
-.is_friendly_2afd    \ ***
-    INC friendly_targets_found      \ ***
-    BRA consider_target             \ *** 65C02 opcode
+    BCS is_friendly_2afd            \ grind: friendly the common case, taken
 .not_friendly    \ ***
     INC unfriendly_targets_found    \ ***
+    BRA consider_target             \ *** 65C02 opcode
+.is_friendly_2afd    \ ***
+    INC friendly_targets_found      \ ***
 .consider_target    \ ***
     LDY target
     BMI found_target_2b1f
@@ -3934,25 +3944,15 @@ stf_x_max_high_operand_s = * + 1
     LDA movers_x_low,Y
     CMP movers_x_low,X
 .skip_low_check_2b15
-    LDA frame_and_flip
-    BMI is_facing_left
-.is_facing_right
-    BCC consider_next_enemy
-    BCS found_target_2b1f           \ Always branches
-.is_facing_left
-    BCS consider_next_enemy
+    LDA #&00                        \ grind: bit 7 = C (nearer) EOR facing left (frame_and_flip bit 7),
+    ROR A                           \ set if found: facing right C=1, facing left C=0
+    EOR frame_and_flip
+    BPL consider_next_enemy
 .found_target_2b1f
     STX target
-.consider_next_enemy
     DEX
-    BPL search_for_target_loop      \ grind: back in a branch's reach (-79 from &2C43)
-.search_done
-    LDX target
-    BMI no_target                   \ step 2: out of a branch's reach too
-    JMP check_if_friendly           \ Leave with carry clear if unfriendly target found
-.no_target
-    SEC                             \ Leave with carry set to indicate no target found
-    RTS
+    BPL search_for_target_loop
+    BRA search_done                 \ grind: X=0 was the last, so target is 0
 
 .find_free_projectile_slot    \ # Called with A = first slot, X = last slot + 1
     STA last_slot
