@@ -1392,17 +1392,18 @@ header_hi = * + 1
     JSR ren_draw_sprite
     LDX dm_type
     LDA mover_types_parts,X
-    BNE nothing                     \ two parts
+    BEQ part_three                  \ three parts
+.nothing
+    RTS                             \ one part or two
+.part_three
     LDA dm_raise                    \ part three: eight rows above part two
     CLC
     ADC #&08
     TAY
     LDA mover_types_third_sprite,X
     JSR mark_part3
-    JSR ren_draw_sprite
-.nothing
-    RTS
 }
+    \ falls through: ren_draw_sprite draws part three and returns to draw_mover's caller
 
 \ ren_draw_sprite: A = sprite, Y = rows it is raised. Each visible column of its straight data:
 \ the first row drawn and the count, then the indices top-down. Flipped, column c of n is
@@ -1724,31 +1725,30 @@ pix_operand_2 = * + 1
     BEQ in_hazel                    \ bank 0: HAZEL, paged in through play
     LDX #&84                        \ ANDY and bank 4 again after
     JSR compiled_call
-    BRA called                      \ 65C02 opcode
-.in_hazel
-    JSR compiled_direct
-.called
-    BCS unsafe
+    BCS unsafe                      \ the banked kinds (the commoner) fall through
+.called                             \ carry clear here from either path
     LDY #8                          \ its entry
     LDA #&FF
     STA (v_ptr),Y
     INY
     LDA ck_kind
     STA (v_ptr),Y
-    LDA v_ptr
-    CLC
+    LDA v_ptr                       \ carry still clear
     ADC #11
     STA v_ptr
     BCC on_page
     INC v_ptr + 1
+    CLC                             \ carry clear to return
 .on_page
     LDA &C0
     STA (v_ptr)                     \ 65C02 opcode
     LDY #1
     LDA &C1
     STA (v_ptr),Y
-    CLC
-    RTS
+    RTS                             \ carry clear: drawn
+.in_hazel
+    JSR compiled_direct
+    BCC called
 .unsafe                             \ the code's row pointers used b_ptr and ds_c
     LDA &C0
     STA b_ptr
