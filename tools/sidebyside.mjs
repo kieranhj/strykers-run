@@ -17,9 +17,10 @@
 // each site still runs (same cycles, same timer read); the emulator then puts the same xorshift's
 // next byte in A before the AND that follows it uses it. Nothing in the original's RAM is written.
 // The original's generator is seeded &7A31 at start_game, which step 2's take_irq_for_play
-// enters after seeding. Step 2's state is &92/&93, which the original's code also writes as
-// scratch (set_dying_mover_type_and_frame), so in step 2 those writes change the generator:
-// the original's writes there are mirrored into it. The bytes each consumed are compared below
+// enters after seeding. Before BUGS #12's fix step 2's state was &92/&93, which the original's
+// code also writes as scratch (set_dying_mover_type_and_frame), so in such a build those writes
+// change the generator: for it, the original's writes there are mirrored into it (a build after
+// the fix keeps the state elsewhere, and nothing is mirrored). The bytes each consumed are compared below
 // (the step 2 count ignores the loader's code that runs through `random`'s RTS while booting).
 // The other T2 reads (raster positions: update_screen, check_if_raster_is_in_mover) are untouched.
 //
@@ -41,7 +42,7 @@ import { dirname } from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { loadMachineSession, resolveJsbeebSrc } from "./jsbeeb_src.mjs";
-import { makeScript, applyEvents, bootMaster, gameKey, moverTables, loadSyms } from "./playscript.mjs";
+import { makeScript, applyEvents, bootMaster, gameKey, moverTables, loadSyms, prngAt } from "./playscript.mjs";
 
 const args = process.argv.slice(2);
 const opt = (name, dflt) => { const i = args.indexOf(name); if (i < 0) return dflt; const v = args[i + 1]; args.splice(i, 2); return v; };
@@ -123,6 +124,9 @@ function state(m) {
     return out;
 }
 
+// where the step 2 build keeps its generator: &92/&93 before BUGS #12's fix
+const STEP2_AT_92 = prngAt(loadSyms(discB))[0] === 0x92;
+
 // the original's four random reads (build/original/build/strykers.lst): LDA usrvia_t2cl/t2ch,
 // each followed by the AND that uses it
 const ORIGINAL_SITES = [
@@ -168,10 +172,11 @@ async function start(disc, label) {
         if (m.passes >= m.target) { m.lastStop = c; return true; }
         return false;
     });
-    // step 2 keeps the generator's state in &92/&93, which the original also uses as scratch
-    // (set_dying_mover_type_and_frame: STY &92 ... LDY &92): there those writes land on the state,
-    // so the original's writes to them from the game's start on are mirrored into the generator
-    if (original) cpu.debugWrite.add((a, v) => {
+    // step 2 before BUGS #12's fix keeps the generator's state in &92/&93, which the original also
+    // uses as scratch (set_dying_mover_type_and_frame: STY &92 ... LDY &92): there those writes land
+    // on the state, so for such a build the original's writes to them from the game's start on are
+    // mirrored into the generator. A build after the fix keeps it elsewhere: nothing to mirror.
+    if (original && STEP2_AT_92) cpu.debugWrite.add((a, v) => {
         if (m.live && (a === 0x92 || a === 0x93)) {
             next.set(a, v);
             const k = `&${a.toString(16)} at &${cpu.pc.toString(16)}`;

@@ -160,6 +160,48 @@ export function loadSyms(disc) {
     return out;
 }
 
+/** The generator's two bytes (decision 17), [low, high]: zp.6502's rnd_seed_low/high, an
+ *  assignment in the symbol dump (so loadSyms above, not a labels-only reader); &92/&93 in builds
+ *  before BUGS #12's fix, and in any build without the names. */
+export function prngAt(syms) {
+    return [syms.rnd_seed_low ?? 0x92, syms.rnd_seed_high ?? 0x93];
+}
+
+/** BUGS #12: the original's set_dying_mover_type_and_frame keeps the dying mover's slot in &92
+ *  across a call (STY &92 : LDX &92 : JSR check_for_player_collision_with_mover_Y : LDY &92), and
+ *  step 2 before the fix kept the generator's low byte there: each mover's death set it to the
+ *  slot. This watches that STY on machine `m` (`m.s`, `m.syms`, `m.passes`) and counts it: every
+ *  one, and those that changed the generator (a build whose rnd_seed_low is &92, the slot not
+ *  what it held), the first such at m.passes. With `undo`, on such a build, the byte is put back
+ *  after the LDY (the BEQ that follows it tests Y, not &92), which is what the fixed build, whose
+ *  generator is elsewhere, does by never losing it: so a build before the fix, undone, is the
+ *  control for one after. The sequence is found by its bytes from the label, when it first runs. */
+export function prngClobber(m, { undo = false } = {}) {
+    const cpu = m.s._machine.processor, base = m.syms.set_dying_mover_type_and_frame;
+    const st = { generatorAt92: prngAt(m.syms)[0] === 0x92, undo, clobbers: 0, changed: 0, firstClobber: null, firstChanged: null, undone: 0 };
+    if (base === undefined) throw new Error("prngClobber: no set_dying_mover_type_and_frame in the symbols");
+    let sty = -1, after = -1, saved = -1;
+    const ZP92 = [0x84, 0x92, 0xa6, 0x92, 0x20, -1, -1, 0xa4, 0x92];     // STY &92 : LDX &92 : JSR nnnn : LDY &92
+    cpu.debugInstruction.add((pc) => {
+        if (sty < 0) {
+            if (pc !== base) return false;
+            for (let a = base; a < base + 48 && sty < 0; a++) if (ZP92.every((b, i) => b < 0 || cpu.readmem(a + i) === b)) sty = a;
+            if (sty < 0) throw new Error(`prngClobber: no STY &92 : LDX &92 : JSR : LDY &92 after &${base.toString(16)}`);
+            after = sty + ZP92.length;
+        }
+        if (pc === sty) {
+            saved = cpu.readmem(0x92);
+            st.clobbers++; st.firstClobber ??= m.passes;
+            if (st.generatorAt92 && cpu.y !== saved) { st.changed++; st.firstChanged ??= m.passes; }
+        } else if (pc === after && saved >= 0) {
+            if (undo && st.generatorAt92 && cpu.readmem(0x92) !== saved) { m.s.writeMemory(0x92, [saved]); st.undone++; }
+            saved = -1;
+        }
+        return false;
+    });
+    return st;
+}
+
 /** [address, length] of the movers' and projectiles' tables, the game state passlock compares:
  *  movers_type_and_colour (the first) to the end of projectiles_ttl (the last; its length the
  *  same as projectiles_is_rocket's, 12). Until decision 40 this ended at mover_types_parts, the

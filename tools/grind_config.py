@@ -57,12 +57,15 @@ BUILDS = {
 
 # The gate: every check a batch must pass (tools/ harnesses; at most 4 emulators at once). Each
 # is (name, argv with {ctl}/{test}/{full}/{ship} for the images, what passing looks like).
+# --unclobber: a control from before BUGS #12's fix (the generator at &92/&93) has the original's
+# STY &92 in set_dying_mover_type_and_frame undone in the emulator, so it plays the fixed build's
+# game; for a control after the fix it does nothing (tools/playscript.mjs prngClobber).
 CHECKS = (
-    ('state+screen seed 1', ['node', 'tools/passlock.mjs', '{ctl}', '{test}', '6000', '1', '--screen'], 'passlock'),
-    ('state+screen seed 3', ['node', 'tools/passlock.mjs', '{ctl}', '{test}', '4000', '3', '--screen'], 'passlock'),
+    ('state+screen seed 1', ['node', 'tools/passlock.mjs', '{ctl}', '{test}', '6000', '1', '--screen', '--unclobber'], 'passlock'),
+    ('state+screen seed 3', ['node', 'tools/passlock.mjs', '{ctl}', '{test}', '4000', '3', '--screen', '--unclobber'], 'passlock'),
     ('oracle seed 5', ['node', 'tools/passlock.mjs', '{full}', '{test}', '4000', '5', '--screen'], 'passlock'),
-    ('helicopter 5', ['node', 'tools/helilock.mjs', '{ctl}', '{test}', '3000', '5'], 'helilock'),
-    ('helicopter 2', ['node', 'tools/helilock.mjs', '{ctl}', '{test}', '3000', '2'], 'helilock'),
+    ('helicopter 5', ['node', 'tools/helilock.mjs', '{ctl}', '{test}', '3000', '5', '--unclobber'], 'helilock'),
+    ('helicopter 2', ['node', 'tools/helilock.mjs', '{ctl}', '{test}', '3000', '2', '--unclobber'], 'helilock'),
     ('front end', ['node', 'tools/frontend.mjs', '{ship}'], 'frontend'),
     # observer mode's keys go through check_for_keypress, which play never calls (BUGS #11)
     ('observer mode', ['node', 'tools/observer.mjs', '{ship}'], 'ok'),
@@ -72,9 +75,10 @@ PARALLEL = 4
 
 # The measurement: pcprof's per-pass work (cycles, the wait for the flip excluded) on passbench's
 # two games, the same game whatever the build's speed. Deterministic, so a difference is exact.
+# --unclobber: as the checks', so a control from before BUGS #12's fix plays the same game.
 MEASURE = (
-    ('seed 1', ['node', 'tools/pcprof.mjs', '{bench}', '--detail', '--passes', '1500']),
-    ('RIGHT', ['node', 'tools/pcprof.mjs', '{bench}', '--detail', '--hold', 'RIGHT', '--from', '50', '--passes', '600']),
+    ('seed 1', ['node', 'tools/pcprof.mjs', '{bench}', '--unclobber', '--detail', '--passes', '1500']),
+    ('RIGHT', ['node', 'tools/pcprof.mjs', '{bench}', '--unclobber', '--detail', '--hold', 'RIGHT', '--from', '50', '--passes', '600']),
 )
 
 # A difference this small (cycles a pass) is not a saving: the gate's dry run on an unchanged

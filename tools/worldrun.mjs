@@ -1,7 +1,7 @@
 // worldrun.mjs - the whole world, start to completion screen: the player run from the first pass
 // to the headquarters (player x &1CED, main_game_loop's test) by tools/playscript.mjs's WorldBot.
 //
-//   node tools/worldrun.mjs DISC.ssd [--control CONTROL.ssd [--screen]] [--shots DIR] [--passes N]
+//   node tools/worldrun.mjs DISC.ssd [--control CONTROL.ssd [--screen] [--unclobber]] [--shots DIR] [--passes N]
 //
 // Any build: one without DEBUG_LIVES (the shipping build) is given infinite lives by the poke
 // DEBUG_LIVES assembles (playscript.mjs startWorldGame). Keys are chosen each pass from the game's
@@ -18,20 +18,23 @@
 //   difference stops the run. --screen also compares the newest frame each pass (passlock's: the
 //   frame waiting for its flip if there is one, else the one shown; the 16,000 displayed bytes).
 //   For the renderer: CONTROL = the DEBUG_FULLREDRAW twin of DISC (both -Shift 256 -ShiftEnd, so
-//   the ground pattern is fixed: BUGS #1).
+//   the ground pattern is fixed: BUGS #1). The generator's state is read where each build keeps
+//   it; --unclobber undoes BUGS #12's clobber of it on a build from before the fix (as
+//   tools/passlock.mjs's), so that build is the control for one after it. Each machine's
+//   `clobbers` (playscript.mjs prngClobber) say how many there were and the first's pass.
 // --shots DIR: DIR/worldrun-<build>-hq.png (the last frame of play, at completion_screen),
 //   -hq-approach.png (the first pass with the player within 40 columns of the headquarters) and
 //   -completion.png (the completion text, as text_screen waits in its delay loop).
 import { writeFileSync, mkdirSync } from "node:fs";
 import { basename } from "node:path";
 import { loadMachineSession } from "./jsbeeb_src.mjs";
-import { WorldBot, startWorldGame, toWorldPass, worldState, pressKeys, runToPc, moverTables } from "./playscript.mjs";
+import { WorldBot, startWorldGame, toWorldPass, worldState, pressKeys, runToPc, moverTables, prngAt, prngClobber } from "./playscript.mjs";
 const MS = await loadMachineSession();
 
 const args = process.argv.slice(2);
 const opt = (name) => { const i = args.indexOf(name); if (i < 0) return null; const v = args[i + 1]; args.splice(i, 2); return v; };
 const flag = (name) => { const i = args.indexOf(name); if (i < 0) return false; args.splice(i, 1); return true; };
-const CONTROL = opt("--control"), SHOTS = opt("--shots"), PASSES = +(opt("--passes") || 20000), SCREEN = flag("--screen");
+const CONTROL = opt("--control"), SHOTS = opt("--shots"), PASSES = +(opt("--passes") || 20000), SCREEN = flag("--screen"), UNCLOBBER = flag("--unclobber");
 const [disc] = args;
 if (!disc) { console.error("usage: node tools/worldrun.mjs DISC.ssd [--control CONTROL.ssd [--screen]] [--shots DIR] [--passes N]"); process.exit(2); }
 if (SHOTS) mkdirSync(SHOTS, { recursive: true });
@@ -48,7 +51,7 @@ const onPass = (m, c) => { if (m.at) m.at[m.passes] = { c, field: m.s.readMemory
 const ZP = {
     screen_start: [0x00, 0x01], trigger_offset: [0x7e], new_movers_offset: [0x7f], helicopter_to_update: [0x80],
     player_y_velocity: [0x82], player_jump_direction: [0x83], player_helicopter: [0x84],
-    player_firing_cooldown: [0x8e], player_helicopter_explosion: [0x8f], rnd_seed: [0x92, 0x93],
+    player_firing_cooldown: [0x8e], player_helicopter_explosion: [0x8f],
     bottom_palette: [0x94], lives: [0x95], helicopter_fuel: [0x97, 0x98], top_palette: [0x9f], firing_frame: [0xa0],
     crtc_start: [0xb0, 0xb1], viewport_left: [0xb2, 0xba], viewport_right: [0xb3, 0xbb], movers_to_update_base: [0xc0],
 };
@@ -60,6 +63,7 @@ function state(m) {
     out.score = rd(syms.game_over_text + 20, 6);
     out.fuel = rd(syms.movers_helicopter_fuel_high, 0x22);
     for (const [k, addrs] of Object.entries(ZP)) out[k] = addrs.map((a) => rd(a, 1)[0]);
+    out.rnd_seed = prngAt(syms).map((a) => rd(a, 1)[0]);      // where this build keeps it (BUGS #12)
     if (out.player_helicopter[0] === 0) out.helicopter_fuel = [0, 0];   // the title tune's pointer until a helicopter
     return out;
 }
@@ -73,7 +77,7 @@ const shot = async (m, what) => { if (!SHOTS) return; const f = `${SHOTS}/worldr
 const T = await startWorldGame(MS, disc, { onPass });
 const C = CONTROL ? await startWorldGame(MS, CONTROL, { onPass }) : null;
 const machines = C ? [C, T] : [T];
-for (const m of machines) { watchFrames(m); m.view = worldState(m).view; console.log(`${m.disc}: game started; infinite lives: ${m.infiniteLives}`); }
+for (const m of machines) { watchFrames(m); m.view = worldState(m).view; m.clobbers = prngClobber(m, { undo: UNCLOBBER }); console.log(`${m.disc}: game started; infinite lives: ${m.infiniteLives}`); }
 const lead = C || T;                                  // the keys come from this machine's state
 const bot = new WorldBot();
 let firstDiff = null, approach = false, screenPasses = 0, screenDiffCount = 0, screenDiffPasses = [], screenMax = 0, end = null;
@@ -113,7 +117,7 @@ for (let p = 1; p <= PASSES; p++) {
 const out = [];
 for (const m of machines) {
     const st = worldState(m);
-    const res = { disc: m.disc, infiniteLives: m.infiniteLives, completed: m.completed ? m.completed.pass : null, passes: m.passes, player: st.px, view: st.view };
+    const res = { disc: m.disc, infiniteLives: m.infiniteLives, completed: m.completed ? m.completed.pass : null, passes: m.passes, player: st.px, view: st.view, clobbers: m.clobbers };
     if (m.completed) {
         await shot(m, "hq");
         // the completion text: text_screen's delay loop, a few fields later

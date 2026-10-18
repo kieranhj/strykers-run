@@ -64,8 +64,7 @@ player_firing_cooldown                       = &8E
 player_helicopter_explosion                  = &8F
 field_count                                  = &90      \ step 2: vsyncs, counted by irq1_handler
 dying_mover_type                             = &91
-rnd_seed_low                                 = &92      \ step 2: random's 16-bit state
-rnd_seed_high                                = &93      \ (&90, &92, &93: no access after boot in 30,000 frames, 2026-10-16)
+\ &92: set_dying_mover_type_and_frame's scratch (the original's: STY &92 : LDX &92 ... LDY &92)
 bottom_palette_value                         = &94
 lives                                        = &95
 game_over_cooldown                           = &96
@@ -107,6 +106,15 @@ pixel_table_address_low                      = &B8
 pixel_table_address_high                     = &B9
 viewport_left_high                           = &BA
 viewport_right_high                          = &BB
+rnd_seed_low                                 = &BC      \ step 2 (decision 17): random's 16-bit state, the
+rnd_seed_high                                = &BD      \ filing system's scratch (BUGS #12: not &92/&93)
+\ BUGS #12: the generator was at &92/&93 until 2026-10-18, but the original's own
+\ set_dying_mover_type_and_frame keeps a slot in &92 (STY &92 ... LDY &92), so every death set its
+\ low byte. &BC/&BD: no write, read or execute by anything but random from start_game to the
+\ title's give_irq_back (tools/zpwatch.mjs, jsbeeb 2.5.0, 2026-10-18: the front end's two games,
+\ seeds 1, 3 and 5, both helicopter flights, the whole world to the completion text); the MOS and
+\ DFS write them only while booting. They need last only from the seeding (take_irq_for_play,
+\ just before its JMP start_game) to the game's end.
 key_offset                                   = &C0
 movers_to_update_base                        = &C0
 movers_to_update_count                       = &C1
