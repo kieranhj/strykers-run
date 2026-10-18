@@ -13,14 +13,14 @@ excluded) 38,462 on seed 1 and 44,855 holding RIGHT, of the 79,872 two fields gi
 - **b2 and real hardware.** The flip, ACCCON's X bit and HAZEL left paged in (Y) are seen in
   jsbeeb only (`docs/step2-layer2.md` "Open").
 - **When layer 4 is closed.** Proposed: no late frames on both passbench games, and the whole
-  world played through: it now is (below), with 701 late frames of 12,231 (414 on
+  world played through: it now is (below), with 701 late frames of 12,231 (408 on
   `layer4-late-frames`).
 
 ## Layer 4 - a steady 25 Hz (decision 35)
 
 - **The late frames left** (branch `layer4-late-frames`, decisions 36-37: the kind cache and the
   overlap rule by draw order; `docs/step2-layer4-costing.md` "Built: the late frames"): the whole
-  world 644 -> 414 of 12,231, seeds 1/3/5/7 6/2/44/13 -> 2/1/36/3, RIGHT 0, flights 0/2/5/8
+  world 644 -> 408 of 12,231, seeds 1/3/5/7 6/2/44/13 -> 3/1/32/5, RIGHT 0, flights 0/2/5/8
   21/21/36/38 -> 15/15/29/25. They come in bursts, 1-34% over budget, of helicopters' bodies
   with soldiers and the scroll; what is left to try, by its costing:
   - a third kind cache slot (600-800 bytes readable while the renderer draws: HAZEL is full);

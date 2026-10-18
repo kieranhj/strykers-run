@@ -144,18 +144,20 @@ Step 2 additions: zero page `&90` (`field_count`), `&92`/`&93` (the PRNG), `&9B`
 `&9C/&9D` (the sprite walk's and the renderer's pointer), `&9E` (`plot_sprite`); `&1F-&75`, the
 unpacker's dead body, the renderer's hottest variables (`ren_zp` in `moved_0004`, decision 34;
 `&0004-&001E` stay as the ground's bytes, BUGS #1); the renderer's
-scratch `&C0-&CD` (given back by `restore_game_zp` only where the logic reads). `&354A-&3CFC` is
-the save arena (main and shadow, one per screen; 1,971 bytes), after `player_save` (`&34D5`, 117 bytes a screen:
-the compiled kinds' saves, shared by kinds never drawn together), and `&3CFD-&3FFF` the kind cache's slot 0
-(decision 36: written in play, in main and shadow alike; `KC_ARENA_END`); ANDY `&8000-&8FFF` holds 53 sprites, paged in while the renderer draws.
+scratch `&C0-&CD` (given back by `restore_game_zp` only where the logic reads). `&354A-&3DFD` is
+the save arena (main and shadow, one per screen; 2,228 bytes: its live blocks reached 1,985 over the whole
+world), after `player_save` (`&34D5`, 117 bytes a screen: the compiled kinds' saves, shared by kinds never
+drawn together), and `&3DFE-&3FFF` the kind cache's slot 0's masks and pixels (decision 36: written in play,
+in main and shadow alike; `KC_ARENA_END`); ANDY `&8000-&8FFF` holds 53 sprites, paged in while the renderer draws.
 Decision 40 took 1,038 bytes of read-only tables out of the main block and placed what stays by its
 reads: the scenery tables, `movers_firing_cooldown`, the unflipped mover sprite addresses, the movers
 and projectiles from `&1300` (page-aligned, ASSERTed; `movers_state_end` ends them), the flipped mover
 sprite addresses; the code starts at `&14DF`, 1,024 lower than the original's `&18DF`. The keyboard read
 (`keydown_int`, `&2E73`), PRNG, `render_pass` and `pass_start` follow, `compiled_call` (the stub
 that pages a compiled kind's bank) after them, then the kind cache's builder (`kc_build`, `&2F4D`,
-decision 36), and what is free up to `&33FF` is the listing's `SKIP
-unused_3400_original` (459 bytes on 2026-10-18, from `&3235`; 1,203 after decisions 38-40); everything from `&3400` stays
+decision 36) and its slot 0's offsets (`kc_slot0_y`, `&3235-&3335`, written in play to main and shadow
+alike), and what is free up to `&33FF` is the listing's `SKIP
+unused_3400_original` (202 bytes on 2026-10-18, from `&3336`; 1,203 after decisions 38-40); everything from `&3400` stays
 where the original had it (BUGS #1, #2). The interrupt's variables are below `&3000` (the renderer
 draws with ACCCON's X bit set when the target is shadow). Bank 4: the renderer `&9000-`, then its
 sprites and tables (below `REN_BASE`, `&B400`, ASSERTed in `src/main.6502`: BUGS #6); workspace

@@ -29,15 +29,18 @@ KC_T2_MIN = &BB                     \ one field to the flip: build a column (or 
 
 \ The slots: each an offsets, a masks and a pixels array of its capacity, where they can be read as
 \ the renderer draws (ROMSEL &84, ACCCON's X bit set for the shadow screen): slot 0 (any 12-column
-\ sprite: &15 has 257 bytes) at the end of the save arena, which put_on keeps blocks below, in main
-\ and shadow RAM alike (kc_build writes both copies); slot 1 in HAZEL (paged in through play,
+\ sprite: &15 has 257 bytes) its offsets in main RAM (kc_slot0_y, src/kindcache_build.6502) and its
+\ masks and pixels at the end of the save arena, which put_on keeps blocks below, all in &3000-&3FFF,
+\ in main and shadow RAM alike (kc_build writes both copies); slot 1 in HAZEL (paged in through play,
 \ decision 29), its offsets at &C200-&C2FE (times_78 is at &C000-&C1FF, decision 40; the mountains
-\ at &C300, decision 31), its masks and pixels after hazel_b.
+\ at &C300, decision 31), its masks and pixels after hazel_b. The arena keeps 2,228 bytes a screen:
+\ its live blocks reached 1,904 over the whole world, 2,066 before this cache (tools/passbench.mjs).
 KC_CAP0 = 257                       \ the biggest 12-column sprite (&15)
-KC_Y0 = save_arena_end - 3 * KC_CAP0
-KC_M0 = KC_Y0 + KC_CAP0
+KC_Y0 = kc_slot0_y
+KC_M0 = save_arena_end - 2 * KC_CAP0
 KC_P0 = KC_M0 + KC_CAP0
-KC_ARENA_END = KC_Y0                \ the save blocks end below it (put_on)
+KC_ARENA_END = KC_M0                \ the save blocks end below it (put_on)
+ASSERT KC_Y0 >= &3000 AND KC_Y0 + KC_CAP0 <= &3400   \ (shadow's copy is the one kc_build's second pass writes)
 KC_Y1 = &C200
 KC_M1 = hazel_b_end
 KC_CAP1 = (&E000 - KC_M1) DIV 2

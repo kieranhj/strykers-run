@@ -140,6 +140,13 @@ for (const disc of discs) {
         for (let i = 0; m.passes < p; i++) { if (i === 150) { stalled = p; break; } await s.runFor(400000); }
         if (stalled) break;
         vl[p] = s.readMemory(0xb2, 1)[0] + 256 * s.readMemory(0xba, 1)[0];
+        // the save arenas' highest top (the renderer's workspace, bank 4): how near their end blocks reach
+        if (syms.arena_top_lo !== undefined) { const t = s.readMemory(syms.arena_top_lo, 4, { bank: 4 });
+            for (const k of [0, 1]) { const top = t[k] + 256 * t[k + 2]; if (!(top <= (m.arenaMax ?? 0))) { m.arenaMax = top; m.arenaMaxAt = p; } }
+            // and the bytes its live blocks hold (render.6502's save_start/end, REN_BASE + &600 on)
+            const ss = s.readMemory(0xb400 + 0x600, 0x200, { bank: 4 });   // (REN_BASE in the bench build: -ShiftEnd)
+            for (const k of [0, 1]) { let live = 0; for (let i = 0; i < 0x22; i++) { const j = i + 64 * k; if (ss[0x80 + j]) live += (ss[0x100 + j] + 256 * ss[0x180 + j]) - (ss[j] + 256 * ss[0x80 + j]); }
+                if (!(live <= (m.liveMax ?? 0))) { m.liveMax = live; m.liveMaxAt = p; } } }
         if (flight && flight.done) { stalled = p + 1; break; }
         const want = flight ? flight.keys(p) : keysAt[p] || [];
         for (const k of held) if (!want.includes(k)) s.keyUpRaw(gameKey(s, k));
@@ -162,6 +169,7 @@ for (const disc of discs) {
     // which: the pass under way when each late frame's successor was flipped in
     const lateAt = []; for (let i = 1; i < fl.length; i++) if (((fl[i].field - fl[i - 1].field + 256) & 255) > 2) lateAt.push(fl[i].pass);
     if (lateAt.length) console.log(`  late frames' successors flipped in passes: ${lateAt.join(" ")}`);
+    if (m.arenaMax !== undefined) console.log(`  the save arenas' highest top, at a pass's start: &${m.arenaMax.toString(16)} (pass ${m.arenaMaxAt}); the most their live blocks held, ${m.liveMax} bytes (pass ${m.liveMaxAt})`);
     if (DETAIL) {
         // each pass's work (everything but the wait for the flip): over 2 fields (79,872) the
         // frame cannot be on time

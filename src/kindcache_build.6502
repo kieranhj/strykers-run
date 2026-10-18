@@ -452,3 +452,7 @@ kg_e2 = need + 8                    \ (KC_GROUPS: kg_e, kept for the second pass
     BNE row
     RTS
 }
+
+\ slot 0's offsets (src/kindcache.6502): written in play, in main RAM and shadow's copy alike (kg_both)
+.kc_slot0_y
+    SKIP KC_CAP0

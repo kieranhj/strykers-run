@@ -731,18 +731,27 @@ and the whole world (`tools/worldrun.mjs`, 12,231 frames).
    block already in place. 48 / 15 cycles a pass; no late frame changed.
 2. **The kind cache** (decision 36, `a9c2e97`, relocated for decisions 38-40 in `60abfe6`): a big
    body's kind built once (in the waits, a column at a time) and drawn from it at 33 cycles a byte,
-   put back at 19. Two slots: 257 bytes a kind at the save arena's end (main and shadow), 231 in
-   HAZEL. 627 / 886 cycles a pass.
+   put back at 19. Two slots: slot 0 (257 bytes a kind) its offsets in main RAM's free block and
+   its masks and pixels at the save arena's end, both in main and shadow alike (the builder fills
+   each column twice, the second with ACCCON's X bit set); slot 1 (231) in HAZEL. 627 / 886 cycles
+   a pass.
 3. **The overlap rule by draw order** (decision 37): a shown mover drawn before (below) a changing
    one is no longer taken off with it. 400 / 1,629 cycles a pass.
+4. **The arena's room** (after `37bd007`): slot 0 first took the arena's last 771 bytes, leaving 1,971
+   a screen; its live blocks (passbench now reports their most) reached 1,904-1,985 over the whole
+   world, 2,066 before the cache, so a heavier scene could have run into the slot. Its offsets moved
+   to main RAM: the arena keeps 2,228 (2,742 before decision 36). 68 / 12 cycles a pass.
 
-| late frames | `ae4924a` (decisions 38-40) | + kind cache | + overlap rule |
-|---|---|---|---|
-| seed 1 / 3 / 5 / 7 | 6 / 2 / 44 / 13 | 2 / 1 / 35 / 4 | **2 / 1 / 36 / 3** |
-| holding RIGHT | 0 | 0 | **0** |
-| flights 0 / 2 / 5 / 8 | 21 / 21 / 36 / 38 | 18 / 18 / 33 / 30 | **15 / 15 / 29 / 25** |
-| the whole world (of 12,231) | 644 | 594 | **414** |
-| work a pass, seed 1 / RIGHT (pcprof) | 37,874 / 43,667 | 37,247 / 42,781 | **36,847 / 41,153** |
+| late frames | `ae4924a` (decisions 38-40) | + kind cache | + overlap rule | + the arena's room |
+|---|---|---|---|---|
+| seed 1 / 3 / 5 / 7 | 6 / 2 / 44 / 13 | 2 / 1 / 35 / 4 | 2 / 1 / 36 / 3 | **3 / 1 / 32 / 5** |
+| holding RIGHT | 0 | 0 | 0 | **0** |
+| flights 0 / 2 / 5 / 8 | 21 / 21 / 36 / 38 | 18 / 18 / 33 / 30 | 15 / 15 / 29 / 25 | **15 / 15 / 29 / 25** |
+| the whole world (of 12,231) | 644 | 594 | 414 | **408** |
+| work a pass, seed 1 / RIGHT (pcprof) | 37,874 / 43,667 | 37,247 / 42,781 | 36,847 / 41,153 | **36,779 / 41,141** |
+
+(The seeds move by a few frames either way with nothing but the builder's timing changed: it runs
+in whatever wait there is, so a kind is ready a pass sooner or later.)
 
 (At `d879af0`, before decisions 38-40: seeds 6 / 3 / 47 / 16, RIGHT 0, flights 27 / 27 / 44 / 45,
 the world 701.) The whole world against the integration branch with every frame compared: state and
