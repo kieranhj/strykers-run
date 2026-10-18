@@ -1821,7 +1821,7 @@ MOVER_WIDEST = &0B                  \ step 2 (layer 3): the largest entry below 
     AND #&03
     TAX
     PHA
-    JSR multiply_A_by_X_2f1e
+    JSR ground_square               \ layer 4: multiply_A_by_X_2f1e's A x X from a table (HAZEL)
 IF SHIFT
     \ Relocation test builds only: the ground's texture is whatever bytes are at &0000-&001C,
     \ which include the sprite unpacker's self-modified sprite address (BUGS.md #1), so it
@@ -2146,18 +2146,11 @@ ENDIF
     \ are what the routine leaves. Grind: one loop for each edge (&CF read once, not every
     \ mover), the last (&21) taken in full by a tail call: Y is left &21, the flags as it
     \ leaves them (both callers go on to add_movers_to_column_buffer, then load X and Y)
+    \ Layer 4: the right edge by x low byte, unrolled, in HAZEL (src/scroll_hazel.6502 edge_right)
     LDY #&00                        \ MOVER_FIRST                               # Bug: player is never on edge, so should be &01
     LDX &CF                         \ Zero for left edge, non-zero for right edge
     BEQ edge_left_loop
-.edge_right_loop
-    LDA movers_x_high,Y
-    CMP edge_x_high
-    BNE edge_right_next             \ the right edge: x itself
-    JSR calculate_screen_addresses_for_mover_on_edge
-.edge_right_next
-    INY
-    CPY #&21                        \ MOVER_LAST                            *** Enhanced version adds tank
-    BCC edge_right_loop
+    JMP edge_right
 .edge_last
     JMP calculate_screen_addresses_for_mover_on_edge
 .edge_left_loop

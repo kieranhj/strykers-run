@@ -26,3 +26,49 @@
 .done
     RTS
 }
+
+\ edge_right: calculate_screen_addresses_for_movers_on_edge's right edge (layer 4, decision 38's
+\ commit). A mover is on the right edge only if its x is the edge's, so its x low byte is tested
+\ first, unrolled: a mover that fails it is passed over, as the routine's own test would (its
+\ only effects, &D0 and mover_width, are written again by the last mover's call, which is taken
+\ in full as before). Movers that pass go through calculate_screen_addresses_for_mover_on_edge in
+\ the same order as before (Y kept by it). Leaves Y = &21 and what that last call leaves.
+.edge_right
+{
+    LDA edge_x_low
+    FOR n = 0..&20
+        CMP movers_x_low + n
+        BNE * + 7
+        LDY #n
+        JSR hit
+    NEXT
+    LDY #&21
+    JMP calculate_screen_addresses_for_mover_on_edge
+.hit
+    JSR calculate_screen_addresses_for_mover_on_edge
+    LDA edge_x_low
+    RTS
+}
+
+\ ground_square: multiply_A_by_X_2f1e for the ground's A = X = 0-3, leaving everything it leaves:
+\ result_low X * X, result_high, multiplicand and multiplier_low 0, multiplier_high X; A = Y = 0;
+\ Z set, N and C clear; V clear if X > 0 (its last ADC), else as it came; X kept.
+.ground_square
+{
+    STX multiplier_high
+    LDA squares,X
+    STA result_low
+    CPX #1
+    BCC zero
+    CLV
+.zero
+    LDA #0
+    STA result_high
+    STA multiplicand
+    STA multiplier_low
+    TAY
+    CLC
+    RTS
+.squares
+    EQUB 0, 1, 4, 9
+}
