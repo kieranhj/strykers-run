@@ -431,7 +431,9 @@ ENDIF
     LDA rec_wxh,Y
     STA span_x_hi
     LDA rec_type,Y
-    JSR width_of_type_A
+    AND #&7F                        \ width_of_type_A, inline
+    TAX
+    LDA mover_types_width_table,X
     JSR span_in_zone
     LDX ren_i                       \ (keeps C) X = ren_i on every path into stale and listed
     BCC listed

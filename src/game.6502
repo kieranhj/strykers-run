@@ -3869,9 +3869,9 @@ cm_x_max_low_operand = * + 1
     LDA mover_x_max_low
     CMP movers_x_low,X
     BCC leave_with_carry_clear_28c9
+    CLC                             \ grind: only the equal-high path needs it (C=1 here); BCC check_x_high arrives with C=0
 .check_x_high
     LDA movers_x_low,X
-    CLC
     ADC &7A
     BCC skip_overflow_28b1
     INY
@@ -4210,10 +4210,9 @@ ENDIF
     CMP #&0D                        \ MOVER_TYPE_SKELETON                       # Skeletons are friendly
     BEQ leave_with_carry_set_2ad2
     EOR movers_type_and_colour,Y    \ Otherwise check if movers are same colour
-    CLC                             \ Leave with carry clear to indicate unfriendly
-    BMI leave_2ac2
-.leave_with_carry_set_2ad2
-    SEC                             \ Leave with carry set to indicate friendly
+    EOR #&80                        \ grind: C = NOT bit 7 of the difference:
+    ASL A                           \ set if friendly, clear if unfriendly
+.leave_with_carry_set_2ad2          \ grind: both branches here arrive with C=1
     RTS
 
 .search_for_target_with_offset
