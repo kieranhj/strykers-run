@@ -3457,10 +3457,11 @@ cm_x_max_high_operand = * + 1
     SEC
     SBC #MOVER_WIDEST
     STA cm_left_low
-    LDA &C5
-    SBC #0
+    LDA &C5                         \ grind: no borrow (C=1, the common case): the high byte as it is
     BCS cm_left_known
-    LDA #0
+    SBC #0                          \ a borrow (C=0): one less, C clear if that is below 0
+    BCS cm_left_known
+    INC A                           \ 65C02 opcode: &FF -> 0, Z set, N clear, as LDA #0 left them
     STA cm_left_low
 .cm_left_known
     STA cm_left_high
