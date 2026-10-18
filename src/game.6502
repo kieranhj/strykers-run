@@ -1345,24 +1345,25 @@
     JSR add_delta_to_screen_address_in_AX
     STX screen_start_address_high
     STA screen_start_address_low
-    LDX crtc_start_address_high
-    LDY crtc_start_address_low
-    INY
-    BNE skip_page_1af8
+    INC crtc_start_address_low      \ grind: stepped in place (X and Y are dead after: the walk
+    BNE crtc_stepped_w2a            \ and install_prebuilt set their own); the high byte only on
+    LDX crtc_start_address_high     \ a carry, as crtc_start_address_high is only ever &08-&0F
     INX
-.skip_page_1af8
     CPX #&10
-    BNE skip_wraparound_1afe
+    BNE crtc_wrapped_w2a
     LDX #&08
-.skip_wraparound_1afe
+.crtc_wrapped_w2a
     STX crtc_start_address_high
-    STY crtc_start_address_low
-    JSR layers_right_or_prebuilt     \ step 2 (layer 3, RAM for cycles 1): the walk, or the state
-    BRA layers_right_done            \ the renderer's prebuilt walk left (65C02 opcode)
-.layers_right_or_prebuilt
-    LDA pre_use
-    BEQ layers_right
-    JMP install_prebuilt
+.crtc_stepped_w2a
+    LDA pre_use                     \ step 2 (layer 3, RAM for cycles 1): the walk, or the state
+    BEQ walk_right_w2a
+    LDA pre_bank                    \ grind: install_prebuilt in line (the A, Y and C it sets are
+    STA os_ram_copy_of_currently_selected_rom\ dead at layers_right_done, which loads A and Y
+    STA romsel                      \ Paged ROM latch (and change_pixel_tables' ASL sets C)
+    BRA layers_right_done           \ the renderer's prebuilt walk left (65C02 opcode)
+.walk_right_w2a
+    JSR layers_right
+    BRA layers_right_done           \ 65C02 opcode
 .layers_right                        \ a subroutine: src/prebuild.6502 runs it ahead
     LDY #&07                        \ *** Enhanced version has extra layer for clouds
     STY edge_and_layer
