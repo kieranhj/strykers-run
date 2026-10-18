@@ -1652,29 +1652,34 @@ pix_operand_2 = * + 1
     DEY
     CPY stop_y
     BNE part_byte
-.next                               \ v_ptr: this column's last cell (the next record 8 on)
+.next_c                             \ C = 1: the loop's CPY found Y = stop_y, or .next set it
     DEC ds_c
     BEQ done
     BIT dm_flip                     \ the next column's bottom
-    BMI step_back
-    LDA b_ptr
-    CLC
-    ADC #8
+    BPL step_forward
+    LDA b_ptr                       \ flipped: back 8 (C = 1)
+    SBC #8
     STA b_ptr
-    BCC to_each
+    BCC step_back_hi
+    JMP each
+.next                               \ v_ptr: this column's last cell (the next record 8 on)
+    SEC                             \ (from empty and clip_test: carry either way)
+    BRA next_c                      \ 65C02 opcode
+.step_forward
+    LDA b_ptr                       \ on 8 (C = 1)
+    ADC #7
+    STA b_ptr
+    BCS forward_hi
+    JMP each
+.forward_hi
     LDA b_ptr + 1
     INC A                           \ 65C02 opcode
     BPL forward_in_ring
     LDA #&40
 .forward_in_ring
     STA b_ptr + 1
-    JMP each
-.step_back
-    LDA b_ptr
-    SEC
-    SBC #8
-    STA b_ptr
-    BCS to_each
+    BRA to_each                     \ 65C02 opcode
+.step_back_hi
     LDA b_ptr + 1
     DEC A                           \ 65C02 opcode
     CMP #&40

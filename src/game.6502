@@ -4277,8 +4277,7 @@ ENDIF
     STX target
 .consider_next_enemy
     DEX
-    BMI search_done                 \ step 2: the loop grew past a branch's reach
-    JMP search_for_target_loop
+    BPL search_for_target_loop      \ grind: back in a branch's reach (-79 from &2C43)
 .search_done
     LDX target
     BMI no_target                   \ step 2: out of a branch's reach too
