@@ -50,9 +50,11 @@
     RTS
 }
 
-\ ground_square: multiply_A_by_X_2f1e for the ground's A = X = 0-3, leaving everything it leaves:
-\ result_low X * X, result_high, multiplicand and multiplier_low 0, multiplier_high X; A = Y = 0;
-\ Z set, N and C clear; V clear if X > 0 (its last ADC), else as it came; X kept.
+\ ground_square: multiply_A_by_X_2f1e for the ground's A = X = 0-3, leaving what is read after it:
+\ result_low X * X, result_high, multiplicand and multiplier_low 0, multiplier_high X; V clear if
+\ X > 0 (its last ADC), else as it came; X and Y kept. Not its A = Y = 0, N, Z or C (grind): its one
+\ caller, add_ground_to_column_buffer, pulls A next (PLA), and Y and C are written again before any
+\ read (the edge setters' LDY, then edge_right's CMP or edge_left's SEC).
 .ground_square
 {
     STX multiplier_high
@@ -62,13 +64,11 @@
     BCC zero
     CLV
 .zero
-    LDA #0
-    STA result_high
-    STA multiplicand
-    STA multiplier_low
-    TAY
-    CLC
+    STZ result_high                 \ 65C02 opcode
+    STZ multiplicand
+    STZ multiplier_low
     RTS
+    EQUB &EA, &EA, &EA, &EA         \ grind: never executed; keeps squares and unpack_scenery_column where they were
 .squares
     EQUB 0, 1, 4, 9
 }
