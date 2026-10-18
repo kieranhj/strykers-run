@@ -2,19 +2,23 @@
 \ the next scroll's column, built while the renderer waits for the flip.
 \
 \ In bank 4 below &9000 (DATA1, after the scenery): ANDY covers this whenever the renderer draws
-\ (ROMSEL &84), so it runs only with ROMSEL &04 - from render, before it waits, and from the
-\ scroll's install_prebuilt (src/game.6502), which pages bank 4 to call it.
+\ (ROMSEL &84), so it runs only with ROMSEL &04 - from render, before it waits, and from
+\ pre_cancel (src/scroll_hazel.6502), which pages bank 4 to call pre_undo.
 \
 \ After a scroll has been pushed to the history, the next wait (if the flip is far enough off) runs
-\ the 8 layers' walk for the same direction on the real state, into column_buffer, keeps the state
-\ it leaves, and puts the state back as it was. The next scroll, if it is in that direction from the
-\ same viewport, keeps the column and takes that state instead of clearing and walking
-\ (start_column, install_prebuilt). Nothing else changes the layers' state between scrolls, and the
-\ walk's only inputs are that state, the edges' low bytes (set here as the scroll will set them)
-\ and the scenery data. column_buffer is free once its column is pushed: a push with no scroll
-\ since the last one (the original's, after a hostile collision) takes the last column from its
-\ history slot, which holds the same bytes (history_push). The walk never writes above row 192 (a
-\ cloud 170 rows up, 23 high: the scenery data, 2026-10-17), inside the 200-byte buffer.
+\ the 8 layers' walk for the same direction on the real state, into column_buffer, and keeps a copy
+\ of the state as it was. Layer 4 (decision 38): the walk's state is left in place, so the next
+\ scroll, if it is in that direction from the same viewport, takes the column and the state as they
+\ are (start_column, install_prebuilt: nothing to copy); any other scroll, or a game starting or
+\ ending (reset_screen_scroll), first puts the old state back (pre_cancel). Nothing but the walk
+\ reads or writes the layers' state (the 7 tables of 8, unused_variable and
+\ scenery_layers_y_positions: game.6502's scroll routines, and initialise_scenery_layer_addresses at
+\ a game's start), and the walk's only inputs are that state, the edges' low bytes (set here as the
+\ scroll will set them) and the scenery data. column_buffer is free once its column is pushed: a
+\ push with no scroll since the last one (the original's, after a hostile collision) takes the
+\ last column from its history slot, which holds the same bytes (history_push). The walk never
+\ writes above row 192 (a cloud 170 rows up, 23 high: the scenery data, 2026-10-17), inside the
+\ 200-byte buffer.
 \
 \ Zero page, measured (2026-10-17, 3 x 20,000 frames): the walk writes the 16 bytes in pre_zp_list
 \ and &F4; the logic reads none of them after a walk before writing it, so the scroll need not set
@@ -24,25 +28,22 @@ PRE_LAYERS = scenery_layer_sprite_banks   \ the layers' state: 7 tables of 8 and
 PRE_LAYERS_N = scenery_layer_addresses_low + 8 - scenery_layer_sprite_banks
 ASSERT PRE_LAYERS_N = 57
 PRE_HIGH = scenery_layer_sprite_addresses_high - scenery_layer_sprite_banks   \ 0: a layer is idle
-PRE_LOW = scenery_layer_sprite_addresses_low - scenery_layer_sprite_banks
-ASSERT PRE_LOW = PRE_HIGH + 8
 PRE_ZP_N = 16
-PRE_T2_MIN = &D6                    \ one field to go: start only if User VIA T2's high byte is at
-                                    \ least this (about 9,000 us of the field left; a prebuild
-                                    \ takes about 2,500)
+PRE_T2_MIN = &C8                    \ one field to go: start only if User VIA T2's high byte is at
+                                    \ least this (about 5,600 us of the field left). Layer 4,
+                                    \ measured on ca825e3 (seed 1, 332 prebuilds, interrupts in): a
+                                    \ prebuild takes 9.0k cycles (4.5 ms) at the median, 11.1k at
+                                    \ p90, 14.4k at most; was &D6 (9,200 us), which left 60 of 400
+                                    \ scrolls unbuilt for want of time
 
 .pre_zp_list                        \ the zero page the walk writes (measured)
     EQUB &A7, &B4, &B5, &B7, &B8, &B9, &C8, &C9, &CB, &CC, &CD, &CE, &CF, &D0, &F8, &F9
-.pre_old_layers SKIP PRE_LAYERS_N
-.pre_new_layers SKIP PRE_LAYERS_N
+.pre_old_layers SKIP PRE_LAYERS_N   \ the layers' state before the walk (pre_undo)
 .pre_old_y      SKIP 8
-.pre_new_y      SKIP 8
 .pre_old_zp     SKIP PRE_ZP_N
-.pre_old_ops    SKIP 4              \ the walk's two flip opcodes, plot_scenery_mask_opcode and its
-.pre_new_ops    SKIP 4              \ operand
+.pre_old_ops    SKIP 2              \ the walk's two flip opcodes
 .pre_old_view   SKIP 2              \ viewport_left_low, viewport_right_low
 .pre_first      SKIP 1
-.pre_more       SKIP 1              \ non-zero: more of the state changed than the sprite addresses
 .pre_hist       SKIP 1              \ item 3: 1 + the history slot holding rows 24-199 of the column,
                                     \ 0 none (history_push)
 
@@ -91,10 +92,6 @@ PRE_T2_MIN = &D6                    \ one field to go: start only if User VIA T2
     STA pre_old_ops
     LDA use_flipped_or_unflipped_scenery_sprite_opcode_two
     STA pre_old_ops + 1
-    LDA plot_scenery_mask_opcode
-    STA pre_old_ops + 2
-    LDA plot_scenery_mask_opcode + 1
-    STA pre_old_ops + 3
     LDA viewport_left_low           \ the edges as the scroll will move them: the walk reads only
     STA pre_old_view                \ their low bytes (&00B2,Y)
     CLC
@@ -109,37 +106,9 @@ PRE_T2_MIN = &D6                    \ one field to go: start only if User VIA T2
     LDX last_dir
     JSR prebuild_layers             \ main RAM: the walk; bank 4 again after, pre_bank what it left
 
-    LDX #PRE_LAYERS_N - 1           \ keep what the walk left, put the state back, and note
-    LDA #0                          \ whether more changed than the sprite addresses
-    STA pre_more
-.keep_layers
-    LDA PRE_LAYERS,X
-    STA pre_new_layers,X
-    CPX #PRE_HIGH
-    BCC compare
-    CPX #PRE_LOW + 8
-    BCC restore                     \ the sprite addresses: the scroll always takes them
-.compare
-    CMP pre_old_layers,X
-    BEQ restore
-    INC pre_more                    \ (counted: the new value may be 0)
-.restore
-    LDA pre_old_layers,X
-    STA PRE_LAYERS,X
-    DEX
-    BPL keep_layers
-    LDX #7
-.keep_y
-    LDA scenery_layers_y_positions,X
-    STA pre_new_y,X
-    CMP pre_old_y,X
-    BEQ same_y
-    INC pre_more
-.same_y
-    LDA pre_old_y,X
-    STA scenery_layers_y_positions,X
-    DEX
-    BPL keep_y
+    \ Decision 38: the walk's state stays where it is (pre_old_* holds it as it was); the zero page
+    \ and the flip opcodes go back as they were (this direction's anyway: the last scroll's walk
+    \ set them).
     LDX #PRE_ZP_N - 1
 .keep_zp
     LDY pre_zp_list,X
@@ -147,22 +116,10 @@ PRE_T2_MIN = &D6                    \ one field to go: start only if User VIA T2
     STA &0000,Y
     DEX
     BPL keep_zp
-    LDA use_flipped_or_unflipped_scenery_sprite_opcode_one
-    STA pre_new_ops
-    LDA use_flipped_or_unflipped_scenery_sprite_opcode_two
-    STA pre_new_ops + 1
-    LDA plot_scenery_mask_opcode
-    STA pre_new_ops + 2
-    LDA plot_scenery_mask_opcode + 1
-    STA pre_new_ops + 3
     LDA pre_old_ops
     STA use_flipped_or_unflipped_scenery_sprite_opcode_one
     LDA pre_old_ops + 1
     STA use_flipped_or_unflipped_scenery_sprite_opcode_two
-    LDA pre_old_ops + 2
-    STA plot_scenery_mask_opcode
-    LDA pre_old_ops + 3
-    STA plot_scenery_mask_opcode + 1
     LDA pre_old_view
     STA viewport_left_low
     LDA pre_old_view + 1
@@ -188,7 +145,7 @@ PRE_T2_MIN = &D6                    \ one field to go: start only if User VIA T2
 .check_started
     CPX pre_first
     BEQ usable                      \ (X = &FF ends it too: pre_first is &FF if none)
-    LDA pre_new_layers + PRE_HIGH,X
+    LDA PRE_LAYERS + PRE_HIGH,X     \ the walk's, in place
     BEQ check_next                  \ still idle
     CPX #4                          \ started: C set on the right edge's layers
     LDA last_dir                    \ 1 right, &FF left
@@ -204,12 +161,13 @@ PRE_T2_MIN = &D6                    \ one field to go: start only if User VIA T2
     BPL check_started
     BMI usable                      \ always
 .unusable
+    JSR pre_undo                    \ the state as it was
     LDA #&80                        \ tried: nothing to use until the next scroll
     STA pre_valid
     RTS
 .usable
     LDA last_dir
-    STA pre_valid                   \ built for this direction
+    STA pre_valid                   \ built for this direction, its state in place
     \ Item 3: rows 24-199 of the column (the ground's 24 rows are the scroll's) straight into the
     \ history slot the push will fill, if neither screen still needs what it holds: a screen at
     \ most one push behind needs only the newest slot (render's pending columns).
@@ -274,38 +232,23 @@ PRE_T2_MIN = &D6                    \ one field to go: start only if User VIA T2
     RTS
 }
 
-\ put_prebuilt_state: install_prebuilt, in place of the walk: the state the prebuild's walk left
-\ (the zero page it wrote is not read before it is written again: not set). A = the bank it left
-\ paged.
-.put_prebuilt_state
+\ pre_undo: the layers' state as it was before the prebuild's walk - from the prebuild, when its
+\ column cannot be used, and from pre_cancel (src/scroll_hazel.6502), when the next scroll is not
+\ the one it was built for or a game starts or ends with one built. (The zero page and the opcodes
+\ went back after the walk.) X = &FF, N set.
+.pre_undo
 {
-    FOR n = 0..15
-        LDA pre_new_layers + PRE_HIGH + n
-        STA PRE_LAYERS + PRE_HIGH + n
-    NEXT
-    LDA pre_more
-    BEQ ops
     LDX #PRE_LAYERS_N - 1
 .layers_loop
-    LDA pre_new_layers,X
+    LDA pre_old_layers,X
     STA PRE_LAYERS,X
     DEX
     BPL layers_loop
     LDX #7
 .y_loop
-    LDA pre_new_y,X
+    LDA pre_old_y,X
     STA scenery_layers_y_positions,X
     DEX
     BPL y_loop
-.ops
-    LDA pre_new_ops
-    STA use_flipped_or_unflipped_scenery_sprite_opcode_one
-    LDA pre_new_ops + 1
-    STA use_flipped_or_unflipped_scenery_sprite_opcode_two
-    LDA pre_new_ops + 2
-    STA plot_scenery_mask_opcode
-    LDA pre_new_ops + 3
-    STA plot_scenery_mask_opcode + 1
-    LDA pre_bank
     RTS
 }

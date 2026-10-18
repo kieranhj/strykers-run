@@ -1,0 +1,250 @@
+\ scroll_hazel.6502 - step 2 layer 4: the scroll column's code that lives in HAZEL (decisions 38,
+\ 39), after the compiled kinds (hazel_b, carried in MGAME after &4000 and copied in by
+\ unpack_for_play with them). HAZEL is paged in through play (ACCCON's Y bit), whatever ROMSEL
+\ holds, so this runs from the scroll with any bank paged; main RAM has no room for it.
+
+\ pre_cancel: decision 38. A column built ahead in the wait (src/prebuild.6502) left the walk's
+\ state in place for the scroll it was built for; for any other scroll (start_column), or when a
+\ game starts or ends (reset_screen_scroll), the state goes back as it was. pre_valid 1 or &FF:
+\ built, its state in place; 0 nothing built, &80 tried and already undone. ROMSEL and its MOS copy
+\ are left as they came. A, X changed; Y kept.
+.pre_cancel
+{
+    LDA pre_valid
+    BEQ done
+    CMP #&80
+    BEQ done
+    LDA os_ram_copy_of_currently_selected_rom
+    PHA
+    LDA #&04                        \ pre_undo is bank 4's, below &9000 (no ANDY)
+    STA os_ram_copy_of_currently_selected_rom
+    STA romsel
+    JSR pre_undo
+    PLA
+    STA os_ram_copy_of_currently_selected_rom
+    STA romsel
+.done
+    RTS
+}
+
+\ edge_right: calculate_screen_addresses_for_movers_on_edge's right edge (layer 4, decision 38's
+\ commit). A mover is on the right edge only if its x is the edge's, so its x low byte is tested
+\ first, unrolled: a mover that fails it is passed over, as the routine's own test would (its
+\ only effects, &D0 and mover_width, are written again by the last mover's call, which is taken
+\ in full as before). Movers that pass go through calculate_screen_addresses_for_mover_on_edge in
+\ the same order as before (Y kept by it). Leaves Y = &21 and what that last call leaves.
+.edge_right
+{
+    LDA edge_x_low
+    FOR n = 0..&20
+        CMP movers_x_low + n
+        BNE * + 7
+        LDY #n
+        JSR hit
+    NEXT
+    LDY #&21
+    JMP calculate_screen_addresses_for_mover_on_edge
+.hit
+    JSR calculate_screen_addresses_for_mover_on_edge
+    LDA edge_x_low
+    RTS
+}
+
+\ ground_square: multiply_A_by_X_2f1e for the ground's A = X = 0-3, leaving everything it leaves:
+\ result_low X * X, result_high, multiplicand and multiplier_low 0, multiplier_high X; A = Y = 0;
+\ Z set, N and C clear; V clear if X > 0 (its last ADC), else as it came; X kept.
+.ground_square
+{
+    STX multiplier_high
+    LDA squares,X
+    STA result_low
+    CPX #1
+    BCC zero
+    CLV
+.zero
+    LDA #0
+    STA result_high
+    STA multiplicand
+    STA multiplier_low
+    TAY
+    CLC
+    RTS
+.squares
+    EQUB 0, 1, 4, 9
+}
+
+\ unpack_scenery_column: a column of layer Y's scenery sprite into column_buffer, from its y up
+\ (add_column_of_scenery_to_column_buffer jumps here, the layer's bank paged). The sprite data is
+\ the original's, unchanged: per column a byte for the walk, then runs - 10iiiiii one byte of
+\ table index i, 01iiiiii two, 11iiiiii three, 00nnnnnn and a byte xxiiiiii n - then 0. Each byte a
+\ run covers becomes (byte AND mask) EOR pixel from the layer's mask and pixel tables (for its
+\ flip; the background palette in): index 0 changes nothing (mask &FF, pixel 0) and is passed
+\ over; a mask of 0 is a fill. As the original's unpacker (step 2 layer 3 had made it skip and
+\ fill), but decided once a run on the run's own bits, with the buffer offset kept in X and runs of
+\ 1-3 bytes unrolled: about half the cycles a run. Leaves what it left: Y the offset of the
+\ column's 0 for move_to_next_column (AX the next column, Y = edge_and_layer), scenery_sprite_address
+\ the column. Its scratch (scenery_mask &A7, scenery_data_offset &D0, end_of_run_offset &F8, pixel
+\ &F9) is the walk's (src/prebuild.6502 pre_zp_list): nothing reads it after.
+.unpack_scenery_column
+{
+    LDA scenery_layer_sprite_addresses_low,Y
+    STA scenery_sprite_address_low
+    LDA scenery_layer_sprite_addresses_high,Y
+    STA scenery_sprite_address_high
+    LDX scenery_layers_y,Y
+    LDY #0
+.next
+    INY
+    LDA (scenery_sprite_address),Y
+    BEQ done
+    ASL A                           \ C = bit 7, N = bit 6
+    BCC short_or_long
+    BMI three
+    LSR A                           \ 10iiiiii: one byte, A = i
+    BEQ skip1
+    STY scenery_data_offset
+    TAY
+    LDA (mask_table_address),Y
+    BNE merge1
+    LDA (pixel_table_address),Y
+    STA column_buffer,X
+    INX
+    LDY scenery_data_offset
+    BRA next                        \ 65C02 opcode
+.skip1
+    INX
+    BRA next
+.merge1
+    STA scenery_mask
+    LDA column_buffer,X
+    AND scenery_mask
+    EOR (pixel_table_address),Y
+    STA column_buffer,X
+    INX
+    LDY scenery_data_offset
+    BRA next
+.done
+    JMP move_to_next_column
+
+.three                              \ 11iiiiii: three bytes
+    LSR A
+    AND #&3F
+    BEQ skip3
+    STY scenery_data_offset
+    TAY
+    LDA (mask_table_address),Y
+    BNE merge3
+    LDA (pixel_table_address),Y
+    STA column_buffer,X             \ (X stepped between: a run past offset 255 wraps, as before)
+    INX
+    STA column_buffer,X
+    INX
+    STA column_buffer,X
+    INX
+    LDY scenery_data_offset
+    BRA next
+.skip3
+    INX
+    INX
+    INX
+    BRA next
+.merge3
+    STA scenery_mask
+    LDA (pixel_table_address),Y
+    STA pixel
+    LDA column_buffer,X
+    AND scenery_mask
+    EOR pixel
+    STA column_buffer,X
+    INX
+    LDA column_buffer,X
+    AND scenery_mask
+    EOR pixel
+    STA column_buffer,X
+    INX
+    LDA column_buffer,X
+    AND scenery_mask
+    EOR pixel
+    STA column_buffer,X
+    INX
+    LDY scenery_data_offset
+    JMP next
+
+.short_or_long
+    BPL long
+    LSR A                           \ 01iiiiii: two bytes
+    AND #&3F
+    BEQ skip2
+    STY scenery_data_offset
+    TAY
+    LDA (mask_table_address),Y
+    BNE merge2
+    LDA (pixel_table_address),Y
+    STA column_buffer,X
+    INX
+    STA column_buffer,X
+    INX
+    LDY scenery_data_offset
+    JMP next
+.skip2
+    INX
+    INX
+    JMP next
+.merge2
+    STA scenery_mask
+    LDA (pixel_table_address),Y
+    STA pixel
+    LDA column_buffer,X
+    AND scenery_mask
+    EOR pixel
+    STA column_buffer,X
+    INX
+    LDA column_buffer,X
+    AND scenery_mask
+    EOR pixel
+    STA column_buffer,X
+    INX
+    LDY scenery_data_offset
+    JMP next
+
+.long                               \ 00nnnnnn, then xxiiiiii: n bytes
+    LSR A
+    STA end_of_run_offset           \ n, then the offset the run ends at
+    TXA
+    CLC
+    ADC end_of_run_offset
+    STA end_of_run_offset
+    INY
+    LDA (scenery_sprite_address),Y
+    AND #&3F
+    BEQ skipn
+    STY scenery_data_offset
+    TAY
+    LDA (mask_table_address),Y
+    BNE mergen
+    LDA (pixel_table_address),Y
+.filln
+    STA column_buffer,X
+    INX
+    CPX end_of_run_offset
+    BNE filln
+    LDY scenery_data_offset
+    JMP next
+.skipn
+    LDX end_of_run_offset
+    JMP next
+.mergen
+    STA scenery_mask
+    LDA (pixel_table_address),Y
+    STA pixel
+.mergen_loop
+    LDA column_buffer,X
+    AND scenery_mask
+    EOR pixel
+    STA column_buffer,X
+    INX
+    CPX end_of_run_offset
+    BNE mergen_loop
+    LDY scenery_data_offset
+    JMP next
+}
