@@ -1907,7 +1907,10 @@ ENDIF
     LDX viewport_right_low
     LDY viewport_right_high
     LDA #&01                        \ Non-zero to indicate right edge
-    BNE set_edge_x                  \ Always branches
+    STX edge_x_low                  \ Step 2 (grind): the right edge's stores in line, no branch
+    STY edge_x_high
+    STA &CF
+    RTS
 .use_viewport_left_as_edge
     LDX viewport_left_low
     LDY viewport_left_high
@@ -2612,13 +2615,13 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     LDY mover_to_update
 .get_mover_Y_sprite
     LDA movers_frame_and_flip,Y
-    PHA
     AND #&3F
     CLC
     ADC mover_types_first_sprite_animation_offsets,X
-    TAY
-    LDX animation_table,Y
-    PLA
+    TAX
+    LDA animation_table,X
+    TAX
+    LDA movers_frame_and_flip,Y     \ Grind: reloaded (Y kept) instead of PHA/PLA; N and Z from it as from the PLA
     RTS                             \ Leave with X = sprite, A = mover frame and flip
 
 .change_pixel_tables    \ # Called with A = &14 (KC) or A = &55 (Kf)
@@ -4530,11 +4533,11 @@ ENDIF
     INC field_count
     \ Step 2 (layer 2): at the field the pass lock chose, show the screen the renderer finished:
     \ its CRTC start and ACCCON's D bit, both in vertical blanking, for the next frame.
-    BIT flip_pending
-    BPL no_flip
     LDA field_count
     CMP flip_target
     BNE no_flip
+    BIT flip_pending
+    BPL no_flip
     LDA #&0C                        \ R12: Displayed screen start address register (high)
     STA crtc_reg
     LDA flip_crtc_hi
