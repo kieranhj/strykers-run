@@ -41,17 +41,54 @@ SECTION ren_vars_z, org = REN_BASE + &822, cmos = TRUE
 .arena_top_lo   SKIP 2           \ per screen: the end of its arena's used part
 .arena_top_hi   SKIP 2
 .act            SKIP MOVER_SLOTS
-.list_y         SKIP 1
-.rl_index       SKIP 1
-.wa_t           SKIP 1
-.ds_raise       SKIP 1
-.ds_j           SKIP 1
-.ds_fr          SKIP 1
-.ra_rows        SKIP 1
+\ the kind cache (layer 4, decision 36: src/kindcache.6502): per slot its key (sprite, line, pixel
+\ table), the save blocks drawn from it, when it was last drawn, and its bytes by character row
+.kc_sprite      SKIP KC_SLOTS       \ &FF: empty
+.kc_line        SKIP KC_SLOTS
+.kc_plo         SKIP KC_SLOTS
+.kc_phi         SKIP KC_SLOTS
+.kc_ref         SKIP KC_SLOTS
+.kc_age         SKIP KC_SLOTS
+.kc_gcnt        SKIP KC_SLOTS * KC_GROUPS
+.kc_clock       SKIP 1              \ renders, for kc_age
+.kc_want        SKIP 1              \ the kind asked for: its sprite (&FF none), line, pixel and mask
+.kc_want_line   SKIP 1              \ tables, flip
+.kc_want_plo    SKIP 1
+.kc_want_phi    SKIP 1
+.kc_want_mlo    SKIP 1
+.kc_want_mhi    SKIP 1
+.kc_want_flip   SKIP 1
+.kc_raise       SKIP 1              \ the part's rows raised (ren_draw_sprite's Y)
+.kc_cur         SKIP 1
+.kc_pl          SKIP KC_GROUPS      \ the character rows' left cells, for a draw or a restore
+.kc_ph          SKIP KC_GROUPS
+.kc_sv          SKIP 2
+.kc_off         SKIP 2              \ a row's place in its slot's arrays
+.kc_cnt         SKIP 1
+.kc_q           SKIP 1
+.kc_gi          SKIP 1
+\ what a build keeps from one wait to the next (src/kindcache_build.6502)
+.kb_active      SKIP 1              \ non-zero: a build is under way (render_reset clears it)
+.kb_sprite      SKIP 1              \ its kind: sprite, line, pixel and mask tables, flip (as kc_want)
+.kb_line        SKIP 1
+.kb_plo         SKIP 1
+.kb_phi         SKIP 1
+.kb_mlo         SKIP 1
+.kb_mhi         SKIP 1
+.kb_flip        SKIP 1
+.kb_col         SKIP 2              \ the next column to fill
+.kg_c           SKIP 1              \ columns left
+.kg_j8          SKIP 1              \ 8 * the next column's j
+.kg_slot        SKIP 1
+.kg_best        SKIP 1
+.kg_n_lo        SKIP 1              \ the part's bytes
+.kg_n_hi        SKIP 1
+.kg_tc          SKIP KC_GROUPS      \ its bytes by character row
+.kg_e           SKIP KC_GROUPS      \ each row's bytes written so far
 .cp_cursor_lo   SKIP 1
 .cp_cursor_hi   SKIP 1
-.cp_best        SKIP 1
-.cp_best_slot   SKIP 1
+.cp_y           SKIP 1
+.cp_n           SKIP 1
 .ren_vars_z_end
 ENDSECTION
 ASSERT ren_vars_z_end - ren_vars_z_start <= &DE, "ren_vars_z overruns its hole"
@@ -72,6 +109,10 @@ SECTION ren_vars_d, org = REN_BASE + &A80, cmos = TRUE
 .list_x2_lo     SKIP MOVER_SLOTS + 1
 .list_x2_hi     SKIP MOVER_SLOTS + 1
 .list_y1        SKIP MOVER_SLOTS + 1
+.kg_byl         SKIP KC_GROUPS      \ kc_build: where each character row's arrays start (offsets,
+.kg_byh         SKIP KC_GROUPS      \ masks, pixels)
+.kg_bml         SKIP KC_GROUPS
+.kg_bmh         SKIP KC_GROUPS
 .ren_vars_d_end
 ENDSECTION
 ASSERT ren_vars_d_end - ren_vars_d_start <= &80, "ren_vars_d overruns its hole"
@@ -80,6 +121,8 @@ ASSERT HI(ren_vars_d_start) = HI(ren_vars_d_end - 1)
 SECTION ren_vars_h0, org = REN_BASE + &4C8, cmos = TRUE
 .ren_vars_h0_start
 .list_y2        SKIP MOVER_SLOTS + 1
+.kg_bpl         SKIP KC_GROUPS
+.kg_bph         SKIP KC_GROUPS
 .ren_vars_h0_end
 ENDSECTION
 ASSERT ren_vars_h0_end - ren_vars_h0_start <= &38, "ren_vars_h0 overruns its hole"
@@ -87,13 +130,13 @@ ASSERT HI(ren_vars_h0_start) = HI(ren_vars_h0_end - 1)
 
 SECTION ren_vars_h1, org = REN_BASE + &5C8, cmos = TRUE
 .ren_vars_h1_start
-.cp_moved       SKIP MOVER_SLOTS
-.cp_best_lo     SKIP 1
-.cp_best_hi     SKIP 1
+.cp_list        SKIP MOVER_SLOTS    \ compact: the live blocks (slot + boff), by start address
+.cp_start_lo    SKIP 1
+.cp_start_hi    SKIP 1
 .cp_len_lo      SKIP 1
 .cp_len_hi      SKIP 1
 .cp_next_lo     SKIP 1
-.cp_next_hi     SKIP 1
+.cp_stop        SKIP 1
 .ren_vars_h1_end
 ENDSECTION
 ASSERT ren_vars_h1_end - ren_vars_h1_start <= &38, "ren_vars_h1 overruns its hole"

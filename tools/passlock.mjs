@@ -18,6 +18,10 @@
 // Prints the first pass whose state differs (and the bytes), or {"passes":N,"identical":true},
 // plus with --screen a count of differing screen bytes per pass (summary: passes with none).
 // Use DEBUG_LIVES builds, so the game never ends.
+// PASSLOCK_POKE="BANK:ADDR=B,B,...;..." writes bytes into the TEST machine at its first pass (ADDR a
+// symbol, with +N, or hex; BANK a sideways bank or "-" for as paged), to force a path in a test:
+// tools/kcguard.mjs. PASSLOCK_COUNT=LABEL[,LABEL] counts each label's executions in TEST (bank 4's
+// above &8000) and reports them as "counted".
 import { readFileSync } from "node:fs";
 import { loadMachineSession } from "./jsbeeb_src.mjs";
 import { KEY, makeScript, applyEvents, bootMaster, gameKey, moverTables } from "./playscript.mjs";
@@ -52,11 +56,18 @@ const ZP = {
     crtc_start: [0xb0, 0xb1], viewport_left: [0xb2, 0xba], viewport_right: [0xb3, 0xbb], movers_to_update_base: [0xc0],
 };
 
-async function start(disc) {
+async function start(disc, test = false) {
     const syms = loadSyms(disc);
     const s = await bootMaster(MachineSession, disc);
     const cpu = s._machine.processor;
-    const m = { s, cpu, syms, passes: 0, target: 0, lastStop: -1 };
+    const m = { s, cpu, syms, passes: 0, target: 0, lastStop: -1, counted: {} };
+    const addrOf = (t) => { const [n, k] = t.split("+"); const a = syms[n] ?? parseInt(n, 16); if (!Number.isFinite(a)) throw new Error(`no symbol ${n}`); return a + (+k || 0); };
+    const pokes = test && process.env.PASSLOCK_POKE ? process.env.PASSLOCK_POKE.split(";").filter(Boolean).map((p) => {
+        const [bank, rest] = p.split(":"), [a, b] = rest.split("=");
+        return { bank: bank === "-" ? undefined : +bank, addr: addrOf(a), bytes: b.split(",").map((v) => parseInt(v, 16)) }; }) : [];
+    if (test && process.env.PASSLOCK_COUNT) for (const l of process.env.PASSLOCK_COUNT.split(",")) {
+        const a = addrOf(l); m.counted[l] = 0;
+        cpu.debugInstruction.add((pc) => { if (pc === a && (a < 0x8000 || a >= 0xc000 || (cpu.romsel & 15) === 4)) m.counted[l]++; return false; }); }
     cpu.debugInstruction.add((pc) => {
         if (pc !== syms.main_game_loop) return false;
         const c = s.elapsedCycles;
@@ -65,6 +76,7 @@ async function start(disc) {
         // the fuel table's entries hold what !BOOT left (its stamp, which names the debug flags)
         // until a helicopter is added: the same in both machines from the first pass
         if (m.passes === 1) s.writeMemory(0x0960, new Array(0x22).fill(0));
+        if (m.passes === 1) for (const p of pokes) s.writeMemory(p.addr, p.bytes, { bank: p.bank });
         if (m.passes >= m.target) { m.lastStop = c; return true; }
         return false;
     });
@@ -123,7 +135,7 @@ function passKeys(n) {
     return keysAt;
 }
 
-const A = await start(discA), B = await start(discB);
+const A = await start(discA), B = await start(discB, true);
 const keysAt = passKeys(PASSES + 2);
 let held = [];
 const screenDiffs = [];
@@ -225,4 +237,5 @@ if (SCREEN) {
     out.passesWithHiddenBytesDiffering = hiddenDiffs;
     out.screenDiffPasses = screenDiffs.map((d, i) => d ? `${i + 1}:${d}` : null).filter(Boolean).slice(0, 16);
 }
+if (Object.keys(B.counted).length) out.counted = B.counted;
 console.log(JSON.stringify(out));

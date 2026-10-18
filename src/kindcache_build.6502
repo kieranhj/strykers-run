@@ -1,0 +1,468 @@
+\ kindcache_build.6502 - step 2 layer 4 (decision 36): the kind cache's builder (src/kindcache.6502).
+\ In main RAM, in the room decision 40 made below &3400 (bank 4 and HAZEL have none to spare). It
+\ runs only from render's wait, with the CPU on main RAM, and reads the sprites with ROMSEL &84
+\ (ANDY and bank 4), as bank 4's code above &9000 survives.
+\
+\ A build is spread over the waits: it starts (counts the part's bytes by character row, takes a
+\ slot) in one, then fills a column at a time while each wait has time, as many waits as it takes:
+\ in a run of heavy frames the waits are short. What it keeps between waits is in the renderer's
+\ workspace (src/render_bss.6502, kb_* and kg_*); the request it builds is copied (kb_*), so a new
+\ request does not disturb it.
+kg_line = kc_q                      \ the line: kc_q is the draw's, not live in the wait
+
+\ ---- kc_build: in the wait for the flip (render, after prebuild), while there is time: the kind
+\ asked for into a free slot (no live save block uses it; the least recently drawn), a column at a
+\ time. Pages ANDY in for the sprite data (ROMSEL &84) and back to &04 after. Uses only the
+\ renderer's own zero page. --------------------------------------------------------------------
+.kc_build
+{
+    JSR kg_time
+    BCC out                         \ no time
+    LDA kb_active
+    BNE resume
+    LDA kc_want
+    BPL start                       \ (a kind is asked for only when no slot holds it: kc_part)
+.out
+    RTS
+.start
+    LDX #6                          \ the request, kept for the build
+.copy
+    LDA kc_want,X
+    STA kb_sprite,X
+    DEX
+    BPL copy
+    ASSERT kc_want_flip - kc_want = 6 AND kb_flip - kb_sprite = 6
+    JSR kg_paged
+    JSR kg_begin
+    BCS stop                        \ no slot (ask again later), or not cachable (dropped)
+    INC kb_active
+.resume
+    JSR kg_paged
+.each_column
+    JSR kg_both
+    JSR kg_next_column
+    BEQ finished
+    JSR kg_time
+    BCS each_column
+    LDA kg_col                      \ out of time: on in the next wait
+    STA kb_col
+    LDA kg_col + 1
+    STA kb_col + 1
+    BRA stop                        \ 65C02 opcode
+.finished
+    LDX kg_slot                     \ the key last: it is usable from now
+    LDA kb_line
+    STA kc_line,X
+    LDA kb_plo
+    STA kc_plo,X
+    LDA kb_phi
+    STA kc_phi,X                    \ (kc_age: set as it is drawn)
+    LDA kb_sprite
+    STA kc_sprite,X
+    STZ kb_active                   \ 65C02 opcode
+    CMP kc_want                     \ asked for again since: no longer
+    BNE stop
+    LDA #&FF
+    STA kc_want
+.stop
+    LDA #&04
+    STA os_ram_copy_of_currently_selected_rom
+    STA romsel
+    RTS
+}
+
+\ kg_time: carry set if the wait has time for a column: the flip still to come, 2 fields off, or
+\ 1 and User VIA T2 (from &FFFF at each vsync) at least KC_T2_MIN
+.kg_time
+{
+    CLC
+    BIT flip_pending
+    BPL out                         \ the flip has been: no wait
+    LDA flip_target                 \ fields to the flip: 2, or 1 and the rest of this one
+    SEC
+    SBC field_count
+    CMP #2
+    BCS out
+    LDA usrvia_t2ch
+    CMP #KC_T2_MIN
+.out
+    RTS
+}
+
+\ kg_paged: ANDY over bank 4's first 4K (the sprites); kg_col = kb_col
+.kg_paged
+    LDA #&84
+    STA os_ram_copy_of_currently_selected_rom
+    STA romsel
+    LDA kb_col
+    STA kg_col
+    LDA kb_col + 1
+    STA kg_col + 1
+    RTS
+
+\ kg_begin: count the part's bytes by character row, take a slot, set its rows' counts and arrays,
+\ and start at its first column (kb_col). Carry set if no slot is free (the request stays) or the
+\ part reaches past KC_GROUPS rows (it is dropped)
+.kg_begin
+{
+    LDX #KC_GROUPS - 1
+.clear
+    STZ kg_tc,X                     \ 65C02 opcode
+    STZ kg_e,X                      \ 65C02 opcode
+    DEX
+    BPL clear
+    STZ kg_n_lo                     \ 65C02 opcode
+    STZ kg_n_hi                     \ 65C02 opcode
+    JSR kg_start
+    BRA count_column                \ 65C02 opcode
+.not_cachable
+    LDA #&FF
+    STA kc_want
+.no_slot
+    SEC
+    RTS
+.count_column
+    LDY #1
+    LDA (kg_col),Y                  \ the count
+    BEQ count_next
+    JSR kg_first                    \ kg_q, kg_k (the first cell's bytes), kg_rem (the rest)
+.count_cell
+    LDX kg_q
+    CPX #KC_GROUPS
+    BCS not_cachable
+    LDA kg_tc,X
+    CLC
+    ADC kg_k
+    STA kg_tc,X
+    LDA kg_n_lo                     \ and in all
+    CLC
+    ADC kg_k
+    STA kg_n_lo
+    BCC counted
+    INC kg_n_hi
+.counted
+    JSR kg_next_cell
+    BCC count_cell
+.count_next
+    JSR kg_next_column
+    BNE count_column
+    LDA #&FF                        \ the slot: free, big enough, the least recently drawn
+    STA kg_slot
+    STZ kg_best                     \ 65C02 opcode: the age (kc_clock - kc_age) to beat
+    LDX #KC_SLOTS - 1
+.choose
+    LDA kc_ref,X
+    BNE choose_next                 \ a live save block uses it
+    CPX #0                          \ slot 0: only if neither screen's arena reaches into it
+    BNE free                        \ (kc_arena_full, src/kindcache.6502)
+    LDY #2
+    INX
+    JSR kc_room                     \ (X = the screen: 1, then 0; DEX keeps C)
+    DEX
+    BCS choose_next
+    JSR kc_room
+    BCS choose_next
+.free
+    LDA kc_cap_lo,X                 \ cap - n: no borrow, it fits
+    SEC
+    SBC kg_n_lo
+    LDA kc_cap_hi,X
+    SBC kg_n_hi
+    BCC choose_next
+    LDA kc_clock
+    SEC
+    SBC kc_age,X
+    CMP kg_best
+    BCC choose_next
+    STA kg_best
+    STX kg_slot
+.choose_next
+    DEX
+    BPL choose
+    LDX kg_slot
+    BMI no_slot
+    LDA #&FF
+    STA kc_sprite,X                 \ empty while it is built
+    LDY kc_g0,X                     \ the rows' counts
+    LDX #0
+.counts
+    LDA kg_tc,X
+    STA kc_gcnt,Y
+    INY
+    INX
+    CPX #KC_GROUPS
+    BNE counts
+    JSR kg_rowbases                 \ where each row's arrays go
+    JSR kg_start                    \ back to the first column (kb_col)
+    CLC
+    RTS
+}
+
+\ kg_column: fill one column's offsets, masks and pixels into its rows' arrays (kg_col)
+.kg_column
+{
+    LDY #1
+    LDA (kg_col),Y
+    BEQ out
+    STA kg_i                        \ the bottom byte's data index: the column + 2 + count - 1,
+    INC kg_i                        \ = Y count + 1
+    JSR kg_first
+.cell
+    JSR kg_bases                    \ the row's three arrays into dy/dm/dp; X = what it has so far
+    LDA kg_j8                       \ Y = 8 * column + the line of this segment's first byte
+    ORA kg_line
+    STA kg_y
+.byte
+    LDY kg_i
+    LDA (kg_col),Y                  \ the pixel/mask index
+    TAY
+.gm
+    LDA &FFFF,Y                     \ self-modified: the mask table
+.dm
+    STA &FFFF,X                     \ self-modified: the row's masks
+.gp
+    LDA &FFFF,Y                     \ self-modified: the pixel table
+.dp
+    STA &FFFF,X                     \ self-modified: the row's pixels
+    LDA kg_y
+.dy
+    STA &FFFF,X                     \ self-modified: the row's offsets
+    DEC kg_y
+    INX
+    DEC kg_i
+    DEC kg_k
+    BNE byte
+    TXA
+    LDX kg_q
+    STA kg_e,X
+    JSR kg_next_cell
+    BCC cell
+.out
+    RTS
+}
+
+
+\ kg_start: kg_col = the wanted sprite's first column, kg_c = its columns, kg_j8 = 8 * the first
+\ column's j (the last, 8 * (n - 1), when flipped)
+.kg_start
+{
+    LDX kb_sprite
+    LDA straight_sprite_lo,X
+    STA kg_col
+    STA kb_col
+    LDA straight_sprite_hi,X
+    STA kg_col + 1
+    STA kb_col + 1
+    LDA sprite_column_count,X
+    STA kg_c
+    LDA #0
+    BIT kb_flip
+    BPL unflipped
+    LDA kg_c
+    DEC A                           \ 65C02 opcode
+    ASL A
+    ASL A
+    ASL A
+.unflipped
+    STA kg_j8
+    RTS
+}
+
+\ kg_next_column: kg_col past this column (2 + count bytes), kg_j8 on a column (back one flipped);
+\ Z set when there are no more
+.kg_next_column
+{
+    LDY #1
+    LDA (kg_col),Y
+    SEC
+    ADC #1                          \ + 2
+    CLC
+    ADC kg_col
+    STA kg_col
+    BCC same_page
+    INC kg_col + 1
+.same_page
+    LDA kg_j8
+    BIT kb_flip
+    BMI back
+    CLC
+    ADC #8
+    BRA step                        \ 65C02 opcode
+.back
+    SEC
+    SBC #8
+.step
+    STA kg_j8
+    DEC kg_c
+    RTS
+}
+
+\ kg_first: the column's first segment. A = its count. The bottom byte (row f) is at line
+\ (L - f) AND 7 of character row (f + 7 - L) DIV 8; kg_k = its bytes in that row (line + 1, or the
+\ count if fewer), kg_rem = the rest; kg_line = the line of the segment's first (lowest) byte
+.kg_first
+{
+    STA kg_rem
+    LDA kb_line                \ L - f
+    SEC
+    SBC (kg_col)                    \ 65C02 opcode
+    AND #7
+    STA kg_line
+    LDA (kg_col)                    \ (f + 7 - L) DIV 8
+    CLC
+    ADC #7
+    SEC
+    SBC kb_line
+    LSR A
+    LSR A
+    LSR A
+    STA kg_q
+    LDA kg_line                     \ the first row's bytes: line + 1, at most the count
+    INC A                           \ 65C02 opcode
+}
+    \ falls through
+.kg_take                            \ A = the bytes the row can hold: kg_k = min(A, kg_rem)
+{
+    CMP kg_rem
+    BCC fewer
+    LDA kg_rem
+.fewer
+    STA kg_k
+    LDA kg_rem
+    SEC
+    SBC kg_k
+    STA kg_rem
+    RTS
+}
+
+\ kg_next_cell: on to the next character row up (its bytes from line 7): carry set if the column
+\ has no more
+.kg_next_cell
+{
+    LDA kg_rem
+    BEQ none
+    INC kg_q
+    LDA #7
+    STA kg_line
+    LDA #8
+    JSR kg_take
+    CLC
+    RTS
+.none
+    SEC
+    RTS
+}
+
+\ kg_bases: character row kg_q's arrays into the fill's operands; X = the bytes it has had so far
+.kg_bases
+{
+    LDX kg_q
+    LDA kg_byl,X
+    STA kg_column.dy + 1
+    LDA kg_byh,X
+    STA kg_column.dy + 2
+    LDA kg_bml,X
+    STA kg_column.dm + 1
+    LDA kg_bmh,X
+    STA kg_column.dm + 2
+    LDA kg_bpl,X
+    STA kg_column.dp + 1
+    LDA kg_bph,X
+    STA kg_column.dp + 2
+    LDA kb_mlo                      \ and the tables it reads (here, not once a build: kg_both
+    STA kg_column.gm + 1            \ runs the fill from main RAM's copy and from shadow's)
+    LDA kb_mhi
+    STA kg_column.gm + 2
+    LDA kb_plo
+    STA kg_column.gp + 1
+    LDA kb_phi
+    STA kg_column.gp + 2
+    LDA kg_e,X
+    TAX
+    RTS
+}
+
+\ kg_both: fill the column (kg_column); slot 0, at the save arena's end, in both copies, main RAM's
+\ and shadow's, the second with ACCCON's X bit set. This code from &3000 on then runs from shadow's
+\ copy of it (render_reset makes it), the same bytes but for the operands kg_bases patches, which it
+\ patches there in that pass. The interrupt's code and variables are below &3000.
+kg_e2 = need + 8                    \ (KC_GROUPS: kg_e, kept for the second pass)
+.kg_both
+{
+    LDA kg_slot
+    BNE once                        \ slot 1, in HAZEL: one copy
+    LDX #KC_GROUPS - 1
+.keep
+    LDA kg_e,X
+    STA kg_e2,X
+    DEX
+    BPL keep
+    JSR kg_column
+    LDX #KC_GROUPS - 1
+.again
+    LDA kg_e2,X
+    STA kg_e,X
+    DEX
+    BPL again
+    SEI
+    LDA acccon
+    ORA #&04
+    STA acccon
+    CLI
+    JSR kg_column
+    SEI
+    LDA acccon
+    AND #&FB
+    STA acccon
+    CLI
+    RTS
+.once
+    JMP kg_column
+}
+
+\ kg_rowbases: where each character row's arrays start in the slot being built (kg_slot): the
+\ slot's offsets, masks and pixels arrays + the rows below's bytes (kg_by/kg_bm/kg_bp)
+.kg_rowbases
+{
+    STZ kc_off                      \ 65C02 opcode
+    STZ kc_off + 1                  \ 65C02 opcode
+    LDY kg_slot
+    LDX #0
+.row
+    LDA kc_ybl,Y                    \ (the tables hold each array less 1: SEC adds it back)
+    SEC
+    ADC kc_off
+    STA kg_byl,X
+    LDA kc_ybh,Y
+    ADC kc_off + 1
+    STA kg_byh,X
+    LDA kc_mbl,Y
+    SEC
+    ADC kc_off
+    STA kg_bml,X
+    LDA kc_mbh,Y
+    ADC kc_off + 1
+    STA kg_bmh,X
+    LDA kc_pbl,Y
+    SEC
+    ADC kc_off
+    STA kg_bpl,X
+    LDA kc_pbh,Y
+    ADC kc_off + 1
+    STA kg_bph,X
+    LDA kg_tc,X
+    CLC
+    ADC kc_off
+    STA kc_off
+    BCC same_page
+    INC kc_off + 1
+.same_page
+    INX
+    CPX #KC_GROUPS
+    BNE row
+    RTS
+}
+
+\ slot 0's offsets (src/kindcache.6502): written in play, in main RAM and shadow's copy alike (kg_both)
+.kc_slot0_y
+    SKIP KC_CAP0

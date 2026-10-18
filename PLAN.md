@@ -13,26 +13,28 @@ excluded) 38,462 on seed 1 and 44,855 holding RIGHT, of the 79,872 two fields gi
 - **b2 and real hardware.** The flip, ACCCON's X bit and HAZEL left paged in (Y) are seen in
   jsbeeb only (`docs/step2-layer2.md` "Open").
 - **When layer 4 is closed.** Proposed: no late frames on both passbench games, and the whole
-  world played through: it now is (below), with 701 late frames of 12,231.
+  world played through: it now is (below), with 701 late frames of 12,231 (406 on
+  `layer4-late-frames`).
 
 ## Layer 4 - a steady 25 Hz (decision 35)
 
-- **The late frames left are heavy renders** (400-500 bytes). Options, with their costing in
-  `docs/step2-layer4-costing.md` "The heaviest frames":
-  - the player standing, jumping and facing left compiled (~1K a part; room at `acd4c4a`: bank 4
-    797 bytes, HAZEL 2.6K, banks 5-7 about 1.4K, and `MGAME` 2,271 bytes to carry it - the
-    build's listing);
-  - compaction kept out of the frame; a delta redraw for movers that stay in place;
-  - the renderer's bookkeeping (`mark_to_draw`, `close_over_overlaps`);
-  - the helicopters as compiled code (~20K: no room).
+- **The late frames left** (branch `layer4-late-frames`, decisions 36-37: the kind cache and the
+  overlap rule by draw order; `docs/step2-layer4-costing.md` "Built: the late frames"): the whole
+  world 641 -> 406 of 12,231, seeds 1/3/5/7 6/2/44/13 -> 3/1/30/5, RIGHT 0, flights 0/2/5/8
+  21/21/36/38 -> 15/15/29/25. They come in bursts, 1-34% over budget, of helicopters' bodies
+  with soldiers and the scroll; what is left to try, by its costing:
+  - a third kind cache slot (600-800 bytes readable while the renderer draws: HAZEL is full);
+  - the generic column path's overhead (~40% of its cost a column; ~1-2k a pass in the bursts);
+  - the logic in the bursts (20-30k a pass: the collision and target searches);
+  - compiled bodies (~3-4K a kind and line: no room).
 - **The grind, round 2** (the beeb-micro-grind skill): the windows offset by 16, the code round 1
   changed, the colder windows, and `write_column`'s history reads, which cross a page on every
   load (about 300 cycles a pass, code only). Before it: the skill's fixes in
   `docs/grind/README.md`'s report (label "no gain" apart from "slower"; mark stale a candidate
   that defines a label a kept one added; tell the optimisers round 1's failure patterns).
-- **Main RAM is the tight region** (20 bytes up to `&3400`): R2/R3 of the rearrangement study (tables
-  into HAZEL and the low pages) give 855, at +165 cycles a pass unless the `movers_*` tables are
-  placed page-aware (`docs/decisions.md` 32-34 for the moves already made).
+- **Room is short everywhere the renderer can read while it draws** (the shipping build,
+  2026-10-18, after decisions 36-40): main RAM 184 bytes (`&3348-&33FF`), bank 4 43, HAZEL 24;
+  elsewhere under ANDY 418, banks 5 / 6 / 7 437 / 530 / 481, `MGAME`'s carrying room 860.
 - **The scroll column's rest** (D's rest and RAM for cycles item 6 done on branch
   `layer4-scroll-scenery`, decisions 38-39, `docs/step2-layer4-scroll.md`: a scroll 3.9k / 3.6k
   -> 2.0k / 1.4k): the ground loop (~520 a scroll, with BUGS #1), the left edge's movers, each

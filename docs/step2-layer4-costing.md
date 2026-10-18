@@ -699,6 +699,108 @@ jumps and turns left (flipped kinds), which are not compiled.
 - **bank 4:** 235 bytes above, 137 under ANDY;
 - **banks 5-7:** as before. The tunes' carrier area is music again after start-up.
 
+## Built: the late frames (decisions 36, 37; branch `layer4-late-frames`)
+
+KC, 2026-10-18: "continue with everything else in layer 4"; the late frames. Measured on jsbeeb
+2.5.0, Master 128, the bench build (`-Shift 256 -ShiftEnd -Define DEBUG_LIVES`); a late frame is
+shown 3 fields or more.
+
+**The games.** Passbench's seeds 1, 3, 5 and 7 (passes 500-2,500) and holding RIGHT (50-650);
+helicopter flights 0, 2, 5 and 8 (`--flight V`, `tools/flightscript.mjs`: helilock's flight as
+keys chosen from the state each pass, passes 50-3,050, ending 300 passes after the explosion);
+and the whole world (`tools/worldrun.mjs`, 12,231 frames).
+
+**Why they are late** (`tools/latefr.py` on fieldcost runs; `tools/latesim.py` for what-ifs):
+- They come in bursts of tens to hundreds of passes in which a pass's work (logic + render) runs
+  1-34% over the 79,872 cycles two fields give; never single spikes. The logic is 20-30k a pass
+  in them (collision searches ~5k), the render 55-100k. Moving work into the wait cannot help:
+  in a burst there is none (pipesim's "logic ahead" gains 0-5 frames).
+- **The helicopters' bodies** (12-column sprites `&15`, `&45`, `&48`, `&14`, `&49`, `&41`: 167-257
+  bytes) are half or more of the bytes drawn in the late frames of every game, at ~54 cycles a byte
+  drawn and ~26 put back. Each flies at one height: `&15` was at line 0 in every draw of flight 8,
+  `&45` at line 5 and `&48` at 7 in seed 5's burst.
+- **The rotors** are 2-4% of it; the player jumping (32 kinds over all lines) ~10% in the flights'
+  run to the helicopter; two scroll columns a pass when jumping (7.8k with the lives digit).
+- **Compaction** was 8-24k a call (a scan of every slot for each block), in 1-4 of each game's
+  late frames.
+- **In the whole world** (columns 3,000-3,999 the worst) two parked helicopters the player runs
+  past were taken off and put back every pass, ~20k each, for overlapping the player.
+
+**Built:**
+1. **Compaction** (`58b323e`) lists the live blocks once, sorted by insertion, and does not copy a
+   block already in place. 48 / 15 cycles a pass; no late frame changed.
+2. **The kind cache** (decision 36, `a9c2e97`, relocated for decisions 38-40 in `60abfe6`): a big
+   body's kind built once (in the waits, a column at a time) and drawn from it at 33 cycles a byte,
+   put back at 19. Two slots: slot 0 (257 bytes a kind) its offsets in main RAM's free block and
+   its masks and pixels at the save arena's end, both in main and shadow alike (the builder fills
+   each column twice, the second with ACCCON's X bit set); slot 1 (231) in HAZEL. 627 / 886 cycles
+   a pass.
+3. **The overlap rule by draw order** (decision 37): a shown mover drawn before (below) a changing
+   one is no longer taken off with it. 400 / 1,629 cycles a pass.
+4. **The arena's room** (after `37bd007`): slot 0 first took the arena's last 771 bytes, leaving 1,971
+   a screen; its live blocks (passbench now reports their most) reached 1,904-1,985 over the whole
+   world, 2,066 before the cache, so a heavier scene could have run into the slot. Its offsets moved
+   to main RAM: the arena keeps 2,228 (2,742 before decision 36). 68 / 12 cycles a pass.
+5. **The arena's guard**, so that no scene, however heavy, can write into slot 0: `put_on` keeps
+   `arena_top + MAX_BLOCK` at or below `kc_arena_lim`, compacting first; if even after compacting
+   there is no room, `kc_arena_full` drops slot 0's kind (no draw uses it again; the blocks drawn
+   from it still put back, from its offsets in main RAM) and stops a build into it, and the arena
+   runs to `&3FFF` as before decision 36. `kc_build` takes slot 0 again only once neither screen's
+   arena reaches past its start. Cost: 7.7 / 4.7 cycles a pass (the limit read from memory, not an
+   immediate, so a test can move it); late frames unchanged (world 404 -> 406, seeds 3 / 1 / 30 / 5,
+   flights 15 / 15 / 29 / 25).
+   - **Forced** (`tools/kcguard.mjs`): slot 0 moved to `&3800` in the arena, the limit with it, so
+     that any scene of more than ~700 bytes of blocks runs past the slot. Against the
+     `DEBUG_FULLREDRAW` oracle, state and shown screen identical on 3,000 passes of seeds 1, 5 and 7,
+     the guard firing 3,831 / 4,484 / 4,184 times (and the cache drawing 790 / 1,137 / 579 times,
+     building 320 / 170 / 229). With the guard made an RTS (`KCGUARD_OFF=1`) the same runs fail:
+     seed 5's screen differs from pass 482 (108 passes), seed 7 stops making passes at 1,650.
+   - **The shadow audit** (`tools/shadowaudit.mjs`, taught to judge by a model of both copies: a
+     read with X set is stale if shadow's byte differs from main's then; the arena and `player_save`
+     per screen, not judged): no stale reads on the shipping build. Of the 652 mirrored addresses
+     written in play and read with X set, 642 are slot 0 and 10 are `kg_column`'s patched operands,
+     all written to both copies by the builder.
+
+| late frames | `ae4924a` (decisions 38-40) | + kind cache | + overlap rule | + the arena's room |
+|---|---|---|---|---|
+| seed 1 / 3 / 5 / 7 | 6 / 2 / 44 / 13 | 2 / 1 / 35 / 4 | 2 / 1 / 36 / 3 | **3 / 1 / 32 / 5** |
+| holding RIGHT | 0 | 0 | 0 | **0** |
+| flights 0 / 2 / 5 / 8 | 21 / 21 / 36 / 38 | 18 / 18 / 33 / 30 | 15 / 15 / 29 / 25 | **15 / 15 / 29 / 25** |
+| the whole world (of 12,231) | 644 | 594 | 414 | **408** |
+| work a pass, seed 1 / RIGHT (pcprof) | 37,874 / 43,667 | 37,247 / 42,781 | 36,847 / 41,153 | **36,779 / 41,141** |
+
+(The seeds move by a few frames either way with nothing but the builder's timing changed: it runs
+in whatever wait there is, so a kind is ready a pass sooner or later.)
+
+(At `d879af0`, before decisions 38-40: seeds 6 / 3 / 47 / 16, RIGHT 0, flights 27 / 27 / 44 / 45,
+the world 701.) The whole world against the integration branch with every frame compared: state and
+newest frame identical on 12,233 of 12,233 passes.
+
+**Tried and set aside** (not kept: it never reached a commit): **a redraw from the second
+part on** for a mover whose frame changes but whose first part does not (a hovering helicopter's
+rotor). Its blocks have to be padded for the rest (`rest_max`, from `tools/compiled.py`), and it
+never fired where it was meant to: the parked helicopters were not changing at all, they were being
+pulled in by the overlap rule, which decision 37 fixed instead. With its padding and checks it cost
+~600 cycles a pass and made every game slightly worse (the world 617 -> 665).
+
+**The room after it** (the shipping build's listing, 2026-10-18): main RAM 184 bytes (`&3348-&33FF`);
+bank 4 43, under ANDY 418; banks 5 / 6 / 7 437 / 530 / 481 (256 less each in the shifted builds);
+HAZEL 24 (`&C2E7-&C2FE`); `MGAME`'s carrying room 860; the save arena 2,228 bytes a screen.
+
+**What is left, and why it is not built:**
+- **Seed 5's burst** (passes 2,190-2,390: a green-white helicopter that turns, a flying scooter and
+  two soldiers, all at once) is ~5% over budget on average with spikes to 140k; the flights' are
+  helicopters with the player's own helicopter (`&14`/`&41`). The rest of the render there is the
+  generic path (soldiers, rotors, clipped bodies) at its loop's floor (37 cycles a byte drawn, 16
+  put back) plus ~40% overhead a column; trimming that overhead was costed at ~1-2k a pass.
+- **The kind cache wants more slots**: seed 5 needs three kinds at once (`&45` both flips and
+  `&48`). With HAZEL now full (decisions 38-40) a third slot means 600-800 more bytes visible while
+  the renderer draws (HAZEL, or the arena again at the cost of more compaction).
+- **The logic** in the bursts (20-30k a pass: `check_for_mover_collision_with_range_of_movers`,
+  `search_for_target`, the plot calls' walks) is not this branch's (game.6502).
+- **Compiled bodies** (21 cycles a byte) would clear most of it (`latesim`: seed 5 45 -> 3) but
+  need ~3-4K a kind and line; no room.
+
 ## Unlocked: the flip at the next vsync, not every 2 fields (modelled)
 
 KC, 2026-10-17: what frame rate would the game run at if a frame were shown at the first vsync after
@@ -752,6 +854,12 @@ unlocked, with the movement scaled, the game would run at a variable 30-37 Hz.
   set-up by column, cell and part, and the 25 Hz late frames with a fast column path or the
   player's running frames compiled.
 - **`tools/compiled.py LAYER2.ssd [src]`:** the compiled kinds' code, table and save area.
+- **`--flight V`** on passbench, pcprof, fieldcost and drawprof (`tools/flightscript.mjs`): helilock's
+  flight V, or with 100 the whole world (worldrun's WorldBot). Passbench lists each late frame's pass.
+- **`tools/latefr.py FC.json`:** each late frame of a fieldcost run: the logic still running at the
+  flip before it, the render by part, and each put_on and take_off by slot, type, bytes and cycles.
+- **`tools/latesim.py FC.json ...`:** the late frames replayed (fieldsim's replay) with parts of the
+  render recosted: the what-ifs above.
 - **`tools/pcprof.mjs`, `tools/pcagg.py`, `tools/pccats.py`, `tools/budgetdata.py`:** the
   per-instruction profile, by label and by job, and the cycle budget page's data.
 - **`tools/unlocksim.py PERPASS.json [...]`:** each measured pass's logic and render replayed with

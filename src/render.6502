@@ -207,6 +207,15 @@ MAX_BLOCK   = &2A0                  \ more than any mover's save block: 636 byte
     STA save_start_hi,X
     DEX
     BPL no_blocks
+    LDX #KC_SLOTS - 1               \ layer 4: no kinds built (src/kindcache.6502), none in use,
+    LDA #&FF                        \ none asked for: the front end may have used HAZEL
+.no_kinds
+    STA kc_sprite,X
+    STZ kc_ref,X                    \ 65C02 opcode
+    DEX
+    BPL no_kinds
+    STA kc_want
+    STZ kb_active                   \ 65C02 opcode: no build under way
     LDX #1
 .each_screen
     LDA #LO(save_arena)             \ each screen's arena empty
@@ -316,6 +325,8 @@ MAX_BLOCK   = &2A0                  \ more than any mover's save block: 636 byte
 .render
 {
     JSR prebuild                    \ RAM for cycles 1: the next scroll column, if there is time
+    INC kc_clock                    \ layer 4: a big part's kind asked for, built if there is time
+    JSR kc_build                    \ (src/kindcache.6502)
     JSR wait_for_flip               \ the hidden screen is the one the last frame went to until
     JSR save_game_zp                \ it is shown (decision 26)
     LDA shown_screen                \ draw into the screen not being shown
@@ -936,9 +947,11 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     RTS
 }
 
-\ close_over_overlaps: a shown mover that overlaps one coming off or going on comes off and
-\ goes back on too, so overlapping movers are always drawn in slot order and taken off in
-\ reverse (a mover's save block holds what was under it, earlier movers included). Over a
+\ close_over_overlaps: a shown mover that overlaps one coming off or going on, drawn before it
+\ (decision 37: below it, in the order movers are drawn), comes off and goes back on too, so
+\ overlapping movers are always drawn in slot order and taken off in reverse (a mover's save block
+\ holds what was under it, earlier movers included; one drawn after it, over it, holds its bytes in
+\ its own save, so it can come off and go back on alone). Over a
 \ short list of the slots that matter: each one shown or going on, with a rectangle covering
 \ where it is shown and where it goes, a column and two rows to spare.
 .close_over_overlaps
@@ -997,6 +1010,13 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     TAY
     LDA need,Y
     BEQ next_b                      \ staying too: no reason
+    TYA                             \ decision 37: only if b is drawn before a (below it). Over a,
+    BEQ next_b                      \ b's save holds a's bytes, so b comes off and on alone. The
+    CMP list_slot,X                 \ player (slot 0) is drawn last, over everything; the movers
+    BCC below                       \ in slot order (C clear: b's slot below a's)
+    LDY list_slot,X
+    BNE next_b                      \ (a the player: b is below it)
+.below
     LDY list_b
     JSR list_overlap                \ X, Y list entries: C set if they overlap
     BCC next_b
@@ -1198,12 +1218,17 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     ORA boff                        \ slot + boff: slot < &40, boff 0 or 64
     STA dm_index
     LDX back                        \ room for its block, or make some: arena_top + MAX_BLOCK
-    LDA arena_top_lo,X              \ below save_arena_end's page, as one 16-bit compare
-    CMP #LO(HI(save_arena_end) * 256 - MAX_BLOCK)
+    LDA arena_top_lo,X              \ below the arena's end (the kind cache's slot 0 after it:
+    CMP kc_arena_lim                \ src/kindcache.6502), as one 16-bit compare
     LDA arena_top_hi,X
-    SBC #HI(HI(save_arena_end) * 256 - MAX_BLOCK)
+    SBC kc_arena_lim + 1
     BCC room                        \ X = back
     JSR compact
+    LDX back
+    LDY #0
+    JSR kc_room                     \ still none: slot 0 gives its room back (kc_arena_full), the
+    BCC room                        \ arena up to save_arena_end, as before decision 36
+    JSR kc_arena_full
     LDX back
 .room
     LDY dm_index
@@ -1422,6 +1447,7 @@ header_hi = * + 1
 {
     TAX
     STX ds_sprite
+    STY kc_raise                    \ (src/kindcache.6502: only a mover's first part, not raised)
     LDA straight_sprite_hi,X
     BNE known
     RTS                             \ an unused table entry
@@ -1449,11 +1475,19 @@ header_hi = * + 1
     STA ds_line
     TRB b_ptr                       \ 65C02 opcode: b_ptr AND &F8
     STX b_ptr + 1
-    LDA dm_slot                     \ step 2 layer 4: the player's part, if it cannot be clipped,
-    ORA ds_clip                     \ may be one of the kinds compiled to code
-    BNE generic
+    LDA ds_clip                     \ step 2 layer 4: a part that cannot be clipped may be one of
+    BNE generic                     \ the player's kinds compiled to code (tools/compiled.py), or
+    LDA dm_slot                     \ a big part's kind built at run time (src/kindcache.6502,
+    BNE cached                      \ decision 36)
     JSR compiled_part
-    BCS generic                     \ not a kind, or a row that would pass &7FFF
+    BCC drawn                       \ (carry set: not a kind, or a row that would pass &7FFF)
+.cached
+    LDA ds_n
+    CMP #KC_COLUMNS
+    BNE generic
+    JSR kc_part
+    BCS generic                     \ not held (now asked for), or a row would pass &7FFF
+.drawn
     RTS
 .generic
     BIT dm_flip
@@ -1976,6 +2010,8 @@ lo_imm = * + 1
     BPL part_byte
     JMP columns
 .compiled                           \ its entry: the kind, then the part's bottom left cell
+    CMP #KC_MARK                    \ (or a cached part's: src/kindcache.6502)
+    BEQ cached
     LDA v_ptr
     CLC
     ADC #11
@@ -2005,6 +2041,9 @@ lo_imm = * + 1
 .hazel_restore
     JSR hazel_restore               \ self-modified: the kind's restore
     JMP columns
+.cached                             \ X = the slot
+    JSR kc_restore
+    JMP columns
 .blocks_done
     LDX back                        \ the block is free; the arena shrinks if it was the last
     LDA save_end_lo,Y
@@ -2026,53 +2065,67 @@ lo_imm = * + 1
 \ compact: slide this screen's live save blocks down to the start of its arena, in address
 \ order, and point arena_top after them. Blocks are only bytes, so they move freely. Each is
 \ moved once (a mover drawn wholly clipped has an empty block, which can share its start
-\ with the next: picking blocks by address alone picked it for ever).
+\ with the next). Layer 4 (late frames): the live blocks are listed once, sorted by start by
+\ insertion (cp_list), not found by a scan of every slot for each block; and a block already
+\ at the cursor (the arena's bottom ones, usually) is not copied onto itself.
 .compact
 {
+    STZ cp_n                        \ 65C02 opcode: the list, empty
+    LDA boff                        \ Y = slot + boff, over this screen's slots
+    TAY
+    CLC
+    ADC #MOVER_SLOTS
+    STA cp_stop
+.gather
+    LDA save_start_hi,Y
+    BEQ gathered                    \ no block
+    STY cp_y
+    LDA save_start_lo,Y             \ its start
+    STA cp_start_lo
+    LDA save_start_hi,Y
+    STA cp_start_hi
+    LDX cp_n                        \ insertion: the entries starting after it move up one
+.shift
+    BEQ place                       \ X = 0: the front
+    LDY cp_list - 1,X
+    LDA cp_start_lo                 \ its start - the entry's: no borrow, it goes after the entry
+    CMP save_start_lo,Y
+    LDA cp_start_hi
+    SBC save_start_hi,Y
+    BCS place
+    TYA
+    STA cp_list,X
+    DEX
+    BRA shift                       \ 65C02 opcode
+.place
+    LDA cp_y
+    STA cp_list,X
+    INC cp_n
+    TAY
+.gathered
+    INY
+    CPY cp_stop
+    BNE gather
     LDA #LO(save_arena)
     STA cp_cursor_lo
     LDA #HI(save_arena)
     STA cp_cursor_hi
-    LDX #MOVER_SLOTS - 1            \ none moved yet
-.not_moved
-    STZ cp_moved,X                  \ 65C02 opcode
-    DEX
-    BPL not_moved
-.next_block
-    LDA #&FF                        \ the lowest live block not yet moved (an empty one, start =
-    STA cp_best                     \ end, is moved once too: it may share its start)
-    STA cp_best_lo
-    STA cp_best_hi
     LDX #0
-.scan
-    LDA cp_moved,X
-    BNE skip
-    TXA
-    CLC
-    ADC boff
-    TAY
-    LDA save_start_hi,Y
-    BEQ skip                        \ none
-    LDA save_start_lo,Y             \ below the best so far?
-    CMP cp_best_lo
-    LDA save_start_hi,Y
-    SBC cp_best_hi
-    BCS skip
-    STY cp_best
-    STX cp_best_slot
-    LDA save_start_lo,Y
-    STA cp_best_lo
-    LDA save_start_hi,Y
-    STA cp_best_hi
-.skip
-    INX
-    CPX #MOVER_SLOTS
-    BNE scan
-    LDY cp_best
-    CPY #&FF
+    STX cp_y                        \ cp_y now: the list's place
+    BRA next_block                  \ 65C02 opcode
+.all_moved
+    LDX back
+    LDA cp_cursor_lo
+    STA arena_top_lo,X
+    LDA cp_cursor_hi
+    STA arena_top_hi,X
+    RTS
+.next_block
+    LDX cp_y
+    CPX cp_n
     BEQ all_moved
-    LDX cp_best_slot
-    INC cp_moved,X
+    INC cp_y
+    LDY cp_list,X
     LDA save_start_lo,Y             \ move [start, end) to the cursor, upwards in address
     STA v_ptr
     LDA save_start_hi,Y
@@ -2099,9 +2152,16 @@ lo_imm = * + 1
     ADC cp_len_hi
     STA save_end_hi,Y
     STA cp_cursor_hi                \ the next block's cursor now: nothing reads cp_cursor_hi again
+    LDA v_ptr                       \ already there: nothing to copy
+    CMP s_ptr
+    BNE copy
+    LDA v_ptr + 1
+    CMP s_ptr + 1
+    BEQ moved
+.copy
     LDY #0                          \ copy forward (the block only moves down), Y and the pointers
-    LDX cp_len_hi                   \ as the byte loop had them: whole pages (rare: after .all_moved,
-    BNE whole_pages                 \ which BEQ all_moved must reach), then the rest
+    LDX cp_len_hi                   \ as the byte loop had them: whole pages (rare: at the end, off
+    BNE whole_pages                 \ the common path), then the rest
 .rest
     LDA cp_len_lo                   \ the rest (Y = 0 up): an odd byte, then pairs
     LSR A
@@ -2126,13 +2186,6 @@ lo_imm = * + 1
     LDA cp_next_lo
     STA cp_cursor_lo
     JMP next_block
-.all_moved
-    LDX back
-    LDA cp_cursor_lo
-    STA arena_top_lo,X
-    LDA cp_cursor_hi
-    STA arena_top_hi,X
-    RTS
 .whole_pages
     LDA (v_ptr),Y
     STA (s_ptr),Y
@@ -2312,6 +2365,8 @@ NEXT
 FOR k = 0..26
     EQUB HI(k * &280)
 NEXT
+
+INCLUDE "kindcache.6502"            \ layer 4 (decision 36): the big parts' kinds, built at run time
 
 \ ---- the renderer's variables: in src/render_bss.6502 (its workspace), not in the file ----
 .render_end

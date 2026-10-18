@@ -5074,6 +5074,7 @@ check_for_player_input_key = * + 1
     JMP (compiled_vec)
 .compiled_vec   EQUW 0
 .compiled_back  EQUB 0
+    INCLUDE "kindcache_build.6502"  \ step 2 layer 4 (decision 36): the kind cache's builder
 
 IF SHIFT = 0
     unused_3400_original = &3400
