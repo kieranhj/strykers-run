@@ -3132,7 +3132,17 @@ move_mover_routine_address_high = * + 2
     BEQ leave_263f
 .skip_vertical_movement
     LDA frame
-    BMI consider_falling            \ Negative if player moving left or right
+    BPL not_moving_sideways_w2a     \ grind: moving left or right (the common case) falls through
+.consider_falling
+    LDA player_y_velocity
+    STA y_delta
+    LDA player_helicopter           \ Zero if player not in helicopter
+    BNE is_descending_helicopter
+    JSR check_if_player_is_on_ground
+    BEQ skip_setting_x_delta
+    LDA player_jump_direction
+    JMP set_x_delta_26e8
+.not_moving_sideways_w2a
     LDA movers_type_and_colour
     BEQ not_helicopter
 .is_helicopter
@@ -3145,21 +3155,10 @@ move_mover_routine_address_high = * + 2
     ORA frame
     STA movers_frame_and_flip
 .replot_player
-    LDY #&00                        \ MOVER_PLAYER
-.wait_to_replot_player
-    JSR check_if_raster_is_in_mover \ Returns carry set if raster is in mover
-    BCS wait_to_replot_player
-    JSR unbuffer_player_getting_addresses
-    JMP plot_player
-.consider_falling
-    LDA player_y_velocity
-    STA y_delta
-    LDA player_helicopter           \ Zero if player not in helicopter
-    BNE is_descending_helicopter
-    JSR check_if_player_is_on_ground
-    BEQ skip_setting_x_delta
-    LDA player_jump_direction
-    JMP set_x_delta_26e8
+    JMP plot_player                 \ grind: plot_player sets Y = 0 and writes C before reading it; the raster wait
+                                    \ (check_if_raster_is_in_mover: CLC : RTS) and unbuffer_player (an RTS) went
+    EQUB &EA, &EA, &EA, &EA, &EA, &EA, &EA, &EA, &EA    \ spare (grind): the 10 bytes freed above, kept so is_descending_helicopter and all after stay put
+    EQUB &EA
 .is_descending_helicopter
     LDA helicopter_fuel_high
     BMI suppress_horizontal_movement
@@ -5118,18 +5117,18 @@ ASSERT shown_screen < &3000
     PLP
     JMP initialise_column_buffer
 \ install_prebuilt, in place of the walk: the prebuild's walk left its state in place (decision
-\ 38); page the bank it left paged. A = Y = &FF, N and C set, as the walk leaves them (X is
-\ written before it is read).
+\ 38); page the bank it left paged. A, Y, C, N and Z are not set as the walk leaves them: at
+\ layers_left_done/layers_right_done, LDA #&14, change_pixel_tables (ASL) and LDY # write them
+\ before anything reads them (X is written before it is read; V is untouched).
 .install_prebuilt
-    LDA pre_bank
+    LDA #&00                        \ grind: self-modified, the bank the walk left (prebuild_walked)
     STA os_ram_copy_of_currently_selected_rom
     STA romsel                      \ Paged ROM latch
-    LDA #&FF
-    TAY
-    SEC
     RTS
+    EQUB &00, &00, &00, &00, &00    \ grind: pad, so nothing after moves
 \ prebuild_layers: the renderer's prebuild (bank 4), X = the direction. The walk, the cyan
-\ entries back as the scroll puts them, then bank 4 again; pre_bank = the bank the walk left.
+\ entries back as the scroll puts them, then bank 4 again; install_prebuilt's LDA # = the bank
+\ the walk left (pre_bank is no longer used).
 .prebuild_layers
     CPX #&01
     BNE prebuild_left
@@ -5139,7 +5138,7 @@ ASSERT shown_screen < &3000
     JSR layers_left
 .prebuild_walked
     LDA os_ram_copy_of_currently_selected_rom
-    STA pre_bank
+    STA install_prebuilt + 1        \ grind: install_prebuilt's LDA # operand
     LDA #&14                        \ KC
     JSR change_pixel_tables
     LDA #&04
