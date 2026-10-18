@@ -2629,6 +2629,10 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     STA unflipped_green_pixel_table + 60\ CC
     RTS
 
+.leave_with_carry_set_2097
+    SEC                             \ Leave with carry set to indicate mover not on screen
+.leave_with_carry_set_rts_2097
+    RTS
 .check_if_mover_Y_is_on_screen
     JSR get_mover_Y_type            \ Returns A = mover type
     TAX
@@ -2636,10 +2640,7 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     LDY &C5
     CPY viewport_right_high
     BCC is_left_of_viewport_right
-    BEQ check_x_low_2099
-.leave_with_carry_set_2097
-    SEC                             \ Leave with carry set to indicate mover not on screen
-    RTS
+    BNE leave_with_carry_set_rts_2097\ Grind: C=1 from the CPY; equal (the common case) falls through
 .check_x_low_2099
     LDA viewport_right_low
     CMP mover_x_low

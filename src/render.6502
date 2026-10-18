@@ -894,20 +894,20 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
 {
     LDY #0
 .each
-    CPY act_n
+    CPY act_n                       \ in the body Y < act_n, so C clear
     BEQ done
     STY ren_k
     LDX act,Y
-    STX ren_i
     LDA need,X
-    BMI candidate                   \ coming off: goes back on if still there
+    BMI not_shown                   \ coming off: goes back on if still there
     TXA
-    CLC
-    ADC boff
+    ADC boff                        \ C clear (CPY act_n with Y < act_n)
     TAY
     LDA rec_xh,Y
-    CMP #&FF
+    INC A                           \ 65C02 opcode: &FF (not shown) -> 0
     BNE next                        \ shown and staying
+.not_shown
+    STX ren_i
 .candidate
     LDA movers_x_high,X             \ X = ren_i on both ways in
     BMI next                        \ no mover in the slot
