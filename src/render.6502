@@ -633,21 +633,21 @@ ENDIF
     RTS
 .by_cell                            \ round the 16K screen, a cell at a time
     LDA lives                       \ d_ptr = lives_digits + 32 * (lives AND 15)
-    AND #&0F
+    ASL A
+    ASL A
+    ASL A
+    ASL A
+    ASL A                           \ A = 32 * (lives AND 7), C = lives bit 3
+    TAX
+    LDA #HI(lives_digits)
+    ADC #0                          \ + bit 3 (C = 0 after: HI(lives_digits) < &FF)
     STA d_ptr + 1
-    LDA #0
-    LSR d_ptr + 1
-    ROR A
-    LSR d_ptr + 1
-    ROR A
-    LSR d_ptr + 1
-    ROR A
-    CLC
+    TXA
     ADC #LO(lives_digits)
     STA d_ptr
-    LDA d_ptr + 1
-    ADC #HI(lives_digits)
-    STA d_ptr + 1
+    BCC digit_same_page
+    INC d_ptr + 1
+.digit_same_page
     LDA screen_start_address_low
     STA s_ptr
     LDA screen_start_address_high

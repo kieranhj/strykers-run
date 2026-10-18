@@ -2293,24 +2293,24 @@ ENDIF
 
 .plot_player
     LDY #&00                        \ MOVER_PLAYER
+.plot_mover_Y0
+    LDA #&B1                        \ LDA (&c8),Y ; mask_table_address          # Plot with mask
+    LDX #&C8
+    BRA set_mask_table_lookup_opcode\ 65C02 opcode
 .plot_mover
+    TYA
+    BEQ plot_mover_Y0
+    LDA #&A9                        \ LDA #&ff                                  # Plot without mask
+    LDX #&FF
+.set_mask_table_lookup_opcode
+    STA mask_table_lookup_opcode
+    STX mask_table_lookup_opcode + 1
     LDA #&04                        \ ***
     STA os_ram_copy_of_currently_selected_rom\ ***
     STA romsel                      \ Paged ROM latch                      ***
     LDA viewport_left_low
     STA edge_x_low
     STY mover
-    TYA
-    BEQ use_mask_table
-    LDA #&A9                        \ LDA #&ff                                  # Plot without mask
-    LDX #&FF
-    BNE set_mask_table_lookup_opcode\ Always branches
-.use_mask_table
-    LDA #&B1                        \ LDA (&c8),Y ; mask_table_address          # Plot with mask
-    LDX #&C8
-.set_mask_table_lookup_opcode
-    STA mask_table_lookup_opcode
-    STX mask_table_lookup_opcode + 1
     JSR get_mover_Y_x
     JSR get_mover_type_and_colour   \ Returns A = mover type
     TAX
@@ -3767,7 +3767,8 @@ move_mover_routine_address_high = * + 2
     LDX mover_to_update
     STA mover_x_low
     STY &C5
-    JSR calculate_mover_x_max_and_y_max
+    STY mover_x_max_high            \ grind: what calculate_mover_x_max_and_y_max's first two do
+    JSR calculate_mover_x_max_and_y_max + 4 \ past LDA &C5 : STA mover_x_max_high (2 + 2 bytes)
     LDX first_mover
 .check_for_mover_collision_with_range_of_movers
     \ Step 2 (layer 3): a mover right of the range, or left of it even at the widest type, cannot
@@ -4151,28 +4152,28 @@ ENDIF
     JSR get_mover_frame_and_flip
 .calculate_mover_x_max_from_offset
     LDX &C5
-    STX mover_x_max_high
     LDA mover_x_low
     LDY frame_and_flip
     BMI is_flipped_2aa5
 .not_flipped_2a9a
     CLC
     ADC mover_x_offset
-    BCC skip_overflow_2aa0
-    INX
-.skip_overflow_2aa0
     STA mover_x_max_low             \ Leave with mover_x_max = mover_x + x_offset,
     STX mover_x_max_high            \ mover_x = mover_x if unflipped
+    BCS skip_overflow_2aa0          \ grind: the carry (never measured) taken, not the common case
+    RTS
+.skip_overflow_2aa0
+    INC mover_x_max_high
     RTS
 .is_flipped_2aa5
     STA mover_x_max_low             \ Leave with mover_x_max = mover_x,
+    STX mover_x_max_high            \ grind: stored here, not before the BMI (the unflipped path stores its own)
     SEC                             \ mover_x = mover_x - x_offset if flipped
     SBC mover_x_offset
-    BCS set_mover_x
-    DEX
-.set_mover_x
-    STX &C5
     STA mover_x_low
+    BCS set_mover_x
+    DEC &C5                         \ grind: was DEX/STX &C5 (X is dead after: every caller reloads it)
+.set_mover_x
     RTS
 
 .check_for_collision_with_friends
