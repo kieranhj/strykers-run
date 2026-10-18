@@ -1954,8 +1954,7 @@ not_white = leave_1e3e - 4                \ plot_mover's BCS not_white + 4 lands
     CLC
     ADC #&08
     STA y_offset
-    LDA #&00
-    STA sprite_data_offset
+    STZ sprite_data_offset          \ 65C02 opcode
     LDA mover_types_third_sprite,X
     TAX
     LDA movers_frame_and_flip,Y
@@ -1971,19 +1970,14 @@ not_white = leave_1e3e - 4                \ plot_mover's BCS not_white + 4 lands
     ORA #&80
     STA mask_table_address_low
     \ Step 2 (layer 2): only the renderer draws. The game's own calls still work out the
-    \ sprite and the address, and walk the sprite as the plotter would, but write nothing.
-    BIT drawing
-    BMI unpack_sprite
+    \ sprite and the address, and walk the sprite as the plotter would, but write nothing
+    \ (`drawing` is never set, and the zero-page unpacker's body is the renderer's: decision 34).
     JSR walk_column                 \ (walk_column sets its own Y)
-.skip_unpacking
     LDA #&40
     STA pixel_table_address_low
 .leave_1f08
     RTS
-.unpack_sprite
-    LDY #&01
-    JSR unpack_column_of_sprite
-    BRA skip_unpacking              \ 65C02 opcode
+    SKIP 13                         \ free (the unpack path's bytes): walk_column stays where it was
 
 \ Step 2 (layer 2, then layer 3 option C): what unpack_column_of_sprite leaves behind, for the
 \ game's own calls, which no longer draw. The original's logic reads it: mover_x_low, stepped on
