@@ -3454,35 +3454,30 @@ cm_x_max_high_operand = * + 1
     JSR calculate_mover_x_max_and_y_max
     LDX #&00                        \ MOVER_PLAYER
     BEQ check_for_collision_with_mover
+.cfc_a_leave_clear                  \ grind: a CLC/RTS in this page, so the BEQ below does not cross into the next
+    CLC                             \ Leave with carry clear to indicate no collision
+    RTS
 .check_for_mover_collision_with_mover_X
     CPX mover_to_update
-    BEQ leave_with_carry_clear_28c9
+    BEQ cfc_a_leave_clear
 .check_for_collision_with_mover
     JSR get_mover_X_type_and_height
     STA &78
     LDA mover_types_width_table,Y
     STA &7A
-    LDA movers_x_high,X
+    CLC                             \ grind: the right edge first (x + width >= mover_x, 16-bit), the test more movers fail
+    ADC movers_x_low,X
     TAY
-    CMP mover_x_max_high
-    BCC check_x_high
-    BNE leave_with_carry_clear_28c9
-    LDA mover_x_max_low
+    LDA movers_x_high,X
+    ADC #0                          \ (x + width) high, wrapping as the original's INY did
+    CPY mover_x_low
+    SBC &C5
+    BCC leave_with_carry_as_is      \ C=0: no collision
+    LDA mover_x_max_low             \ then x <= mover_x_max (16-bit)
     CMP movers_x_low,X
-    BCC leave_with_carry_clear_28c9
-    CLC                             \ grind: only the equal-high path needs it (C=1 here); BCC check_x_high arrives with C=0
-.check_x_high
-    LDA movers_x_low,X
-    ADC &7A
-    BCC skip_overflow_28b1
-    INY
-.skip_overflow_28b1
-    CPY &C5
-    BCC leave_with_carry_as_is      \ grind: C=0 here, so straight to the RTS
-    BNE skip_low_check_28b7 + 4
-.skip_low_check_28b7
-    CMP mover_x_low
-    BCC leave_with_carry_as_is      \ grind: C=0 here, so straight to the RTS
+    LDA mover_x_max_high
+    SBC movers_x_high,X
+    BCC leave_with_carry_as_is      \ C=0: no collision
     LDA movers_y,X
     CMP mover_y_max
     BCS leave_with_carry_clear_28c9
@@ -3617,12 +3612,12 @@ ENDIF
 .update_projectiles
     LDY #&17                        \ MOVER_LAST_PROJECTILE
 .update_projectiles_loop
-    STY mover_to_update
     LDA movers_x_high,Y             \ Negative if no projectile in slot
     BMI to_consider_next_projectile
+    STY mover_to_update             \ grind: stored past the empty slots (update_movers sets it before any read)
     LDA movers_type_and_colour,Y
     CMP #&0E                        \ MOVER_TYPE_EXPLOSION
-    BNE to_consider_next_projectile + 3
+    BNE update_projectile_d6c6_a
 .update_explosion
     JSR plot_mover                  \ Unplot explosion
     LDX mover_to_update
@@ -3633,7 +3628,11 @@ ENDIF
 .remove_projectile
     JSR remove_mover
 .to_consider_next_projectile
-    JMP consider_next_projectile
+    DEY                             \ grind: the next slot here, not by JMP consider_next_projectile
+    CPY #&0C                        \ MOVER_FIRST_PROJECTILE (Y = mover_to_update on every path in)
+    BCS update_projectiles_loop
+    RTS
+.update_projectile_d6c6_a
     LDA projectiles_y_velocity - 12,Y
     LDX projectiles_is_rocket - 12,Y\ Non-zero if projectile is rocket
     BNE is_rocket
@@ -3642,8 +3641,7 @@ ENDIF
     BCS set_y_delta
     TAX
     BMI increase_downwards_velocity
-    DEX                             \ Grenades and bombs fall
-    TXA
+    DEC A                           \ Grenades and bombs fall (grind: was DEX/TXA; X is dead from set_y_delta)
     BNE set_y_delta
     LDA #&80
     BMI set_y_delta
