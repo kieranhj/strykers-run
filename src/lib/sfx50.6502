@@ -38,16 +38,13 @@
     BEQ next
     JSR sfx_output
     LDA sfx_dp,X                    \ the period steps (16 bits, the step sign-extended)
+    BPL up
+    DEY                             \ Y = 0 from sfx_write (sfx_output ends in it): &FF, the step's high byte
+.up
     CLC
     ADC sfx_p_lo,X
     STA sfx_p_lo,X
-    LDA sfx_dp,X
-    BPL up
-    LDA #&FF
-    BNE add_high                    \ always
-.up
-    LDA #0
-.add_high
+    TYA                             \ the step's high byte, 0 or &FF
     ADC sfx_p_hi,X
     STA sfx_p_hi,X
     LDA sfx_dv,X                    \ the amplitude steps, kept between 0 and 15

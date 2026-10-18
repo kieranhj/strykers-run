@@ -4828,8 +4828,7 @@ check_for_player_input_key = * + 1
     BCS leave_with_carry_set_30af + 1\ Leave with carry set if mover overlaps player
     LDX viewport_right_high
     LDA viewport_right_low
-    CLC
-    ADC #&0A
+    ADC #&0A                        \ grind: C=0 here (BCS above not taken)
     BCC skip_overflow_307f
     INX
 .skip_overflow_307f

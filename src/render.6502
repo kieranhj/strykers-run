@@ -2212,7 +2212,7 @@ lo_imm = * + 1
     LDY wa_rows_guess,X
     LDA wa_off                      \ at or past the next row's start: that row
     CMP wa_rows_base_lo + 1,Y
-    LDA wa_off + 1
+    TXA                             \ wa_off + 1: X still holds it
     SBC wa_rows_base_hi + 1,Y
     BCC row_known
     INY
