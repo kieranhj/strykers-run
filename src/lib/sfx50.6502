@@ -212,10 +212,7 @@ noise = sfx_write.noise             \ after sfx_write's RTS
     LDX #3
 .each
     STZ sfx_request,X
-    STZ sfx_n,X
-    LDA sfx_channel_bits,X
-    ORA #&9F
-    JSR sfx_write
+    JSR sfx_next_ramp.ended         \ its channel off and forgotten (ends in sfx_write: Y = 0)
     DEX
     BPL each
     PLP

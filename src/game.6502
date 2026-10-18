@@ -1161,7 +1161,7 @@
     BMI is_mountains                \ *** Negative if mountain layer, positive if cloud layer
 .is_clouds    \ ***
     LDA clouds_table,X              \ ***
-    BNE to_get_sprite_and_flip      \ ***
+    BNE get_sprite_and_flip         \ *** (grind: there directly, not through the BRA below)
 .is_mountains
     LDA mountains_table,X
 .to_get_sprite_and_flip
@@ -1469,6 +1469,10 @@
     BEQ next_row_1ba4               \ Always branches
 
 .calculate_sprite_address_for_column_of_scenery
+    \ Step 2 (grind): the tables' high byte first, so the flag's last use leaves Z for the branch
+    LDA #HI(flipped_green_pixel_table)
+    STA mask_table_address_high
+    STA pixel_table_address_high
     LDA scenery_layers_flip,Y
     STA pixel_table_address_low
     \ The flag is the pixel table's low byte (0 flipped, &40 unflipped); its mask table is &80
@@ -1479,25 +1483,20 @@
     CLC
     ADC #flipped_mask_table - flipped_green_pixel_table
     STA mask_table_address_low
-    LDA #HI(flipped_green_pixel_table)
-    STA mask_table_address_high
-    STA pixel_table_address_high
-    LDA pixel_table_address_low     \ Zero if sprite is flipped
+    EOR #flipped_mask_table - flipped_green_pixel_table\ the flag again: zero if sprite is flipped
 .use_flipped_or_unflipped_scenery_sprite_opcode_two
-    BEQ to_move_backwards_through_sprite\ if scrolling right
-\ #     also     BNE &1f4e ; to_move_backwards_through_sprite         # if scrolling left
+    BEQ move_backwards_through_sprite\ if scrolling right
+\ #     also     BNE move_backwards_through_sprite                    # if scrolling left
     JMP move_forward_through_sprite
-.to_move_backwards_through_sprite
-    JMP move_backwards_through_sprite\ Unnecessary code
+    SKIP 5                          \ step 2 (grind): never run; keeps the code after where it was
 .move_backwards_through_sprite
-    JSR use_scenery_sprite_address_for_layer_Y
+    JSR use_scenery_sprite_address_for_layer_Y\ Leaves X = scenery_sprite_address_high
     LDA (scenery_sprite_address),Y
     BEQ set_scenery_layer_Y_sprite_address_high
     STA column_length_in_bytes
-    LDX scenery_sprite_address_high
-    LDA scenery_sprite_address_low
-    SEC
-    SBC column_length_in_bytes
+    EOR #&FF                        \ step 2 (grind): the address's low byte less the length, by
+    SEC                             \ adding its complement (A, C, V, N and Z as SBC leaves them)
+    ADC scenery_sprite_address_low
     BCS skip_page_1be8
     DEX
 .skip_page_1be8
@@ -3594,10 +3593,9 @@ IF DEBUG_LIVES
 ELSE
     DEC lives
 ENDIF
-    PHP                             \ out of lives
     JSR plot_lives
     LDY &87
-    PLP                             \ out of lives
+    LDA lives                       \ grind: Z (out of lives) from lives itself, which plot_lives leaves alone, not PHP/PLP
     BNE to_plot_mover_2957          \ Don't turn player into skeleton until last life
 .not_player_292b
     LDX dying_mover_type
