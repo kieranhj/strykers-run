@@ -110,6 +110,10 @@ disassembly's `actually`/`also` notes say what an operand really is.
 - `tools/sprites.py stats|emit|straight` - sprite sizes, save block sizes, and the generated sprite sources
 - `tools/sfxcapture.mjs DISC OUT [--pairs]` - each sound effect's chip writes by MOS tick; `--pairs`, an effect over another
 - `tools/sfx50.py CAPTURE.json OUT.6502 [--show]` - fit 50 Hz ramps (for `src/lib/sfx50.6502`) to captured effects; `--show` prints them against the MOS's
+- `tools/worldmap.py [DISC] [--out DIR] [--json F] [--crop LEFT ...] [--observed DIR]` - the whole world from the build's level data
+  (`docs/level-format.md`): `world-background.png` (every layer and the ground), `world-objects.png` (movers, helicopters, craft,
+  trigger points); `--crop` the 80 columns a view shows. `tools/worldshots.mjs DISC OUT COLUMN ...` - the emulator's screen
+  there (observer mode, holding RIGHT; mends `check_for_keypress` in RAM), to compare with `--crop`/`--observed`
 - Harnesses must read `&3000-&7FFF` with `{ shadow: false }` (or `true`): the renderer may have the CPU on shadow RAM
 
 ## Memory (MGAME, as the reference lays it out)
