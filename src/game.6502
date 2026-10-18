@@ -3236,10 +3236,8 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     STA flip
     ASL A
     ROL A
-    PHA                             \ x direction
-    LDA y_delta
-    ASL A
-    PLA                             \ x direction
+    LDX y_delta                     \ grind: C = y direction (bit 7), A keeps the x direction
+    CPX #&80
     ROL A
     TAX
     LDA move_mover_routine_addresses_high_table,X
@@ -4568,8 +4566,7 @@ ENDIF
     STA irq_accumulator
     PLY
     PLX
-    LDA irq_accumulator             \ the interrupted A, which the MOS's IRQ entry saved
-    RTI
+    RTI                             \ A is still the interrupted A (PLY/PLX leave it)
 .leave_irq1_handler                 \ anything else (in play, nothing: the MOS's tick is off)
     PLA                             \ ***
     STA irq_accumulator             \ ***
@@ -4859,11 +4856,9 @@ check_for_player_input_key = * + 1
     JSR plot_mover                  \ Plot explosion or skeleton
 .leave_with_carry_set_30af
     SEC                             \ Leave with carry set to indicate no update required
-    LDY mover_to_update             \ ***
-.leave_30b2    \ ***
-    RTS                             \ ***
+.leave_30b2    \ *** (also leave_with_carry_set_30af + 1: grind, the enhanced version's LDY mover_to_update
+    RTS                             \ *** here and below dropped, Y being dead in both callers of check_if_mover_can_be_updated)
 .leave_with_mover_to_update
-    LDY mover_to_update
     CLC                             \ ***
     RTS
 
