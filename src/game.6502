@@ -5508,13 +5508,13 @@ ENDIF
 PLAYER_SAVE = player_save           \ fixed addresses: only the player draws them, once a screen
     SKIP PLAYER_SAVE_SIZE
 .save_arena
-    SKIP (&4000 - GAME_DOWN) - *
-save_arena_end = *
+\ Decision 33: nothing reads or writes the arena (main or shadow) before the first game's
+\ render_reset (measured: the start-up and the whole front end), and the renderer writes every
+\ block before it reads it. So the file carries, in the arena's bytes (which were zeros), the
+\ start-up code and the blocks it copies down, from here to zx_unpack; they run once, at
+\ entry_point, before the arena is first used. The rest of the start-up block follows &4000.
 
-.resident_end         \ everything above is in memory for the whole game; the screen starts at &4000
-    ASSERT resident_end <= &4000, "resident code and data overrun the screen by ", resident_end - &4000, " bytes"
-
-.moved_0004_load     \ carried in the file at &4000, copied to &0004-&0077 at start-up
+.moved_0004_load     \ carried in the save arena, copied to &0004-&0077 at start-up
 SECTION moved_0004, org = &0004, cmos = TRUE
 
 .unpack_column_of_sprite
@@ -5790,7 +5790,7 @@ target_address_high = * + 2
     EQUB &00
 
 
-.moved_0400_load     \ carried in the file at &4200, copied to &0400-&07FF at start-up
+.moved_0400_load     \ carried in the save arena (decision 33), copied to &0400-&07FF at start-up
 SECTION moved_0400, org = &0400, cmos = TRUE
 
 \ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f          0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
@@ -5888,7 +5888,7 @@ SECTION moved_0400, org = &0400, cmos = TRUE
 ENDSECTION
 
 
-.moved_0880_load     \ carried in the file at &4600, copied to &0880-&095F at start-up
+.moved_0880_load     \ carried in the save arena (decision 33), copied to &0880-&095F at start-up
 SECTION moved_0880, org = &0880, cmos = TRUE
 
 \ ;     chan  vol   pitch dur
@@ -5916,7 +5916,7 @@ SECTION moved_0880, org = &0880, cmos = TRUE
 
 ENDSECTION
 
-.moved_0a20_load     \ step 2 (RAM for cycles 4): carried in the file here, copied to &0A20 at start-up
+.moved_0a20_load     \ step 2 (RAM for cycles 4): carried in the save arena (decision 33), copied to &0A20 at start-up
 SECTION moved_0a20, org = &0A20, cmos = TRUE
 \ &0982-&0CFF is never read or written after start-up (front end and play, 50,000 frames,
 \ 2026-10-17); &0A00-&0A1F is kept clear: the relocation test builds read it as the ground.
@@ -6020,7 +6020,7 @@ ENDSECTION
 MOVED_0A20_SIZE = moved_0a20_end - &0A20
 ASSERT MOVED_0A20_SIZE <= &E0
 
-\ ---- Step 2 layer 4: run once from entry_point, in the start-up block (the screen covers it later) ----
+\ ---- Step 2 layer 4: run once from entry_point, carried in the save arena (decision 33) ----
 \ unpack_for_play: the player's compiled sprite kinds that live in HAZEL (tools/compiled.py) copied
 \ into it from their carriers - part A in bank 5's music area, part B here - and then the front
 \ end's tunes unpacked into that area (src/music_packed.6502, ZX02). HAZEL is the filing system's
@@ -6106,6 +6106,13 @@ up_n  = &C8
 }
 .zx_unpack
     ZX02_DEPACKER
+    ASSERT * <= &4000 - GAME_DOWN, "the start-up code carried in the save arena overruns it by ", * - (&4000 - GAME_DOWN)
+.arena_carried_end                  \ decision 33: the end of what the file carries in the arena
+    SKIP (&4000 - GAME_DOWN) - *
+save_arena_end = *
+
+.resident_end         \ everything above is in memory for the whole game; the screen starts at &4000
+    ASSERT resident_end <= &4000, "resident code and data overrun the screen by ", resident_end - &4000, " bytes"
 .hazel_b_load
 SECTION hazel_b, org = hazel_a_end, cmos = TRUE
     INCLUDE "compiled_hazel_b.6502"

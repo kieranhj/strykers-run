@@ -39,7 +39,8 @@ INCLUDE "zp.6502"
 
 \ ---------------------------------------------------------------------------------------------
 \ MGAME: the game. Assembled at &0E00; the file loads at &1900 (below which DFS on a Model B
-\ keeps its workspace) and its last 32 bytes, run at &51E0, copy it down to &0E00.
+\ keeps its workspace) and its last bytes, run where the file put them, copy it down to &0E00.
+\ The start-up code rides in the save arena's bytes (decision 33), so the file ends near &51A1.
 \ ---------------------------------------------------------------------------------------------
 GAME_LOAD = &1900
 GAME_ORG  = &0E00 - GAME_DOWN
@@ -48,8 +49,9 @@ INCLUDE "lib/zx02depack.6502"       \ step 2 layer 4: the macro, for the tunes (
 SECTION MGAME, org = GAME_ORG, load = &FFFF0000 + GAME_LOAD, exec = &FFFF0000 + mgame_relocate, filename = "MGAME", cmos = TRUE
     INCLUDE "game.6502"
 
-    \ The copy-down stub (STH's MGAME). Lives at &46E0 in the game's address space, runs at
-    \ &51E0 where the file put it. Copies &1900-&51FF down to &0E00-&46FF, itself included.
+    \ The copy-down stub (STH's MGAME; the reference's lived at &46E0, ran at &51E0). Follows the
+    \ game in the file, runs where the file put it, and copies the file down to &0E00, whole pages,
+    \ itself included.
     SECTION mgame_stub, org = * - GAME_ORG + GAME_LOAD, cmos = TRUE
     .mgame_relocate
         LDA #&8C                        \ *TAPE: release the disc filing system's workspace

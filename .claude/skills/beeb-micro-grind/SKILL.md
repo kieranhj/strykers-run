@@ -120,8 +120,8 @@ For a grind in particular:
 
 ## Room
 
-Where each source's code lives, and its free space on branch `ram-2026-10-18` after decision 32
-(2026-10-18, shipping build; read the current figure off the build's listing, the SKIP that pads
+Where each source's code lives, and its free space on branch `ram-2026-10-18` after decisions
+32-33 (2026-10-18, shipping build; read the current figure off the build's listing, the SKIP that pads
 the region):
 
 | Source | Region | Free | Listing line |
@@ -131,7 +131,8 @@ the region):
 | `render.6502` | bank 4, `&9000-&B3FF` | 573 | `SKIP PAD_END` in DATA1 |
 | `render_zp.6502`, `prebuild.6502`, `render_bss_zero.6502` | bank 4 under ANDY | 106 | `SKIP &9000 + PAD_START - *` |
 | `bank5.6502`, `lib/sfx50.6502` | bank 5 | 437 | `SKIP PAD_END` in DATA2 |
-| the start-up block (MGAME's file) | to `&5A80` at load | 30 | `mgame_end` (`MGAME would load over the loading picture` ASSERT) |
+| the start-up block (MGAME's file) | to `&5A80` at load | 2,271 | `mgame_end` (`MGAME would load over the loading picture` ASSERT) |
+| start-up code carried in the save arena | `&354A-&3FFF` | 501 | `arena_carried_end` (decision 33) |
 
 The renderer's variables (`src/render_bss.6502`, decision 32) are in workspace holes, not the
 file: a new one goes in a section with room (each is ASSERTed to its hole).
