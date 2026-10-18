@@ -94,7 +94,8 @@ the wreck could stay put while the explosion came off and on beside it, and when
 ended, the wreck's save block - taken with explosion pixels under it - put them back. Fixed by
 placing each record where it was drawn: `world_of_address` turns the screen address into the
 world column and y (by the view it was drawn in), for the overlap rectangles and the scroll zone.
-For every other mover the two agree (`tools/worldcheck.mjs`: 6,119 records, none differing).
+For every other mover the two agree (`tools/worldcheck.mjs`: 6,119 records, none differing - a
+count that proved nothing: see #10).
 `tools/helilock.mjs` boards a helicopter, flies until it is shot down and compares two builds
 every pass; it did not catch the original case (the wreck changed every pass there), but runs
 the fixed build's flights identical to its `DEBUG_FULLREDRAW` twin, and the state through a
@@ -125,10 +126,45 @@ Y bit set from the start of the game on, so HAZEL (the filing system's workspace
 Master it holds whatever the DFS left, so the mountains depend on the machine's last disc activity.
 On a Model B (the standard version) `&C300` is the MOS ROM. Reads advance a byte every 11-12
 columns: `&C300-&C41B` by column 3,319 (`tools/hazelreach.mjs`; the run could go no further);
-extrapolated, about `&C300-&C590` for the whole world. Kept as it is: layer 4 puts nothing in HAZEL
+extrapolated, about `&C300-&C590` for the whole world. Measured over the whole world 2026-10-18
+(`tools/hazelreach.mjs` with `tools/playscript.mjs`'s WorldBot, `-Shift 256 -ShiftEnd -Define
+DEBUG_LIVES` at `d879af0`, jsbeeb 2.5.0, 12,233 passes to the completion screen): `&C301-&C56C`,
+1,242 reads, and nothing else in HAZEL read but the compiled kinds' code (`&C700-&D8AD`). Kept as it is: layer 4 puts nothing in HAZEL
 below `&C700` (decision 29). KC, 2026-10-17: leave it (decision 31) - the mountains stay as the
 enhanced version draws them, from whatever HAZEL holds at `&C300`; nothing may be put in
 `&C300-&C6FF`.
+
+## 10. A mover clipped at the view's left edge is placed 80 columns right and a row up (layer 3, `c5d760b`; OPEN)
+
+Found 2026-10-18 by `tools/worldcheck.mjs`, once it read the records at all (jsbeeb 2.5.0,
+`d879af0`). `world_of_address` (`src/render.6502`, BUGS #7's fix) turns a mover's screen address
+into its world column and y. A mover partly off the left edge (x 1-11 columns left of
+`viewport_left`) has a screen address left of the view's first column: the end of the character
+row above. So `record_live` records it, and `list_live` lists it, 80 columns right and 8 lines up
+(e.g. a soldier at x 30, y 24 with the view at 31: screen address `&77F7`, screen start `&4378`,
+offset `&347F` - row 20, column 79 - recorded at x 110, y 32). Those world positions are what
+`span_in_zone` (the scroll's arriving and leaving columns, the lives digit's columns) and
+`close_over_overlaps` test, so for such a mover both can miss: a stationary, unchanged mover at
+the left edge would not be redrawn when the column arriving on a scroll left, or the lives digit,
+is written over it, and an overlap with a neighbour at the left edge would not be seen.
+- Measured: seed 1's script (`tools/worldcheck.mjs DISC 12000`): 106 records of the run
+  disagree, every one this case (x 1 to 11 left of the view, +80 columns, +8 y). The whole world
+  (`--world`, `-Shift 256 -ShiftEnd -Define DEBUG_LIVES`, 12,233 passes): 984 of 29,847 records,
+  all 984 this case, none other; 17 types (soldiers, helicopters, mines, the tank, bullets).
+  The `99185f2` build (before decisions 32-34) does the same, and decision 40's `eb8fb4f` (46 of
+  1,330 records over 4,000 frames of seed 1, all this case).
+- Not seen on screen: over the whole world (`tools/worldrun.mjs --control ... --screen`, running
+  right) the newest frame is identical to the `DEBUG_FULLREDRAW` oracle's on all 12,233 passes, and
+  `passlock --screen` against it found none (seeds 2, 3, 5 in layer 3; seed 7, 4,000 passes, now). The case that could
+  show is a scroll left past a stationary mover clipped at the left edge.
+- `tools/worldcheck.mjs` never compared anything before this: `rec_*` are assignments
+  (`REN_BASE + n`) in Baron's symbol dump, not labels, and it read only labels, so every address
+  was `undefined` and both sides read the same byte. It now reads both (`tools/playscript.mjs`
+  `loadSyms`) and counts this case apart from any other.
+- The fix would be in `world_of_address` (or its callers): for an offset whose column comes out
+  80 or more, the row above is the right one only if the mover is right of the view; a mover's x
+  below `viewport_left` wants the next row and the column less 80. Not fixed: game code, and the
+  renderer is being changed by other work.
 
 ## 11. Observer mode's keys dead: grind G0038 removed the TXA `check_for_keypress` jumped past (step 2 grind; FIXED in layer 4)
 

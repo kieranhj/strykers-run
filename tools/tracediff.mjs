@@ -7,8 +7,10 @@
 //
 // CONTROL is -D SHIFT=n -D SHIFT_END=1 (padding at the ends), SHIFTED is -D SHIFT=n (padding at
 // the starts); n a multiple of 256, so the two run cycle for cycle alike while the relocation is
-// right (see lockstep.mjs). Both boot with SHIFT+BREAK and run to START (default: MGAME's copy-down
-// stub, which sits at the same address in both). From there every instruction's PC is recorded,
+// right (see lockstep.mjs). Both boot with SHIFT+BREAK and run to START (default: each build's own
+// entry_point, from its symbols: the copy-down stub before it differs by design - it writes its
+// own destination operand, and the pages it copies, into &4000-&7FFF at addresses SHIFT apart -
+// so starting at the stub, &5181 in both, stops at once on its first STA operand). From there every instruction's PC is recorded,
 // mapped back to the unshifted program (the SHIFTED build's game, assembled at &0E00 - n, is moved
 // up by n, and each bank's code from its org + n down by n), and the two streams are compared. The first
 // mismatch is printed with the instructions before it, as label + offset from the symbol dumps.
@@ -50,6 +52,16 @@ function loadSymbols(ssd) {
     return out.filter(([a]) => a >= 0x400 && a < 0xC000).sort((x, y) => x[0] - y[0]);
 }
 const symA = loadSymbols(discA);
+// The shifted build's game: from its org (GAME_ORG, an assignment in its symbol dump: &0E00 - SHIFT)
+// to the end of MGAME as assembled (mgame_end: decisions 32-34 moved it from &46E0 to &46A1,
+// decision 40 to &497A), both from its own symbols
+const symB = loadSymbols(discB);
+const endB = (symB.find(([, n]) => n === "mgame_end") || [])[0];
+const orgB = (() => { for (const sec of JSON.parse(readFileSync(discB.replace(/\.ssd$/, ".symbols.json"), "utf8")).assemblies[0].sections)
+    if (sec.assignments && sec.assignments.GAME_ORG) return sec.assignments.GAME_ORG.value; })();
+if (endB === undefined || orgB === undefined) { console.error(`${discB}: no mgame_end or GAME_ORG in its symbols`); process.exit(2); }
+if (orgB + SHIFT !== (() => { for (const sec of JSON.parse(readFileSync(discA.replace(/\.ssd$/, ".symbols.json"), "utf8")).assemblies[0].sections)
+    if (sec.assignments && sec.assignments.GAME_ORG) return sec.assignments.GAME_ORG.value; })()) { console.error(`the two builds' GAME_ORG are not SHIFT apart`); process.exit(2); }
 const name = (syms, pcb) => {
     const pc = pcb & 0xffff, bank = pc >= 0x8000 ? pcb >> 16 : -1;
     let best = null;
@@ -63,8 +75,10 @@ const atFrame = startArg && startArg.startsWith("@") ? parseInt(startArg.slice(1
 const events = makeScript(1000000, 1);
 let frame = 0;
 const START = startArg && !atFrame ? parseInt(startArg, 16) : null;
-// default start: the exec address of MGAME, the same in both (the stub follows the padding)
-const start = START ?? (symA.find(([, n]) => n === "mgame_relocate") || [0x52e0])[0];
+// default start: entry_point, the game's first instruction once copied down, in each build
+const entryOf = (syms, disc) => { const e = (syms.find(([, n]) => n === "entry_point") || [])[0];
+    if (e === undefined) { console.error(`${disc}: no entry_point in its symbols: give START_HEX`); process.exit(2); } return e; };
+const start = START ?? entryOf(symA, discA), startB = START ?? entryOf(symB, discB);
 if (atFrame) {
     for (frame = 1; frame <= atFrame; frame++) {
         applyEvents(events, frame, [a, b]);
@@ -78,17 +92,18 @@ if (atFrame) {
         await a.runFrames(1);
         await b.runFrames(1);
     }
-    console.error(`start &${start.toString(16)}`);
+    console.error(`start &${start.toString(16)} / &${startB.toString(16)}`);
     await a.runUntilAddress(start, 120);
-    await b.runUntilAddress(start, 120);
+    await b.runUntilAddress(startB, 120);
 }
 console.error(`at start: cycles ${a.elapsedCycles} / ${b.elapsedCycles}`);
 
 const cpuA = a._machine.processor, cpuB = b._machine.processor;
 // canonical PC: the shifted build's moved code back to where the control build has it
 const canonB = (pc) => {
-    // the game is assembled SHIFT lower (&0E00 - SHIFT); the stub at &51E0 does not move
-    if (pc >= 0x0e00 - SHIFT && pc < 0x46e0 - SHIFT) return pc + SHIFT;
+    // the game is assembled SHIFT lower (&0E00 - SHIFT, to mgame_end); the copy-down stub, run
+    // where the file loads it, does not move
+    if (pc >= orgB && pc < endB) return pc + SHIFT;
     const bank = cpuB.romsel & 15;
     if (bank >= 4 && bank <= 7 && pc >= 0x8000 + SHIFT && pc < 0xc000) return pc - SHIFT;
     return pc;

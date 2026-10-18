@@ -13,7 +13,7 @@ excluded) 38,462 on seed 1 and 44,855 holding RIGHT, of the 79,872 two fields gi
 - **b2 and real hardware.** The flip, ACCCON's X bit and HAZEL left paged in (Y) are seen in
   jsbeeb only (`docs/step2-layer2.md` "Open").
 - **When layer 4 is closed.** Proposed: no late frames on both passbench games, and the whole
-  world played through (below).
+  world played through: it now is (below), with 701 late frames of 12,231.
 
 ## Layer 4 - a steady 25 Hz (decision 35)
 
@@ -37,13 +37,36 @@ excluded) 38,462 on seed 1 and 44,855 holding RIGHT, of the 79,872 two fields gi
   movers' addresses: ~4.5k on a scrolling pass). `docs/step2-layer3.md` "Next".
 - **Scenery runs translated at build time** (RAM for cycles item 6): about half the 3.3k unpack,
   for ~25% more scenery data. `docs/briefs/step2-layer3-ram-for-cycles.md`.
-- **Tools with stale addresses:** `tools/soundfx.mjs` (a stub at `&0C00`) and
-  `tools/tracediff.mjs` (the game ending at `&46E0`), since decisions 32-34.
 
 ## Checks not yet made
 
-- **The whole world.** No harness has reached the headquarters (player x `&1CED`, the
-  completion screen): `tools/hazelreach.mjs`, holding RIGHT and jumping, stops at column 3,319.
+- **Scrolling left past a mover clipped at the left edge** (BUGS #10): the one case where the
+  misplaced record could show. The whole-world run only runs right; passlock's seeds (2, 3, 5, 7
+  against the oracle) found nothing.
+- **The whole world, both builds' late frames** (below) want a closer look before layer 4 closes.
+
+## The whole world (2026-10-18, jsbeeb 2.5.0, `d879af0` and decision 40's `eb8fb4f`)
+
+Played start to completion screen by `tools/worldrun.mjs` (`tools/playscript.mjs`'s WorldBot: run
+right, jump 3 passes in 30, and where the player stops, back off, throw a grenade and fire). The
+stall at view 3,319 was a crouching soldier (type 3, x 3,358) against the player: bullets pass over
+it, `DEBUG_LIVES`'s player cannot die on it, and the collision holds both; a grenade kills it. That
+is the only stall: 12,233 passes to the headquarters (player x 7,405), no helicopter needed. The
+shipping build plays the same game with infinite lives poked in (`kill_player`'s `DEC lives` made
+`LDA #lives`, the bytes `DEBUG_LIVES` assembles). Screenshots: `build/world/`.
+- **Against the oracle:** `-Shift 256 -ShiftEnd -Define DEBUG_LIVES` against its
+  `DEBUG_FULLREDRAW` twin, every pass: state identical on 12,233 of 12,233, the newest frame
+  identical on 12,233 of 12,233 (`d879af0` and `eb8fb4f` alike).
+- **worldcheck** (`--world`): 984 of 29,847 records placed elsewhere than the mover's x/y, every
+  one a mover clipped at the left edge: BUGS #10. (It had never compared anything before.)
+- **HAZEL** (`tools/hazelreach.mjs`): the mountain layer reads `&C301-&C56C` over the whole world
+  (BUGS #9); nothing else in HAZEL is read but the compiled kinds and, from decision 40, its tables.
+- **Late frames** (passbench's measure, passes 2 to 12,233): 701 of 12,231 frames shown 3 or more
+  fields (636 for 3, 63 for 4, 2 for 5) in the bench build and the shipping build alike, 702 on
+  `eb8fb4f`; 331 of 7,452 with the player on the ground, 370 of 4,779 in the air; by world column,
+  46/57/137/261/50/62/86/2 per 1,000 (3,000-3,999 worst, 15%). 24.28 passes a second, 82,375
+  cycles a pass. Passbench's own games over passes 500-2,500: holding RIGHT 7 late of 1,998,
+  RIGHT and UP every 30 passes 45. Layer 4's "no late frames" is not met over the whole world.
 
 ## Layer 5 - quirks and original glitches (decision 13)
 

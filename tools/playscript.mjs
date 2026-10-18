@@ -80,3 +80,167 @@ export async function bootMaster(MachineSession, disc) {
     s.reset(true);
     return s;
 }
+
+/** Run `s` until the CPU is about to execute `pc` (within `fields` fields; false if it never
+ *  does), stopped there. */
+export async function runToPc(s, pc, fields = 200) {
+    const cpu = s._machine.processor;
+    let armed = true;
+    const h = cpu.debugInstruction.add((at) => armed && at === pc);
+    try {
+        for (let i = 0; i < fields; i++) { await s.runFrames(1); if (cpu.pc === pc) return true; }
+        return false;
+    } finally { armed = false; h.remove(); }
+}
+
+/** Make the CPU, stopped at an instruction, call `target` with A = `a` as a JSR placed in front
+ *  of that instruction would: the return address (the stopped PC - 1) pushed, PC set. RTS then
+ *  comes back to the instruction it was stopped at. Writes nothing but the stack: the tools that
+ *  fire a sound effect from the pause loop (soundfx.mjs, sfxcapture.mjs) used to put a stub in
+ *  "free" RAM at &0C00, which became `times_78_hi` (decisions 32-34). */
+export function callFrom(s, target, a) {
+    const cpu = s._machine.processor;
+    const ret = (cpu.pc - 1) & 0xffff;
+    cpu.writemem(0x100 + cpu.s, ret >> 8); cpu.s = (cpu.s - 1) & 0xff;
+    cpu.writemem(0x100 + cpu.s, ret & 0xff); cpu.s = (cpu.s - 1) & 0xff;
+    cpu.a = a;
+    cpu.pc = target;
+}
+
+/** The whole world's player (tools/worldrun.mjs): keys chosen each pass from the game's own state,
+ *  so two builds whose state is identical are given identical keys. It runs right, jumping (UP for
+ *  3 passes in every 30, as tools/hazelreach.mjs did). When the player has made no progress for
+ *  STALL passes it is against a hostile mover: DEBUG_LIVES's player cannot die on it, and
+ *  `check_for_collision_after_horizontal_move` will not let it through. The crouching soldier at
+ *  column 3,358 that stopped hazelreach at view 3,319 is under the player's bullets; a grenade
+ *  kills it. So the bot backs off, turns, throws a grenade, fires three shots, and runs on.
+ *  `step(p, st)` takes the pass and { px } (the player's x) and returns the keys (the original's
+ *  names) to hold for that pass. */
+export class WorldBot {
+    constructor({ stall = 40, back = 40 } = {}) {
+        this.STALL = stall; this.BACK = back;
+        this.best = -1; this.bestAt = 0; this.plan = []; this.stalls = [];
+    }
+    recovery() {
+        // back off further each time (a grenade's arc lands ~20-30 columns ahead), turn right,
+        // a grenade, a wait for it, then three shots
+        const back = this.BACK + 10 * (this.stalls.length % 4), plan = [];
+        const hold = (keys, n) => { for (let i = 0; i < n; i++) plan.push(keys); };
+        hold(["LEFT"], back); hold([], 4); hold(["RIGHT"], 2); hold([], 4);
+        hold(["DELETE"], 4); hold([], 30);
+        for (let k = 0; k < 3; k++) { hold(["SHIFT"], 3); hold([], 5); }
+        return plan;
+    }
+    step(p, st) {
+        if (this.plan.length) {
+            const k = this.plan.shift();
+            if (!this.plan.length) { this.best = st.px; this.bestAt = p; }
+            return k;
+        }
+        if (st.px > this.best) { this.best = st.px; this.bestAt = p; }
+        if (p - this.bestAt > this.STALL) {
+            this.stalls.push({ pass: p, px: st.px });
+            this.plan = this.recovery();
+            return this.plan.shift();
+        }
+        return p % 30 < 3 ? ["RIGHT", "A"] : ["RIGHT"];
+    }
+}
+
+/** label -> address from a disc's symbol dump (DISC.symbols.json beside DISC.ssd): the labels,
+ *  then the numeric assignments no label has taken (the zero-page names of src/zp.6502, such as
+ *  field_count or viewport_left_low, are assignments, not labels) */
+export function loadSyms(disc) {
+    const out = {};
+    const secs = JSON.parse(readFileSync(disc.replace(/\.ssd$/, ".symbols.json"), "utf8")).assemblies[0].sections;
+    for (const sec of secs)
+        for (const [k, v] of Object.entries(sec.labels || {})) if (v && typeof v.value === "number") out[k] = v.value;
+    for (const sec of secs)
+        for (const [k, v] of Object.entries(sec.assignments || {})) if (v && typeof v.value === "number" && !(k in out)) out[k] = v.value;
+    return out;
+}
+
+/** [address, length] of the movers' and projectiles' tables, the game state passlock compares:
+ *  movers_type_and_colour (the first) to the end of projectiles_ttl (the last; its length the
+ *  same as projectiles_is_rocket's, 12). Until decision 40 this ended at mover_types_parts, the
+ *  table after it, which decision 40 moved to HAZEL. */
+export function moverTables(syms) {
+    const end = syms.projectiles_ttl + (syms.projectiles_ttl - syms.projectiles_is_rocket);
+    if (!(end > syms.movers_type_and_colour)) throw new Error("no movers_type_and_colour .. projectiles_ttl in the symbols");
+    return [syms.movers_type_and_colour, end - syms.movers_type_and_colour];
+}
+
+/** Read n bytes at a symbol's address wherever it lives: &3000-&7FFF from main RAM (not shadow),
+ *  &C000-&DFFF from HAZEL (ACCCON's Y bit set for the read: decision 40 put tables there, and
+ *  outside play the MOS ROM is paged at those addresses), anything else as paged. */
+export function readAt(s, addr, n) {
+    if (addr >= 0xc000 && addr < 0xe000) {
+        const cpu = s._machine.processor, acccon = cpu.acccon;
+        try { cpu.writeAcccon(acccon | 8); return s.readMemory(addr, n); } finally { cpu.writeAcccon(acccon); }
+    }
+    return s.readMemory(addr, n, addr >= 0x3000 && addr < 0x8000 ? { shadow: false } : {});
+}
+
+/** A game the WorldBot plays by pass (tools/worldrun.mjs, worldcheck.mjs --world, hazelreach.mjs):
+ *  boots `disc` on a Master, starts a game with makeScript's title presses (seed 1), and stops at
+ *  the start of each pass (main_game_loop) or at completion_screen. A build without DEBUG_LIVES
+ *  (the shipping build) is given infinite lives by the disassembly's own poke, which is what
+ *  DEBUG_LIVES assembles: `kill_player`'s DEC lives (&C6 &95) made LDA #lives (&A9 &95), checked
+ *  byte for byte before it is written. The fuel table (`movers_helicopter_fuel_high`, which holds
+ *  !BOOT's stamp until a helicopter is added) is zeroed at the first pass, as passlock does, so two
+ *  builds with different stamps compare equal. */
+export async function startWorldGame(MachineSession, disc, { onPass } = {}) {
+    const syms = loadSyms(disc);
+    const s = await bootMaster(MachineSession, disc);
+    const cpu = s._machine.processor;
+    const m = { s, cpu, syms, disc, passes: 0, target: 1, lastStop: -1, completed: null, held: [], infiniteLives: null };
+    cpu.debugInstruction.add((pc) => {
+        if (pc === syms.completion_screen && m.completed === null) { m.completed = { pass: m.passes, cycles: s.elapsedCycles }; return true; }
+        if (pc !== syms.main_game_loop) return false;
+        const c = s.elapsedCycles;
+        if (c === m.lastStop) return false;
+        m.passes++;
+        if (m.passes === 1) {
+            s.writeMemory(syms.movers_helicopter_fuel_high ?? 0x0960, new Array(0x22).fill(0));
+            const k = [...s.readMemory(syms.kill_player, 2, { shadow: false })];
+            if (k[0] === 0xa9 && k[1] === 0x95) m.infiniteLives = "DEBUG_LIVES";
+            else if (k[0] === 0xc6 && k[1] === 0x95) { s.writeMemory(syms.kill_player, [0xa9]); m.infiniteLives = "poked kill_player &C6 -> &A9"; }
+            else throw new Error(`${disc}: kill_player holds ${k.map((v) => v.toString(16)).join(" ")}, not DEC lives or LDA #lives`);
+        }
+        if (onPass) onPass(m, c);
+        if (m.passes >= m.target) { m.lastStop = c; return true; }
+        return false;
+    });
+    const events = makeScript(6000, 1);
+    for (let f = 1; f <= 6000 && m.passes < 1; f++) { applyEvents(events, f, [s]); await s.runFrames(1); }
+    if (m.passes < 1) throw new Error(`${disc}: no game started`);
+    s.releaseAllKeys();
+    return m;
+}
+
+/** Run to the start of pass n: "pass", "completed" (completion_screen reached first) or "stalled"
+ *  (no pass in 1,500 fields). */
+export async function toWorldPass(m, n) {
+    m.target = n;
+    for (let i = 0; m.passes < n; i++) {
+        if (m.completed) return "completed";
+        if (i === 150) return "stalled";
+        await m.s.runFor(400000);
+    }
+    return m.completed && m.passes < n ? "completed" : "pass";
+}
+
+/** What the WorldBot reads: the player's x and y, the view's left column, helicopter, lives */
+export function worldState(m) {
+    const rd = (a) => m.s.readMemory(a, 1, { shadow: false })[0];
+    const { syms } = m;
+    return { px: rd(syms.movers_x_high) * 256 + rd(syms.movers_x_low), py: rd(syms.movers_y),
+        view: rd(syms.viewport_left_low) + 256 * rd(syms.viewport_left_high), helicopter: rd(syms.player_helicopter), lives: rd(syms.lives) };
+}
+
+/** Hold exactly `keys` (the original's names) from now on */
+export function pressKeys(m, keys) {
+    for (const k of m.held) if (!keys.includes(k)) m.s.keyUpRaw(gameKey(m.s, k));
+    for (const k of keys) if (!m.held.includes(k)) m.s.keyDownRaw(gameKey(m.s, k));
+    m.held = keys;
+}
