@@ -25,7 +25,7 @@ const s = await bootMaster(MachineSession, disc);
 await s.runFrames(BOOT_FRAMES); s.keyUpRaw([0, 0]); await s.runFrames(2100);
 const main = (a, n) => s.readMemory(a, n, { shadow: false });
 const bankRd = (bank, a, n) => s.readMemory(a, n, a >= 0x8000 ? { bank } : { shadow: false });
-const pix = main(0x0440, 64), msk = main(0x04c0, 64);
+const pix = main(syms.unflipped_green_pixel_table, 64), msk = main(syms.unflipped_mask_table, 64);   // &0440, &04C0
 
 function decode(bank, addr) {
     const buf = bankRd(bank, addr, 2048);

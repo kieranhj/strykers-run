@@ -7,24 +7,22 @@
 // for the screen just shown, and the live slots' types: counts movers drawn, and sums
 // (mover_types_width_table + 1) * (mover_types_height_table + 1) bytes for them, the rectangle
 // the original's player save-under used.
-import { readFileSync } from "node:fs";
 import { loadMachineSession } from "./jsbeeb_src.mjs";
-import { KEY, makeScript, applyEvents, bootMaster, START_AT, gameKey } from "./playscript.mjs";
+import { KEY, makeScript, applyEvents, bootMaster, START_AT, gameKey, loadSyms, readAt } from "./playscript.mjs";
 const MachineSession = await loadMachineSession();
 const args = process.argv.slice(2);
 const rightAt = args.indexOf("--right"); const RIGHT = rightAt >= 0; if (RIGHT) args.splice(rightAt, 1);
 const [disc, fromArg, framesArg] = args;
 const FROM = parseInt(fromArg || (RIGHT ? String(START_AT + 1300) : "4000"), 10), FRAMES = parseInt(framesArg || "1000", 10);
-const syms = {};
-for (const sec of JSON.parse(readFileSync(disc.replace(/\.ssd$/, ".symbols.json"), "utf8")).assemblies[0].sections)
-    for (const [k, v] of Object.entries(sec.labels || {})) if (v && typeof v.value === "number") syms[k] = v.value;
+const syms = loadSyms(disc);          // with the assignments: rec_xh and rec_type are REN_BASE + n
 const s = await bootMaster(MachineSession, disc);
 const events = makeScript(FROM + FRAMES + 10, 1);
 for (let f = 1; f <= FROM; f++) { if (!RIGHT || f <= START_AT + 1000) applyEvents(events, f, [s]); await s.runFrames(1); }
 if (RIGHT) { s.releaseAllKeys(); s.keyDownRaw(gameKey(s, "RIGHT")); }
 const cpu = s._machine.processor;
-const W = s.readMemory(syms.mover_types_width_table, 64, { shadow: false }), H = s.readMemory(syms.mover_types_height_table, 64, { shadow: false });
-const REC_XH = 0xb180, REC_TYPE = 0xb000;
+// main RAM until decision 40, HAZEL (&DA55, &DA71) since: readAt reads either
+const W = readAt(s, syms.mover_types_width_table, 64), H = readAt(s, syms.mover_types_height_table, 64);
+const REC_XH = syms.rec_xh, REC_TYPE = syms.rec_type;    // were &B180 / &B000, before c5d760b moved the workspace to &B400
 const counts = [], areas = [];
 cpu.debugInstruction.add((pc) => {
     if (pc !== syms.main_game_loop) return false;

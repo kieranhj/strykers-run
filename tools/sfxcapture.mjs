@@ -4,14 +4,16 @@
 //   node tools/sfxcapture.mjs DISC.ssd OUT.json [--pairs]
 //
 // As tools/soundfx.mjs: plays tools/playscript.mjs (seed 1) to frame 4000, pauses the game, and
-// fires each effect from a stub in the pause loop. The MOS's tick is System VIA T1, every
+// fires each effect from the pause loop (the CPU stopped at wait_for_unpause and made to call
+// play_sound: playscript.mjs's callFrom, which writes nothing but the stack - the stub this used
+// to put at &0C00 overwrote `times_78_hi` once decisions 32-34 moved things there). The MOS's tick is System VIA T1, every
 // 20,000 cycles; a write is put in the tick it falls in, counted from the first tick after the
 // call. --pairs also fires every effect B a few ticks into every effect A on the same channel,
 // and checks the chip's state from B's start against B's from silence: if they agree, an
 // effect is the same whatever it replaces, and its script can simply restart.
 import { readFileSync, writeFileSync } from "node:fs";
 import { loadMachineSession } from "./jsbeeb_src.mjs";
-import { makeScript, applyEvents, bootMaster, gameKey } from "./playscript.mjs";
+import { makeScript, applyEvents, bootMaster, gameKey, runToPc, callFrom } from "./playscript.mjs";
 const MS = await loadMachineSession();
 const args = process.argv.slice(2);
 const PAIRS = args.includes("--pairs");
@@ -26,17 +28,14 @@ s.keyDownRaw(gameKey(s, "P")); await s.runFrames(10); s.keyUpRaw(gameKey(s, "P")
 const cpu = s._machine.processor; const cyc = () => cpu.currentCycles + cpu.cycleSeconds * 2000000;
 const chip = cpu.soundChip; const orig = chip.poke.bind(chip);
 let log = null; chip.poke = (v) => { if (log) log.push([cyc(), v]); return orig(v); };
-const W = syms.wait_for_unpause, PS = syms.play_sound, CP = syms.check_for_player_input, STUB = 0x0c00;
-let fired = [];
-cpu.debugInstruction.add((pc) => { if (pc === STUB) { s.writeMemory(W + 1, [CP & 255, CP >> 8]); fired.push(cyc()); } return false; });
+const W = syms.wait_for_unpause, PS = syms.play_sound;
 // the MOS's ticks: entries to the IRQ vector with System VIA T1's flag up
 const ticks = [];
 cpu.debugInstruction.add((pc) => { if (pc === 0xe59e && log && (s.readMemory(0xfe4d, 1)[0] & 0x40)) ticks.push(cyc()); return false; });
 async function fire(off) {
-    s.writeMemory(STUB, [0xA9, off, 0x20, PS & 255, PS >> 8, 0x4C, CP & 255, CP >> 8]);
-    s.writeMemory(W + 1, [STUB & 255, STUB >> 8]);
-    const n = fired.length; while (fired.length === n) await s.runFrames(1);
-    return fired[fired.length - 1];
+    if (!(await runToPc(s, W, 10))) throw new Error("not in the pause loop");
+    callFrom(s, PS, off);
+    return cyc();
 }
 // writes -> per tick lists, from the first tick after t0
 function byTick(writes, t0) {

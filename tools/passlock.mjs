@@ -8,7 +8,8 @@
 // main_game_loop on, each machine is stopped at the start of every pass, given that pass's keys
 // (bursts of RIGHT, LEFT, SHIFT, DELETE, A, Z - and CTRL with PASSLOCK_CTRL=1 - from SEED, generated per PASS, not per frame, so two
 // builds of different speed see the same input on the same pass), and compared:
-//   state   every mover and projectile table (movers_type_and_colour up to mover_types_parts),
+//   state   every mover and projectile table (movers_type_and_colour to projectiles_ttl's end:
+//           playscript.mjs moverTables),
 //           the score digits, the helicopter fuel, and the zero-page game variables below
 //   screen  (--screen) the bytes of the screen being shown: the control's &4000-&7FFF against the
 //           test's, read from shadow RAM when ACCCON bit 0 says the shadow screen is displayed;
@@ -19,7 +20,7 @@
 // Use DEBUG_LIVES builds, so the game never ends.
 import { readFileSync } from "node:fs";
 import { loadMachineSession } from "./jsbeeb_src.mjs";
-import { KEY, makeScript, applyEvents, bootMaster, gameKey } from "./playscript.mjs";
+import { KEY, makeScript, applyEvents, bootMaster, gameKey, moverTables } from "./playscript.mjs";
 const MachineSession = await loadMachineSession();
 
 const args = process.argv.slice(2);
@@ -87,7 +88,7 @@ function state(m) {
     const { s, syms } = m;
     const rd = (a, n) => [...s.readMemory(a, n, { shadow: false })];
     const out = {};
-    out.movers = rd(syms.movers_type_and_colour, syms.mover_types_parts - syms.movers_type_and_colour);
+    out.movers = rd(...moverTables(syms));
     out.score = rd(syms.game_over_text + 20, 6);
     out.fuel = rd(0x0960, 0x22);
     for (const [k, addrs] of Object.entries(ZP)) out[k] = addrs.map((a) => rd(a, 1)[0]);
@@ -130,7 +131,7 @@ let inHelicopter = 0, hiddenDiffs = 0;
 const traces = [];
 function arm(m) {
     const t = { writes: [], trail: [] };
-    const lo = process.env.TRACE_LO ? parseInt(process.env.TRACE_LO, 16) : m.syms.movers_type_and_colour, hi = process.env.TRACE_HI ? parseInt(process.env.TRACE_HI, 16) : m.syms.mover_types_parts;
+    const lo = process.env.TRACE_LO ? parseInt(process.env.TRACE_LO, 16) : m.syms.movers_type_and_colour, hi = process.env.TRACE_HI ? parseInt(process.env.TRACE_HI, 16) : moverTables(m.syms).reduce((a, n) => a + n);
     const names = {}; for (const [k, v] of Object.entries(m.syms)) if (v < 0x4000) (names[v] ||= k);
     const near = (pc) => { for (let a = pc; a > pc - 0x200; a--) if (names[a]) return `${names[a]}+${pc - a}`; return pc.toString(16); };
     m.cpu.debugInstruction.add((pc) => { if (m.tracing && pc < 0x8000) { t.trail.push(pc); if (t.trail.length > 40) t.trail.shift(); } return false; });
