@@ -2041,6 +2041,7 @@ walk_d = walk_ptr + 1
     CLC
     ADC screen_address_low
     STA screen_address_low
+    BCC c1_walk_high_kept       \ grind: no carry, the high byte stands (always &40-&7F: no wrap to do)
     LDA screen_address_high
     ADC #&00
     BPL screen_in_range
@@ -2048,6 +2049,7 @@ walk_d = walk_ptr + 1
     SBC #&40
 .screen_in_range
     STA screen_address_high
+.c1_walk_high_kept
     LDA #&08                        \ the column step's delta (deltas_*_table[0])
     STA delta_low
     STZ delta_high                  \ 65C02 opcode
@@ -2057,7 +2059,13 @@ walk_d = walk_ptr + 1
 .get_mover_sprite_and_screen_addresses    \ # Called with X = mover type
     STZ columns_to_clip_from_left   \ 65C02 opcode
     LDY mover
-    JSR get_mover_Y_sprite          \ Returns X = sprite, A = frame and flip
+    LDA movers_frame_and_flip,Y     \ grind: get_mover_Y_sprite in line, without its CLC: C = 0 from
+    AND #&3F                        \ both callers (BCS not taken; ADC #&1C on a type under &80)
+    ADC mover_types_first_sprite_animation_offsets,X
+    TAX
+    LDA animation_table,X
+    TAX
+    LDA movers_frame_and_flip,Y     \ X = sprite, A = frame and flip, N and Z from it
 .get_sprite_and_screen_addresses_for_frame_A
     STX plot_sprite                 \ Step 2 (layer 3): the sprite, for walk_column (flags kept)
     BMI is_flipped_1f25
@@ -2065,12 +2073,10 @@ walk_d = walk_ptr + 1
     LDY unflipped_mover_sprite_addresses_low_table,X
     LDA unflipped_mover_sprite_addresses_high_table,X
     TAX
-    LDA &C5                         \ check_mover_x_against_viewport_left, inline
-    CMP viewport_left_high
-    BNE unflipped_x_checked
-    LDA mover_x_low
-    CMP viewport_left_low
-.unflipped_x_checked
+    LDA mover_x_low                 \ check_mover_x_against_viewport_left, inline: grind, one 16-bit
+    CMP viewport_left_low           \ compare, C = mover_x >= viewport_left (A, V not read after)
+    LDA &C5
+    SBC viewport_left_high
     BCS set_sprite_address          \ carry set if mover_x >= viewport_left
     JSR clip_unflipped_mover_loop   \ Returns carry set
     BCS set_sprite_address          \ Always branches
@@ -2206,15 +2212,18 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
 .leave_with_sprite_address_and_carry_set
     LDY &CE
     LDX &CF
-    SEC                             \ Leave with carry set to indicate mover is on edge
+                                    \ Grind: falls into the SEC/RTS below (carry set: mover is on edge)
+.leave_with_carry_set_2097
+    SEC                             \ Leave with carry set to indicate mover not on screen
+.leave_with_carry_set_rts_2097
     RTS
 
 .get_mover_sprite
     LDY mover_to_update
+    CLC                             \ Grind: here, not below; both get_mover_Y_sprite callers arrive with C=0
 .get_mover_Y_sprite
     LDA movers_frame_and_flip,Y
     AND #&3F
-    CLC
     ADC mover_types_first_sprite_animation_offsets,X
     TAX
     LDA animation_table,X
@@ -2234,12 +2243,9 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     STA unflipped_green_pixel_table + 60\ CC
     RTS
 
-.leave_with_carry_set_2097
-    SEC                             \ Leave with carry set to indicate mover not on screen
-.leave_with_carry_set_rts_2097
-    RTS
 .check_if_mover_Y_is_on_screen
-    JSR get_mover_Y_type            \ Returns A = mover type
+    LDA movers_type_and_colour,Y    \ Mover type (get_mover_Y_type inlined)
+    AND #&7F
     TAX
 .check_if_mover_is_on_screen
     LDY &C5
@@ -3407,7 +3413,9 @@ cm_x_max_high_operand = * + 1
     SBC cm_left_high
     BCC check_next_mover
 .check_in_full
-    JSR check_for_mover_collision_with_mover_X
+    CPX mover_to_update             \ grind: check_for_mover_collision_with_mover_X's own first test, done here:
+    BEQ check_next_mover            \ the searching mover itself goes straight on to the next
+    JSR check_for_collision_with_mover
     BCS leave_2865                  \ Leave with carry set to indicate collision, X = mover
 .check_next_mover
     DEX
