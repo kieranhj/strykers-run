@@ -24,14 +24,12 @@
     LDA sfx_request,X
     BEQ no_request
     STZ sfx_request,X               \ (a request in between these two is lost: the next replaces it)
-    DEC A
-    TAY
-    LDA sfx_effect_lo,Y
+    TAY                             \ E + 1: the tables are read one byte early
+    LDA sfx_effect_lo - 1,Y
     STA sfx_ptr_lo,X
-    LDA sfx_effect_hi,Y
+    LDA sfx_effect_hi - 1,Y
     STA sfx_ptr_hi,X
-    LDA #&FF                        \ the noise control is written when it changes: not yet
-    STA sfx_noise_written,X
+    STA sfx_noise_written,X         \ the noise control is written when it changes: not yet (an address's high byte, never 0-7)
     JSR sfx_next_ramp
 .no_request
     LDA sfx_n,X

@@ -4222,8 +4222,7 @@ ENDIF
     JSR check_if_mover_Y_is_on_screen\ Returns carry set if mover is not on screen
     BCS leave_with_carry_set_2ad2   \ If so, leave with carry set to indicate no target found
     LDA mover_y
-    CLC
-    ADC #&40
+    ADC #&40                        \ grind: C=0, BCS above not taken
     STA mover_y_max
 .search_for_target
     JSR calculate_mover_x_max_from_offset
