@@ -1918,7 +1918,6 @@ ENDIF
     INY
     LDA (scenery_sprite_address),Y  \ Zero indicates end of column
     BEQ move_to_next_column
-    LDA (scenery_sprite_address),Y
     AND #&C0
     BNE find_end_of_column_loop
     INY                             \ Get extra byte for variable length run

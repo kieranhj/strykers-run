@@ -1382,16 +1382,11 @@ header_hi = * + 1
     TAY
     LDA sprites_y_offset,Y
     STA dm_raise
-    TXA
-    CLC
-    ADC #&1C                        \ the second parts' mover types
+    TAY                             \ Y = the raise, for mark_part2 and ren_draw_sprite
+    LDA dm_frame                    \ (C still clear: frame <= &3F plus an offset <= &1E)
+    ADC mover_types_first_sprite_animation_offsets + &1C,X    \ the second parts' mover types
     TAX
-    LDA dm_frame
-    CLC
-    ADC mover_types_first_sprite_animation_offsets,X
-    TAY
-    LDA animation_table,Y
-    LDY dm_raise
+    LDA animation_table,X
     JSR mark_part2
     JSR ren_draw_sprite
     LDX dm_type

@@ -137,25 +137,16 @@
     ADC #&80
     ROL A
     AND #&3F
-    JSR sfx_write
-    BRA amplitude                   \ 65C02 opcode
-.noise
-    LDA sfx_p_lo,X                  \ noise: only when it changes (writing it restarts the noise)
-    AND #&07
-    CMP sfx_noise_written,X
-    BEQ amplitude
-    STA sfx_noise_written,X
-    ORA #&E0
-    JSR sfx_write
+    JSR sfx_write                   \ the tone falls through to its amplitude
 .amplitude
     LDA sfx_v,X
     LSR A
     LSR A
     LSR A
     LSR A
-    EOR #&0F                        \ the chip takes attenuation
-    ORA #&10
+    EOR #&1F                        \ the chip takes attenuation; &10: an amplitude latch byte
     ORA sfx_channel_bits,X
+noise = sfx_write.noise             \ after sfx_write's RTS, so the tone path needs no branch
 }
     \ falls through
 \ A to the chip, as MOS 3.20 writes it (&F5E6). Keeps X.
@@ -164,8 +155,7 @@
     LDY #&FF
     STY sysvia_ddra
     STA sysvia_ora_nh
-    INY
-    STY sysvia_orb                  \ latch line 0 low: write enable
+    STZ sysvia_orb                  \ latch line 0 low: write enable
     LDY #2
 .wait_low
     DEY
@@ -177,6 +167,15 @@
     DEY
     BNE wait_high
     RTS
+.noise                              \ sfx_output's noise channel (its BEQ noise lands here)
+    LDA sfx_p_lo,X                  \ noise: only when it changes (writing it restarts the noise)
+    AND #&07
+    CMP sfx_noise_written,X
+    BEQ sfx_output.amplitude
+    STA sfx_noise_written,X
+    ORA #&E0
+    JSR sfx_write
+    BRA sfx_output.amplitude        \ 65C02 opcode
 }
 
 \ All four channels off, and forgotten (requests too).
