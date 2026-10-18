@@ -3733,8 +3733,8 @@ ENDIF
 .to_replot_projectile
     BCC replot_projectile           \ Grenades have no ttl, but bullets do
     DEC projectiles_ttl - 12,X
-    BEQ explode_projectile          \ Explode projectile at end of life
-    BNE replot_projectile           \ Always branches
+    BNE replot_projectile           \ grind: the bullet still alive, the common case, in one branch
+    BRA explode_projectile          \ Explode projectile at end of life (65C02 opcode)
 .projectile_hit_mover
     CPX #&11                        \ MOVER_PLAYER_BULLET
     BEQ is_player_projectile
@@ -4109,10 +4109,10 @@ stf_x_max_high_operand_s = * + 1
     LSR A
     CMP #&04
     BCS use_ceiling
-    AND #&03
-    CLC
-    ADC #&0A
-    BCC use_ceiling + 2
+    ADC #&0A                        \ C=0 and A=0..3 here (BCS not taken after CMP #&04): no AND, no CLC
+    STA projectiles_ttl,Y           \ projectiles_ttl - &c + &c (MOVERS_FIRST_PROJECTILE)
+    CLC                             \ C is already 0; kept so use_ceiling and what follows stay put
+    RTS
 .use_ceiling
     LDA #&0E
     STA projectiles_ttl,Y           \ projectiles_ttl - &c + &c (MOVERS_FIRST_PROJECTILE)
@@ -4815,8 +4815,7 @@ ASSERT shown_screen < &3000
 
 .rnd_skewed_towards_right_of_world
     STA &CE
-    LDA viewport_left_high
-    CLC
+    LDA viewport_left_high          \ C=0 on entry from both callers (grind)
     ADC #&04
     STA threshold
     JSR random                      \ Step 2 (decision 17): was User VIA timer 2 LSB
