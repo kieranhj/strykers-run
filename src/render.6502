@@ -1451,7 +1451,7 @@ header_hi = * + 1
     RTS
 .generic
     BIT dm_flip
-    BPL draw_column
+    BPL draw_column.each
     LDA ds_c                        \ flipped: the bottom 8 * (n - 1) on
     DEC A                           \ 65C02 opcode
     ASL A
@@ -1460,11 +1460,11 @@ header_hi = * + 1
     CLC
     ADC b_ptr
     STA b_ptr
+    BCC draw_column.each            \ the same page
     LDA b_ptr + 1
-    ADC #0
+    INC A                           \ 65C02 opcode
     BPL flipped_in_ring
-    SEC
-    SBC #&40
+    LDA #&40                        \ &80: round the 16K screen
 .flipped_in_ring
     STA b_ptr + 1
 }
