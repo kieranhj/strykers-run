@@ -3,16 +3,20 @@
 //   node tools/soundfx.mjs DISC.ssd OUT.json
 //
 // Plays tools/playscript.mjs (seed 1) to frame 4000, pauses the game (P), then for each effect
-// (play_sound's A = &00, &08 ... &38) patches the pause loop's JSR check_for_player_input to a
-// stub at &0C00 that calls play_sound first, and logs [cycles after the call, byte] of every
-// chip write for the next 150 fields. Compare two builds' OUT.json channel by channel: a sound
+// (play_sound's A = &00, &08 ... &38) stops the CPU at the pause loop's JSR check_for_player_input
+// (wait_for_unpause) and calls play_sound from there (playscript.mjs's callFrom: the return
+// address pushed, PC set; it returns to the JSR), and logs [cycles after the call, byte] of every
+// chip write for the next 150 fields. Nothing is written to RAM but the stack: the stub this used
+// to put at &0C00 overwrote `times_78_hi` once decisions 32-34 moved things there. Every address
+// comes from the build's symbols. Compare two builds' OUT.json channel by channel: a sound
 // already playing when the game paused differs with the game state, an effect's own channel
 // should not.
 import { readFileSync, writeFileSync } from "node:fs";
 import { loadMachineSession } from "./jsbeeb_src.mjs";
-import { makeScript, applyEvents, bootMaster, gameKey } from "./playscript.mjs";
+import { makeScript, applyEvents, bootMaster, gameKey, runToPc, callFrom } from "./playscript.mjs";
 const MS = await loadMachineSession();
 const [disc, out] = process.argv.slice(2);
+if (!out) { console.error("usage: node tools/soundfx.mjs DISC.ssd OUT.json"); process.exit(2); }
 const syms = {};
 for (const sec of JSON.parse(readFileSync(disc.replace(/\.ssd$/, ".symbols.json"), "utf8")).assemblies[0].sections)
   for (const [k, v] of Object.entries(sec.labels || {})) if (v && typeof v.value === "number") syms[k] = v.value;
@@ -23,19 +27,16 @@ s.keyDownRaw(gameKey(s, "P")); await s.runFrames(10); s.keyUpRaw(gameKey(s, "P")
 const cpu = s._machine.processor; const cyc = () => cpu.currentCycles + cpu.cycleSeconds * 2000000;
 const chip = cpu.soundChip; const orig = chip.poke.bind(chip);
 let log = null; chip.poke = (v) => { if (log) log.push([cyc(), v]); return orig(v); };
-const W = syms.wait_for_unpause, PS = syms.play_sound, CP = syms.check_for_player_input, STUB = 0x0c00;
-const at = []; let t0 = null;
-cpu.debugInstruction.add((pc) => { if (pc === STUB) { s.writeMemory(W + 1, [CP & 255, CP >> 8]); t0 = cyc(); } return false; });
-const pcs = []; cpu.debugInstruction.add((pc) => { if (pcs.length < 1 && pc === W) pcs.push(pc); return false; });
-await s.runFrames(5);
-if (!pcs.length) { console.log("not in the pause loop"); process.exit(1); }
+const W = syms.wait_for_unpause, PS = syms.play_sound;
+if (W === undefined || PS === undefined) { console.log("no wait_for_unpause or play_sound in the symbols"); process.exit(1); }
 const result = {};
 for (let off = 0; off < 0x40; off += 8) {
-  s.writeMemory(STUB, [0xA9, off, 0x20, PS & 255, PS >> 8, 0x4C, CP & 255, CP >> 8]);
-  log = []; t0 = null;
-  s.writeMemory(W + 1, [STUB & 255, STUB >> 8]);
+  if (!(await runToPc(s, W, 10))) { console.log("not in the pause loop"); process.exit(1); }
+  log = [];
+  callFrom(s, PS, off);
+  const t0 = cyc();
   await s.runFrames(150);
-  result[off] = log.filter(([c]) => t0 !== null && c >= t0).map(([c, v]) => [Math.round(c - t0), v]);
+  result[off] = log.filter(([c]) => c >= t0).map(([c, v]) => [Math.round(c - t0), v]);
   log = null; await s.runFrames(50);
 }
 writeFileSync(out, JSON.stringify(result));

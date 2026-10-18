@@ -10,7 +10,7 @@
 // change). Both DEBUG_LIVES. Prints where the flight got to and the first frame that differs.
 import { readFileSync } from "node:fs";
 import { loadMachineSession } from "./jsbeeb_src.mjs";
-import { makeScript, applyEvents, bootMaster, gameKey } from "./playscript.mjs";
+import { makeScript, applyEvents, bootMaster, gameKey, moverTables } from "./playscript.mjs";
 const MS = await loadMachineSession();
 const [discA, discB, passesArg, variantArg] = process.argv.slice(2);
 // VARIANT: how the flight goes - climbing for VARIANT * 10 passes in each 100, grenades (DELETE)
@@ -44,7 +44,7 @@ async function toPass(m, n) { m.target = n; for (let i = 0; m.passes < n; i++) {
 const rdm = (m, a, n = 1) => [...m.s.readMemory(a, n, { shadow: false })];
 // passlock's game variables (not field_count &90 or game_over_cooldown &96: they count fields)
 const ZP = [0x00, 0x01, 0x7e, 0x7f, 0x80, 0x82, 0x83, 0x84, 0x8e, 0x8f, 0x92, 0x93, 0x94, 0x95, 0x9f, 0xa0, 0xb0, 0xb1, 0xb2, 0xba, 0xb3, 0xbb, 0xc0];
-const state = (m) => JSON.stringify([rdm(m, m.syms.movers_type_and_colour, m.syms.mover_types_parts - m.syms.movers_type_and_colour), ZP.map((a) => rdm(m, a)[0])]);
+const state = (m) => JSON.stringify([rdm(m, ...moverTables(m.syms)), ZP.map((a) => rdm(m, a)[0])]);
 function newest(m) {
     const pending = rdm(m, m.syms.flip_pending)[0] & 0x80;
     const shadow = pending ? !!rdm(m, m.syms.flip_screen)[0] : !!(m.cpu.acccon & 1);

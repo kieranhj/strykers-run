@@ -78,14 +78,16 @@ disassembly's `actually`/`also` notes say what an operand really is.
 - `tools/m6502.py FILE LOAD START [END]` - 65SC12 disassembler for poking at binaries
 - `tools/listing.py`, `tools/dfs.py`, `tools/jsbeeb_src.mjs` - the kit's
 - `tools/disasm2baron.py` - the one-shot converter (audit trail)
-- `tools/playscript.mjs` - the scripted game (boot, start, run/fire/jump); `tools/play.mjs DISC` plays it with screenshots
+- `tools/playscript.mjs` - the scripted game (boot, start, run/fire/jump); `tools/play.mjs DISC` plays it with screenshots. Also `WorldBot` and
+  `startWorldGame` (the whole world by pass, infinite lives poked into a build without `DEBUG_LIVES`), `loadSyms` (labels and assignments),
+  `moverTables` (the state passlock compares), `readAt` (main RAM or HAZEL by address), `callFrom` (a JSR faked from a stopped CPU)
 - `tools/lockstep.mjs A B [FRAMES]` - two builds on the same input, first frame whose screen differs
-- `tools/tracediff.mjs CONTROL SHIFTED SHIFT [@FRAME]` - the first instruction or screen write that differs, both stopped there (`DUMP=05` shows the bytes at a zero-page pointer)
+- `tools/tracediff.mjs CONTROL SHIFTED SHIFT [@FRAME]` - the first instruction or screen write that differs, both stopped there, from each build's `entry_point` (`DUMP=05` shows the bytes at a zero-page pointer)
 - `tools/profile.mjs DISC [FROM] [FRAMES]`, `tools/speed.mjs DISC` - passes/s, fields per pass, flat profile; speed with RIGHT held
 - `tools/irqprofile.mjs DISC [FROM] [FRAMES]` - every interrupt by the VIA source it serviced, its cycles by MOS subroutine (nesting handled: the MOS's tick re-enables interrupts)
 - `tools/frontend.mjs DISC` - title, instructions, define controls, pause, high score entry, toggles, two games: 15 checks, plus the MOS state handed over and back
 - `tools/split.mjs DISC FROM FRAMES`, `tools/splitscroll.mjs DISC` - when the palette writes land after vsync, every field / on scrolling fields
-- `tools/soundfx.mjs DISC OUT.json` - each sound effect's SN76489 writes, for comparing two builds
+- `tools/soundfx.mjs DISC OUT.json` - each sound effect's SN76489 writes, for comparing two builds (fired from the pause loop by a faked JSR: no stub in RAM)
 - `tools/passlock.mjs CONTROL TEST [PASSES] [SEED] [--screen]` - two builds in step by pass (same keys per pass), game state compared every pass, and the shown screen (`--trace`, `--dump`, `WATCH=` to chase a difference). Layer 2's oracle: build both `-Shift 256 -ShiftEnd` so the ground pattern is fixed
 - `tools/shadowaudit.mjs DISC` - what the renderer reads in `&3000-&3FFF` with ACCCON's X bit set, against what play writes there
 - `tools/passbench.mjs DISC [DISC2 ...]` - speed on the same game whatever the build's speed (keys by pass, as passlock): compare builds with this, not the frame-timed tools
@@ -94,7 +96,9 @@ disassembly's `actually`/`also` notes say what an operand really is.
   (`docs/step2-layer4-costing.md`)
 - `tools/passcost.mjs DISC [FROM] [FRAMES] [--right]`, `tools/passhist.mjs` - a pass's cycles by phase; each pass's work against the bytes it drew
 - `tools/helilock.mjs CONTROL TEST [PASSES] [VARIANT]` - two builds in step through a helicopter flight (board, fly, shot down), state and newest frame every pass; passlock's scripts never board one
-- `tools/worldcheck.mjs DISC` - the renderer's world position of each record against the mover's x/y (BUGS #7)
+- `tools/worldcheck.mjs DISC [--world]` - the renderer's world position of each record against the mover's x/y (BUGS #7, #10); `--world`, start to completion screen
+- `tools/worldrun.mjs DISC [--control CONTROL [--screen]] [--shots DIR]` - the whole world, start to completion screen (WorldBot: run, jump, grenade what blocks):
+  frames as passbench (late frames by world column, ground or air); with `--control`, state and newest frame against CONTROL every pass (the `DEBUG_FULLREDRAW` twin)
 - `tools/zplive.mjs DISC` - the zero-page bytes the logic reads first after a render (what `restore_game_zp` must keep)
 - `tools/analyse.py report|annotate` - beebgame's static analyses of the build (liveness, known values, ranges,
   register ABIs; `build/dataflow/`): `tools/dataflow/` vendored, `tools/baron_dbg.py` reads a Baron build,
@@ -105,12 +109,15 @@ disassembly's `actually`/`also` notes say what an operand really is.
 - `tools/grind.py windows|add|queue|apply|revert|gate|run|report`, `tools/grind_config.py` - the micro-optimisation grind (the beeb-micro-grind skill): annotated windows weighted by cycles, the ledger (`docs/grind/`), the proof gate, the serial apply-and-prove run
 - `tools/pipesim.py PERPASS.json`, `tools/unlocksim.py PERPASS.json` - measured passes replayed under other loop orders: the logic ahead; the flip at the next vsync
 - `tools/packmusic.py` - the front end's tunes packed (ZX02) into `src/music_packed.6502`, checked by unpacking
-- `tools/hazelwatch.mjs DISC`, `tools/hazelreach.mjs DISC` - who touches HAZEL after the start; how far the mountain layer reads
+- `tools/hazelwatch.mjs DISC`, `tools/hazelreach.mjs DISC` - who touches HAZEL after the start; how far the mountain layer reads over the whole world
 - `tools/hang.mjs DISC PASS`, `tools/screendiff.mjs A B PASS` - where a stalled build goes; two builds' screens byte by byte
 - `tools/sprites.py stats|emit|straight` - sprite sizes, save block sizes, and the generated sprite sources
 - `tools/sfxcapture.mjs DISC OUT [--pairs]` - each sound effect's chip writes by MOS tick; `--pairs`, an effect over another
 - `tools/sfx50.py CAPTURE.json OUT.6502 [--show]` - fit 50 Hz ramps (for `src/lib/sfx50.6502`) to captured effects; `--show` prints them against the MOS's
 - Harnesses must read `&3000-&7FFF` with `{ shadow: false }` (or `true`): the renderer may have the CPU on shadow RAM
+- Harnesses take addresses from the symbol dump, never hard-coded: the zero-page names (`src/zp.6502`) and the renderer's
+  records (`rec_*`, `REN_BASE + n`) are *assignments* in it, not labels; a loader that reads only `labels` gets `undefined`
+  for them, which reads as garbage without an error (`tools/playscript.mjs` `loadSyms` reads both)
 
 ## Memory (MGAME, as the reference lays it out)
 
