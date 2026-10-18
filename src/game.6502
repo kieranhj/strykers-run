@@ -2790,42 +2790,44 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     CLC
     ADC y_delta
     STA mover_y
-    JSR check_for_collision_after_vertical_move
-    BCS skip_changing_screen_address_245f
+.check_for_collision_after_vertical_move   \ grind: move_mover_up falls in here; move_mover_down JSRs here
+    LDX mover_to_update
+    LDY movers_x_high,X
+    LDA movers_x_low,X
+    JSR check_for_mover_collision_with_movers\ Returns carry set if collision, X = mover collided with
+    JSR check_for_hostile_collision \ Returns carry set if collision was hostile
+    BCS vertical_collision_b245f
+.no_collision
+    LDX movers_screen_address_high,Y
+    LDA movers_screen_address_low,Y
     LDY y_delta
     BEQ skip_changing_screen_address_245f
+.vertical_rows_jsr_b245f            \ grind: self-modified by move_mover_down (the low byte only)
     JSR subtract_Y_rows_from_screen_address_in_AX
 .skip_changing_screen_address_245f
 .set_mover_screen_address_245f
     STX mover_screen_address_high
     STA mover_screen_address_low
     RTS
-
-.check_for_collision_after_vertical_move
-    LDX mover_to_update
-    LDY movers_x_high,X
-    LDA movers_x_low,X
-    JSR check_for_mover_collision_with_movers\ Returns carry set if collision, X = mover collided with
-    JSR check_for_hostile_collision \ Returns carry set if collision was hostile
-    BCC no_collision
+.vertical_collision_b245f
     LDA movers_y,Y
     STA mover_y
     STZ y_edge_size_and_direction   \ *** 65C02 opcode; set to zero to skip edge buffering
-.no_collision
     LDX movers_screen_address_high,Y
     LDA movers_screen_address_low,Y
-    RTS
+    BRA skip_changing_screen_address_245f
 
 .move_mover_down    \ # Called with A = mover_y
     SEC
     SBC y_delta
     STA mover_y
+    LDA #LO(add_Y_rows_from_screen_address_in_AX) \ grind: move_mover_up's row step made an add for this call
+    STA vertical_rows_jsr_b245f + 1
     JSR check_for_collision_after_vertical_move
-    BCS skip_changing_screen_address_245f
-    LDY y_delta
-    BEQ skip_changing_screen_address_245f
-    JSR add_Y_rows_from_screen_address_in_AX
-    JMP skip_changing_screen_address_245f
+    LDA #LO(subtract_Y_rows_from_screen_address_in_AX) \ and put back
+    STA vertical_rows_jsr_b245f + 1
+    RTS
+    ASSERT HI(add_Y_rows_from_screen_address_in_AX) = HI(subtract_Y_rows_from_screen_address_in_AX)
 
 .move_mover_up_and_right
     JSR move_mover_up
