@@ -2257,22 +2257,29 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     LDA viewport_right_low
     CMP mover_x_low
     BCC leave_with_carry_set_2097
-.is_left_of_viewport_right
+.is_left_c1_3d13                    \ Grind: C=1 here on both ways in (the CMP, or the SEC below)
     LDA mover_types_width_table,X
-    CLC
-    ADC mover_x_low
-    BCS overflow_20a8               \ Grind: the rare carry out of line, so the hot path falls through
-.skip_overflow_20a8
-    CMP viewport_left_low           \ Grind: Y:A >= viewport_left as one 16-bit compare (C = 1 if so)
+    ADC mover_x_low                 \ x + width + 1
+    BCS overflow_c1_3d13            \ the rare carry out of line, so the hot path falls through
+.skip_overflow_c1_3d13
+    SBC viewport_left_low           \ C=0: x + width + 1 - left_low - 1, the CMP's carry; Y:A >= viewport_left as one 16-bit compare
     TYA
     SBC viewport_left_high
     BCC leave_with_carry_set_2097
 .leave_with_carry_clear_20b2
     CLC                             \ Leave with carry clear to indicate mover is on screen
     RTS
-.overflow_20a8
-    INY
-    BRA skip_overflow_20a8          \ 65C02 opcode
+.is_left_of_viewport_right          \ the BCC from check_if_mover_is_on_screen: C=0
+    SEC
+    BRA is_left_c1_3d13             \ 65C02 opcode
+.overflow_c1_3d13                   \ C=1; Z set if x + width = &FF exactly (no carry in the original)
+    BNE overflow_carry_3d13
+    DEC A                           \ 65C02 opcode; A = &FF = x + width, Y as it was; C=1, so the SBC compares as the CMP did
+    BRA skip_overflow_c1_3d13       \ 65C02 opcode
+.overflow_carry_3d13
+    INY                             \ x + width >= &100: the high byte carries, as the original's INY
+    CLC                             \ so the SBC below takes the + 1 back off
+    BRA skip_overflow_c1_3d13       \ 65C02 opcode
 
 .completion_screen
     JSR render_finish               \ Step 2 (layer 2): the text goes on the main screen, up to date
@@ -4221,8 +4228,7 @@ stf_x_max_high_operand_s = * + 1
     PLA
     STA romsel
 .leave_irq1_handler_owned           \ serviced here: back to the interrupted code, not the MOS
-    PLA
-    STA irq_accumulator
+    PLA                             \ irq_accumulator still holds this byte: nothing in the handler writes &FC
     PLY
     PLX
     RTI                             \ A is still the interrupted A (PLY/PLX leave it)
