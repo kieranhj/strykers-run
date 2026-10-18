@@ -2889,16 +2889,19 @@ move_mover_routine_address_high = * + 2
     STA movers_screen_address_high,Y
     LDA mover_y
     STA movers_y,Y
-    STA y
-    LDA #&C7
+    EOR #&FF                        \ grind: &C7 - mover_y + &18 = &DF - mover_y = (&FF - mover_y) - &20
     SEC
-    SBC y
-    CLC
-    ADC #&18
-    JSR multiply_by_78              \ step 2 (RAM for cycles 4): A x &4E from a table
-    LDY mover_to_update
-    LDA result_high
-    STA movers_raster_y,Y
+    SBC #&20
+    TAX                             \ grind: multiply_by_78 inlined (A x &4E from the table), its stores kept; Y stays mover_to_update
+    LDA times_78_lo,X
+    STA result_low
+    LDA times_78_hi,X
+    STA result_high
+    STZ multiplicand                \ 65C02 opcode
+    STZ multiplier_low              \ 65C02 opcode
+    LDX #&4E
+    STX multiplier_high
+    STA movers_raster_y,Y           \ A = result_high
     JSR calculate_screen_addresses_for_mover_on_edge
     CPY #&00                        \ MOVER_PLAYER
     BNE to_scroll_screen_right + 3
