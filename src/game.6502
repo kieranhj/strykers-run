@@ -2173,19 +2173,21 @@ ENDIF
 .calculate_screen_addresses_for_mover_on_edge
     LDA movers_x_high,Y
     STA &D0
-    JSR get_mover_Y_type            \ Returns A = mover type
+    LDA movers_type_and_colour,Y    \ Mover type (get_mover_Y_type inlined)
+    AND #&7F
     TAX
     LDA mover_types_width_table,X
     STA mover_width
-    LDA movers_x_low,Y
     LDX &CF                         \ Zero for left edge, non-zero for right edge
     BNE skip_adding_width
     CLC                             \ Consider right edge of mover for left edge of screen
-    ADC mover_width
+    ADC movers_x_low,Y              \ A = mover_width: the same sum and flags as x_low + width
     BCC skip_overflow_1dc4
     INC &D0
-.skip_overflow_1dc4
+    BCS skip_overflow_1dc4          \ Always: C=1 from the ADC, INC leaves it
 .skip_adding_width
+    LDA movers_x_low,Y
+.skip_overflow_1dc4
     CMP edge_x_low                  \ Is the edge of the mover on the edge of the screen?
     BNE leave_1e0f
     LDA &D0

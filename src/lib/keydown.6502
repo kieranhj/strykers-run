@@ -89,18 +89,16 @@ KBD_DDRA_SCAN = &7F                 \ PA0-PA6 out (the key number), PA7 in
 \ Edge's contract. A = &80 (pressed) or 0 on exit; X and Y clobbered.
 .keydown_int
 {
-    txa
-    ldx #KBD_LATCH_OFF
-    ldy #KBD_LATCH_ON
-    php
-    sei
-    stx KBD_PORTB               ; stop the free-running scan...
-    ldx #KBD_DDRA_SCAN
-    stx KBD_DDRA
-    sta KBD_ORA                 ; ask about this key
+    ldy #KBD_LATCH_ON           ; X keeps the key number: no TXA
+    lda #KBD_LATCH_OFF
+    sei                         ; every caller runs with I = 0 (the play loop), so CLI after
+    sta KBD_PORTB               ; stop the free-running scan...
+    lda #KBD_DDRA_SCAN
+    sta KBD_DDRA
+    stx KBD_ORA                 ; ask about this key
     lda KBD_ORA                 ; PA7 is the answer
     sty KBD_PORTB               ; ...and hand it back
-    plp
+    cli                         ; C and V untouched by the body, as PLP left them
     and #&80                    ; N = pressed
     rts
 }
