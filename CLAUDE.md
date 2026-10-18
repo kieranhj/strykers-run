@@ -98,6 +98,7 @@ disassembly's `actually`/`also` notes say what an operand really is.
 - `tools/passcost.mjs DISC [FROM] [FRAMES] [--right]`, `tools/passhist.mjs` - a pass's cycles by phase; each pass's work against the bytes it drew
 - `tools/helilock.mjs CONTROL TEST [PASSES] [VARIANT]` - two builds in step through a helicopter flight (board, fly, shot down), state and newest frame every pass; passlock's scripts never board one
 - `tools/worldcheck.mjs DISC [--world]` - the renderer's world position of each record against the mover's x/y (BUGS #7, #10); `--world`, start to completion screen
+- `tools/scrollleft.mjs CONTROL TEST [--left K] [--still S] [--place]` - BUGS #10's cases: the whole world with LEFT held (then no key) wherever a mover is clipped at the left edge, state and newest frame against CONTROL (the `DEBUG_FULLREDRAW` twin) every pass; `--place` moves a lower-slot soldier over the clipped mover
 - `tools/worldrun.mjs DISC [--control CONTROL [--screen]] [--shots DIR]` - the whole world, start to completion screen (WorldBot: run, jump, grenade what blocks):
   frames as passbench (late frames by world column, ground or air); with `--control`, state and newest frame against CONTROL every pass (the `DEBUG_FULLREDRAW` twin)
 - `tools/zplive.mjs DISC` - the zero-page bytes the logic reads first after a render (what `restore_game_zp` must keep)
