@@ -3089,10 +3089,11 @@ move_mover_routine_address_high = * + 2
     AND #&7F
     TAX
     LDA keys_pressed_bitmap
-    AND #&01                        \ KEY_UP
-    BNE is_jumping_or_moving_up
+    LSR A                           \ KEY_UP (bit 0) into carry (grind)
+    BCS is_jumping_or_moving_up
 .not_jumping
-    JSR check_if_player_is_on_ground
+    LDA movers_y                    \ grind: check_if_player_is_on_ground inlined
+    CMP #&18
     BNE consider_falling
 .consider_crouching_or_moving_down
     LDA keys_pressed_bitmap
@@ -3109,7 +3110,7 @@ move_mover_routine_address_high = * + 2
 .set_player_y_velocity_2673
     STA player_y_velocity
 .to_consider_falling
-    JMP consider_falling
+    BRA consider_falling            \ grind: was JMP (same cycles, a byte paid for the inlined check)
 .is_jumping_or_moving_up
     LDY movers_type_and_colour
     BEQ prepare_for_jump
