@@ -1187,27 +1187,23 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
 \ put_on: X = slot. If it goes on, draw it masked, saving what it covers, and record it.
 .put_on
 {
-    LDA need,X
-    AND #&40
-    BNE going_on
+    BIT need,X                      \ 65C02 opcode: V = bit 6, going on
+    BVS going_on
     RTS
 .going_on
     STX dm_slot
     TXA
-    CLC
-    ADC boff
+    ORA boff                        \ slot + boff: slot < &40, boff 0 or 64
     STA dm_index
-    LDX back                        \ room for its block, or make some
-    LDA arena_top_lo,X
-    CLC
-    ADC #LO(MAX_BLOCK)
+    LDX back                        \ room for its block, or make some: arena_top + MAX_BLOCK
+    LDA arena_top_lo,X              \ below save_arena_end's page, as one 16-bit compare
+    CMP #LO(HI(save_arena_end) * 256 - MAX_BLOCK)
     LDA arena_top_hi,X
-    ADC #HI(MAX_BLOCK)
-    CMP #HI(save_arena_end)
-    BCC room
+    SBC #HI(HI(save_arena_end) * 256 - MAX_BLOCK)
+    BCC room                        \ X = back
     JSR compact
-.room
     LDX back
+.room
     LDY dm_index
     LDA arena_top_lo,X              \ the block starts at the arena's top: its header there,
     STA save_start_lo,Y             \ where parts 2 and 3 start (0: none)

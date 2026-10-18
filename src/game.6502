@@ -2317,7 +2317,8 @@ ENDIF
     JSR get_mover_sprite_and_screen_addresses
     JSR plot_mover_sprite           \ Plot first part of mover (e.g. player's legs)
     LDY mover
-    JSR get_mover_Y_x
+    LDA movers_x_low,Y              \ get_mover_Y_x without &C5: still movers_x_high,Y from the first
+    STA mover_x_low
     LDX &7A
     LDA mover_types_parts,X         \ ***
     CMP #&02                        \ ***
@@ -2452,8 +2453,7 @@ walk_d = walk_ptr + 1
     RTS
 
 .get_mover_sprite_and_screen_addresses    \ # Called with X = mover type
-    LDA #&00
-    STA columns_to_clip_from_left
+    STZ columns_to_clip_from_left   \ 65C02 opcode
     LDY mover
     JSR get_mover_Y_sprite          \ Returns X = sprite, A = frame and flip
 .get_sprite_and_screen_addresses_for_frame_A
@@ -2463,13 +2463,17 @@ walk_d = walk_ptr + 1
     LDY unflipped_mover_sprite_addresses_low_table,X
     LDA unflipped_mover_sprite_addresses_high_table,X
     TAX
-    JSR check_mover_x_against_viewport_left
-    BCS set_sprite_address
+    LDA &C5                         \ check_mover_x_against_viewport_left, inline
+    CMP viewport_left_high
+    BNE unflipped_x_checked
+    LDA mover_x_low
+    CMP viewport_left_low
+.unflipped_x_checked
+    BCS set_sprite_address          \ carry set if mover_x >= viewport_left
     JSR clip_unflipped_mover_loop   \ Returns carry set
     BCS set_sprite_address          \ Always branches
 .is_flipped_1f25
-    LDA #&00
-    STA pixel_table_address_low
+    STZ pixel_table_address_low     \ 65C02 opcode
     LDY flipped_mover_sprite_addresses_low_table,X
     STY &CE
     LDA flipped_mover_sprite_addresses_high_table,X
@@ -3871,18 +3875,18 @@ cm_x_max_low_operand = * + 1
     INY
 .skip_overflow_28b1
     CPY &C5
-    BCC leave_with_carry_clear_28c9
+    BCC leave_with_carry_as_is      \ grind: C=0 here, so straight to the RTS
     BNE skip_low_check_28b7 + 4
 .skip_low_check_28b7
     CMP mover_x_low
-    BCC leave_with_carry_clear_28c9
+    BCC leave_with_carry_as_is      \ grind: C=0 here, so straight to the RTS
     LDA movers_y,X
     CMP mover_y_max
     BCS leave_with_carry_clear_28c9
     ADC &78
-    CMP mover_y
-    BCC leave_with_carry_clear_28c9
-    RTS                             \ Leave with carry set to indicate collision
+    CMP mover_y                     \ grind: C=0 (no collision) or C=1 (collision) is the answer
+.leave_with_carry_as_is
+    RTS                             \ Leave with carry set to indicate collision (clear if not)
 .leave_with_carry_clear_28c9
     CLC                             \ Leave with carry clear to indicate no collision
     RTS
