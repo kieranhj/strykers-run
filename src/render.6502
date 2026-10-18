@@ -1128,7 +1128,7 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     LDA list_x2_hi,Y
     STA list_x2_hi,X
 .x2_kept
-    LDA list_y1,Y
+    LDA list_y1 + MOVER_SLOTS       \ Y = MOVER_SLOTS: absolute, as ,Y crosses a page
     CMP list_y1,X
     BCS y1_kept
     STA list_y1,X

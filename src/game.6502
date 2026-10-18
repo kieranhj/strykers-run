@@ -4550,7 +4550,7 @@ ENDIF
     AND #&FE
     ORA flip_screen
     STA acccon                      \ D: which RAM the video shows
-    LDA flip_screen
+    AND #&01                        \ = flip_screen (0 or 1): the D bit just ORed in
     STA shown_screen
     STZ flip_pending                \ 65C02 opcode
 .no_flip
