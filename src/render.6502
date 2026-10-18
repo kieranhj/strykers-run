@@ -1691,6 +1691,9 @@ pix_operand_2 = * + 1
 
 .compiled_direct                    \ a kind in HAZEL: no bank to page
     JMP (compiled_vec)
+.compiled_none                      \ compiled_part: not a kind (carry set)
+    SEC
+    RTS
 
 \ compiled_part: the player's part (not clipped) as code, if its sprite, flip and line are one of
 \ tools/compiled.py's kinds: the kind's code in its bank (through compiled_call), from the
@@ -1700,25 +1703,19 @@ pix_operand_2 = * + 1
 \ and ds_c are as the generic path wants them).
 .compiled_part
 {
-    LDA ds_sprite                   \ the kind from ck_index: sprite << 4 | flip << 3 | line
-    CMP #CK_SPRITES
-    BCS none
-    ASL A
-    ASL A
+    LDA dm_flip                     \ the kind from ck_index: sprite << 4 | flip << 3 | line,
+    ASL A                           \ as (sprite << 1 | flip) << 3 | line: C = the flip (bit 7)
+    LDA ds_sprite
+    ROL A                           \ sprite << 1 | flip (every sprite is below &80)
+    CMP #CK_SPRITES * 2
+    BCS compiled_none
+    ASL A                           \ C = 0 from here
     ASL A
     ASL A
     ORA ds_line
-    BIT dm_flip
-    BPL unflipped
-    ORA #&08
-.unflipped
     TAY
     LDX ck_index,Y
-    BPL found
-.none
-    SEC
-    RTS
-.found
+    BMI compiled_none               \ &FF: not a kind
     STX ck_kind
     LDA b_ptr
     STA &C0
