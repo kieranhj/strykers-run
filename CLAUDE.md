@@ -92,7 +92,10 @@ disassembly's `actually`/`also` notes say what an operand really is.
 - `tools/split.mjs DISC FROM FRAMES`, `tools/splitscroll.mjs DISC` - when the palette writes land after vsync, every field / on scrolling fields
 - `tools/soundfx.mjs DISC OUT.json` - each sound effect's SN76489 writes, for comparing two builds (fired from the pause loop by a faked JSR: no stub in RAM)
 - `tools/passlock.mjs CONTROL TEST [PASSES] [SEED] [--screen]` - two builds in step by pass (same keys per pass), game state compared every pass, and the shown screen (`--trace`, `--dump`, `WATCH=` to chase a difference). Layer 2's oracle: build both `-Shift 256 -ShiftEnd` so the ground pattern is fixed
-- `tools/shadowaudit.mjs DISC` - what the renderer reads in `&3000-&3FFF` with ACCCON's X bit set, against what play writes there
+- `tools/shadowaudit.mjs DISC` - what the renderer reads in `&3000-&3FFF` with ACCCON's X bit set, against what play writes there:
+  a read is stale if shadow's copy differs from main's then (the arena and `player_save` are per screen, not judged)
+- `tools/kcguard.mjs ORACLE TEST [PASSES] [SEED] [END]` - the kind cache's arena guard forced (slot 0 moved into the arena, the
+  limit with it; passlock's `PASSLOCK_POKE`/`PASSLOCK_COUNT`), against the `DEBUG_FULLREDRAW` oracle; `KCGUARD_OFF=1` the guard off (must fail)
 - `tools/passbench.mjs DISC [DISC2 ...]` - speed on the same game whatever the build's speed (keys by pass, as passlock): compare builds with this, not the frame-timed tools
 - `--flight V` on passbench, pcprof, fieldcost and drawprof (`tools/flightscript.mjs`): helilock's flight V's keys, or with 100 the
   whole world (worldrun's WorldBot); passbench lists the pass of each late frame. `tools/latefr.py FC.json` - each late frame of a
@@ -146,7 +149,8 @@ unpacker's dead body, the renderer's hottest variables (`ren_zp` in `moved_0004`
 `&0004-&001E` stay as the ground's bytes, BUGS #1); the renderer's
 scratch `&C0-&CD` (given back by `restore_game_zp` only where the logic reads). `&354A-&3DFD` is
 the save arena (main and shadow, one per screen; 2,228 bytes: its live blocks reached 1,985 over the whole
-world), after `player_save` (`&34D5`, 117 bytes a screen: the compiled kinds' saves, shared by kinds never
+world; if a scene ever needs more, `kc_arena_full` drops slot 0's kind and the arena runs to `&3FFF`, as
+before decision 36), after `player_save` (`&34D5`, 117 bytes a screen: the compiled kinds' saves, shared by kinds never
 drawn together), and `&3DFE-&3FFF` the kind cache's slot 0's masks and pixels (decision 36: written in play,
 in main and shadow alike; `KC_ARENA_END`); ANDY `&8000-&8FFF` holds 53 sprites, paged in while the renderer draws.
 Decision 40 took 1,038 bytes of read-only tables out of the main block and placed what stays by its
@@ -155,9 +159,9 @@ and projectiles from `&1300` (page-aligned, ASSERTed; `movers_state_end` ends th
 sprite addresses; the code starts at `&14DF`, 1,024 lower than the original's `&18DF`. The keyboard read
 (`keydown_int`, `&2E73`), PRNG, `render_pass` and `pass_start` follow, `compiled_call` (the stub
 that pages a compiled kind's bank) after them, then the kind cache's builder (`kc_build`, `&2F4D`,
-decision 36) and its slot 0's offsets (`kc_slot0_y`, `&3235-&3335`, written in play to main and shadow
+decision 36) and its slot 0's offsets (`kc_slot0_y`, `&3247-&3347`, written in play to main and shadow
 alike), and what is free up to `&33FF` is the listing's `SKIP
-unused_3400_original` (202 bytes on 2026-10-18, from `&3336`; 1,203 after decisions 38-40); everything from `&3400` stays
+unused_3400_original` (184 bytes on 2026-10-18, from `&3348`; 1,203 after decisions 38-40); everything from `&3400` stays
 where the original had it (BUGS #1, #2). The interrupt's variables are below `&3000` (the renderer
 draws with ACCCON's X bit set when the target is shadow). Bank 4: the renderer `&9000-`, then its
 sprites and tables (below `REN_BASE`, `&B400`, ASSERTed in `src/main.6502`: BUGS #6); workspace

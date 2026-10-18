@@ -153,6 +153,16 @@ kg_line = kc_q                      \ the line: kc_q is the draw's, not live in 
 .choose
     LDA kc_ref,X
     BNE choose_next                 \ a live save block uses it
+    CPX #0                          \ slot 0: only if neither screen's arena reaches into it
+    BNE free                        \ (kc_arena_full, src/kindcache.6502)
+    LDY #2
+    INX
+    JSR kc_room                     \ (X = the screen: 1, then 0; DEX keeps C)
+    DEX
+    BCS choose_next
+    JSR kc_room
+    BCS choose_next
+.free
     LDA kc_cap_lo,X                 \ cap - n: no borrow, it fits
     SEC
     SBC kg_n_lo

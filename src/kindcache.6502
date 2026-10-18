@@ -58,6 +58,37 @@ ASSERT KC_CAP1 <= &FF AND KC_Y1 + KC_CAP1 <= &C2FF AND KC_P1 + KC_CAP1 <= &E000
 .kc_cap_hi      EQUB HI(KC_CAP0), HI(KC_CAP1)
 .kc_g0          EQUB 0, KC_GROUPS   \ a slot's first entry in kc_gcnt
 
+\ ---- the arena's guard: no save block may ever reach slot 0's masks and pixels while slot 0 holds a
+\ kind. put_on keeps arena_top + MAX_BLOCK at or below kc_arena_lim, compacting first; if even then
+\ there is no room (a scene heavier than any played: the live blocks reached 1,985 of 2,228 over the
+\ whole world), kc_arena_full gives slot 0 up - its kind dropped (no draw uses it again; the save
+\ blocks drawn from it still put back from its offsets, which are in main RAM) and a build into it
+\ stopped - and the arena runs to save_arena_end, as before decision 36. kg_begin takes slot 0 again
+\ only once neither screen's arena reaches past slot 0's start. (Variables, not immediates, so a
+\ test can move them: tools/kcguard.mjs.)
+.kc_arena_lim   EQUW KC_ARENA_END - MAX_BLOCK   \ the most arena_top may be, a block to come
+                EQUW KC_ARENA_END + 1           \ (kc_arena_lim + 2: past slot 0's start)
+
+.kc_room                            \ X = the screen, Y = 0 or 2: carry clear if its arena_top is
+    LDA arena_top_lo,X              \ below kc_arena_lim + Y
+    CMP kc_arena_lim,Y
+    LDA arena_top_hi,X
+    SBC kc_arena_lim + 1,Y
+    RTS
+
+.kc_arena_full
+{
+    LDA #&FF
+    STA kc_sprite                   \ slot 0: empty
+    LDA kb_active
+    BEQ out
+    LDA kg_slot
+    BNE out
+    STZ kb_active                   \ 65C02 opcode: the build into it stopped
+.out
+    RTS
+}
+
 \ the builder's scratch: renderer zero page that is dead in the wait (need is set by classify)
 kg_col      = need                  \ the sprite column (2)
 kg_i        = need + 2              \ the data index of the next byte (top-down: the column + 2 + i)

@@ -1219,11 +1219,16 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     STA dm_index
     LDX back                        \ room for its block, or make some: arena_top + MAX_BLOCK
     LDA arena_top_lo,X              \ below the arena's end (the kind cache's slot 0 after it:
-    CMP #LO(KC_ARENA_END - MAX_BLOCK)   \ src/kindcache.6502), as one 16-bit compare
+    CMP kc_arena_lim                \ src/kindcache.6502), as one 16-bit compare
     LDA arena_top_hi,X
-    SBC #HI(KC_ARENA_END - MAX_BLOCK)
+    SBC kc_arena_lim + 1
     BCC room                        \ X = back
     JSR compact
+    LDX back
+    LDY #0
+    JSR kc_room                     \ still none: slot 0 gives its room back (kc_arena_full), the
+    BCC room                        \ arena up to save_arena_end, as before decision 36
+    JSR kc_arena_full
     LDX back
 .room
     LDY dm_index

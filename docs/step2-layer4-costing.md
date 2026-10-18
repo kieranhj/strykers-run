@@ -741,6 +741,25 @@ and the whole world (`tools/worldrun.mjs`, 12,231 frames).
    a screen; its live blocks (passbench now reports their most) reached 1,904-1,985 over the whole
    world, 2,066 before the cache, so a heavier scene could have run into the slot. Its offsets moved
    to main RAM: the arena keeps 2,228 (2,742 before decision 36). 68 / 12 cycles a pass.
+5. **The arena's guard**, so that no scene, however heavy, can write into slot 0: `put_on` keeps
+   `arena_top + MAX_BLOCK` at or below `kc_arena_lim`, compacting first; if even after compacting
+   there is no room, `kc_arena_full` drops slot 0's kind (no draw uses it again; the blocks drawn
+   from it still put back, from its offsets in main RAM) and stops a build into it, and the arena
+   runs to `&3FFF` as before decision 36. `kc_build` takes slot 0 again only once neither screen's
+   arena reaches past its start. Cost: 7.7 / 4.7 cycles a pass (the limit read from memory, not an
+   immediate, so a test can move it); late frames unchanged (world 404 -> 406, seeds 3 / 1 / 30 / 5,
+   flights 15 / 15 / 29 / 25).
+   - **Forced** (`tools/kcguard.mjs`): slot 0 moved to `&3800` in the arena, the limit with it, so
+     that any scene of more than ~700 bytes of blocks runs past the slot. Against the
+     `DEBUG_FULLREDRAW` oracle, state and shown screen identical on 3,000 passes of seeds 1, 5 and 7,
+     the guard firing 3,831 / 4,484 / 4,184 times (and the cache drawing 790 / 1,137 / 579 times,
+     building 320 / 170 / 229). With the guard made an RTS (`KCGUARD_OFF=1`) the same runs fail:
+     seed 5's screen differs from pass 482 (108 passes), seed 7 stops making passes at 1,650.
+   - **The shadow audit** (`tools/shadowaudit.mjs`, taught to judge by a model of both copies: a
+     read with X set is stale if shadow's byte differs from main's then; the arena and `player_save`
+     per screen, not judged): no stale reads on the shipping build. Of the 652 mirrored addresses
+     written in play and read with X set, 642 are slot 0 and 10 are `kg_column`'s patched operands,
+     all written to both copies by the builder.
 
 | late frames | `ae4924a` (decisions 38-40) | + kind cache | + overlap rule | + the arena's room |
 |---|---|---|---|---|
@@ -763,6 +782,10 @@ rotor). Its blocks have to be padded for the rest (`rest_max`, from `tools/compi
 never fired where it was meant to: the parked helicopters were not changing at all, they were being
 pulled in by the overlap rule, which decision 37 fixed instead. With its padding and checks it cost
 ~600 cycles a pass and made every game slightly worse (the world 617 -> 665).
+
+**The room after it** (the shipping build's listing, 2026-10-18): main RAM 184 bytes (`&3348-&33FF`);
+bank 4 43, under ANDY 418; banks 5 / 6 / 7 437 / 530 / 481 (256 less each in the shifted builds);
+HAZEL 24 (`&C2E7-&C2FE`); `MGAME`'s carrying room 860; the save arena 2,228 bytes a screen.
 
 **What is left, and why it is not built:**
 - **Seed 5's burst** (passes 2,190-2,390: a green-white helicopter that turns, a flying scooter and
