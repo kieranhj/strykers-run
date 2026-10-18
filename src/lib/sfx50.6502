@@ -37,23 +37,28 @@
     JSR sfx_output
     LDA sfx_dp,X                    \ the period steps (16 bits, the step sign-extended)
     BPL up
-    DEY                             \ Y = 0 from sfx_write (sfx_output ends in it): &FF, the step's high byte
+    CLC                             \ the step negative (its high byte &FF): a carry leaves the high byte
+    ADC sfx_p_lo,X
+    STA sfx_p_lo,X
+    BCS sfx_pa_clc
+    DEC sfx_p_hi,X                  \ no carry: the high byte less 1
+    BRA sfx_pa_c0                   \ 65C02 opcode; C = 0
 .up
     CLC
     ADC sfx_p_lo,X
     STA sfx_p_lo,X
-    TYA                             \ the step's high byte, 0 or &FF
-    ADC sfx_p_hi,X
-    STA sfx_p_hi,X
+    BCC sfx_pa_c0                   \ C = 0
+    INC sfx_p_hi,X
+.sfx_pa_clc
+    CLC
+.sfx_pa_c0
     LDA sfx_dv,X                    \ the amplitude steps, kept between 0 and 15
     BMI down
-    CLC
-    ADC sfx_v,X
+    ADC sfx_v,X                     \ (C = 0 on every path here)
     BCC v_known
     LDA #&F8
     BNE v_known                     \ always
 .down
-    CLC
     ADC sfx_v,X
     BCS v_known
     LDA #0

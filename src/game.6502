@@ -1996,15 +1996,13 @@ walk_d = walk_ptr + 1
     LDA sprite_column_count,X       \ (bank 4, which plot_mover pages in)
     CLC
     ADC movers_x_low,Y              \ less the columns clipped at the left:
-    SEC
-    SBC mover_x_low                 \ count - (mover_x_low - movers_x_low)
-    STA walk_n                      \ n: columns from here
-    TAX
+    CLC                             \ (C = 0: one more taken off)
+    SBC mover_x_low                 \ count - (mover_x_low - movers_x_low) - 1
+    TAX                             \ n - 1 (n: columns from here)
     LDA viewport_right_low
     SEC
     SBC mover_x_low
     STA walk_d                      \ d (low bytes, as the plotter compares them)
-    DEX                             \ n - 1
     CPX walk_d
     BCC moved_on                    \ n - 1 < d: the common case
     CLC                             \ (Z kept)
@@ -4764,32 +4762,38 @@ ASSERT shown_screen < &3000
     INY
     CPX #&0A
     BCC add_movers_loop
+.leave_grenade_early_c2             \ grind: consider_mover_firing_grenade's off-screen exit, in its BCS's page
     RTS
 
-.consider_mover_firing_grenade    \ # Also bombs and rockets
-    JSR get_mover_x_and_y
-    JSR check_if_mover_Y_is_on_screen\ Returns carry set if mover is not on screen
-    BCS leave_326c
-    STX firing_mover_type
-    LDY #&0F
-    STY mover_x_offset
-    JSR calculate_mover_x_max_from_offset_getting_frame_and_flip
-    LDX firing_mover_type
-    LDA #&0A
-    CPX #&0C                        \ MOVER_TYPE_SAM
-    BNE not_sam
-.is_sam
+.grenade_sam_c2                     \ grind: the SAM reverses the flip for the second calculation
     LDA frame_and_flip
     EOR #&80
     STA frame_and_flip
     LDA #&3C
-.not_sam
-    STA mover_y
-    CLC
-    ADC #&78
-    STA mover_y_max
+    LDY #&B4                        \ &3C + &78
+    BRA grenade_sam_join_c2         \ 65C02 opcode
+
+.consider_mover_firing_grenade    \ # Also bombs and rockets
+    JSR get_mover_x_and_y
+    JSR check_if_mover_Y_is_on_screen\ Returns carry set if mover is not on screen
+    BCS leave_grenade_early_c2
+    STX firing_mover_type
+    JSR get_mover_frame_and_flip    \ grind: N = the flip; X (the type) and C=0 kept
+    BPL grenade_unflipped_c2
+    LDA mover_x_low                 \ grind: flipped: mover_x - &0F, all that the original's first
+    SBC #&0E                        \ calculate_mover_x_max_from_offset (offset &0F) left which the
+    STA mover_x_low                 \ second does not overwrite (C=0, so this subtracts &0F)
+    BCS grenade_unflipped_c2
+    DEC &C5
+.grenade_unflipped_c2
     LDA #&0A
     STA mover_x_offset
+    LDY #&82                        \ &0A + &78
+    CPX #&0C                        \ MOVER_TYPE_SAM
+    BEQ grenade_sam_c2
+.grenade_sam_join_c2
+    STA mover_y
+    STY mover_y_max
     JSR calculate_mover_x_max_from_offset
     JSR get_mover_frame_and_flip
     JSR check_for_collision_with_friends\ Returns carry set if collision with friendly mover
