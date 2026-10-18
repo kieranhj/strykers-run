@@ -2794,9 +2794,9 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
 .observer_mode    \ ***
     EQUB &00    \ ***
 .main_game_loop
-    LDX #&8F
-    JSR check_for_keypress
-    BEQ main_game_loop + 15
+    LDX #&70                        \ ESCAPE: internal key number (INKEY -113 EOR &FF)
+    JSR keydown_int                 \ A = &80, N set if down; X = &7F, Y = &0B
+    BMI main_game_loop + 15         \ the same 7 bytes, so + 15 is still JMP game_over_screen
     LDA lives
     BPL not_game_over
     LDA game_over_cooldown

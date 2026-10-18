@@ -958,15 +958,18 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     BNE shown
     LDA need,X
     AND #&40
-    BEQ not_listed
+    BNE going_on
+    LDY ren_k                       \ not listed: the loop's tail, kept in gather's page
+    INY
+    BRA gather                      \ 65C02 opcode
+.going_on
     JSR list_live                   \ going on, not shown: where it goes
     BRA listed                      \ 65C02 opcode
 .shown
     JSR list_recorded               \ where it is shown...
     LDX ren_i
-    LDA need,X
-    AND #&40
-    BEQ listed
+    BIT need,X                      \ 65C02 opcode: V = need bit 6
+    BVC listed
     JSR widen_by_live               \ ...and where it goes
 .listed
     INC list_n
@@ -2187,14 +2190,12 @@ lo_imm = * + 1
     STA rec_sl,Y
     LDA movers_screen_address_high,X
     STA rec_sh,Y
-    STY rl_index                    \ and where that is in the world (BUGS #7): the view in
-    LDA movers_screen_address_low,X \ zero page is this screen's now
-    PHA
-    LDA movers_screen_address_high,X
+    PHY                             \ and where that is in the world (BUGS #7): the view in
+    LDY movers_screen_address_low,X \ zero page is this screen's now; A = the high byte (rec_sh)
     TAX
-    PLA
+    TYA
     JSR world_of_address
-    LDY rl_index
+    PLY
     LDA wa_x_lo
     STA rec_wxl,Y
     LDA wa_x_hi
