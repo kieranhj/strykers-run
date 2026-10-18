@@ -13,6 +13,9 @@ changes. Harmless in the original (the pattern only has to look random), but any
 moves sprite data or touches that zero page will change how the ground looks. Decide then whether
 to keep it (and accept a different-looking ground) or replace it with a fixed texture.
 The relocation test builds (`SHIFT` set) read the pattern from &0A00 instead, identical in both.
+2026-10-18 (decision 34): the reach is &0000-&001E (`result` 9 plus Y up to &15), not &001C; those
+bytes of the unpacker are kept byte for byte, and the dead rest of it (&001F-&0075) holds the
+renderer's variables.
 
 ## 2. Drawing the player's legs reads past the end of the sprite (original behaviour; OPEN: layer 5)
 

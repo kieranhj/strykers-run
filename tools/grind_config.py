@@ -33,8 +33,8 @@ PROTECT = (
 # Byte ranges that must not change, by SECTION (the debug file's segment) and run address: what
 # the build reads as data although it assembles as code.
 PROTECT_BYTES = (
-    ('moved_0004', 0x0004, 0x001C,
-     'BUGS #1: in the shipping build the ground\'s texture is read from &0000-&001C, so these '
+    ('moved_0004', 0x0004, 0x001E,
+     'BUGS #1: in the shipping build the ground\'s texture is read from &0000-&001E (decision 34), so these '
      'bytes of the zero-page sprite unpacker are the ground. The proofs use the -Shift builds, '
      'which read it from &0A00, so they would not see a change here'),
 )

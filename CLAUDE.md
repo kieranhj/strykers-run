@@ -114,19 +114,22 @@ disassembly's `actually`/`also` notes say what an operand really is.
 
 ## Memory (MGAME, as the reference lays it out)
 
-`&0000-&00FF` zero page, with game code at `&0004-&0077` (the sprite column unpacker);
+`&0000-&00FF` zero page, with game code at `&0004-&0077` (the sprite column unpacker; step 2: dead,
+its first bytes kept as the ground's, the rest the renderer's variables - decision 34);
 `&0300` column buffer; `&0400-&07FF` and `&0880-&095F` copied-down code and data; `&0E00-&3FFF`
 code and data; `&4000-&46FF` start-up code (step 2: mostly in the save arena, decision 33), then the screen `&4000-&7FFF` (16K, MODE 2,
 hardware-scrolled by the CRTC). Bank 5 `&8000-&83FF` is the player buffer.
 
 Step 2 additions: zero page `&90` (`field_count`), `&92`/`&93` (the PRNG), `&9B` (`drawing`),
-`&9C/&9D` (the sprite walk's and the renderer's pointer), `&9E` (`plot_sprite`); the renderer's
+`&9C/&9D` (the sprite walk's and the renderer's pointer), `&9E` (`plot_sprite`); `&1F-&75`, the
+unpacker's dead body, the renderer's hottest variables (`ren_zp` in `moved_0004`, decision 34;
+`&0004-&001E` stay as the ground's bytes, BUGS #1); the renderer's
 scratch `&C0-&CD` (given back by `restore_game_zp` only where the logic reads). `&354A-&3FFF` is
 the save arena (main and shadow, one per screen), after `player_save` (`&34D5`, 117 bytes a screen:
 the compiled kinds' saves, shared by kinds never drawn together); ANDY `&8000-&8FFF` holds 53 sprites, paged in while the renderer draws.
 The keyboard read, PRNG, `render_pass` and `pass_start` are at `&3301` on, `compiled_call` (the stub
 that pages a compiled kind's bank) after them, and what is free up to `&33FF` is the listing's `SKIP
-unused_3400_original` (4 bytes on 2026-10-18, after the grind); everything from `&3400` stays
+unused_3400_original` (20 bytes on 2026-10-18, after decision 34); everything from `&3400` stays
 where the original had it (BUGS #1, #2). The interrupt's variables are below `&3000` (the renderer
 draws with ACCCON's X bit set when the target is shadow). Bank 4: the renderer `&9000-`, then its
 sprites and tables (below `REN_BASE`, `&B400`, ASSERTed in `src/main.6502`: BUGS #6); workspace

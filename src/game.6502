@@ -2244,8 +2244,6 @@ ENDIF
     JSR add_delta_to_screen_address_in_AX
     STA screen_address_low
     STX screen_address_high
-    STX unpack_run_loop + 8
-    STA unpack_run_loop + 7
     LDY pixel_table_address_low     \ Zero if sprite is flipped
     BNE skip_page_1e38
 .is_flipped_1e27
@@ -2304,8 +2302,6 @@ ENDIF
     LDA #&A9                        \ LDA #&ff                                  # Plot without mask
     LDX #&FF
 .set_mask_table_lookup_opcode
-    STA mask_table_lookup_opcode
-    STX mask_table_lookup_opcode + 1
     LDA #&04                        \ ***
     STA os_ram_copy_of_currently_selected_rom\ ***
     STA romsel                      \ Paged ROM latch                      ***
@@ -2358,8 +2354,6 @@ ENDIF
     LDY y_offset
     JSR subtract_Y_rows_from_screen_address_in_AX
 .plot_mover_sprite    \ # Plot third part of mover (e.g. player's head)
-    STA unpack_run_loop + 7
-    STX unpack_run_loop + 8
     STA screen_address_low
     STX screen_address_high
     LDA #&04
@@ -2438,7 +2432,6 @@ walk_d = walk_ptr + 1
     CLC
     ADC screen_address_low
     STA screen_address_low
-    STA unpack_run_loop + 7
     LDA screen_address_high
     ADC #&00
     BPL screen_in_range
@@ -2446,7 +2439,6 @@ walk_d = walk_ptr + 1
     SBC #&40
 .screen_in_range
     STA screen_address_high
-    STA unpack_run_loop + 8
     LDA #&08                        \ the column step's delta (deltas_*_table[0])
     STA delta_low
     STZ delta_high                  \ 65C02 opcode
@@ -5517,89 +5509,72 @@ PLAYER_SAVE = player_save           \ fixed addresses: only the player draws the
 .moved_0004_load     \ carried in the save arena, copied to &0004-&0077 at start-up
 SECTION moved_0004, org = &0004, cmos = TRUE
 
+\ Decision 34: the original's zero-page sprite unpacker. In step 2 nothing runs it (the game's own
+\ plot calls walk the sprite instead, walk_column: `drawing` is never set), but &0004-&001E stay
+\ byte for byte: the shipping ground's texture reads &0000-&001E as data (BUGS #1;
+\ add_ground_to_column_buffer, result 0, 1, 4 or 9 plus Y up to &15), and &0005/&0006 are the sprite
+\ address set_sprite_address still writes. The rest of its body (&001F-&0075) holds the renderer's
+\ hottest variables (by pcprof's cycles, docs/decisions.md 34): zero page, so 1 byte and 1 cycle
+\ less an access; nothing else reads or writes them (not the logic, the front end or the interrupt;
+\ save_game_zp/restore_game_zp need not keep them). Zero at start-up, as their EQUB 0s were.
 .unpack_column_of_sprite
-    LDA &FFFF,Y
-\ #     actually LDA mover_sprite_address,Y
-    TAX
-    BEQ end_of_column               \ &00 indicates end of column
-    BPL is_positive_001d
-.is_negative
-    ASL A
-    BPL is_run_length_1_0016
-.is_run_length_3_000f
-    TXA                             \ 11 ...... run length 3
-    AND #&3F
-    LDX #&03
-    BNE unpack_run                  \ Always branches
-.is_run_length_1_0016
-    TXA                             \ 10 ...... run length 1
-    AND #&3F
-    LDX #&01
-    BNE unpack_run                  \ Always branches
-.is_positive_001d
-    ASL A
-    BPL is_variable_run_length_0027
-.is_run_length_2_0020
-    TXA                             \ 01 ...... run length 2
-    AND #&3F
-    LDX #&02
-    BNE unpack_run                  \ Always branches
-.is_variable_run_length_0027
-    INY                             \ 00 ...... use next byte for run length
-    LDA (unpack_column_of_sprite + 1),Y
-.unpack_run
-    INY
-    STY sprite_data_offset
-    TAY
-    LDA (pixel_table_address),Y
-    STA unpack_run_loop + 5
-.mask_table_lookup_opcode
-    LDA (mask_table_address),Y
-\ #     also     LDA #&ff
-    STA unpack_run_loop + 3
-.unpack_run_loop
-    LDA (unpack_run_loop + 7)       \ *** 65C02 opcode
-    AND #&FF
-\ #     actually AND sprite_mask
-    EOR #&FF
-\ #     actually EOR sprite_byte
-    STA &EEEE
-\ #     actually STA column_screen_address
-    LDA unpack_run_loop + 7
-    AND #&07
-    BEQ move_up_a_group
-    DEC unpack_run_loop + 7         \ Move up a row
-.next_byte_of_run
-    DEX
-    BNE unpack_run_loop
-    LDY sprite_data_offset
-    BNE unpack_column_of_sprite
-.move_up_a_group
-    DEC unpack_run_loop + 8         \ Move up a group
-    DEC unpack_run_loop + 8
-    LDA unpack_run_loop + 7
-    SEC
-    SBC #&79
-    STA unpack_run_loop + 7
-    BCS skip_page_005d
-    DEC unpack_run_loop + 8
-.skip_page_005d
-    LDA unpack_run_loop + 8
-    CMP #&40
-    BCS next_byte_of_run
-    ADC #&40
-    STA unpack_run_loop + 8
-    BNE next_byte_of_run            \ Always branches
-.end_of_column
-    INY
-    LDA (unpack_column_of_sprite + 1),Y
-    BMI consider_next_column
-.to_consider_plotting_next_column_of_mover
-    JMP consider_plotting_next_column_of_mover
-.consider_next_column
-    LDA pixel_table_address_low     \ Zero if sprite is flipped
-    BEQ to_consider_plotting_next_column_of_mover
-    RTS
+    LDA &FFFF,Y                     \ &0005/&0006: the last mover sprite's address (the ground reads it)
+    EQUB &AA, &F0, &5F, &10, &11, &0A, &10, &07, &8A, &29, &3F, &A2, &03, &D0, &14, &8A
+    EQUB &29, &3F, &A2, &01, &D0, &0D, &0A, &10
+    \ TAX : BEQ &69 : BPL &1D : ASL A : BPL &16 : TXA : AND #&3F : LDX #3 : BNE &2A : TXA :
+    \ AND #&3F : LDX #1 : BNE &2A : ASL A : BPL (operand at &1F) - kept as the bytes they were
+ASSERT * = &001F
+.ren_zp
+.need           SKIP MOVER_SLOTS
+.rb_part2       SKIP 2
+.rb_part3       SKIP 2
+.rb_end         SKIP 2
+.rb_p8          SKIP 2
+.wa_off         SKIP 2
+.span_d         SKIP 2
+.ren_i          SKIP 1
+.ren_k          SKIP 1
+.act_n          SKIP 1
+.dm_flip        SKIP 1
+.ds_clip        SKIP 1
+.boff           SKIP 1
+.list_n         SKIP 1
+.list_x_lo      SKIP 1
+.list_x_hi      SKIP 1
+.back           SKIP 1
+.wa_y           SKIP 1
+.dm_slot        SKIP 1
+.ra_lo          SKIP 1
+.dm_jmin        SKIP 1
+.zone_tmp_lo    SKIP 1
+.dm_jmax        SKIP 1
+.list_type      SKIP 1
+.rb_index       SKIP 1
+.wa_x_hi        SKIP 1
+.wa_x_lo        SKIP 1
+.dm_type        SKIP 1
+.ds_sprite      SKIP 1
+.dm_frame       SKIP 1
+.zone_tmp_hi    SKIP 1
+.dm_scr_hi      SKIP 1
+.dm_scr_lo      SKIP 1
+.dm_index       SKIP 1
+.ds_n           SKIP 1
+.zone_n         SKIP 1
+.pending_n      SKIP 1
+.ra_hi          SKIP 1
+.ck_kind        SKIP 1
+.dm_typecol     SKIP 1
+.list_b         SKIP 1
+.span_x_lo      SKIP 1
+.hist_next      SKIP 1
+.dm_raise       SKIP 1
+.span_x_hi      SKIP 1
+.hist_seq       SKIP 1
+.list_changed   SKIP 1
+.lives_redraw   SKIP 1
+.ren_zp_end
+ASSERT ren_zp_end <= unused_0076, "the renderer's zero page overruns &0075 by ", ren_zp_end - unused_0076
 
 .unused_0076
     EQUB &00, &00    \ ***

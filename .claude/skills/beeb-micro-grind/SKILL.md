@@ -101,7 +101,7 @@ For a grind in particular:
 - **Protected code is never changed** (`tools/grind_config.py` PROTECT, PROTECT_BYTES; marked in
   the window). Here: the interrupt's raster-timed palette writes (decision 22) and
   `wait_for_vsync_2242` (BUGS #5, timed from the vsync); the zero-page unpacker's bytes
-  `&0004-&001C`, which the shipping build's ground texture reads as data (BUGS #1) - the proofs run
+  `&0004-&001E`, which the shipping build's ground texture reads as data (BUGS #1) - the proofs run
   on the `-Shift` builds, which read it elsewhere, so they would not see it change.
 - **Generated sources are not hand-edited** (GENERATED): an improvement there is a change to the
   generator (`tools/compiled.py`, `tools/sprites.py`, ...), proposed and gated like any other but
@@ -121,21 +121,24 @@ For a grind in particular:
 ## Room
 
 Where each source's code lives, and its free space on branch `ram-2026-10-18` after decisions
-32-33 (2026-10-18, shipping build; read the current figure off the build's listing, the SKIP that pads
+32-34 (2026-10-18, shipping build; read the current figure off the build's listing, the SKIP that pads
 the region):
 
 | Source | Region | Free | Listing line |
 |---|---|---|---|
-| `game.6502`, `lib/keydown.6502` | main RAM, up to `&3400` | 4 | `SKIP unused_3400_original - *` |
+| `game.6502`, `lib/keydown.6502` | main RAM, up to `&3400` | 20 | `SKIP unused_3400_original - *` |
 | `game.6502` `moved_0a20` | `&0A20-&0AFF` | 76 | `moved_0a20_end` to `&0B00` |
-| `render.6502` | bank 4, `&9000-&B3FF` | 573 | `SKIP PAD_END` in DATA1 |
-| `render_zp.6502`, `prebuild.6502`, `render_bss_zero.6502` | bank 4 under ANDY | 106 | `SKIP &9000 + PAD_START - *` |
+| `render.6502` | bank 4, `&9000-&B3FF` | 797 | `SKIP PAD_END` in DATA1 |
+| `render_zp.6502`, `prebuild.6502`, `render_bss_zero.6502` | bank 4 under ANDY | 110 | `SKIP &9000 + PAD_START - *` |
+| zero page | `&1F-&75` (`ren_zp`, decision 34) | 0 | `ren_zp_end` (ASSERTed below `&76`) |
 | `bank5.6502`, `lib/sfx50.6502` | bank 5 | 437 | `SKIP PAD_END` in DATA2 |
 | the start-up block (MGAME's file) | to `&5A80` at load | 2,271 | `mgame_end` (`MGAME would load over the loading picture` ASSERT) |
 | start-up code carried in the save arena | `&354A-&3FFF` | 501 | `arena_carried_end` (decision 33) |
 
 The renderer's variables (`src/render_bss.6502`, decision 32) are in workspace holes, not the
-file: a new one goes in a section with room (each is ASSERTed to its hole).
+file: a new one goes in a section with room (each is ASSERTed to its hole). The 48 hottest are in
+zero page at `&1F-&75` (`ren_zp`, decision 34), which is full: a hotter variable can swap with a
+colder one there.
 
 A candidate that grows its region past the free space fails to assemble (the regions are
 ASSERTed), and the gate reports it.

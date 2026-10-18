@@ -5,12 +5,8 @@
 
 SECTION ren_vars_z, org = REN_BASE + &822, cmos = TRUE
 .ren_vars_z_start
-.back           SKIP 1              \ the screen being drawn: 0 main, 1 shadow
 .acc_main       SKIP 1              \ ACCCON with the CPU on main RAM, and on shadow
 .acc_shadow     SKIP 1
-.boff           SKIP 1              \ 64 * back
-.hist_next      SKIP 1              \ the history slot written next
-.hist_seq       SKIP 1              \ pushes so far
 .last_vl_lo     SKIP 1
 .last_vl_hi     SKIP 1
 .hist_edge_lo   SKIP 2
@@ -36,66 +32,22 @@ SECTION ren_vars_z, org = REN_BASE + &822, cmos = TRUE
 .buf_vl_hi      SKIP 3
 .buf_vr_lo      SKIP 3
 .buf_vr_hi      SKIP 3
-.pending_n      SKIP 1
 .pending_slot   SKIP 2
-.lives_redraw   SKIP 1
-.zone_n         SKIP 1
 .zone_lo        SKIP 12
 .zone_hi        SKIP 12
-.zone_tmp_lo    SKIP 1
-.zone_tmp_hi    SKIP 1
 .zone_count     SKIP 1
-.span_x_lo      SKIP 1
-.span_x_hi      SKIP 1
 .span_w2        SKIP 1
-.span_d         SKIP 2
-.ren_i          SKIP 1
-.ren_k          SKIP 1
-.need           SKIP MOVER_SLOTS
 \ the masked renderer's
 .arena_top_lo   SKIP 2           \ per screen: the end of its arena's used part
 .arena_top_hi   SKIP 2
-.list_n         SKIP 1
-.act_n          SKIP 1
 .act            SKIP MOVER_SLOTS
-.list_b         SKIP 1
-.list_changed   SKIP 1
-.list_type      SKIP 1
-.list_x_lo      SKIP 1
-.list_x_hi      SKIP 1
 .list_y         SKIP 1
-.dm_slot        SKIP 1
 .rl_index       SKIP 1
-.wa_off         SKIP 2
 .wa_t           SKIP 1
-.wa_x_lo        SKIP 1
-.wa_x_hi        SKIP 1
-.wa_y           SKIP 1
-.dm_index       SKIP 1
-.dm_typecol     SKIP 1
-.dm_type        SKIP 1
-.dm_flip        SKIP 1
-.dm_frame       SKIP 1
-.dm_scr_lo      SKIP 1
-.dm_scr_hi      SKIP 1
-.dm_jmin        SKIP 1
-.dm_jmax        SKIP 1
-.dm_raise       SKIP 1
 .ds_raise       SKIP 1
-.ds_sprite      SKIP 1              \ the part's sprite
-.ck_kind        SKIP 1              \ compiled_part: the kind found
-.ds_n           SKIP 1
 .ds_j           SKIP 1
 .ds_fr          SKIP 1
-.ds_clip        SKIP 1
 .ra_rows        SKIP 1
-.ra_lo          SKIP 1
-.ra_hi          SKIP 1
-.rb_index       SKIP 1
-.rb_part2       SKIP 2           \ the header: part 2's start, part 3's (offsets)
-.rb_part3       SKIP 2
-.rb_end         SKIP 2
-.rb_p8          SKIP 2
 .cp_cursor_lo   SKIP 1
 .cp_cursor_hi   SKIP 1
 .cp_best        SKIP 1
