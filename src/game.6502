@@ -1395,10 +1395,10 @@
 .not_left_edge_1b3d
     TYA
     BPL scroll_layers_right_loop
-    RTS
+    LDA #&14                        \ KC; grind: the walk ends by putting the foreground back (a tail call),
+    JMP change_pixel_tables         \ so a prebuilt scroll (whose prebuild did it) skips it below
+    EQUB &60                        \ grind: never run; keeps layers_right_done and what follows where they were
 .layers_right_done
-    LDA #&14                        \ KC
-    JSR change_pixel_tables         \ Use foreground palette (use colour 6 for cyan)
     LDY #&01
     JSR add_ground_to_column_buffer \ Plot a column of ground
     JSR use_viewport_right_as_edge
@@ -3173,12 +3173,12 @@ move_mover_routine_address_high = * + 2
     DEX                             \ &80
     STX x_delta                     \ Set to &80 to stop player moving left of edge
 .not_at_left_edge_of_world
-    JSR get_player_screen_address
+    \ grind: get_player_screen_address and buffer_player_edges are RTS stubs (step 2 layer 2): not called
     JSR move_mover
-    JSR buffer_player_edges         \ ***
     LDA movers_type_and_colour
     BNE skip_animating_player
-    JSR check_if_player_is_on_ground
+    LDA movers_y                    \ grind: check_if_player_is_on_ground in line (Z set if on the ground)
+    CMP #&18
     BNE use_jumping_frame
     LDA player_y_velocity
     BEQ skip_animating_player
@@ -4469,7 +4469,9 @@ ASSERT shown_screen < &3000
     JSR check_if_raster_is_in_mover \ Returns carry set if raster is in mover
     BCS wait_to_move_mover
     JSR unplot_and_move_mover
-    JSR get_mover_frame_and_flip
+    LDY mover_to_update             \ grind: get_mover_frame_and_flip inlined (Y = &03, frame_and_flip = its frame)
+    LDA movers_frame_and_flip,Y
+    STA frame_and_flip
     LDX hostile_mover
     BMI to_plot_mover_3055
     JSR check_if_friendly           \ Returns carry set if friendly
@@ -4491,16 +4493,18 @@ ASSERT shown_screen < &3000
     CMP #&14                        \ MOVER_TYPE_TANK                       ***
     BEQ leave_30b2                  \ ***
     JMP kill_mover_Y
+.vr_overflow_678a                   \ grind: the rare carry out of viewport_right_low + &0A, out of line
+    INX
+    BCS skip_overflow_307f          \ Always: C=1 from the ADC, INX leaves it
 
 .check_if_mover_can_be_updated
     LDX mover_to_update
     JSR check_for_player_collision_with_mover_Y\ Returns carry set if collision
     BCS leave_with_carry_set_30af + 1\ Leave with carry set if mover overlaps player
-    LDX viewport_right_high
     LDA viewport_right_low
     ADC #&0A                        \ grind: C=0 here (BCS above not taken)
-    BCC skip_overflow_307f
-    INX
+    LDX viewport_right_high         \ (leaves C, the carry out of the low byte)
+    BCS vr_overflow_678a            \ grind: the common no-carry case falls through
 .skip_overflow_307f
     CPX &C5
     BCC leave_with_carry_set_30af
