@@ -63,15 +63,12 @@ death respawns whatever the lives, so the test scripts still never end.
 
 ## The steps
 
-0. **The double hit** (KC, 2026-10-20: "the player takes multiple hits from a single projectile
-   (e.g. helicopter bomb) when running into it"). In the original first: reproduce it in jsbeeb
-   (a bomb under a helicopter, the player run into it; count `kill_player` calls per projectile),
-   find the cause, write it up as a BUGS.md entry. The likely cause, to check: running into it,
-   `kill_hostile_mover_and_mover` kills the bomb and the player, and the bomb's own update
-   (`projectile_hit_player`) may hit the player too in the same pass, or the bomb's explosion
-   counts as a hit. Fix it in the shipping build if it is a bug in all builds (decision 13: the
-   original's glitches are fixed), and in any case before the shield is built: a 2-unit hit
-   counted twice is a death.
+0. **The double hit: DONE** (BUGS #13, fixed on `main` for all builds, `8160182`): one hit cost up
+   to 14 lives because the explosion it left kept hitting, and a projectile run into hit twice.
+   Explosions and skeletons are now walked through and a projectile run into is spent; the whole
+   world's hits 655 -> 318, none repeated in one pass or by an explosion (`tools/hitwatch.mjs`, which
+   the shield's checks can reuse). Still to note for the shield: a bullet may hit, then a new bullet
+   in the same slot hit again a few passes later (that is two bullets, so two hits).
 1. **Room.** Measure the new code before placing it; the candidates, from the 2026-10-20 build:
    - the logic's code (the shield, the timer, the respawn) must be readable in play:
      `moved_0a20` 142 bytes (main RAM, always paged), main RAM's 9, HAZEL 24; and, now nothing
