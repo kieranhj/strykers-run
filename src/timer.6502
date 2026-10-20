@@ -1,0 +1,210 @@
+\ timer.6502 - GAMEPLAY_TIMER (decision 47; docs/briefs/gameplay-shield.md): a game timer in seconds
+\ of the design speed (25 passes), shown on the top line after the shield's bar.
+\   GAMEPLAY_TIMER = 1  counting up from 0; at the headquarters, 10 points for each second under
+\                       TIMER_PAR (completion_screen: timer_bonus)
+\   GAMEPLAY_TIMER = 2  counting down from TIMER_START; at 0 the game is over; at the headquarters,
+\                       10 points for each second left
+\ Sideways bank 6, called through timer_tick_call and timer_bonus_call (main RAM: they page bank 6 in
+\ and bank 4 back). It reads and writes only zero page and main RAM: hud_buffer, the score digits
+\ (game_over_text + 20 on, font offsets: "0" &6C, 6 a digit) and lives.
+
+TIMER_PAR   = &0600                 \ BCD seconds: 10 minutes
+TIMER_START = &0600
+
+\ timer_tick: once a pass (main_game_loop, after shield_tick)
+.timer_tick
+{
+    LDA timer_ready
+    BNE ready
+IF GAMEPLAY_TIMER = 2
+    LDA #HI(TIMER_START)
+    STA timer_hi
+    LDA #LO(TIMER_START)
+    STA timer_lo
+ELSE
+    STZ timer_hi                    \ 65C02 opcodes
+    STZ timer_lo
+ENDIF
+    STZ timer_frac
+    LDA #0                          \ the digits' blank rows and the column after them, once
+    LDX #8 * TIMER_COLUMNS - 1
+.clear
+    STA hud_buffer + HUD_TIMER,X
+    DEX
+    BPL clear
+    DEC timer_ready                 \ &FF
+    BRA show                        \ 65C02 opcode
+.ready
+    INC timer_frac
+    LDA timer_frac
+    CMP #25                         \ a second of the design speed
+    BCC done
+    STZ timer_frac
+    SED
+IF GAMEPLAY_TIMER = 2
+    LDA timer_lo
+    ORA timer_hi
+    BEQ out                         \ (already over)
+    SEC
+    LDA timer_lo
+    SBC #1
+    STA timer_lo
+    LDA timer_hi
+    SBC #0
+    STA timer_hi
+    CLD
+    ORA timer_lo
+    BNE show
+    LDA #&FF                        \ time is up: the game is over (main_game_loop: lives negative,
+    STA lives                       \ then the cooldown)
+    LDA #&50
+    STA game_over_cooldown
+    BRA show                        \ 65C02 opcode
+.out
+    CLD
+    RTS
+ELSE
+    CLC
+    LDA timer_lo
+    ADC #1
+    STA timer_lo
+    LDA timer_hi
+    ADC #0
+    CMP #&10                        \ held at 999
+    BCS held
+    STA timer_hi
+    CLD
+    BRA show                        \ 65C02 opcode
+.held
+    LDA #&99
+    STA timer_lo
+    CLD
+    RTS
+ENDIF
+.show
+    LDY #HUD_TIMER                  \ hundreds, tens, units: two byte columns each
+    LDA timer_hi
+    JSR digit
+    LDY #HUD_TIMER + 16
+    LDA timer_lo
+    LSR A
+    LSR A
+    LSR A
+    LSR A
+    JSR digit
+    LDY #HUD_TIMER + 32
+    LDA timer_lo
+    AND #15
+    JSR digit
+    INC hud_serial                  \ the renderer redraws the top line
+.done
+    RTS
+
+\ digit: A (0-9) into hud_buffer at Y (its two byte columns' rows 2-6, in black, colour 6)
+.digit
+    STA digit_tmp
+    ASL A
+    ASL A
+    ADC digit_tmp                   \ 5 * A, C = 0 (at most 45)
+    TAX
+    LDA #5
+    STA digit_tmp
+.row
+    LDA font_3x5,X                  \ bits 2-0: its three pixels, left to right
+    LSR A                           \ C = the third
+    PHY                             \ 65C02 opcodes
+    TAY
+    LDA left_two,Y                  \ bits 2, 1: the first byte column's two pixels
+    PLY
+    STA hud_buffer + 2,Y
+    BCC no_third
+    LDA #&28                        \ bit 0: the second's left pixel (its right one the gap)
+    BNE third                       \ always
+.no_third
+    LDA #0
+.third
+    STA hud_buffer + 8 + 2,Y
+    INX
+    INY
+    DEC digit_tmp
+    BNE row
+    RTS
+.left_two                           \ two pixels (bit 1 left, bit 0 right) in black, as a byte
+    EQUB &00, &14, &28, &3C
+.digit_tmp
+    EQUB 0
+.font_3x5                           \ 0-9, five rows each, top down, three pixels in bits 2-0
+    EQUB 7, 5, 5, 5, 7              \ 0
+    EQUB 2, 6, 2, 2, 7              \ 1
+    EQUB 7, 1, 7, 4, 7              \ 2
+    EQUB 7, 1, 7, 1, 7              \ 3
+    EQUB 5, 5, 7, 1, 1              \ 4
+    EQUB 7, 4, 7, 1, 7              \ 5
+    EQUB 7, 4, 7, 5, 7              \ 6
+    EQUB 7, 1, 1, 1, 1              \ 7
+    EQUB 7, 5, 7, 5, 7              \ 8
+    EQUB 7, 5, 7, 1, 7              \ 9
+}
+
+\ timer_bonus: the headquarters reached (completion_screen): 10 points a second, for each second
+\ under TIMER_PAR (counting up) or each second left (counting down)
+.timer_bonus
+{
+IF GAMEPLAY_TIMER = 2
+.each
+    LDA timer_lo
+    ORA timer_hi
+    BEQ done
+    SED
+    SEC
+    LDA timer_lo
+    SBC #1
+    STA timer_lo
+    LDA timer_hi
+    SBC #0
+    STA timer_hi
+    CLD
+    JSR add_ten
+    BRA each                        \ 65C02 opcode
+ELSE
+.each
+    LDA timer_hi                    \ until the time reaches the par
+    CMP #HI(TIMER_PAR)
+    BCC under
+    BNE done
+    LDA timer_lo
+    CMP #LO(TIMER_PAR)
+    BCS done
+.under
+    SED
+    CLC
+    LDA timer_lo
+    ADC #1
+    STA timer_lo
+    LDA timer_hi
+    ADC #0
+    STA timer_hi
+    CLD
+    JSR add_ten
+    BRA each                        \ 65C02 opcode
+ENDIF
+.done
+    RTS
+\ add_ten: 10 points: the score's tens digit up one, carried as increase_score carries
+.add_ten
+    LDX #4                          \ the tens (game_over_text + 24); the units are never added to
+.carry
+    LDA game_over_text + 20,X
+    CLC
+    ADC #6                          \ a digit is 6 bytes of the font on
+    CMP #&A8                        \ past "9"
+    BCC store
+    LDA #&6C                        \ "0", and one into the next digit up
+    STA game_over_text + 20,X
+    DEX
+    BPL carry
+    RTS
+.store
+    STA game_over_text + 20,X
+    RTS
+}

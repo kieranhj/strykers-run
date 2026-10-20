@@ -26,12 +26,23 @@ shield_tmp                                   = &0F
 respawn_left                                 = &10      \ columns of the rewind still to go (0: none under way)
 respawn_x_hi                                 = &11      \ the player's x high byte, kept while it is hidden (&FF)
 invulnerable                                 = &12      \ passes left in which no hit counts
+\ GAMEPLAY_TIMER (decision 47, src/timer.6502): &13-&16
+timer_ready                                  = &13      \ 0 at a game's start (shield_new_game)
+timer_hi                                     = &14      \ the seconds, BCD: hundreds
+timer_lo                                     = &15      \ tens and units
+timer_frac                                   = &16      \ passes into this second (0-24)
 LIVES_START     = 3                 \ decision 45: lives at a game's start
 RESPAWN_COLUMNS = 80                \ how far the view goes back: a screen
 RESPAWN_SAFE    = 50                \ passes of invulnerability after it (2 seconds), the bar flashing
 HUD_BAR_COLUMNS = 5                 \ the bar: two segments of 3 pixels, a gap after each, then a blank column
                                     \ (it wipes the bar's last place when the view scrolls left, as the digit's 4th does)
-HUD_COLUMNS     = 4 + HUD_BAR_COLUMNS   \ the lives digit's 4 byte columns, then the bar's
+TIMER_COLUMNS   = 7                 \ decision 47: three digits of two byte columns, then a blank one
+IF GAMEPLAY_TIMER
+    HUD_COLUMNS = 4 + HUD_BAR_COLUMNS + TIMER_COLUMNS   \ the lives digit's 4 byte columns, the bar's, the timer's
+ELSE
+    HUD_COLUMNS = 4 + HUD_BAR_COLUMNS   \ the lives digit's 4 byte columns, then the bar's
+ENDIF
+HUD_TIMER       = 8 * (4 + HUD_BAR_COLUMNS)   \ the timer's first byte in hud_buffer
 HUD_BYTES       = 8 * HUD_COLUMNS
 IF GAMEPLAY_SHIELD
     HUD_KEY            = hud_serial  \ what the renderer compares to redraw the top line's zone

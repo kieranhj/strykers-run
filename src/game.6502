@@ -2290,6 +2290,9 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     BRA skip_overflow_c1_3d13       \ 65C02 opcode
 
 .completion_screen
+IF GAMEPLAY_TIMER
+    JSR timer_bonus_call            \ decision 47: the time bonus, before the score is shown
+ENDIF
     JSR render_finish               \ Step 2 (layer 2): the text goes on the main screen, up to date
     LDY #LO(completion_screen_text) \ &22c9 = completion_screen_text
     LDX #HI(completion_screen_text)
@@ -2434,6 +2437,9 @@ ENDIF
 IF GAMEPLAY_SHIELD
     JSR shield_tick                 \ decision 44 (src/shield.6502, bank 4: ROMSEL &04 here)
 ENDIF
+IF GAMEPLAY_TIMER
+    JSR timer_tick_call             \ decision 47 (src/timer.6502, bank 6)
+ENDIF
     JSR check_for_player_input
     LDA keys_pressed_bitmap         \ Negative if  &80 (KEY_PAUSE) set
     BPL not_paused
@@ -2459,6 +2465,25 @@ ENDIF
     JSR update_projectiles
     JSR update_movers
     JMP main_game_loop
+IF GAMEPLAY_TIMER
+\ decision 47: the timer's code is in bank 6 (src/timer.6502): paged in for it, bank 4 back after
+.timer_tick_call
+    LDA #6
+    STA os_ram_copy_of_currently_selected_rom
+    STA romsel                      \ Paged ROM latch
+    JSR timer_tick
+.bank4_back
+    LDA #&04
+    STA os_ram_copy_of_currently_selected_rom
+    STA romsel
+    RTS
+.timer_bonus_call
+    LDA #6
+    STA os_ram_copy_of_currently_selected_rom
+    STA romsel
+    JSR timer_bonus
+    BRA bank4_back                  \ 65C02 opcode
+ENDIF
 IF GAMEPLAY_LIVES
 \ decision 45: a column of the respawn's rewind (src/shield.6502 player_or_rewind), here in main RAM:
 \ the scroll and the frame page other banks, and bank 4's code must find bank 4 again
@@ -5809,6 +5834,9 @@ ELSE
 ENDIF
     STA lives
     STZ shield_ready                \ 65C02 opcode
+IF GAMEPLAY_TIMER
+    STZ timer_ready                 \ decision 47
+ENDIF
     RTS
 ENDIF
 

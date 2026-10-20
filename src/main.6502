@@ -35,7 +35,10 @@ PAD_END   = (SHIFT AND &FF00) * SHIFT_END
 \   GAMEPLAY_SHIELD  a recharging shield in place of lives as hit points (decision 44, src/shield.6502)
 \   GAMEPLAY_LIVES   with it, each death a life, the view rewound to respawn (decision 45)
 ASSERT GAMEPLAY_SHIELD >= GAMEPLAY_LIVES, "GAMEPLAY_LIVES needs GAMEPLAY_SHIELD"
-GAMEPLAY_ANY = GAMEPLAY_SHIELD OR GAMEPLAY_LIVES   \ the OR of every GAMEPLAY_ flag: their builds need not keep the main block's
+\   GAMEPLAY_TIMER   1: a timer counting up, a bonus for speed; 2: counting down, game over at 0
+\                    (decision 47, src/timer.6502; on the shield's HUD, so with GAMEPLAY_SHIELD)
+ASSERT GAMEPLAY_SHIELD * 2 >= GAMEPLAY_TIMER AND GAMEPLAY_TIMER <= 2, "GAMEPLAY_TIMER (1 or 2) needs GAMEPLAY_SHIELD"
+GAMEPLAY_ANY = GAMEPLAY_SHIELD OR GAMEPLAY_LIVES OR GAMEPLAY_TIMER   \ the OR of every GAMEPLAY_ flag: their builds need not keep the main block's
                                     \ addresses, so its unexecuted padding goes (src/game.6502), room for their hooks
 DEBUG_ANY = DEBUG_LIVES OR DEBUG_FULLREDRAW   \ the OR of every DEBUG_ flag (GAMEPLAY_ flags are not debug: RELEASE allows them)
 VERSION_LINE = "v0.1"
@@ -147,6 +150,9 @@ SECTION DATA3, org = &8000, load = &FFFF1900, exec = &FFFF1900, filename = "DATA
     SKIP PAD_START
     INCLUDE "bank6.6502"
     INCLUDE "compiled_bank6.6502"   \ step 2 layer 4: compiled kinds of the player's parts
+IF GAMEPLAY_TIMER
+    INCLUDE "timer.6502"            \ decision 47: the timer (called through timer_tick_call: ROMSEL &06)
+ENDIF
     ASSERT * + PAD_END <= &C000, "bank 6 overruns its 16K by ", * + PAD_END - &C000
     SKIP PAD_END
 ENDSECTION
