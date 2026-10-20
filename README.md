@@ -6,12 +6,14 @@ rebuilds the BBC Master 128 enhanced version as [Baron](https://github.com/waiti
 source - byte for byte identical to the original at the tag `step1-byte-identical-rebuild` - and is now
 making it run smoothly and without its sprite flicker.
 
-**Where it stands** (2026-10-18): the game draws into two screens in turn (shadow RAM), its
+**Where it stands** (2026-10-20): the game draws into two screens in turn (shadow RAM), its
 sprites masked, so nothing flickers, and runs at a steady 25 frames a second - the speed the
-original was designed for - in all but 6 frames of 2,000 on a busy scripted game, and every
-frame holding RIGHT, against the original's 15-17 and its flicker. 25 Hz is the target (decision
-35): 50 Hz was costed and does not fit. What has landed is in `docs/done.md`, what is left in `PLAN.md`. Seen in the
-jsbeeb emulator only so far, not yet on real hardware.
+original was designed for - against the original's 15-17 and its flicker: every frame on time on a
+busy scripted game (1,998 frames) and holding RIGHT (598), and 97% over the whole world played start
+to finish (layer 4, tag `step2-layer4-steady-25hz`). 25 Hz is the target (decision 35): 50 Hz was
+costed and does not fit. Next are the original's own glitches (layer 5), a level editor, and
+gameplay ideas not yet agreed. What has landed is in `docs/done.md`, what is left in `PLAN.md`.
+Seen in the jsbeeb emulator only so far, not yet on real hardware.
 
 The game remains the copyright of its authors and publisher. This repository is for study and
 preservation; it does not include the original disc images or the disassembly it was made from.

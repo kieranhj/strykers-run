@@ -331,13 +331,16 @@ its own variables in the 56 bytes after each one (decision 32). `src/prebuild.65
 **Where the data lives:**
 
 - **MGAME's tables are packed** at `&0E00-&18DE`, with code after them, and main RAM has 20
-  bytes free (`SKIP unused_3400_original`). Everything from `&3400` must stay put (BUGS #1, #2).
+  bytes free (`SKIP unused_3400_original`). (2026-10-20: decision 40 moved the level tables to
+  `moved_0a20`, `&0AB4-&0C65` then, and others to HAZEL; the code now starts at `&14DF`; main RAM
+  has 9 bytes free, `moved_0a20` 173: CLAUDE.md "Memory".) Everything from `&3400` must stay put (BUGS #1, #2).
   Larger tables must move, and they are read with absolute,X/Y addressing, so a table must stay
   under 256 bytes, or be split, or have its code changed. `scenery_data_*` are read by pointer,
   so they can be any size and anywhere the scroll can see.
 - **Scenery sprites:**
   - bank 4: below `&9000` only. The renderer draws with ANDY over `&8000-&8FFF`, so the scroll
-    and the prebuild read scenery with ROMSEL `&04`. 110 bytes are free (`&8F92-&8FFF`).
+    and the prebuild read scenery with ROMSEL `&04`. 110 bytes are free (`&8F92-&8FFF`; 444 on
+    2026-10-20, `&8E44-&8FFF`).
   - banks 6 and 7: scenery, then layer 4's compiled sprites (decision 29), ASSERTed to `&C000`.
     530 and 481 bytes are free.
   - bank 5 holds no scenery, and 437 bytes are free.
@@ -462,7 +465,8 @@ Rebuild, then check that:
    mountains are HAZEL. Should an editor own them? Each needs a code change: separate cloud and
    helicopter tables, a ground table (BUGS #1, decision 13's layer 5), or mountain data in the
    build (revisiting decision 31).
-2. **Where a bigger level goes.** Main RAM has 20 bytes and the banks about 0.5K each. PLAN's
+2. **Where a bigger level goes.** Main RAM has 20 bytes and the banks about 0.5K each (2026-10-20:
+   main RAM 9, banks 5 / 6 / 7 388 / 530 / 481, `moved_0a20` 173). PLAN's
    "scenery runs translated at build time" and any change to the scenery format, which another
    agent may be making, change the sprite side. The records' side (x-low, chained) could stay as
    it is or become absolute.

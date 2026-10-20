@@ -142,6 +142,9 @@ disassembly's `actually`/`also` notes say what an operand really is.
 
 ## Memory (MGAME, as the reference lays it out)
 
+Addresses below are the shipping build's of 2026-10-20; they move when code does, so take them from
+the symbol dump (`tools/listing.py symbols`), and free space from the listing's `SKIP`s and ASSERTs.
+
 `&0000-&00FF` zero page, with game code at `&0004-&0077` (the sprite column unpacker; step 2: dead,
 its first bytes kept as the ground's, the rest the renderer's variables - decision 34);
 `&0300` column buffer; `&0400-&07FF` and `&0880-&095F` copied-down code and data (step 2: and
@@ -165,9 +168,9 @@ Decision 40 took 1,038 bytes of read-only tables out of the main block and place
 reads: the scenery tables, `movers_firing_cooldown`, the unflipped mover sprite addresses, the movers
 and projectiles from `&1300` (page-aligned, ASSERTed; `movers_state_end` ends them), the flipped mover
 sprite addresses; the code starts at `&14DF`, 1,024 lower than the original's `&18DF`. The keyboard read
-(`keydown_int`, `&2E73`), PRNG, `render_pass` and `pass_start` follow, `compiled_call` (the stub
-that pages a compiled kind's bank) after them, then the kind cache's builder (`kc_build`, `&2F4D`,
-decision 36) and its slot 0's offsets (`kc_slot0_y`, `&3247-&3347`, written in play to main and shadow
+(`keydown_int`, `&2F2A`), PRNG, `render_pass` and `pass_start` follow, `compiled_call` (the stub
+that pages a compiled kind's bank) after them, then the kind cache's builder (`kc_build`, `&2FFC`,
+decision 36) and its slot 0's offsets (`kc_slot0_y`, `&32F6-&33F6`, written in play to main and shadow
 alike), and what is free up to `&33FF` is the listing's `SKIP
 unused_3400_original` (9 bytes on 2026-10-20, from `&33F7`: grind round 2 used the rest); everything from `&3400` stays
 where the original had it (BUGS #1, #2). The interrupt's variables are below `&3000` (the renderer
@@ -189,8 +192,8 @@ written in play, emptied at each game start) has the rest: its masks and pixels 
 ride in bank 5's music area and the start-up block; `unpack_for_play` copies them in and unpacks the
 front end's tunes (`src/music.6502` -> `tools/packmusic.py` -> `src/music_packed.6502`, ZX02) to
 `&9300`. The start-up code and the blocks it copies down ride in the save arena's bytes
-(`&354A-&3FCD`, decision 33: nothing touches the arena before the first `render_reset`; 50 bytes of it
-left as a carrier after decision 40); `hazel_b`
+(`&354A-&3FBA`, decision 33: nothing touches the arena before the first `render_reset`; 69 bytes of it
+left as a carrier, 2026-10-20); `hazel_b`
 and the packed tunes follow `&4000` to `mgame_end` (`&4C1F`), so `MGAME` loads to `&572F`, 849
 bytes under the loading picture at `&5A80` (ASSERTed). Bank 5's `&8000-&83FF` (the player buffer) is free:
 masked drawing made it unnecessary.
