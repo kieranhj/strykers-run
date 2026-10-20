@@ -323,3 +323,22 @@ By the code that is only the player's last death (`kill_player` reaches
   the same, nothing mirrored; the control, 2 writes mirrored (`&92` at `&294C`), identical over
   1,295 passes. `passlock.mjs`, `helilock.mjs` and `worldrun.mjs` read the generator where each
   build keeps it (`playscript.mjs` `prngAt`), so a fixed build compares with one from before.
+## 13. One hit costs many lives: the explosion it leaves keeps hitting the player (original behaviour; OPEN)
+
+KC, 2026-10-20: "the player takes multiple hits from a single projectile (e.g. helicopter bomb) when
+running into it". Measured with `tools/hitwatch.mjs` (every entry to `kill_player`, with the path and
+the culprit's type as it was before `kill_mover` changed it) over the whole world (WorldBot, infinite
+lives poked in), jsbeeb 2.10.0, 2026-10-20: the original (the step 1 tag's build) took 634 hits in
+12,222 passes, 290 of them from distinct objects and 344 repeats from an object that had already hit
+(within 12 passes, same slot); the shipping build 655 (286 objects), the same pattern.
+- **The explosion (197 of the 344).** Whatever hits the player, or whatever the player runs into, is
+  turned into an explosion in its slot (`kill_mover`, `replace_projectile_with_explosion`), still
+  overlapping the player. `check_for_hostile_collision` treats every type from `&0D` up as hostile to
+  the player but the SAM, explosions (`&0E`) included, so the player's own move "runs into" it again
+  every 1-2 passes (gaps: 198 of 1 pass, 53 of 2) until its animation ends, each a life. By what began
+  it: a machine gun run into, 4-14 hits; a mortar 5-8; a heavy gun 9; a bomb run into 1-7; a mine 1-7.
+- **The same object twice in one pass (41).** The player's move finds a bullet (or bomb) and kills
+  both; the same projectile's own update then finds the player too (`projectile_hit_player`).
+- Less certain: bullet "repeats" several passes apart may be a new bullet in the same slot; one run
+  of 35 is WorldBot's stall, a crouching soldier the collision holds against the player (PLAN.md's
+  whole world notes).
