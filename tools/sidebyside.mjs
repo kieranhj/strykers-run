@@ -4,7 +4,7 @@
 //   node tools/sidebyside.mjs ORIGINAL.ssd STEP2.ssd OUT.mp4 [--fields 3000] [--seed 1]
 //        [--scale 1] [--no-sound] [--no-video] [--ffmpeg PATH]
 //
-// ORIGINAL is step1-identical's build (`make original`: build/strykers-original.ssd, with its
+// ORIGINAL is step1-byte-identical-rebuild's build (`make original`: build/strykers-original.ssd, with its
 // symbols copied beside it as build/strykers-original.symbols.json), STEP2 the shipping build.
 // Each boots on its own Master and starts a game with tools/playscript.mjs's title presses. From
 // the first pass (main_game_loop) on, keys change BY PASS, from tools/passlock.mjs's generator

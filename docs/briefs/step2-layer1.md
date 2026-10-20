@@ -1,6 +1,6 @@
 # Brief: step 2, layer 1 - own the interrupt, lock the loop to vsync
 
-**BUILT** (2026-10-16, `1041a13`; tag `step2-layer1`). What landed: "Landed" at the end.
+**BUILT** (2026-10-16, `1041a13`; tag `step2-layer1-own-interrupt-vsync-lock`). What landed: "Landed" at the end.
 
 You are continuing a project in `C:\Users\khcon\OneDrive\BEEB\Projects\strykers`: Stryker's Run
 (Enhanced), Superior Software 1986, BBC Master 128, rebuilt as Baron 6502 source. Step 1 is done
@@ -65,7 +65,7 @@ a locked 50 Hz, flicker free, with double buffering in shadow RAM. **Your job is
   and when (jsbeeb version, model).
 - Step 2 changes the game, so the build is no longer byte-identical to the reference: build with
   `.\build.ps1 -NoCompare`. The byte-identical original stays in git history (tag it
-  `step1-identical` on commit 762a0d2 before your first change). Keep the relocation test passing
+  `step1-byte-identical-rebuild` on commit 762a0d2 before your first change). Keep the relocation test passing
   if you touch anything address-sensitive (CLAUDE.md "The relocation test").
 - Commit at the end of the layer with the measurements in the message; update PLAN.md (tick
   layer 1), `docs/decisions.md`, BUGS.md if you find bugs. Push to origin (public repo

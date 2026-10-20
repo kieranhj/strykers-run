@@ -4,7 +4,7 @@ What has landed, by step and layer, each with the number that says it landed. Th
 the layer's own document; decisions are in `docs/decisions.md`, defects in `BUGS.md`. Every
 figure was measured on jsbeeb 2.5.0, Master 128 (MOS 3.20), on the date given.
 
-## Step 1 - a buildable, relocatable source (tag `step1-identical`, `762a0d2`)
+## Step 1 - a buildable, relocatable source (tag `step1-byte-identical-rebuild`, `762a0d2`)
 
 - **Phase 0, toolchain and skeleton** (2026-10-16).
 - **Phase 1, byte-identical rebuild** (2026-10-16): all seven files identical to the Stairway to
@@ -30,7 +30,7 @@ Speed reference: the original's design rate, 25 passes a second (decision 12). S
 from layer 3 on use `tools/passbench.mjs` on builds made `-Shift 256 -ShiftEnd -Define
 DEBUG_LIVES`: seed 1, passes 500-2000 ("seed 1"), and holding RIGHT, passes 50-650.
 
-### Layer 1 - own the interrupt, lock to vsync (2026-10-16; tag `step2-layer1`, `0a078b8`)
+### Layer 1 - own the interrupt, lock to vsync (2026-10-16; tag `step2-layer1-own-interrupt-vsync-lock`, `0a078b8`)
 
 `docs/step2-layer1.md`; decisions 14-20. In play the game's handler keeps vsync and User VIA T1,
 the MOS only its 100 Hz tick; the pass is locked to 2 fields; the keyboard is read directly; a
@@ -38,7 +38,7 @@ PRNG replaces the VIA timer. Interrupts 21% -> 10.6% of the CPU; 16.8 -> 17.8 pa
 15.1 -> 17.0 (frame 16000). BUGS #3 (the palette split) fixed in `1041a13`, #4 (the soldier jump)
 in `0a078b8`.
 
-### Layer 2 - double buffering in shadow RAM (2026-10-16; tag `step2-layer2`, `63892d7`)
+### Layer 2 - double buffering in shadow RAM (2026-10-16; tag `step2-layer2-shadow-double-buffer`, `63892d7`)
 
 `docs/step2-layer2.md`; decisions 21-23. The logic no longer draws; a renderer in bank 4 keeps
 per-screen records and draws the hidden screen; the vsync interrupt flips main and shadow; every
@@ -46,7 +46,7 @@ raster wait is gone. Pass lockstep against the single-screen control: game state
 shown screen byte-identical on all but 8 of 42,000 passes. Slower then: 11.6 passes/s in the
 town, 10.3 scrolling. BUGS #5 fixed here.
 
-### Layer 3 - fast enough (2026-10-16 to 17; tag `step2-layer3`, `07ef49c`)
+### Layer 3 - fast enough (2026-10-16 to 17; tag `step2-layer3-fast-enough`, `07ef49c`)
 
 `docs/step2-layer3.md` (its table has every step), analysis `docs/step2-layer3-analysis.md`,
 briefs `docs/briefs/step2-layer3-late-passes.md` and `docs/briefs/step2-layer3-ram-for-cycles.md`.
@@ -67,7 +67,7 @@ measurements in `docs/step2-layer3.md`: compiled enemy sprites (later done for t
 4), the logic a pass ahead (RAM for cycles 5), a room check by mover type, an exact copy of the
 MOS's sound, skipping transparent bytes, building the column on the pass before.
 
-### Layer 4 - a steady 25 Hz: 50 Hz costed and set aside, the heaviest frames (2026-10-17 to 18; in progress)
+### Layer 4 - a steady 25 Hz: 50 Hz costed and set aside, the heaviest frames (2026-10-17 to 20; tag `step2-layer4-steady-25hz`)
 
 `docs/step2-layer4-costing.md`. 50 Hz is off the table: a steady 25 Hz is the target (decision
 35, 2026-10-18).
@@ -90,7 +90,7 @@ MOS's sound, skipping transparent bytes, building the column on the pass before.
   177 candidates kept, each batch gated; work a pass (pcprof, the wait excluded) 43,036 -> 39,112
   on seed 1, 49,857 -> 45,570 holding RIGHT; late frames (passbench) 21 -> 7 of 1,998, 1 -> 0 of
   598. Every candidate and its fate: `docs/grind/README.md`.
-- **RAM rearranged** (decisions 32-34: `69f9321`, `0e4a24d`, `acd4c4a`; tag `step2-grind1`): the
+- **RAM rearranged** (decisions 32-34: `69f9321`, `0e4a24d`, `acd4c4a`; tag `step2-grind1-ram-rearranged`): the
   renderer's variables in its workspace holes (render.6502's room 68 -> 797 bytes), `MGAME`'s
   start-up code carried in the save arena's bytes (its room 33 -> 2,271), the renderer's 48
   hottest variables in the zero-page unpacker's dead body: work a pass 38,462 (seed 1), 44,855
@@ -104,6 +104,23 @@ MOS's sound, skipping transparent bytes, building the column on the pass before.
   else touches in a game (`tools/zpwatch.mjs`). Against the control with the clobber undone in the
   emulator (`--unclobber`): seeds 1, 3 and 5, both helicopter flights and the whole world, state
   and screen identical; work a pass 33.0 cycles less on seed 1, 28.3 holding RIGHT.
+
+- **The scroll column in HAZEL, the scenery unpacker, the tables moved** (decisions 38-40,
+  `48e86a1`, `ca825e3`, `eb8fb4f`; `docs/step2-layer4-scroll.md`): a scroll 3.9k / 3.6k -> 2.0k /
+  1.4k cycles; main RAM 20 -> 1,044 bytes free.
+- **BUGS #11 fixed** (`a5618e0`): observer mode's keys, dead since grind G0038; `tools/observer.mjs`
+  in the gate.
+- **The kind cache and the overlap rule by draw order** (decisions 36-37, `a9c2e97` to `a13c1dd`,
+  branch `layer4-late-frames`): the helicopters' bodies drawn from kinds built in the waits; the
+  whole world's late frames 644 -> 406.
+- **The whole world played through** (`tools/worldrun.mjs`, `5714760`): 12,233 passes to the
+  headquarters, state and newest frame identical to the full-redraw oracle on every pass.
+- **Micro-optimisation grind, round 2** (`af3881e` to `ccaa7b3`, report `cc80d16`): 179 of 372
+  candidates kept over both rounds; work a pass at the close 34,826 on seed 1, 39,341 holding
+  RIGHT (pcprof, the wait excluded; 36,779 / 41,141 on `layer4-late-frames`).
+- **Closed** (2026-10-20, decision 42; `docs/step2-layer4-costing.md` "Closed"): late frames 0 of
+  1,998 on seed 1, 0 of 598 holding RIGHT, 339 of 12,235 over the whole world (known and left).
+  The milestone tags renamed for what each achieved.
 
 ## Tooling
 

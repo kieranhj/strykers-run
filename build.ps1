@@ -11,7 +11,7 @@
 #
 # Every -D symbol the source reads is passed on every build (Baron cannot default one).
 # The Makefile is the same build for POSIX systems and produces the same image; a change to the
-# pipeline has to land in both. The original disc is the tag step1-identical (README.md).
+# pipeline has to land in both. The original disc is the tag step1-byte-identical-rebuild (README.md).
 # Tools: baron from $env:BARON, then bin\baron.exe, then the PATH. Put machine-specific paths in
 # local.ps1 beside this file (gitignored); it is run first if it exists.
 param([switch]$Release, [switch]$Compare, [switch]$NoCompare, [int]$Shift = 0, [switch]$ShiftEnd, [string[]]$Define = @())

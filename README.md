@@ -3,7 +3,7 @@
 Stryker's Run was written by Chris Roberts and Philip Meller, with graphics by Nick Elms and music
 by Martin Galway, and published by Superior Software for the BBC Micro in 1986. This repository
 rebuilds the BBC Master 128 enhanced version as [Baron](https://github.com/waitingforvsync/baron)
-source - byte for byte identical to the original at the tag `step1-identical` - and is now
+source - byte for byte identical to the original at the tag `step1-byte-identical-rebuild` - and is now
 making it run smoothly and without its sprite flicker.
 
 **Where it stands** (2026-10-18): the game draws into two screens in turn (shadow RAM), its
@@ -32,7 +32,7 @@ preservation; it does not include the original disc images or the disassembly it
 | | Source | Build | Image |
 |---|---|---|---|
 | **The optimised version** (step 2, in progress: a steady 25 Hz, no flicker) | `main` | `make`, or `.\build.ps1` | `build/strykers.ssd` |
-| **The original**, byte for byte the Stairway to Hell disc's game | the tag `step1-identical` (`762a0d2`) | `make original`, or the tag's own `build.ps1` in a worktree of it (below) | `build/strykers-original.ssd` |
+| **The original**, byte for byte the Stairway to Hell disc's game | the tag `step1-byte-identical-rebuild` (`762a0d2`) | `make original`, or the tag's own `build.ps1` in a worktree of it (below) | `build/strykers-original.ssd` |
 
 `make original` exports the tag's `src/` and `tools/` into `build/original/` (`git archive`, so it
 needs a clone with its tags: `git fetch --tags`), assembles them with the flags the tag's
@@ -42,16 +42,24 @@ the one the tag's own `build.ps1` makes in a checkout of the tag, build stamp in
 (`bin\` and `reference\` are not in git, so point `$env:BARON` at Baron and copy the reference
 disc across):
 
-    git worktree add ../strykers-original step1-identical
+    git worktree add ../strykers-original step1-byte-identical-rebuild
     cd ../strykers-original
     .\build.ps1        # -> build\strykers.ssd, compared with reference\sth\StrykersRun.ssd
 
-**Milestone tags.** As each stage of the optimised version closes, its commit is tagged:
-`step1-identical` is the first, and the layers of step 2 follow as `step2-layer1`,
-`step2-layer2`, ...: `step2-layer1` is `0a078b8` (the interrupt owned, the pass locked; layer 2's
-control) `step2-layer2` is `63892d7` (double buffered, drawn from per-screen records) and `step2-layer3`
-is `07ef49c` (fast enough: 24.70 passes a second, the original's design rate 25). Each tag builds with the build script it carries; check one out
-with `git worktree add ../strykers-<tag> <tag>`.
+**Milestone tags.** As each stage of the optimised version closes, its commit is tagged with
+what it achieved (decision 42, which renamed the earlier `step1-identical` and `step2-layerN`):
+
+| Tag | Commit | What it is |
+|---|---|---|
+| `step1-byte-identical-rebuild` | `762a0d2` | the source rebuilt byte for byte from the original disc |
+| `step2-layer1-own-interrupt-vsync-lock` | `0a078b8` | the interrupt owned, the pass locked to 2 fields (layer 2's control) |
+| `step2-layer2-shadow-double-buffer` | `63892d7` | double buffered in shadow RAM, drawn from per-screen records |
+| `step2-layer3-fast-enough` | `07ef49c` | 24.70 passes a second, the original's design rate 25 |
+| `step2-grind1-ram-rearranged` | `acd4c4a` | the grind's round 1 and the RAM rearranged: 6 late frames of 1,998 |
+| `step2-layer4-steady-25hz` | the layer's close | a steady 25 Hz: no late frames on seed 1 or holding RIGHT, 339 of 12,235 over the whole world |
+
+Each tag builds with the build script it carries; check one out with
+`git worktree add ../strykers-<tag> <tag>`.
 
 ### Tools
 

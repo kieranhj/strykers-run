@@ -1,6 +1,8 @@
 # Step 2, layer 4: costing option 2 (50 Hz for the cheap things)
 
 **Decided** (2026-10-18, decision 35): a steady 25 Hz. 50 Hz is off the table, on this costing.
+**Closed 2026-10-20** (decision 42), tag `step2-layer4-steady-25hz`: "Closed" at the end of
+"Built: the late frames" has the final measurement and what was left.
 
 2026-10-17. The costing itself built nothing: it is a measurement and a model. What was built
 after it is in the sections headed "Built" (and in `docs/done.md`), each with the build it was measured on. The costing was measured
@@ -800,6 +802,67 @@ HAZEL 24 (`&C2E7-&C2FE`); `MGAME`'s carrying room 860; the save arena 2,228 byte
   `search_for_target`, the plot calls' walks) is not this branch's (game.6502).
 - **Compiled bodies** (21 cycles a byte) would clear most of it (`latesim`: seed 5 45 -> 3) but
   need ~3-4K a kind and line; no room.
+
+## Closed (2026-10-20, decision 42)
+
+Layer 4 closes at `cc80d16` (KC: "close layer 4 and tag it"), after the grind's round 2 (the
+beeb-micro-grind skill: 179 of 372 candidates kept over both rounds, `docs/grind/README.md`). The
+bar it closes on is the one PLAN.md proposed: no late frames on passbench's two games (seed 1,
+and holding RIGHT), and the whole world played through. The whole world's late frames are known
+and left.
+
+Measured 2026-10-20 on **jsbeeb 2.10.0, Master 128 (MOS 3.20)**, the bench build (`-Shift 256
+-ShiftEnd -Define DEBUG_LIVES`), `tools/passbench.mjs` and `tools/worldrun.mjs`; a frame is late if
+it is shown 3 fields or more:
+
+| late frames | `layer4-late-frames` (2026-10-18, jsbeeb 2.5.0) | **closed, `cc80d16`** |
+|---|---|---|
+| seed 1, passes 500-2,500 (1,998 frames) | 3 | **0** (25.04 passes a second) |
+| holding RIGHT, passes 50-650 (598) | 0 | **0** (25.04) |
+| seeds 3 / 5 / 7 | 1 / 30 / 5 | 0 / 20 / 2 |
+| flights 0 / 2 / 5 / 8 (passes 50-3,050) | 15 / 15 / 29 / 25 | 12 / 12 / 31 / 31 |
+| the whole world, start to headquarters | 406 of 12,231 | **339 of 12,235** (2.8%; 24.68 passes a second) |
+| work a pass, seed 1 / RIGHT (pcprof, the wait excluded) | 36,779 / 41,141 | **34,826 / 39,341** of 79,872 |
+
+The whole world by 1,000 world columns: 20 / 35 / 57 / 119 / 14 / 55 / 39 / 0 late (3,000-3,999 the
+worst, 6.6%); 140 of 7,382 frames with the player on the ground, 199 of 4,853 in the air; 318 frames
+shown 3 fields, 21 shown 4. The shipping build plays the same world with the same 339. Late frames
+come in bursts of helicopters' bodies with soldiers and the scroll (seed 5's passes 2,226-2,356,
+the flights' 1,244-1,275 around the explosion), 1-34% over budget.
+
+**The whole world** (from PLAN.md, 2026-10-18, `d879af0` and `eb8fb4f`): `tools/worldrun.mjs`'s
+WorldBot runs right, jumps 3 passes in 30, and where the player stops backs off, throws a grenade
+and fires. Its one stall is a crouching soldier (type 3, x 3,358; pass 5,437 at the close) that
+bullets pass over and the collision holds against the player; a grenade kills it. No helicopter
+is needed. The shipping build plays it with infinite lives poked in (`kill_player`'s `DEC lives`
+made `LDA #lives`, the bytes `DEBUG_LIVES` assembles). Against the `DEBUG_FULLREDRAW` oracle, state
+and newest frame identical on 12,233 of 12,233 passes; worldcheck `--world` 0 of 29,829 records
+misplaced (BUGS #10); the mountain layer reads `&C301-&C56C` of HAZEL (BUGS #9), and nothing else
+in HAZEL is read but the compiled kinds and decision 40's tables.
+
+**Left, with their costing above** (none built: each wants room the renderer can read while it
+draws, and there is next to none):
+- a third kind cache slot (600-800 bytes);
+- the generic column path's overhead (~40% of its cost a column; ~1-2k a pass in the bursts);
+- the logic in the bursts (20-30k a pass: the collision and target searches);
+- compiled bodies (~3-4K a kind and line);
+- the scroll column's rest (`docs/step2-layer4-scroll.md`): the ground loop (~520 a scroll, with
+  BUGS #1, layer 5), the left edge's movers, each layer's next column address kept,
+  `history_push`'s 200-row copy when the column was not prebuilt;
+- a grind round 3 (round 2 ran its queue dry; what a third finds is costed at tens of cycles a pass).
+
+**The room at the close** (the shipping build's listing, 2026-10-20): main RAM **9 bytes**
+(`&33F7-&33FF`, from 184: the grind's kept candidates grew the code); `moved_0a20` 173
+(`&0C53-&0CFF`); bank 4 43 below `REN_BASE`, 444 under ANDY (`&8E44-&8FFF`); banks 5 / 6 / 7
+388 / 530 / 481; HAZEL 24 (`&C2E7-&C2FE`; `hazel_b` ends `&DE2C`); `MGAME`'s carrying room 849
+(`mgame_end` `&4C1F`, loading to `&572F` under the picture at `&5A80`); the save arena 2,228 bytes a
+screen.
+
+**Checks at the close:** all 10 flag combinations (`RELEASE`, `DEBUG_LIVES`, `DEBUG_FULLREDRAW`,
+`SHIFT=256 SHIFT_END=1`) assemble with no warnings (`baron --check --warn 2`), and `RELEASE` with a
+debug flag is refused; the release build passes `tools/frontend.mjs` (15 of 15). Every grind batch
+passed the gate (state and screen against its control, seeds 1 and 3, the full-redraw oracle, two
+helicopter flights, the front end, observer mode).
 
 ## Unlocked: the flip at the next vsync, not every 2 fields (modelled)
 

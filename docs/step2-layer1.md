@@ -7,7 +7,7 @@ when the split became steady (decision 22).
 
 Done 2026-10-16. Every number here was measured on **jsbeeb 2.5.0, Master 128 (MOS 3.20, Acorn
 1770 DFS)**, through the headless harnesses in `tools/`, on 2026-10-16. "Before" is the
-byte-identical build (tag `step1-identical`, built from 762a0d2's source), "after" is this
+byte-identical build (tag `step1-byte-identical-rebuild`, built from 762a0d2's source), "after" is this
 layer. Both play `tools/playscript.mjs` seed 1.
 
 ## Result

@@ -6,7 +6,7 @@
 #   make COMPARE=1       the same, then every file against the reference disc
 #   make release         RELEASE=1: the build for other people (no DEBUG_ flags)
 #   make original        the original disc, byte-identical to the reference, from
-#                        the tag step1-identical: build/strykers-original.ssd
+#                        the tag step1-byte-identical-rebuild: build/strykers-original.ssd
 #   make clean           remove what this Makefile builds
 #   make help            this list
 #
@@ -79,7 +79,7 @@ REFERENCE = reference/sth/StrykersRun.ssd
 
 # The original: the step 1 source, exported from its tag and assembled as the
 # tag's own build.ps1 assembled it.
-TAG     = step1-identical
+TAG     = step1-byte-identical-rebuild
 ORIG    = $(BUILD)/original
 ORIGSSD = $(BUILD)/strykers-original.ssd
 
@@ -197,7 +197,7 @@ $(SSD): $(SRC) $(CONFIG)
 # ---------------------------------------------------------------------------
 # The original disc
 # ---------------------------------------------------------------------------
-# The tag step1-identical (762a0d2) is the source rebuilt byte for byte from
+# The tag step1-byte-identical-rebuild (762a0d2) is the source rebuilt byte for byte from
 # the original; everything after it is the optimisation, which changes the
 # code. That tag predates this Makefile, so `make original` exports the
 # tag's src/ and tools/ into $(ORIG) and assembles them with the flags the
@@ -205,7 +205,7 @@ $(SSD): $(SRC) $(CONFIG)
 #
 # THE STAMP IS THE TAG'S COMMIT TIME, given to the tag's build_stamp.py as
 # SOURCE_DATE_EPOCH - what a clean checkout of the tag stamps - so the image
-# is the one `git worktree add ../strykers-original step1-identical` and the
+# is the one `git worktree add ../strykers-original step1-byte-identical-rebuild` and the
 # tag's build.ps1 produce there. Only INFO and !BOOT carry the stamp; the
 # game's files, the ones compared, do not.
 #

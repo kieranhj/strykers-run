@@ -33,11 +33,11 @@ of every agreed decision, `BUGS.md` the bug log. The method is beeb-port-kit's (
 .\build.ps1 -Release
 ```
 
-Step 1's byte-identical source is the tag `step1-identical`; `-Compare` checks a build against the reference.
+Step 1's byte-identical source is the tag `step1-byte-identical-rebuild`; `-Compare` checks a build against the reference.
 The `Makefile` is the same build for POSIX (`make`, `make release`, `make SHIFT=256 SHIFTEND=1
 DEFINES=DEBUG_LIVES`; comparing is off unless `COMPARE=1`) and makes the same images, byte for
 byte: a change to the pipeline lands in both. `make original` builds the tag's source into
-`build/strykers-original.ssd`. Milestones get tags (`step2-layerN` as each layer closes; README.md).
+`build/strykers-original.ssd`. Milestones get tags named for what they achieved (`step2-layer4-steady-25hz`; decision 42, README.md).
 Baron 0.5.3 (`bin\baron.exe`, gitignored; built from `C:\Users\khcon\OneDrive\BEEB\Repos\baron`,
 decision 2). One assembly, `src/main.6502`, so the game and the banks share one symbol table.
 `build/strykers.lst` is the listing, `build/strykers.symbols.json` the symbol dump: take
@@ -145,7 +145,7 @@ disassembly's `actually`/`also` notes say what an operand really is.
 `&0000-&00FF` zero page, with game code at `&0004-&0077` (the sprite column unpacker; step 2: dead,
 its first bytes kept as the ground's, the rest the renderer's variables - decision 34);
 `&0300` column buffer; `&0400-&07FF` and `&0880-&095F` copied-down code and data (step 2: and
-`&0A20-&0CFF`, `moved_0a20`: `multiply_by_78`, `rows_up` and the level tables, 154 bytes free at its
+`&0A20-&0CFF`, `moved_0a20`: `multiply_by_78`, `rows_up` and the level tables, 173 bytes free (2026-10-20) at its
 end, decision 40); `&0E00-&3FFF` code and data; `&4000-&46FF` start-up code (step 2: mostly in the save arena, decision 33), then the screen `&4000-&7FFF` (16K, MODE 2,
 hardware-scrolled by the CRTC). Bank 5 `&8000-&83FF` is the player buffer.
 
@@ -169,7 +169,7 @@ sprite addresses; the code starts at `&14DF`, 1,024 lower than the original's `&
 that pages a compiled kind's bank) after them, then the kind cache's builder (`kc_build`, `&2F4D`,
 decision 36) and its slot 0's offsets (`kc_slot0_y`, `&3247-&3347`, written in play to main and shadow
 alike), and what is free up to `&33FF` is the listing's `SKIP
-unused_3400_original` (184 bytes on 2026-10-18, from `&3348`; 1,203 after decisions 38-40); everything from `&3400` stays
+unused_3400_original` (9 bytes on 2026-10-20, from `&33F7`: grind round 2 used the rest); everything from `&3400` stays
 where the original had it (BUGS #1, #2). The interrupt's variables are below `&3000` (the renderer
 draws with ACCCON's X bit set when the target is shadow). Bank 4: the renderer `&9000-`, then its
 sprites and tables (below `REN_BASE`, `&B400`, ASSERTed in `src/main.6502`: BUGS #6); workspace
@@ -183,7 +183,7 @@ bit); HAZEL `&C300` on is the mountain layer's data (BUGS #9) and stays untouche
 tables: `times_78_lo/hi` at `&C000/&C100` (made at start-up), and in `hazel_b` after the kinds
 `player_helicopter_types_vertical_speed` .. `player_helicopters_initial_x_high` (`&D905-&D9DA`) and
 the mover type tables (`&DA01-&DB86`), read in play only, under `hazel_b`'s `&DC00` ASSERT; then the scroll column's code (`src/scroll_hazel.6502`,
-decisions 38, 39) to `&DE31`, `hazel_b` ASSERTed below `&E000`. The kind cache's slot 1 (decision 36,
+decisions 38, 39) to `&DE2C`, `hazel_b` ASSERTed below `&E000`. The kind cache's slot 1 (decision 36,
 written in play, emptied at each game start) has the rest: its masks and pixels `hazel_b_end` to
 `&DFFF`, its offsets `&C200-&C2E6` (231 bytes a kind, ASSERTed at least 214); `&C2E7-&C2FE` is free. On the disc they
 ride in bank 5's music area and the start-up block; `unpack_for_play` copies them in and unpacks the
@@ -191,7 +191,7 @@ front end's tunes (`src/music.6502` -> `tools/packmusic.py` -> `src/music_packed
 `&9300`. The start-up code and the blocks it copies down ride in the save arena's bytes
 (`&354A-&3FCD`, decision 33: nothing touches the arena before the first `render_reset`; 50 bytes of it
 left as a carrier after decision 40); `hazel_b`
-and the packed tunes follow `&4000` to `mgame_end` (`&4C24`), so `MGAME` loads to `&5724`, 860
+and the packed tunes follow `&4000` to `mgame_end` (`&4C1F`), so `MGAME` loads to `&572F`, 849
 bytes under the loading picture at `&5A80` (ASSERTed). Bank 5's `&8000-&83FF` (the player buffer) is free:
 masked drawing made it unnecessary.
 Bank 5 grows only at its end (its music is page-aligned). In play the game's `irq1_handler` owns

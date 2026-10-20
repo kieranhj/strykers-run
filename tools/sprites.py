@@ -7,7 +7,7 @@ column format for the masked renderer (step 2 layer 3, option A1), and measured.
     python tools/sprites.py straight [build/strykers.ssd] [src/sprite_straight.6502] [src/sprite_andy.6502]
 
 Every command reads a disc that still has the game's run-length mover sprites, which layer 3
-removed: the layer 2 build (the tag step2-layer2). Reads the built disc and its symbol dump (the .ssd's .symbols.json): MGAME (main RAM from
+removed: the layer 2 build (the tag step2-layer2-shadow-double-buffer). Reads the built disc and its symbol dump (the .ssd's .symbols.json): MGAME (main RAM from
 &0E00, the copied-down &0400 block via moved_0400_load) and DATA1 (sideways bank 4 from &8000).
 The run-length format (src/game.6502 unpack_column_of_sprite): a column is a header byte, then
 entries - 1x...... runs of 1 or 3, 01...... of 2, 00nnnnnn then an index byte: a run of n - then
@@ -24,7 +24,7 @@ together. The columns follow one another; a flipped sprite's are placed from the
 stats: per-sprite and per-mover-type sizes, including each type's largest save-under (the sum
 over its parts of the bytes drawn, in its largest frame) and largest save block (render.6502's
 layout: a 4-byte header, then a 3-byte record and 8 bytes a cell for each column), which sizes
-MAX_BLOCK. 636 bytes at most, on the step2-layer2 build, 2026-10-17.
+MAX_BLOCK. 636 bytes at most, on the step2-layer2-shadow-double-buffer build, 2026-10-17.
 """
 import json
 import sys
