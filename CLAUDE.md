@@ -91,7 +91,7 @@ disassembly's `actually`/`also` notes say what an operand really is.
 - `tools/observer.mjs DISC` - observer mode's RIGHT, LEFT and ESCAPE (a key path play never takes: BUGS #11); one of the grind's checks
 - `tools/split.mjs DISC FROM FRAMES`, `tools/splitscroll.mjs DISC` - when the palette writes land after vsync, every field / on scrolling fields
 - `tools/soundfx.mjs DISC OUT.json` - each sound effect's SN76489 writes, for comparing two builds (fired from the pause loop by a faked JSR: no stub in RAM)
-- `tools/passlock.mjs CONTROL TEST [PASSES] [SEED] [--screen] [--unclobber]` - two builds in step by pass (same keys per pass), game state compared every pass, and the shown screen (`--trace`, `--dump`, `WATCH=` to chase a difference). Layer 2's oracle: build both `-Shift 256 -ShiftEnd` so the ground pattern is fixed. `--unclobber` (also `helilock.mjs`, `worldrun.mjs`, `pcprof.mjs`; the gate passes it): a control from before BUGS #12's fix has the dying mover's `STY &92` undone in the emulator (`playscript.mjs` `prngClobber`), so it plays the fixed build's game
+- `tools/passlock.mjs CONTROL TEST [PASSES] [SEED] [--screen] [--unclobber]` - two builds in step by pass (same keys per pass), game state compared every pass, and the shown screen (`--trace`, `--dump`, `WATCH=` to chase a difference). Layer 2's oracle: build both `-Shift 256 -ShiftEnd` (the bench layout; the ground no longer depends on the layout, BUGS #1). `--unclobber` (also `helilock.mjs`, `worldrun.mjs`, `pcprof.mjs`; the gate passes it): a control from before BUGS #12's fix has the dying mover's `STY &92` undone in the emulator (`playscript.mjs` `prngClobber`), so it plays the fixed build's game
 - `tools/shadowaudit.mjs DISC` - what the renderer reads in `&3000-&3FFF` with ACCCON's X bit set, against what play writes there:
   a read is stale if shadow's copy differs from main's then (the arena and `player_save` are per screen, not judged)
 - `tools/kcguard.mjs ORACLE TEST [PASSES] [SEED] [END]` - the kind cache's arena guard forced (slot 0 moved into the arena, the
@@ -148,7 +148,7 @@ the symbol dump (`tools/listing.py symbols`), and free space from the listing's 
 `&0000-&00FF` zero page, with game code at `&0004-&0077` (the sprite column unpacker; step 2: dead,
 its first bytes kept as the ground's, the rest the renderer's variables - decision 34);
 `&0300` column buffer; `&0400-&07FF` and `&0880-&095F` copied-down code and data (step 2: and
-`&0A20-&0CFF`, `moved_0a20`: `multiply_by_78`, `rows_up` and the level tables, 173 bytes free (2026-10-20) at its
+`&0A20-&0CFF`, `moved_0a20`: `multiply_by_78`, `rows_up` and the level tables and the ground's texture (`ground_columns`, BUGS #1), 142 bytes free (2026-10-20) at its
 end, decision 40); `&0E00-&3FFF` code and data; `&4000-&46FF` start-up code (step 2: mostly in the save arena, decision 33), then the screen `&4000-&7FFF` (16K, MODE 2,
 hardware-scrolled by the CRTC). Bank 5 `&8000-&83FF` is the player buffer.
 
@@ -157,7 +157,7 @@ Step 2 additions: zero page `&90` (`field_count`), `&BC`/`&BD` (the PRNG, seeded
 `set_dying_mover_type_and_frame`), `&9B` (`drawing`),
 `&9C/&9D` (the sprite walk's and the renderer's pointer), `&9E` (`plot_sprite`); `&1F-&75`, the
 unpacker's dead body, the renderer's hottest variables (`ren_zp` in `moved_0004`, decision 34;
-`&0004-&001E` stay as the ground's bytes, BUGS #1); the renderer's
+`&0004-&001E` stay as they were, no longer read: BUGS #1, fixed); the renderer's
 scratch `&C0-&CD` (given back by `restore_game_zp` only where the logic reads). `&354A-&3DFD` is
 the save arena (main and shadow, one per screen; 2,228 bytes: its live blocks reached 1,985 over the whole
 world; if a scene ever needs more, `kc_arena_full` drops slot 0's kind and the arena runs to `&3FFF`, as
@@ -192,7 +192,7 @@ written in play, emptied at each game start) has the rest: its masks and pixels 
 ride in bank 5's music area and the start-up block; `unpack_for_play` copies them in and unpacks the
 front end's tunes (`src/music.6502` -> `tools/packmusic.py` -> `src/music_packed.6502`, ZX02) to
 `&9300`. The start-up code and the blocks it copies down ride in the save arena's bytes
-(`&354A-&3FBA`, decision 33: nothing touches the arena before the first `render_reset`; 69 bytes of it
+(`&354A-&3FD9`, decision 33: nothing touches the arena before the first `render_reset`; 38 bytes of it
 left as a carrier, 2026-10-20); `hazel_b`
 and the packed tunes follow `&4000` to `mgame_end` (`&4C1F`), so `MGAME` loads to `&572F`, 849
 bytes under the loading picture at `&5A80` (ASSERTed). Bank 5's `&8000-&83FF` (the player buffer) is free:

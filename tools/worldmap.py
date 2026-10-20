@@ -34,7 +34,8 @@ The ground's texture also reads zero page &0000-&001E (BUGS #1): &00/&01 is the 
 (known for every column), &02 `count` (scroll_into_world's, then 0) and &03 `mover_to_update`
 (&22 in observer mode, measured; it varies in play, which changes rows of the ground there),
 &04-&1E the dead unpacker's bytes, with &05/&06 the `dummy_sprite` address set_sprite_address
-leaves there (decision 34).
+leaves there (decision 34). A build with BUGS #1 fixed (layer 5) reads a fixed table instead,
+`ground_columns` (type t's rows at t * t on), and this tool reads it from the build.
 
 Pixels: each world column is one MODE 2 byte, two pixels; a MODE 2 pixel is drawn 2 px wide and
 1 px tall (times --scale), as on screen. The palette is play's: colours 0-5 and 7 as MODE 2, 6 and
@@ -131,7 +132,8 @@ class Build:
         self.main = bytearray(0x10000)
         mg = files["MGAME"].data
         self.main[GAME_ORG:GAME_ORG + len(mg)] = mg
-        for name in ("moved_0004", "moved_0400", "moved_0880", "moved_0a20"):   # the copy-downs
+        # the copy-downs; hazel_b (carried after &4000) holds the mover type tables from decision 40
+        for name in ("moved_0004", "moved_0400", "moved_0880", "moved_0a20", "hazel_b"):
             if name in self.sections and name + "_load" in self.sym:
                 org, size = self.sections[name]["attributes"]["org"], self.sections[name]["size"]
                 src = self.sym[name + "_load"]
@@ -271,6 +273,8 @@ class World:
         self.zp[3] = 0x22               # mover_to_update in observer mode (measured, jsbeeb 2.5.0)
         if "dummy_sprite" in b.sym:     # set_sprite_address leaves it at &05/&06 (decision 34)
             self.zp[5], self.zp[6] = b.sym["dummy_sprite"] & 0xFF, b.sym["dummy_sprite"] >> 8
+        # BUGS #1 fixed (layer 5): the texture is a table, not zero page
+        self.g_cols = b.T("ground_columns", 31) if "ground_columns" in b.sym else None
         self.ground_types = []
         self.bridges, self.runways = [], []
 
@@ -360,7 +364,7 @@ class World:
             col[23] = (col[23] & self.g_edge_mask[t]) ^ self.g_edge_top[t]
             top = 0x15
         for y in range(top, -1, -1):
-            col[y] = self.g_pix[zp[result + y] & 7]
+            col[y] = self.g_cols[result + y] if self.g_cols else self.g_pix[zp[result + y] & 7]
 
 
 class Movers:

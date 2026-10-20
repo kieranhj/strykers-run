@@ -1531,20 +1531,14 @@
     TAX
     PHA
     JSR ground_square               \ layer 4: multiply_A_by_X_2f1e's A x X from a table (HAZEL)
-IF SHIFT
-    \ Relocation test builds only: the ground's texture is whatever bytes are at &0000-&001C,
-    \ which include the sprite unpacker's self-modified sprite address (BUGS.md #1), so it
-    \ differs when the sprites move. Read a page that does not (SRRUN's, at &0A00) instead.
-    LDA #&0A
-    STA result_high
-ENDIF
     PLA
     TAX
+    CLC                             \ layer 5: for ground_rows' ADC, and the C = 0 edge_left_loop takes on entry
     LDA column_buffer + 9
     BNE leave_1c4e                  \ Don't add ground if a bridge is present
     LDY #&13
     LDA column_buffer + 21
-    BNE add_ground_to_column_buffer_loop\ Don't add ground edge if runway present
+    BNE ground_rows                 \ Don't add ground edge if runway present
     LDA ground_edge_bottom_pixel_values,X
     STA column_buffer + 22
     LDA column_buffer + 23
@@ -1552,22 +1546,23 @@ ENDIF
     EOR ground_edge_top_pixel_values,X
     STA column_buffer + 23
     LDY #&15
-.add_ground_to_column_buffer_loop   \ step 2 (grind): two columns a turn, Y odd at the top (&15 or &13)
-    LDA (result),Y                  \ &0000,Y, &0001,Y, &0004,Y or &0009,Y
-    AND #&07
+.ground_rows                        \ Layer 5 (BUGS #1 fixed): the type's rows from a fixed texture (ground_columns),
+    TYA                             \ not the one the original read from zero page &0000-&001E: X = t * t + Y
+    ADC result_low                  \ ground_square's t * t; C = 0 (the CLC above), and no carry out
     TAX
-    LDA ground_pixel_values,X
+.add_ground_to_column_buffer_loop   \ step 2 (grind): two rows a turn, Y odd at the top (&15 or &13)
+    LDA ground_columns,X
     STA column_buffer,Y             \ Add ground to column buffe
+    DEX
     DEY
-    LDA (result),Y
-    AND #&07
-    TAX
-    LDA ground_pixel_values,X
+    LDA ground_columns,X
     STA column_buffer,Y
+    DEX
     DEY
     BPL add_ground_to_column_buffer_loop
 .leave_1c4e
     RTS
+    SKIP 3                          \ layer 5: never executed; keeps ground_left_x_low and what follows where they were
 
 .ground_left_x_low
     EQUB &00
@@ -5172,23 +5167,13 @@ compiled_back = * + 1               \ self-modified: the ROMSEL to come back to
     RTS
     INCLUDE "kindcache_build.6502"  \ step 2 layer 4 (decision 36): the kind cache's builder
 
-IF SHIFT = 0
-    unused_3400_original = &3400
-ELSE
-    unused_3400_original = &3404 - GAME_DOWN    \ the ground texture patch adds four bytes before it
-ENDIF
+    unused_3400_original = &3400 - GAME_DOWN
     ASSERT * <= unused_3400_original, "layer 1's code overruns the free block by ", * - unused_3400_original, " bytes"
     SKIP unused_3400_original - *
 
 .unused_3400    \ # Source code fragment
     EQUB &0D    \ # Start of BASIC program
-IF SHIFT = 0
     EQUB &00, &00, &13, &F4, &20, &53, &41, &56, &45, &22, &53, &4F    \ 0REM SAVE"SO ...
-ELSE
-    \ Relocation test builds: four bytes shorter, for the four the ground texture patch adds
-    \ (add_ground_to_column_buffer), so the resident part still ends where it does.
-    EQUB &00, &00, &13, &F4, &20, &53, &41, &56
-ENDIF
 
     INCLUDE "font.6502"
 
@@ -5219,9 +5204,9 @@ SECTION moved_0004, org = &0004, cmos = TRUE
 
 \ Decision 34: the original's zero-page sprite unpacker. In step 2 nothing runs it (the game's own
 \ plot calls walk the sprite instead, walk_column: `drawing` is never set), but &0004-&001E stay
-\ byte for byte: the shipping ground's texture reads &0000-&001E as data (BUGS #1;
-\ add_ground_to_column_buffer, result 0, 1, 4 or 9 plus Y up to &15), and &0005/&0006 are the sprite
-\ address set_sprite_address still writes. The rest of its body (&001F-&0075) holds the renderer's
+\ byte for byte: until layer 5 the ground's texture read &0000-&001E as data (BUGS #1, fixed: now
+\ ground_columns, whose texture is these bytes as a scroll leaves them; nothing reads them now), and
+\ &0005/&0006 are the sprite address set_sprite_address still writes. The rest of its body (&001F-&0075) holds the renderer's
 \ hottest variables (by pcprof's cycles, docs/decisions.md 34): zero page, so 1 byte and 1 cycle
 \ less an access; nothing else reads or writes them (not the logic, the front end or the interrupt;
 \ save_game_zp/restore_game_zp need not keep them). Zero at start-up, as their EQUB 0s were.
@@ -5746,6 +5731,19 @@ SECTION moved_0a20, org = &0A20, cmos = TRUE
     EQUB &9A    \ MOVER_TYPE_ENEMY | MOVER_TYPE_GREEN_WHITE_HELICOPTER_WITH_MISSILE
     EQUB &99    \ MOVER_TYPE_ENEMY | MOVER_TYPE_FLYING_SCOOTER
     EQUB &98    \ MOVER_TYPE_ENEMY | MOVER_TYPE_GREEN_WHITE_CRAFT_TWO
+
+\ Layer 5 (BUGS #1 fixed, decision 13): the ground's texture, fixed. The original took row Y of a
+\ type t column as ground_pixel_values[ZP[t * t + Y] AND 7], so its ground changed with what was in
+\ zero page &0000-&001E (the screen start, two counters, the sprite unpacker's code and its last
+\ sprite's address). This is ground_pixel_values[b AND 7] for each of those bytes b as a scroll
+\ leaves them in step 2: &00-&03 = &00, &40 (the screen's start: its low byte always a multiple of
+\ 8, its high byte fixed here at &40), &00 (count), &22 (mover_to_update); &04-&06 = &B9, &B5, &34
+\ (LDA dummy_sprite,Y); &07-&1E the dead unpacker's bytes (moved_0004). Type t's rows 0-21, bottom
+\ up, are ground_columns + t * t to + t * t + 21, as the original's were in zero page.
+.ground_columns
+    EQUB &03, &03, &03, &03, &29, &03, &03, &03, &03, &03, &03, &29, &03, &03, &03, &03    \ &00-&0F
+    EQUB &29, &03, &03, &16, &03, &03, &03, &29, &03, &03, &29, &03, &03, &03, &03         \ &10-&1E
+ASSERT HI(ground_columns) = HI(* - 1), "the ground's columns cross a page"
 
 .moved_0a20_end
 ENDSECTION

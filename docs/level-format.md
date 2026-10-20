@@ -165,6 +165,8 @@ column: first row, count, indices top-down; `tools/sprites.py`).
      In play the logic between scrolls changes it, which changes a few ground rows;
    - `&04-&1E` the dead unpacker's bytes, kept byte for byte (decision 34), with `&05/&06`
      holding `dummy_sprite`'s address as `set_sprite_address` leaves them.
+   (2026-10-20, BUGS #1 fixed in layer 5: the rows now come from a fixed table, `ground_columns`,
+   made from those bytes with `&01` fixed at `&40`; nothing reads this zero page for the ground.)
 
 ### The mountains (BUGS #9)
 

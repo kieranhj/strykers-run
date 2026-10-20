@@ -2,7 +2,7 @@
 
 Numbered, kept when fixed. Each says what was seen, on what, and what fixed it.
 
-## 1. The ground's texture depends on where the mover sprites are (original behaviour; OPEN: layer 5)
+## 1. The ground's texture depends on where the mover sprites are (original behaviour; FIXED in layer 5)
 
 Seen 2026-10-16 by the relocation test (tools/tracediff.mjs, jsbeeb 2.5.0): with the game
 assembled a page lower, the ground drew different pixels. `add_ground_to_column_buffer` reads its
@@ -16,6 +16,23 @@ The relocation test builds (`SHIFT` set) read the pattern from &0A00 instead, id
 2026-10-18 (decision 34): the reach is &0000-&001E (`result` 9 plus Y up to &15), not &001C; those
 bytes of the unpacker are kept byte for byte, and the dead rest of it (&001F-&0075) holds the
 renderer's variables.
+**Fixed** (layer 5, decision 13, 2026-10-20): `add_ground_to_column_buffer` copies the rows from a
+fixed 31-byte texture, `ground_columns` (`moved_0a20`), type t's rows 0-21 at `t * t` on, as the
+original's were in zero page. The texture is `ground_pixel_values[b AND 7]` for the bytes the
+shipping build had at `&0000-&001E` as a scroll leaves them, with the screen start's high byte
+(`&01`) fixed at `&40`; so the shipping build's ground is unchanged but where `&01` and
+`mover_to_update` (`&03`) used to vary it (seed 1, pass 400: 5 of the 16,000 shown bytes, red-cyan
+to red-red). The relocation test builds' patch (the texture from SRRUN's page at `&0A00`, 4 bytes)
+is gone, so the bench build's layout is now the shipping build's. Evidence (jsbeeb 2.10.0, bench
+builds against `a435fcb`'s): game state identical on seeds 1 and 3 (6,000 and 4,000 passes) and
+both helicopter flights; the screen identical to the `DEBUG_FULLREDRAW` oracle on seed 5 (4,000
+passes) and the whole world (12,237 passes); an unshifted `DEBUG_LIVES` build and the shifted bench
+build now draw the same screen on all 3,000 passes of seed 1 (before, their grounds differed); the
+front end and observer mode pass. The copy is faster too (RAM for cycles item 4's "ground textures
+as columns"): work a pass (pcprof) 34,825.5 -> 34,794.0 on seed 1, 39,341.1 -> 39,273.5 holding
+RIGHT. Its `CLC` also makes true again what `edge_left_loop` assumes on entry (C = 0): since grind
+round 2, `ground_square` left C = 1 for ground types 1-3, which only changed the prefilter's
+answer for slot 0, the player, never on the edge.
 
 ## 2. Drawing the player's legs reads past the end of the sprite (original behaviour; OPEN: layer 5)
 
