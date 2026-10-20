@@ -82,19 +82,29 @@ SHIELD_FLASH = 12                   \ passes the bar flashes after a hit
     STA hud_lives                   \ so the HUD is built below
     STA shield_ready
 .ready
+    LDX #0                          \ X: non-zero if what the bar shows may have changed
     LDA shield_flash
     BEQ flash_done
-    DEC shield_flash
+    DEC shield_flash                \ (a hit sets the flash, so it is running after any)
+    INX
 .flash_done
     LDA shield_wait
     BEQ refill
     DEC shield_wait
-    BRA level                       \ 65C02 opcode
+    BRA check                       \ 65C02 opcode
 .refill
     LDA shield
     CMP #SHIELD_FULL
-    BCS level
+    BCS check
     INC shield
+    INX
+.check
+    TXA                             \ the common pass: the bar as it was, only the lives to look at
+    BNE level
+    LDA lives
+    CMP hud_lives
+    BNE level
+    RTS
 .level
     LDA shield                      \ the bar's filled pixels, 3 * shield / 25 (0-6: 3 a unit)
     STA shield_tmp
