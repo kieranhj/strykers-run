@@ -2293,6 +2293,9 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
 IF GAMEPLAY_TIMER
     JSR timer_bonus_call            \ decision 47: the time bonus, before the score is shown
 ENDIF
+IF GAMEPLAY_OPTIONS
+    INC game_completed              \ decision 46: an infinite-lives game ended here goes on the table
+ENDIF
     JSR render_finish               \ Step 2 (layer 2): the text goes on the main screen, up to date
     LDY #LO(completion_screen_text) \ &22c9 = completion_screen_text
     LDX #HI(completion_screen_text)
@@ -2345,7 +2348,7 @@ ENDIF
     LDA #&0A                        \ MOVER_FIRST_HELICOPTER
     STA helicopter_to_update
 IF GAMEPLAY_SHIELD
-    JSR shield_new_game             \ decision 44: nine lives as before, and the shield set up at the first pass
+    JSR shield_new_game             \ decisions 44-47: the lives and the settings (src/front_gameplay.6502, bank 5: paged here)
 ELSE
     LDA #&09                        \ Player starts with nine lives
     STA lives
@@ -3666,6 +3669,13 @@ cm_x_max_high_operand = * + 1
     BNE kill_player_helicopter
 IF GAMEPLAY_SHIELD
     JSR shield_hit                  \ decision 44: returns only for a hit at 0 shield (a life); else on to plot_mover
+ENDIF
+IF GAMEPLAY_OPTIONS
+    LDA lives                       \ decision 46: infinite lives (OPT_INFINITE): a life back for the one
+    CMP #10                         \ kill_player takes
+    BNE lives_counted
+    INC lives
+.lives_counted
 ENDIF
 .kill_player
 IF DEBUG_LIVES
@@ -5823,23 +5833,6 @@ SECTION moved_0a20, org = &0A20, cmos = TRUE
     EQUB &99    \ MOVER_TYPE_ENEMY | MOVER_TYPE_FLYING_SCOOTER
     EQUB &98    \ MOVER_TYPE_ENEMY | MOVER_TYPE_GREEN_WHITE_CRAFT_TWO
 
-IF GAMEPLAY_SHIELD
-\ decision 44: start_game's lives, and the shield set up at the first pass (src/shield.6502: bank 4,
-\ which start_game, entered from the front end with bank 5 paged, cannot call)
-.shield_new_game
-IF GAMEPLAY_LIVES
-    LDA #LIVES_START                \ decision 45
-ELSE
-    LDA #&09                        \ Player starts with nine lives
-ENDIF
-    STA lives
-    STZ shield_ready                \ 65C02 opcode
-IF GAMEPLAY_TIMER
-    STZ timer_ready                 \ decision 47
-ENDIF
-    RTS
-ENDIF
-
 \ Layer 5 (BUGS #1 fixed, decision 13): the ground's texture, fixed. The original took row Y of a
 \ type t column as ground_pixel_values[ZP[t * t + Y] AND 7], so its ground changed with what was in
 \ zero page &0000-&001E (the screen start, two counters, the sprite unpacker's code and its last
@@ -5858,7 +5851,8 @@ ENDSECTION
 MOVED_0A20_SIZE = moved_0a20_end - &0A20
 IF GAMEPLAY_SHIELD
 hud_buffer = moved_0a20_end         \ decision 44: the lives digit and the bar (src/shield.6502), not in the file
-ASSERT hud_buffer + HUD_BYTES <= &0D00, "hud_buffer overruns &0CFF by ", hud_buffer + HUD_BYTES - &0D00
+game_completed = hud_buffer + HUD_BYTES   \ decision 46: non-zero once the headquarters is reached (options_high_score)
+ASSERT game_completed < &0D00, "hud_buffer overruns &0CFF by ", game_completed + 1 - &0D00
 ASSERT HI(hud_buffer) = HI(hud_buffer + HUD_BYTES - 1)
 ENDIF
 ASSERT MOVED_0A20_SIZE <= &2E0, "moved_0a20 overruns &0CFF by ", MOVED_0A20_SIZE - &2E0   \ decision 40: to &0CFF

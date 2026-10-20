@@ -30,8 +30,11 @@ Next to none where the renderer can read while it draws: main RAM 9 bytes (`&33F
 ## Gameplay variations: the shield and lives that respawn (decisions 43-46)
 
 Branch `gameplay-shield`, `docs/briefs/gameplay-shield.md`: the double hit is fixed (BUGS #13, on
-`main`); the shield built (`GAMEPLAY_SHIELD`, decision 44: its checks and cost in the brief); next
-lives that respawn, then the options menu. Open for KC: high scores with infinite lives, hit feedback, the bar's
+`main`); built (2026-10-20/21): the shield (`GAMEPLAY_SHIELD`, 44), lives that respawn
+(`GAMEPLAY_LIVES`, 45), the game rules screen (`GAMEPLAY_OPTIONS`, 46) and the timer
+(`GAMEPLAY_TIMER`, 47, KC's request, its details for KC to review). Left: the gameplay disc's
+make target, KC's review (hit sound, rewind speed and distance, the timer's par and bonus), the
+HUD's cost, and merging the branch. Open for KC: high scores with infinite lives, hit feedback, the bar's
 colours, which discs to make.
 
 ## The level editor, v1 (decision 41)

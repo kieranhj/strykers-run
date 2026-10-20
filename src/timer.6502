@@ -1,9 +1,11 @@
 \ timer.6502 - GAMEPLAY_TIMER (decision 47; docs/briefs/gameplay-shield.md): a game timer in seconds
-\ of the design speed (25 passes), shown on the top line after the shield's bar.
-\   GAMEPLAY_TIMER = 1  counting up from 0; at the headquarters, 10 points for each second under
-\                       TIMER_PAR (completion_screen: timer_bonus)
-\   GAMEPLAY_TIMER = 2  counting down from TIMER_START; at 0 the game is over; at the headquarters,
-\                       10 points for each second left
+\ of the design speed (25 passes), shown on the top line after the shield's bar. Its mode, timer_mode
+\ (set at a game's start: the build's GAMEPLAY_TIMER, or the game rules screen's, decision 46):
+\   1  counting up from 0; at the headquarters, 10 points for each second under TIMER_PAR
+\      (completion_screen: timer_bonus)
+\   2  counting down from TIMER_START; at 0 the game is over; at the headquarters, 10 points for
+\      each second left
+\   0  off: nothing shown, no bonus
 \ Sideways bank 6, called through timer_tick_call and timer_bonus_call (main RAM: they page bank 6 in
 \ and bank 4 back). It reads and writes only zero page and main RAM: hud_buffer, the score digits
 \ (game_over_text + 20 on, font offsets: "0" &6C, 6 a digit) and lives.
@@ -16,15 +18,16 @@ TIMER_START = &0600
 {
     LDA timer_ready
     BNE ready
-IF GAMEPLAY_TIMER = 2
+    STZ timer_hi                    \ 65C02 opcodes
+    STZ timer_lo
+    LDA timer_mode
+    CMP #2
+    BNE start_set
     LDA #HI(TIMER_START)
     STA timer_hi
     LDA #LO(TIMER_START)
     STA timer_lo
-ELSE
-    STZ timer_hi                    \ 65C02 opcodes
-    STZ timer_lo
-ENDIF
+.start_set
     STZ timer_frac
     LDA #0                          \ the digits' blank rows and the column after them, once
     LDX #8 * TIMER_COLUMNS - 1
@@ -33,15 +36,21 @@ ENDIF
     DEX
     BPL clear
     DEC timer_ready                 \ &FF
-    BRA show                        \ 65C02 opcode
+    LDA timer_mode
+    BNE show                        \ off: the digits stay blank
+    RTS
 .ready
+    LDA timer_mode
+    BEQ done
     INC timer_frac
     LDA timer_frac
     CMP #25                         \ a second of the design speed
     BCC done
     STZ timer_frac
     SED
-IF GAMEPLAY_TIMER = 2
+    LDA timer_mode
+    CMP #2
+    BNE up
     LDA timer_lo
     ORA timer_hi
     BEQ out                         \ (already over)
@@ -63,7 +72,7 @@ IF GAMEPLAY_TIMER = 2
 .out
     CLD
     RTS
-ELSE
+.up
     CLC
     LDA timer_lo
     ADC #1
@@ -80,7 +89,6 @@ ELSE
     STA timer_lo
     CLD
     RTS
-ENDIF
 .show
     LDY #HUD_TIMER                  \ hundreds, tens, units: two byte columns each
     LDA timer_hi
@@ -150,7 +158,10 @@ ENDIF
 \ under TIMER_PAR (counting up) or each second left (counting down)
 .timer_bonus
 {
-IF GAMEPLAY_TIMER = 2
+    LDA timer_mode
+    BEQ done
+    CMP #2
+    BNE up
 .each
     LDA timer_lo
     ORA timer_hi
@@ -166,8 +177,7 @@ IF GAMEPLAY_TIMER = 2
     CLD
     JSR add_ten
     BRA each                        \ 65C02 opcode
-ELSE
-.each
+.up
     LDA timer_hi                    \ until the time reaches the par
     CMP #HI(TIMER_PAR)
     BCC under
@@ -186,8 +196,7 @@ ELSE
     STA timer_hi
     CLD
     JSR add_ten
-    BRA each                        \ 65C02 opcode
-ENDIF
+    BRA up                          \ 65C02 opcode
 .done
     RTS
 \ add_ten: 10 points: the score's tens digit up one, carried as increase_score carries

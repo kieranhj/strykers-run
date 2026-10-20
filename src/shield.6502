@@ -245,7 +245,7 @@ IF GAMEPLAY_LIVES
     DEC lives                       \ Set to negative to indicate game over
     RTS
 .rewind
-    LDA #RESPAWN_COLUMNS
+    LDA respawn_columns             \ RESPAWN_COLUMNS, or the game rules screen's (decision 46)
     STA respawn_left
     LDA movers_x_high
     STA respawn_x_hi

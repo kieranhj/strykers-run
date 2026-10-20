@@ -837,16 +837,25 @@ text_colour = * + 1
     LDA #HI(title_screen_irq1_handler)
     STA irq1v + 1
     CLI
+IF GAMEPLAY_OPTIONS
+    JSR options_high_score          \ decision 46: an infinite-lives game ended by ESCAPE is not ranked
+ELSE
     JSR check_for_high_score        \ Returns carry clear if score ranked
+ENDIF
     LDA #&7F
     STA title_screen_cooldown
     BCC high_score_screen
 .display_title_screen
     LDA #&7F
     STA title_screen_cooldown
+IF GAMEPLAY_OPTIONS
+    JSR options_title               \ decision 46: the title's text and "6 GAME RULES"; the same 7 bytes,
+    EQUB &EA, &EA, &EA, &EA         \ so the music after stays page-aligned (NOPs)
+ELSE
     LDX #HI(title_screen_text)      \ &8a2d = title_screen_text
     LDY #LO(title_screen_text)
     JSR plot_title_screen_text
+ENDIF
 .title_screen_loop
     LDX #&AD                        \ C                                         # If the C, H, R, I and S keys are pressed,
     JSR check_for_title_screen_keypress
@@ -877,8 +886,14 @@ text_colour = * + 1
     BNE not_one
     JMP prepare_to_start_game
 .not_one
+IF GAMEPLAY_OPTIONS
+    JMP options_key                 \ decision 46: "2" as before, "6" the game rules; the same 4 bytes
+    EQUB &EA
+ELSE
     CMP #&02                        \ "2"
     BCS title_screen_loop
+ENDIF
+.title_two
     JSR define_controls
     BRA display_title_screen        \ 65C02 opcode
 .to_high_score_screen

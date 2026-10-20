@@ -93,23 +93,33 @@ death respawns whatever the lives, so the test scripts still never end.
      32 at each scroll for each screen; late frames seed 1 5 -> 6 of 1,998, RIGHT 0 -> 0, the whole
      world 355 -> 437 of 11,409. Cheaper: an unrolled copy (bank 4 has the room the smaller
      ren_plot_lives freed), or a narrower bar.
-4. **Lives and the respawn** under `GAMEPLAY_LIVES`: the skeleton's end respawns rather than ends
-   the game; the rewind (step 4a: measure how many left scrolls a pass fit with the logic stopped,
-   in `tools/pcprof.mjs`); the invulnerability and its flashing; the infinite-lives glyph.
-5. **The options menu** under `GAMEPLAY_OPTIONS`: the title's sixth line, the settings screen.
-6. **Checks**, each flag combination:
-   - flags off: byte-identical to `main`;
-   - each on: game state identical to its `DEBUG_FULLREDRAW` twin and the screen to it
-     (`tools/passlock.mjs`, `tools/worldrun.mjs --control`), so the renderer draws the bar and
-     the respawn right;
-   - a new `tools/shieldtest.mjs`: hits of each kind forced (a projectile poked onto the player,
-     as `kcguard` pokes), the shield's value after each, the refill's start after 125 passes and
-     its rate, death at 0, the respawn's column (N back, clamped at the world's start), the
-     invulnerability's length, the lives and game over, infinite lives;
-   - `tools/frontend.mjs` extended for 6 OPTIONS; the build matrix assembles (`baron --check`);
-   - speed: `tools/passbench.mjs` late frames and pcprof work a pass against flags off.
-7. **Docs:** decisions 43-46 marked built with their measurements, a `docs/gameplay-shield.md`
-   with what was measured and rejected, BUGS.md for the double hit, PLAN.md.
+4. **Lives and the respawn: DONE** (`GAMEPLAY_LIVES`, `74a9dde`): every death is the skeleton;
+   at its end, with lives left, the view goes back the respawn distance a column a pass (the
+   renderer's history holds one scroll a pass a screen, so no faster: 80 columns take 3.2 s), the
+   player hidden and the rest of the logic stopped (`player_or_rewind`), through a main-RAM stub
+   that pages bank 4 back after the scroll and the frame (`rewind_column`); then the player stands
+   there, shield full, safe for 50 passes, the bar flashing (not the player: the renderer has no
+   room to flash a mover). `tools/livestest.mjs`: 43 deaths, rewinds and respawns over 16,000
+   passes, all rules held; `--finite`: game over at the third death.
+5. **The game rules screen: DONE** (`GAMEPLAY_OPTIONS`): "6 GAME RULES" on the title; 1 cycles the
+   lives 1-9 then infinite (shown as an infinity glyph: `lives_digits`' unused entry 10, decision
+   46), 2 the rewind 40/80/120/160 columns, 3 the timer off/up/down; ESCAPE back. The hooks in the
+   front end replace instructions of the same size, so the music after them stays page-aligned;
+   the screen's code is after it (`src/options.6502`, `src/front_gameplay.6502`, which also has
+   `shield_new_game`: `start_game` runs with bank 5 paged). An infinite-lives game ended by ESCAPE
+   is kept off the high score table; one that reaches the headquarters goes on (`game_completed`).
+   `tools/optionstest.mjs`: 15 checks.
+6. **The timer: DONE** (`GAMEPLAY_TIMER`, decision 47): see the decision; `tools/timertest.mjs`.
+7. **Speed** (2026-10-20 night, KC: "speed things up as much as you can ... try not to drop any
+   more frames"): the HUD drawn 4 bytes a turn; `shield_tick` idle in a pass where nothing
+   changed; and on `main`, the lives zone tested as one range (`c10217c`: 61 / 183 cycles a pass
+   less in every build). The HUD's copy is still most of the gameplay builds' cost: 72 bytes with
+   the shield, 128 with the timer, at each scroll on each screen.
+8. **Room left** (2026-10-21, the listing of the build with every flag): main block 25 bytes (after
+   the grind's padding is dropped in gameplay builds, `GAMEPLAY_ANY`); bank 4 2 (the renderer's area)
+   and 4 (under ANDY); bank 5 1; bank 6 181 (the timer takes 349); bank 7 481; main RAM after
+   `game_completed` (`&0CF2`) 13. The timer and the game rules do not fit the
+   relocation test builds' banks (256 bytes smaller, `SHIFT`): ASSERTed; check them unshifted.
 
 ## Answered (KC, 2026-10-20)
 

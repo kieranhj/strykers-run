@@ -1,0 +1,42 @@
+\ front_gameplay.6502 - the gameplay flags' part of the front end (decisions 44-47): bank 5, after
+\ the front end's music, so nothing before it moves. start_game runs with bank 5 paged (measured
+\ 2026-10-20), so it calls shield_new_game here.
+
+\ shield_new_game: start_game's lives, and each flag's settings for the game: the game rules
+\ screen's (GAMEPLAY_OPTIONS) or the build's. The shield and the timer set themselves up at the
+\ first pass (shield_ready, timer_ready).
+.shield_new_game
+IF GAMEPLAY_OPTIONS
+    LDA opt_lives                   \ 1-9, or OPT_INFINITE (10: lives_digits' glyph there)
+    STA lives
+    LDX opt_respawn
+    LDA opt_respawn_columns,X
+    STA respawn_columns
+    LDA opt_timer
+    STA timer_mode
+    STZ game_completed              \ 65C02 opcode: the headquarters not reached
+ELSE
+  IF GAMEPLAY_LIVES
+    LDA #LIVES_START                \ decision 45
+  ELSE
+    LDA #&09                        \ Player starts with nine lives
+  ENDIF
+    STA lives
+  IF GAMEPLAY_LIVES
+    LDA #RESPAWN_COLUMNS
+    STA respawn_columns
+  ENDIF
+  IF GAMEPLAY_TIMER
+    LDA #GAMEPLAY_TIMER
+    STA timer_mode
+  ENDIF
+ENDIF
+    STZ shield_ready                \ 65C02 opcode
+IF GAMEPLAY_TIMER
+    STZ timer_ready                 \ decision 47
+ENDIF
+    RTS
+
+IF GAMEPLAY_OPTIONS
+    INCLUDE "options.6502"          \ decision 46: the game rules screen
+ENDIF

@@ -1,0 +1,192 @@
+\ options.6502 - GAMEPLAY_OPTIONS (decision 46; docs/briefs/gameplay-shield.md): "6 GAME RULES" on
+\ the title screen, a screen to set the lives (1-9 or infinite), how far a death rewinds the view
+\ and the timer (off, counting up, counting down), kept for the session. In bank 5 with the front
+\ end, after its music (the hooks before it are the same size as what they replace, so the music
+\ stays page-aligned). start_game (shield_new_game, run with bank 5 paged) copies the settings in.
+
+OPT_INFINITE = 10                   \ opt_lives for infinite lives: lives shows the glyph lives_digits has at 10
+
+.opt_lives          EQUB LIVES_START
+.opt_respawn        EQUB 1          \ an index into opt_respawn_columns
+.opt_timer          EQUB GAMEPLAY_TIMER   \ 0 off, 1 counting up, 2 counting down
+.opt_respawn_columns
+    EQUB 40, 80, 120, 160
+
+\ options_title: the title's text, and the sixth line (display_title_screen's LDX/LDY/JSR, replaced)
+.options_title
+    LDX #HI(title_screen_text)
+    LDY #LO(title_screen_text)
+    JSR plot_title_screen_text
+    LDX #HI(options_title_line)
+    LDY #LO(options_title_line)
+    JMP plot_more
+
+\ options_key: the title's keys from "2" up (its CMP #&02 / BCS title_screen_loop, replaced): A = the
+\ key's internal number - &30. "2" defines the controls as before; "6" (&34) the game rules
+.options_key
+    CMP #&02
+    BCS not_two
+    JMP title_two
+.not_two
+    AND #&7F
+    CMP #&04                        \ "6": internal key &34
+    BEQ options_screen
+    JMP title_screen_loop
+
+\ options_high_score: the title's check_for_high_score, but an infinite-lives game ended by ESCAPE
+\ (not at the headquarters: game_completed 0) does not go on the table (KC, 2026-10-20)
+.options_high_score
+    LDA opt_lives
+    CMP #OPT_INFINITE
+    BNE ranked
+    LDA game_completed
+    BNE ranked
+    SEC                             \ carry set: not ranked
+    RTS
+.ranked
+    JMP check_for_high_score
+
+.options_screen
+{
+    LDX #HI(options_text)
+    LDY #LO(options_text)
+    JSR plot_title_screen_text
+.show
+    LDA #LO(OPT_LIVES_AT)           \ the three values, each four characters in its place
+    LDY #HI(OPT_LIVES_AT)
+    JSR value
+    LDA opt_respawn
+    ASL A
+    ASL A
+    TAX                             \ 4 characters a setting
+    LDA #LO(OPT_RESPAWN_AT)
+    LDY #HI(OPT_RESPAWN_AT)
+    JSR value_x
+    LDA opt_timer
+    ASL A
+    ASL A
+    ADC #timer_names - values
+    TAX
+    LDA #LO(OPT_TIMER_AT)
+    LDY #HI(OPT_TIMER_AT)
+    JSR value_x
+.key
+    JSR get_keypress
+    CMP #&70                        \ ESCAPE: back to the title
+    BNE not_escape
+    JMP display_title_screen
+.not_escape
+    CMP #&30                        \ "1": the lives, 1-9 then infinite
+    BNE not_lives
+    LDA opt_lives
+    INC A                           \ 65C02 opcode
+    CMP #OPT_INFINITE + 1
+    BCC lives_ok
+    LDA #1
+.lives_ok
+    STA opt_lives
+    BRA show                        \ 65C02 opcode
+.not_lives
+    CMP #&31                        \ "2": the rewind, 40 / 80 / 120 / 160 columns
+    BNE not_respawn
+    LDA opt_respawn
+    INC A
+    AND #3
+    STA opt_respawn
+    BRA show
+.not_respawn
+    CMP #&11                        \ "3": the timer, off / up / down
+    BNE key
+    LDA opt_timer
+    INC A
+    CMP #3
+    BCC timer_ok
+    LDA #0
+.timer_ok
+    STA opt_timer
+    BRA show
+
+\ value: the lives' four characters (a digit and three spaces, or INF); value_x: X the respawn's or
+\ the timer's four, from values. A/Y: where on the screen
+.value_x
+    STA option_value
+    STY option_value + 1
+    LDY #0
+.copy
+    LDA values,X
+    STA option_value + 3,Y
+    INX
+    INY
+    CPY #4
+    BNE copy
+    BRA plot_value                  \ 65C02 opcode
+.value
+    STA option_value
+    STY option_value + 1
+    LDA opt_lives
+    CMP #OPT_INFINITE
+    BNE digit
+    LDY #0
+.copy_inf
+    LDA lives_inf,Y
+    STA option_value + 3,Y
+    INY
+    CPY #4
+    BNE copy_inf
+    BRA plot_value
+.digit
+    STA option_value + 3            \ the digit, then three spaces
+    LDA #&25
+    STA option_value + 4
+    STA option_value + 5
+    STA option_value + 6
+.plot_value
+    LDX #HI(option_value)
+    LDY #LO(option_value)
+}
+.plot_more                          \ more text (X/Y its address) without clearing the screen first
+    STX text_address_high
+    STY text_address_low
+    LDY #0
+    JMP plot_title_screen_text_loop
+
+.option_value                       \ a value's text: where, colour, four characters, the end
+    EQUB 0, 0, &3F, 0, 0, 0, 0, &FF
+
+.values                             \ title font: digits &00-&09, A &0A .. Z &23, space &25
+    EQUB &25, &04, &00, &25         \ " 40 "
+    EQUB &25, &08, &00, &25         \ " 80 "
+    EQUB &01, &02, &00, &25         \ "120 "
+    EQUB &01, &06, &00, &25         \ "160 "
+.timer_names
+    EQUB &18, &0F, &0F, &25         \ "OFF "
+    EQUB &1E, &19, &25, &25         \ "UP  "
+    EQUB &0D, &18, &20, &17         \ "DOWN"
+.lives_inf
+    EQUB &12, &17, &0F, &25         \ "INF "
+
+OPT_LIVES_AT   = &4000 + 7 * &280 + 96 + 11 * 24   \ after "1 LIVES", character row 7 (the values in one column)
+OPT_RESPAWN_AT = &4000 + 10 * &280 + 96 + 11 * 24  \ after "2 RESPAWN", row 10
+OPT_TIMER_AT   = &4000 + 13 * &280 + 96 + 11 * 24  \ after "3 TIMER", row 13
+
+.options_title_line
+    EQUB LO(&4000 + 16 * &280 + 192), HI(&4000 + 16 * &280 + 192), &0F   \ row 16, yellow (YY)
+    EQUB &06, &25, &10, &0A, &16, &0E, &25, &1B, &1E, &15, &0E, &1C   \ "6 GAME RULES"
+    EQUB &FF
+
+.options_text
+    EQUB LO(&4000 + 3 * &280 + 120), HI(&4000 + 3 * &280 + 120), &3E   \ row 3, white on cyan (WC)
+    EQUB &10, &0A, &16, &0E, &25, &1B, &1E, &15, &0E, &1C           \ "GAME RULES"
+    EQUB &FE
+    EQUB LO(&4000 + 7 * &280 + 96), HI(&4000 + 7 * &280 + 96), &03   \ row 7, red (RR)
+    EQUB &01, &25, &15, &12, &1F, &0E, &1C                          \ "1 LIVES"
+    EQUB &FE
+    EQUB LO(&4000 + 10 * &280 + 96), HI(&4000 + 10 * &280 + 96), &33 \ row 10, magenta (MM)
+    EQUB &02, &25, &1B, &0E, &1C, &19, &0A, &20, &17                \ "2 RESPAWN"
+    EQUB &FE
+    EQUB LO(&4000 + 13 * &280 + 96), HI(&4000 + 13 * &280 + 96), &3C \ row 13, cyan (CC)
+    EQUB &03, &25, &1D, &12, &16, &0E, &1B                          \ "3 TIMER"
+    EQUB &FE
+    EQUB LO(&4000 + 18 * &280 + 48), HI(&4000 + 18 * &280 + 48), &0C \ row 18, green (GG)
+    EQUB &0E, &1C, &0C, &0A, &19, &0E, &25, &1D, &18, &25, &1B, &0E, &1D, &1E, &1B, &17   \ "ESCAPE TO RETURN"
+    EQUB &FF

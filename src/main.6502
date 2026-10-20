@@ -38,7 +38,11 @@ ASSERT GAMEPLAY_SHIELD >= GAMEPLAY_LIVES, "GAMEPLAY_LIVES needs GAMEPLAY_SHIELD"
 \   GAMEPLAY_TIMER   1: a timer counting up, a bonus for speed; 2: counting down, game over at 0
 \                    (decision 47, src/timer.6502; on the shield's HUD, so with GAMEPLAY_SHIELD)
 ASSERT GAMEPLAY_SHIELD * 2 >= GAMEPLAY_TIMER AND GAMEPLAY_TIMER <= 2, "GAMEPLAY_TIMER (1 or 2) needs GAMEPLAY_SHIELD"
-GAMEPLAY_ANY = GAMEPLAY_SHIELD OR GAMEPLAY_LIVES OR GAMEPLAY_TIMER   \ the OR of every GAMEPLAY_ flag: their builds need not keep the main block's
+\   GAMEPLAY_OPTIONS "6 GAME RULES" on the title: the lives, the rewind, the timer (decision 46,
+\                    src/options.6502; with GAMEPLAY_LIVES and GAMEPLAY_TIMER, whose settings it sets)
+ASSERT GAMEPLAY_OPTIONS = 0 OR (GAMEPLAY_LIVES <> 0 AND GAMEPLAY_TIMER <> 0), "GAMEPLAY_OPTIONS needs GAMEPLAY_LIVES and GAMEPLAY_TIMER"
+ASSERT SHIFT = 0 OR (GAMEPLAY_TIMER = 0 AND GAMEPLAY_OPTIONS = 0), "GAMEPLAY_TIMER and GAMEPLAY_OPTIONS do not fit the relocation test builds' banks (256 bytes smaller): build them unshifted"
+GAMEPLAY_ANY = GAMEPLAY_SHIELD OR GAMEPLAY_LIVES OR GAMEPLAY_TIMER OR GAMEPLAY_OPTIONS   \ the OR of every GAMEPLAY_ flag: their builds need not keep the main block's
                                     \ addresses, so its unexecuted padding goes (src/game.6502), room for their hooks
 DEBUG_ANY = DEBUG_LIVES OR DEBUG_FULLREDRAW   \ the OR of every DEBUG_ flag (GAMEPLAY_ flags are not debug: RELEASE allows them)
 VERSION_LINE = "v0.1"
@@ -133,6 +137,9 @@ SECTION DATA2, org = &8400, load = &FFFF1D00, exec = &FFFF1D00, filename = "DATA
     INCLUDE "lib/sfx50.6502"
     INCLUDE "sfx_data.6502"
     INCLUDE "compiled_bank5.6502"   \ step 2 layer 4: compiled kinds of the player's parts
+IF GAMEPLAY_SHIELD
+    INCLUDE "front_gameplay.6502"   \ decisions 44-47: the game's start and the game rules screen
+ENDIF
     \ Step 2 layer 3: the sprites that live in ANDY (&8000-&8FFF, the Master's 4K that ROMSEL
     \ bit 7 pages over the first 4K of a bank), carried here and copied in at start-up
     \ (src/game.6502 initialisation). The renderer runs with ROMSEL = &84: ANDY, then bank 4.

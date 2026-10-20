@@ -26,6 +26,8 @@ shield_tmp                                   = &0F
 respawn_left                                 = &10      \ columns of the rewind still to go (0: none under way)
 respawn_x_hi                                 = &11      \ the player's x high byte, kept while it is hidden (&FF)
 invulnerable                                 = &12      \ passes left in which no hit counts
+respawn_columns                              = &17      \ how far a death rewinds the view (shield_new_game)
+timer_mode                                   = &18      \ decision 47: 0 off, 1 up, 2 down (shield_new_game)
 \ GAMEPLAY_TIMER (decision 47, src/timer.6502): &13-&16
 timer_ready                                  = &13      \ 0 at a game's start (shield_new_game)
 timer_hi                                     = &14      \ the seconds, BCD: hundreds
