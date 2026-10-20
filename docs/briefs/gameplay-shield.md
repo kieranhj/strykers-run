@@ -69,22 +69,30 @@ death respawns whatever the lives, so the test scripts still never end.
    world's hits 655 -> 318, none repeated in one pass or by an explosion (`tools/hitwatch.mjs`, which
    the shield's checks can reuse). Still to note for the shield: a bullet may hit, then a new bullet
    in the same slot hit again a few passes later (that is two bullets, so two hits).
-1. **Room.** Measure the new code before placing it; the candidates, from the 2026-10-20 build:
-   - the logic's code (the shield, the timer, the respawn) must be readable in play:
-     `moved_0a20` 142 bytes (main RAM, always paged), main RAM's 9, HAZEL 24; and, now nothing
-     ties it to the original layout (BUGS #1, #2 closed), the region from `&3400` (the 13 dead
-     bytes of `unused_3400`'s BASIC fragment, and repacking `dummy_sprite`, the font and
-     `player_save`);
-   - the bar's drawing, in the renderer (bank 4: 43 bytes below `REN_BASE`), or the bar's bytes
-     built by the logic into a small buffer that the renderer copies as it does the digit;
-   - the options menu: bank 5, 388 bytes (the front end runs from it).
-   If that is not enough: the kind cache's slot 1 and the save arena are the next trades, each
-   with its late-frame cost measured.
-2. **The flags** in `build.ps1`, the `Makefile` and the stamp; `RELEASE` allows them. Proof: every
-   flag off builds byte-identical to `main` (`tools/dfs.py compare`, the stamp ignored).
-3. **The shield** under `GAMEPLAY_SHIELD`, with lives as the original's (each death still a lost
-   life, on the spot): damage by type in `kill_player`'s path, the timer and the refill once a
-   pass in `update_player`, the bar's zone in the renderer.
+1. **Room: DONE.** The shield's code is in bank 4 under ANDY (`src/shield.6502`, ROMSEL `&04`:
+   measured at every hook in play; `start_game` runs with bank 5 paged, so its hook is a 7-byte stub
+   in `moved_0a20`). The main block took 7 of its 9 free bytes (the hit hook 3, the tick 3,
+   `hit_type`'s `STA` 2, `start_game` -1). Its variables are zero page `&07-&0F` (the dead unpacker's:
+   no access in a game, `tools/zpwatch.mjs`). The HUD buffer (80 bytes) and the renderer's zone,
+   grown to 24 entries (its bank 4 hole was full), are main RAM `&0C79-&0CF8` after `moved_0a20`, not
+   in the file. The renderer copies the HUD instead of indexing the digit table, which is smaller.
+2. **The flags: DONE.** `GAMEPLAY_SHIELD` in `build.ps1`, the `Makefile` (both make the same image,
+   2026-10-20) and the stamp; `RELEASE` allows it. Every flag off: **byte-identical** to `main`'s
+   build (`tools/dfs.py compare`); all 20 flag combinations assemble with no warnings.
+3. **The shield: DONE** under `GAMEPLAY_SHIELD`, lives as the original's (a hit at 0 shield is a
+   life, on the spot, and the shield is full again). The bar: 6 byte columns (12 pixels, two
+   segments of 5) right of the lives digit, rows 1-6, green filled, red empty, all white for 2 passes
+   in 4 for 12 passes after a hit; the hit's sound is the original's. Checked (jsbeeb 2.10.0):
+   - `tools/shieldtest.mjs` (new): the whole world (11,410 passes, 318 hits, 118 of them lives): the
+     damage by type, the lives only at 0, the refill (only after 125 quiet passes, 1 a pass) and the
+     bar after every tick (11,408), all as the rules say, judged independently of the code;
+   - the renderer against its `DEBUG_FULLREDRAW` twin: identical on seeds 1 and 5 (4,000 passes),
+     helicopter flight 5 and the whole world; `tools/frontend.mjs` 15 of 15; observer mode;
+   - cost (pcprof work a pass, the bench build with and without the flag): 37,041 -> 37,735 on
+     seed 1, 41,606 -> 42,958 holding RIGHT, mostly `ren_plot_lives` copying 80 bytes rather than
+     32 at each scroll for each screen; late frames seed 1 5 -> 6 of 1,998, RIGHT 0 -> 0, the whole
+     world 355 -> 437 of 11,409. Cheaper: an unrolled copy (bank 4 has the room the smaller
+     ren_plot_lives freed), or a narrower bar.
 4. **Lives and the respawn** under `GAMEPLAY_LIVES`: the skeleton's end respawns rather than ends
    the game; the rewind (step 4a: measure how many left scrolls a pass fit with the logic stopped,
    in `tools/pcprof.mjs`); the invulnerability and its flashing; the infinite-lives glyph.

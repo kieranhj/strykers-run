@@ -1,0 +1,202 @@
+\ shield.6502 - GAMEPLAY_SHIELD (decision 44; docs/briefs/gameplay-shield.md): a recharging shield of
+\ two units, in place of the original's lives as hit points (each hit a life). Bank 4 under ANDY:
+\ called by the logic, which runs with ROMSEL &04 (measured at not_game_over, the hostile collision
+\ and every hit on the player, 3,000 passes, 2026-10-20). Its hooks in the main block: shield_hit
+\ before kill_player, shield_tick in main_game_loop, hit_type in check_for_hostile_collision, and
+\ shield_new_game (main RAM: start_game runs with bank 5 paged).
+
+SHIELD_UNIT  = 25                   \ a unit: the refill's second, at the design speed's 25 passes
+SHIELD_FULL  = 2 * SHIELD_UNIT
+SHIELD_WAIT  = 125                  \ passes without damage before it refills: 5 seconds
+SHIELD_FLASH = 12                   \ passes the bar flashes after a hit
+
+\ shield_hit: the player hit on foot (kill_mover_Y's path for the player, just before kill_player).
+\ The damage by what hit: 2 units for an explosive (grenade &10, bomb &11, rocket &12, mine &13,
+\ shell &1B), else 1, stopping at 0. With the shield at 0 the hit is the original's: RTS goes on to
+\ kill_player (a life), and the shield is full again. Otherwise the shield takes it and kill_player
+\ is skipped: its return address dropped, on to plot_mover with Y = 0, as kill_player's hits with
+\ lives left went (to_plot_mover_2957).
+.shield_hit
+{
+    LDX hostile_mover               \ the player ran into it: its type as the collision found it
+    BEQ by_update                   \ (kill_mover may have made it an explosion since);
+    BMI by_update                   \ 0 or none: the mover being updated hit the player
+    LDA hit_type
+    BRA typed                       \ 65C02 opcode
+.by_update
+    LDX mover_to_update
+    LDA #0                          \ not a mover slot: 1 unit
+    CPX #&22
+    BCS typed
+    LDA movers_type_and_colour,X
+.typed
+    AND #&7F
+    LDX #SHIELD_UNIT
+    CMP #&10                        \ MOVER_TYPE_GRENADE
+    BCC damage
+    CMP #&14                        \ MOVER_TYPE_TANK: the grenade, bomb, rocket and mine below it
+    BCC double
+    CMP #&1B                        \ MOVER_TYPE_SHELL
+    BNE damage
+.double
+    LDX #2 * SHIELD_UNIT
+.damage
+    STX shield_tmp
+    LDA #SHIELD_WAIT
+    STA shield_wait
+    LDA #SHIELD_FLASH
+    STA shield_flash
+    LDA shield
+    BEQ through
+    SEC
+    SBC shield_tmp
+    BCS taken
+    LDA #0                          \ the damage stops at 0
+.taken
+    STA shield
+    PLA                             \ kill_player skipped
+    PLA
+    LDY #0                          \ MOVER_PLAYER
+    JMP to_plot_mover_2957
+.through
+    LDA #SHIELD_FULL                \ a life goes (kill_player): the shield full again
+    STA shield
+    STZ shield_wait                 \ 65C02 opcode
+    RTS
+}
+
+\ shield_tick: once a pass (main_game_loop). Sets the shield up at a game's first pass; counts down
+\ the flash and the wait; refills a twenty-fifth of a unit a pass once the wait is over; and rebuilds
+\ hud_buffer (the lives digit, then the bar) when what it shows changes, bumping hud_serial so the
+\ renderer redraws it on each screen.
+.shield_tick
+{
+    LDA shield_ready
+    BNE ready
+    LDA #SHIELD_FULL
+    STA shield
+    STZ shield_wait                 \ 65C02 opcodes
+    STZ shield_flash
+    STZ hud_serial
+    LDA #&FF
+    STA hud_lives                   \ so the HUD is built below
+    STA shield_ready
+.ready
+    LDA shield_flash
+    BEQ flash_done
+    DEC shield_flash
+.flash_done
+    LDA shield_wait
+    BEQ refill
+    DEC shield_wait
+    BRA level                       \ 65C02 opcode
+.refill
+    LDA shield
+    CMP #SHIELD_FULL
+    BCS level
+    INC shield
+.level
+    LDA shield                      \ the bar's filled pixels, shield / 5 (0-10)
+    LDX #&FF
+.fifths
+    INX
+    SEC
+    SBC #SHIELD_FULL / 10
+    BCS fifths
+    STX shield_tmp
+    LDA shield_flash                \ bit 7 while it flashes, 2 passes on, 2 off
+    AND #2
+    BEQ steady
+    LDA #&80
+    TSB shield_tmp                  \ 65C02 opcode
+.steady
+    LDA shield_tmp
+    CMP hud_level
+    BNE build
+    LDA lives
+    CMP hud_lives
+    BNE build
+    RTS
+.build
+    LDA shield_tmp
+    STA hud_level
+    LDA lives
+    STA hud_lives
+    ASL A                           \ the digit: lives_digits + 32 * (lives AND 15), as the renderer
+    ASL A                           \ took it (ren_plot_lives without the shield)
+    ASL A
+    ASL A
+    ASL A                           \ A = 32 * (lives AND 7), C = lives bit 3
+    TAX
+    LDA #HI(lives_digits)
+    ADC #0
+    STA digit + 2
+    TXA
+    ADC #LO(lives_digits)
+    STA digit + 1
+    BCC digit_same_page
+    INC digit + 2
+.digit_same_page
+    LDY #31
+.copy
+.digit
+    LDA lives_digits,Y              \ self-modified
+    STA hud_buffer,Y
+    DEY
+    BPL copy
+    LDX #HUD_BAR_COLUMNS - 1        \ the bar, a byte column (two pixels) at a time, right to left
+.column
+    TXA
+    ASL A
+    TAY                             \ Y = its left pixel
+    JSR pixel
+    STA column_byte
+    INY
+    JSR pixel
+    LSR A                           \ the right pixel's bits
+    ORA column_byte
+    PHA
+    TXA
+    ASL A
+    ASL A
+    ASL A
+    TAY                             \ Y = 8 * the column: its 8 rows in hud_buffer
+    PLA
+    STA hud_buffer + 32 + 1,Y       \ rows 1-6 the bar, 0 and 7 sky
+    STA hud_buffer + 32 + 2,Y
+    STA hud_buffer + 32 + 3,Y
+    STA hud_buffer + 32 + 4,Y
+    STA hud_buffer + 32 + 5,Y
+    STA hud_buffer + 32 + 6,Y
+    LDA #0
+    STA hud_buffer + 32 + 0,Y
+    STA hud_buffer + 32 + 7,Y
+    DEX
+    BPL column
+    INC hud_serial
+    RTS
+\ pixel: bar pixel Y (0-11) as a left pixel's MODE 2 bits; keeps X and Y. Green (2) filled, red (1)
+\ empty, white (7) all while it flashes, sky (0) between the segments and after them
+.pixel
+    LDA segment_of_pixel,Y
+    BMI sky
+    BIT hud_level
+    BMI white
+    CMP shield_tmp                  \ hud_level here, its flash bit clear
+    BCS empty
+    LDA #&08                        \ green, as a left pixel
+    RTS
+.white
+    LDA #&2A                        \ white
+    RTS
+.empty
+    LDA #&02                        \ red
+    RTS
+.sky
+    LDA #0
+    RTS
+.column_byte
+    EQUB 0
+.segment_of_pixel                   \ each pixel's place in the bar (0-9), &FF for a gap
+    EQUB 0, 1, 2, 3, 4, &FF, 5, 6, 7, 8, 9, &FF
+}

@@ -378,7 +378,7 @@ MAX_BLOCK   = &2A0                  \ more than any mover's save block: 636 byte
     STZ lives_redraw
     LDX back
     LDA buf_lives,X
-    CMP lives
+    CMP HUD_KEY                     \ lives, or with GAMEPLAY_SHIELD hud_serial (the digit and the bar)
     BNE redraw_lives
     LDA pending_n
     BEQ lives_done
@@ -494,7 +494,7 @@ ENDIF
     LDA hist_seqs,X
     LDY back
     STA buf_seq,Y
-    LDA lives
+    LDA HUD_KEY
     STA buf_lives,Y
     JSR write_column                \ X = the slot still
     JSR ren_plot_lives
@@ -508,11 +508,11 @@ ENDIF
     LDX back
     JSR view_to_buffer
     LDA buf_lives,X
-    CMP lives
+    CMP HUD_KEY
     BEQ lives_drawn
     JSR ren_plot_lives
     LDX back
-    LDA lives
+    LDA HUD_KEY
     STA buf_lives,X
 .lives_drawn
 
@@ -613,6 +613,30 @@ ENDIF
 \ not depend on what was there: src/lives_digits.6502, from tools/livesdigits.py) -------------
 .ren_plot_lives
 {
+IF GAMEPLAY_SHIELD
+\ decision 44: the top line's 10 cells are hud_buffer (src/shield.6502 builds it: the digit, then
+\ the bar), 80 bytes in a row unless they can pass &8000 (page &7F only: from &7Exx they end by &7F4F)
+    LDA screen_start_address_high
+    CMP #&7F
+    BEQ hud_by_cell
+    STA hud_dst + 2
+    LDA screen_start_address_low
+    STA hud_dst + 1
+    LDY #HUD_BYTES - 1
+.hud_row
+    LDA hud_buffer,Y
+.hud_dst
+    STA &4000,Y                     \ self-modified: the screen start
+    DEY
+    BPL hud_row
+    RTS
+.hud_by_cell
+    LDA #LO(hud_buffer)
+    STA d_ptr
+    LDA #HI(hud_buffer)
+    STA d_ptr + 1
+    JMP cells
+ELSE
     LDA screen_start_address_high   \ the 4 cells are 32 bytes in a row unless they can pass
     CMP #&7F                        \ &8000 (page &7F only): then one copy, self-modified
     BEQ by_cell
@@ -661,11 +685,13 @@ ENDIF
     BCC digit_same_page
     INC d_ptr + 1
 .digit_same_page
+ENDIF
+.cells                              \ d_ptr the bytes
     LDA screen_start_address_low
     STA s_ptr
     LDA screen_start_address_high
     STA s_ptr + 1
-    LDX #4                          \ 4 byte columns of 8 rows
+    LDX #LIVES_ZONE_COLUMNS         \ 4 byte columns of 8 rows (with GAMEPLAY_SHIELD, 10)
 .column
     LDY #7
 .row
@@ -818,16 +844,17 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     JMP add_zone_column
 }
 
-\ add_lives_zone: A/X = a viewport_left (low/high); the four columns the lives digit covers
+\ add_lives_zone: A/X = a viewport_left (low/high); the four columns the lives digit covers (with
+\ GAMEPLAY_SHIELD, the digit's and the bar's: LIVES_ZONE_COLUMNS)
 .add_lives_zone
 {
     STA zone_tmp_lo
     STX zone_tmp_hi
-    LDA #4
+    LDA #LIVES_ZONE_COLUMNS
     STA zone_count
 .each
     LDY zone_n                      \ add_zone_column inlined: Y = where the list ends
-    TAX                             \ X = 4 (A is zone_count's 4): the columns to add
+    TAX                             \ X = the columns to add (A is zone_count's)
 .column
     LDA zone_tmp_lo
     STA zone_lo,Y

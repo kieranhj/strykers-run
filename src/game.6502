@@ -2331,8 +2331,12 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     STA movers_y
     LDA #&0A                        \ MOVER_FIRST_HELICOPTER
     STA helicopter_to_update
+IF GAMEPLAY_SHIELD
+    JSR shield_new_game             \ decision 44: nine lives as before, and the shield set up at the first pass
+ELSE
     LDA #&09                        \ Player starts with nine lives
     STA lives
+ENDIF
     LDA #&04
     STA pixel_table_address_high
     LDA #&40
@@ -2417,6 +2421,9 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     BPL not_at_headquarters
     JMP game_over_screen
 .not_game_over
+IF GAMEPLAY_SHIELD
+    JSR shield_tick                 \ decision 44 (src/shield.6502, bank 4: ROMSEL &04 here)
+ENDIF
     JSR check_for_player_input
     LDA keys_pressed_bitmap         \ Negative if  &80 (KEY_PAUSE) set
     BPL not_paused
@@ -2759,6 +2766,9 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     BCS leave_not_hostile_clc_g8c37 \ Ignore collisions with skeletons, explosions and projectiles
 .leave_with_carry_set_2429
     STX hostile_mover
+IF GAMEPLAY_SHIELD
+    STA hit_type                    \ decision 44: the type, before kill_mover can make it an explosion
+ENDIF
     SEC                             \ Leave with carry set to indicate hostile collision
     RTS
 .leave_not_hostile_clc_g8c37       \ grind: from the C = 1 paths (BEQ after CMP #&8C, BCS after CMP #&0C)
@@ -3590,6 +3600,9 @@ cm_x_max_high_operand = * + 1
 .is_player_291c
     LDA player_helicopter           \ Zero if player not in helicopter
     BNE kill_player_helicopter
+IF GAMEPLAY_SHIELD
+    JSR shield_hit                  \ decision 44: returns only for a hit at 0 shield (a life); else on to plot_mover
+ENDIF
 .kill_player
 IF DEBUG_LIVES
     LDA #lives                      \ DEBUG_LIVES: the disassembly's infinite lives poke (&2920 = &A9)
@@ -5740,6 +5753,16 @@ SECTION moved_0a20, org = &0A20, cmos = TRUE
     EQUB &99    \ MOVER_TYPE_ENEMY | MOVER_TYPE_FLYING_SCOOTER
     EQUB &98    \ MOVER_TYPE_ENEMY | MOVER_TYPE_GREEN_WHITE_CRAFT_TWO
 
+IF GAMEPLAY_SHIELD
+\ decision 44: start_game's lives, and the shield set up at the first pass (src/shield.6502: bank 4,
+\ which start_game, entered from the front end with bank 5 paged, cannot call)
+.shield_new_game
+    LDA #&09                        \ Player starts with nine lives
+    STA lives
+    STZ shield_ready                \ 65C02 opcode
+    RTS
+ENDIF
+
 \ Layer 5 (BUGS #1 fixed, decision 13): the ground's texture, fixed. The original took row Y of a
 \ type t column as ground_pixel_values[ZP[t * t + Y] AND 7], so its ground changed with what was in
 \ zero page &0000-&001E (the screen start, two counters, the sprite unpacker's code and its last
@@ -5756,6 +5779,13 @@ ASSERT HI(ground_columns) = HI(* - 1), "the ground's columns cross a page"
 .moved_0a20_end
 ENDSECTION
 MOVED_0A20_SIZE = moved_0a20_end - &0A20
+IF GAMEPLAY_SHIELD
+hud_buffer = moved_0a20_end         \ decision 44: the lives digit and the bar (src/shield.6502), not in the file
+zone_lo = hud_buffer + HUD_BYTES    \ and the renderer's zone, grown to ZONE_MAX: its hole in bank 4 is full
+zone_hi = zone_lo + ZONE_MAX
+ASSERT zone_hi + ZONE_MAX <= &0D00, "hud_buffer and the zone overrun &0CFF by ", zone_hi + ZONE_MAX - &0D00
+ASSERT HI(zone_lo) = HI(zone_hi + ZONE_MAX - 1)
+ENDIF
 ASSERT MOVED_0A20_SIZE <= &2E0, "moved_0a20 overruns &0CFF by ", MOVED_0A20_SIZE - &2E0   \ decision 40: to &0CFF
 
 \ ---- Step 2 layer 4: run once from entry_point, carried in the save arena (decision 33) ----

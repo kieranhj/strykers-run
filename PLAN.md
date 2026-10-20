@@ -30,7 +30,8 @@ Next to none where the renderer can read while it draws: main RAM 9 bytes (`&33F
 ## Gameplay variations: the shield and lives that respawn (decisions 43-46)
 
 Branch `gameplay-shield`, `docs/briefs/gameplay-shield.md`: the double hit is fixed (BUGS #13, on
-`main`); next room, the flags, the shield, the respawn, the options menu. Open for KC: high scores with infinite lives, hit feedback, the bar's
+`main`); the shield built (`GAMEPLAY_SHIELD`, decision 44: its checks and cost in the brief); next
+lives that respawn, then the options menu. Open for KC: high scores with infinite lives, hit feedback, the bar's
 colours, which discs to make.
 
 ## The level editor, v1 (decision 41)

@@ -30,7 +30,10 @@ PAD_END   = (SHIFT AND &FF00) * SHIFT_END
 \   DEBUG_LIVES   infinite lives (the scripted relocation test plays further)
 \   DEBUG_FULLREDRAW  the renderer takes every mover off and puts it back on every pass: the
 \                 oracle for its change tracking (tools/passlock.mjs, the two builds' screens)
-DEBUG_ANY = DEBUG_LIVES OR DEBUG_FULLREDRAW   \ the OR of every DEBUG_ flag
+\ Gameplay flags (decision 43), off in the shipping build, which with all of them off is the
+\ original game; each changes how it plays:
+\   GAMEPLAY_SHIELD  a recharging shield in place of lives as hit points (decision 44, src/shield.6502)
+DEBUG_ANY = DEBUG_LIVES OR DEBUG_FULLREDRAW   \ the OR of every DEBUG_ flag (GAMEPLAY_ flags are not debug: RELEASE allows them)
 VERSION_LINE = "v0.1"
 INCLUDE "../build/build_time.6502"   \ BUILD_TIME, written by tools/build_stamp.py
 
@@ -98,6 +101,9 @@ SECTION DATA1, org = &8000, load = &FFFF1900, exec = &FFFF1900, filename = "DATA
     INCLUDE "prebuild.6502"         \ step 2 layer 3: the next column built in the wait (ROMSEL &04 only)
     INCLUDE "render_zp.6502"        \ the renderer's zero page save and restore (ROMSEL &04 only)
     INCLUDE "render_bss_zero.6502"  \ decision 32: its variables zeroed at start-up (ROMSEL &04)
+IF GAMEPLAY_SHIELD
+    INCLUDE "shield.6502"           \ decision 44: the shield (the logic's: ROMSEL &04)
+ENDIF
     \ step 2 layer 3: the renderer draws with ANDY paged over &8000-&8FFF, so it, its tables and
     \ its sprites start at &9000; below it, only scenery data (read by the scroll, with bank 4 alone)
     ASSERT * <= &9000 + PAD_START

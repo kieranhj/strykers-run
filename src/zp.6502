@@ -11,6 +11,28 @@ screen_start_address_high                    = &01
 count                                        = &02
 mover_to_update                              = &03
 unused                                       = &03
+\ GAMEPLAY_SHIELD (decision 44, src/shield.6502): &07-&0F, the dead unpacker's bytes, read by
+\ nothing in a game since BUGS #1's fix (tools/zpwatch.mjs: no access in a game, 2026-10-20)
+shield                                       = &07      \ 0-SHIELD_FULL, 1/25ths of a unit
+shield_wait                                  = &08      \ passes left before it refills
+shield_flash                                 = &09      \ passes left of the bar's flash
+hud_serial                                   = &0A      \ bumped when hud_buffer changes: the renderer redraws
+hud_lives                                    = &0B      \ what hud_buffer shows: the lives,
+hud_level                                    = &0C      \ the bar's filled pixels and its flash (bit 7)
+hit_type                                     = &0D      \ the type the last hostile collision found
+shield_ready                                 = &0E      \ 0 at a game's start (shield_new_game): set up on the first tick
+shield_tmp                                   = &0F
+HUD_BAR_COLUMNS = 6                 \ the bar: 12 pixels, two segments of 5 and a gap after each
+HUD_COLUMNS     = 4 + HUD_BAR_COLUMNS   \ the lives digit's 4 byte columns, then the bar's
+HUD_BYTES       = 8 * HUD_COLUMNS
+IF GAMEPLAY_SHIELD
+    HUD_KEY            = hud_serial  \ what the renderer compares to redraw the top line's zone
+    LIVES_ZONE_COLUMNS = HUD_COLUMNS \ and how many columns it covers
+ELSE
+    HUD_KEY            = lives
+    LIVES_ZONE_COLUMNS = 4
+ENDIF
+ZONE_MAX = 4 + 2 * LIVES_ZONE_COLUMNS  \ the renderer's zone: two scrolls' 2 columns, the lives zone at two views
 colour                                       = &78
 initial_new_movers_offset                    = &78
 ranks_remaining                              = &78

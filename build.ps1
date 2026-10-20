@@ -36,7 +36,7 @@ $relDef = if ($Release) { 'RELEASE=1' } else { 'RELEASE=0' }
 $endDef = if ($ShiftEnd) { 'SHIFT_END=1' } else { 'SHIFT_END=0' }
 $stem = 'strykers' + $(if ($Shift) { "-shift$Shift" + $(if ($ShiftEnd) { 'end' } else { '' }) } else { '' })
 # -Define DEBUG_LIVES=1 (repeatable): extra -D symbols, which also mark the build's name
-$flags = [ordered]@{ DEBUG_LIVES = '0'; DEBUG_FULLREDRAW = '0' }
+$flags = [ordered]@{ DEBUG_LIVES = '0'; DEBUG_FULLREDRAW = '0'; GAMEPLAY_SHIELD = '0' }
 foreach ($d in $Define) {
     $k, $v = $d -split '=', 2
     if (-not $flags.Contains($k)) { throw "unknown flag $k (known: $($flags.Keys -join ', '))" }
