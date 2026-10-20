@@ -27,6 +27,13 @@ Next to none where the renderer can read while it draws: main RAM 9 bytes (`&33F
 - Check in jsbeeb, then fix: a scroll column lost when moving with `frame` >= 0 (firing in a
   helicopter while moving); the column replotted after a hostile collision.
 
+## Gameplay variations: the shield and lives that respawn (decisions 43-46)
+
+Branch `gameplay-shield`, `docs/briefs/gameplay-shield.md`: first the double hit from one
+projectile (KC, 2026-10-20: reproduce, BUGS.md, fix), then room, the flags, the shield, the
+respawn, the options menu. Open for KC: high scores with infinite lives, hit feedback, the bar's
+colours, which discs to make.
+
 ## The level editor, v1 (decision 41)
 
 `docs/briefs/level-editor-v1.md`; the format is `docs/level-format.md`, `tools/worldmap.py` reads it.
@@ -55,9 +62,7 @@ KC, 2026-10-17:
   movement scaled by the fields each pass took (`docs/step2-layer4-costing.md` "Unlocked").
 
 KC and the community, 2026-10-20 (gameplay first, rather than cheats; "more fun and 'modern'"):
-- **A Halo-style recharging shield**: a hit depletes it, taking cover recharges it; with the
-  shield down the next hit kills.
-- **Infinite lives with checkpoints**: a death restarts at the previous checkpoint.
+- (The recharging shield and lives that respawn: planned above, decisions 44-45.)
 - **A timer, and an end-of-game bonus for the time taken**, into the high score (to balance the
   infinite lives).
 - **Against the clock mode**: reach the headquarters before the timer runs out, or bad things
