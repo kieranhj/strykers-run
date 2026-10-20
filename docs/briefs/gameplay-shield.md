@@ -113,8 +113,11 @@ death respawns whatever the lives, so the test scripts still never end.
 7. **Speed** (2026-10-20 night, KC: "speed things up as much as you can ... try not to drop any
    more frames"): the HUD drawn 4 bytes a turn; `shield_tick` idle in a pass where nothing
    changed; and on `main`, the lives zone tested as one range (`c10217c`: 61 / 183 cycles a pass
-   less in every build). The HUD's copy is still most of the gameplay builds' cost: 72 bytes with
-   the shield, 128 with the timer, at each scroll on each screen.
+   less in every build); the HUD copied a byte column a turn, rows 1-7 (row 0 is always 0 there:
+   `360ab9e`, 151 / 361 cycles a pass less with every flag). The HUD's copy is still most of the
+   gameplay builds' cost: 72 bytes with the shield, 128 with the timer, at each scroll on each
+   screen. Every flag against flag-off (unshifted `DEBUG_LIVES` builds, passbench, seed 1): 6 late
+   frames of 1,998 for 5.
 8. **Room left** (2026-10-21, the listing of the build with every flag): main block 25 bytes (after
    the grind's padding is dropped in gameplay builds, `GAMEPLAY_ANY`); bank 4 2 (the renderer's area)
    and 4 (under ANDY); bank 5 1; bank 6 181 (the timer takes 349); bank 7 481; main RAM after

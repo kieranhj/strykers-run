@@ -203,6 +203,12 @@ left as a carrier, 2026-10-20); `hazel_b`
 and the packed tunes follow `&4000` to `mgame_end` (`&4C1F`), so `MGAME` loads to `&572F`, 849
 bytes under the loading picture at `&5A80` (ASSERTed). Bank 5's `&8000-&83FF` (the player buffer) is free:
 masked drawing made it unnecessary.
+Gameplay builds (`GAMEPLAY_*`, branch `gameplay-shield`, decisions 43-47) add: zero page `&07-&18`
+(the shield, the respawn, the timer: `src/zp.6502`); the HUD buffer and `game_completed` at
+`&0C72-&0CF2`, after `moved_0a20` (not in the file); the shield, the respawn and the HUD builder in
+bank 4 under ANDY; the timer in bank 6; `shield_new_game` and the game rules screen in bank 5 after
+its music (the front end's hooks replace instructions of the same size); the main block's
+unexecuted padding dropped (`GAMEPLAY_ANY`). The timer and the game rules need the unshifted banks.
 Bank 5 grows only at its end (its music is page-aligned). In play the game's `irq1_handler` owns
 vsync and flips the two screens (main and shadow, both `&4000-&7FFF`); on the front end the MOS
 has vsync and only main is used (decisions 14, 23).
