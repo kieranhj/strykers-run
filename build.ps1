@@ -8,13 +8,16 @@
 #   .\build.ps1 -Shift 256             the relocation test: the game assembled 256 bytes lower,
 #                                      each bank's contents a page higher (src/main.6502)
 #   .\build.ps1 -Shift 256 -ShiftEnd   its control: the same padding where it moves nothing
+#   .\build.ps1 -Gameplay              every GAMEPLAY_ flag (decisions 43-47): the gameplay disc, also
+#                                      copied to build\strykers-gameplay.ssd (with -Release for testers)
 #
 # Every -D symbol the source reads is passed on every build (Baron cannot default one).
 # The Makefile is the same build for POSIX systems and produces the same image; a change to the
 # pipeline has to land in both. The original disc is the tag step1-byte-identical-rebuild (README.md).
 # Tools: baron from $env:BARON, then bin\baron.exe, then the PATH. Put machine-specific paths in
 # local.ps1 beside this file (gitignored); it is run first if it exists.
-param([switch]$Release, [switch]$Compare, [switch]$NoCompare, [int]$Shift = 0, [switch]$ShiftEnd, [string[]]$Define = @())
+param([switch]$Release, [switch]$Compare, [switch]$NoCompare, [int]$Shift = 0, [switch]$ShiftEnd, [string[]]$Define = @(), [switch]$Gameplay)
+if ($Gameplay) { $Define += @('GAMEPLAY_SHIELD', 'GAMEPLAY_LIVES', 'GAMEPLAY_TIMER', 'GAMEPLAY_OPTIONS') }
 
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
@@ -60,6 +63,11 @@ try {
         throw "baron failed ($LASTEXITCODE)"
     }
     "Built  build\$stem.ssd"
+    if ($Gameplay) {   # with its symbol dump, which the harnesses read beside a disc
+        Copy-Item "build\$stem.ssd" 'build\strykers-gameplay.ssd'
+        Copy-Item "build\$stem.symbols.json" 'build\strykers-gameplay.symbols.json'
+        "       copied to build\strykers-gameplay.ssd"
+    }
     (Get-FileHash "build\$stem.ssd" -Algorithm SHA256).Hash.ToLower() | ForEach-Object { "       sha256 $_" }
 
     $reference = 'reference\sth\StrykersRun.ssd'

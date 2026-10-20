@@ -113,7 +113,7 @@ FINDBARON = baron="$(BARON)"; \
 # Prints a file's SHA256 the way build.ps1 does (sha256sum is not on a Mac).
 SHA256 = $(PYTHON) -c "import hashlib, sys; print('       sha256', hashlib.sha256(open(sys.argv[1], 'rb').read()).hexdigest())"
 
-.PHONY: all debug release original clean help
+.PHONY: all debug release gameplay original clean help
 
 # The options become a name and a set of -D flags here, in the shell, exactly
 # as build.ps1 makes them; the stamp runs; then a second make builds the image.
@@ -174,6 +174,14 @@ debug: all
 release:
 	@$(MAKE) RELEASE=1 all
 	@echo "RELEASE build: every DEBUG_ flag off"
+
+# Every GAMEPLAY_ flag (decisions 43-47): the gameplay disc, also copied to
+# build/strykers-gameplay.ssd (make gameplay RELEASE=1 for testers), as build.ps1 -Gameplay
+gameplay:
+	@$(MAKE) DEFINES=GAMEPLAY_SHIELD,GAMEPLAY_LIVES,GAMEPLAY_TIMER,GAMEPLAY_OPTIONS all
+	@cp $(BUILD)/strykers-gameplay_shield-gameplay_lives-gameplay_timer-gameplay_options.ssd $(BUILD)/strykers-gameplay.ssd
+	@cp $(BUILD)/strykers-gameplay_shield-gameplay_lives-gameplay_timer-gameplay_options.symbols.json $(BUILD)/strykers-gameplay.symbols.json
+	@echo "       copied to $(BUILD)/strykers-gameplay.ssd"
 
 # Only reached when the .config is missing and the image was asked for by
 # name (`make build/strykers.ssd`); `all` always stamps first.
@@ -262,6 +270,7 @@ clean:
 help:
 	@echo "make                 the optimised build -> build/strykers.ssd"
 	@echo "make release         RELEASE=1: no DEBUG_ flags"
+	@echo "make gameplay        every GAMEPLAY_ flag -> build/strykers-gameplay.ssd"
 	@echo "make original        the original, from the tag $(TAG)"
 	@echo "                     -> build/strykers-original.ssd, compared with the reference"
 	@echo "make clean           remove what this Makefile builds (not the harnesses' files)"

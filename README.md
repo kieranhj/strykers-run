@@ -35,6 +35,7 @@ preservation; it does not include the original disc images or the disassembly it
 |---|---|---|---|
 | **The optimised version** (step 2, in progress: a steady 25 Hz, no flicker) | `main` | `make`, or `.\build.ps1` | `build/strykers.ssd` |
 | **The original**, byte for byte the Stairway to Hell disc's game | the tag `step1-byte-identical-rebuild` (`762a0d2`) | `make original`, or the tag's own `build.ps1` in a worktree of it (below) | `build/strykers-original.ssd` |
+| **The gameplay variations** (decisions 43-47: a recharging shield, lives that respawn, a timer, a game rules screen; branch `gameplay-shield`) | `gameplay-shield` | `make gameplay`, or `.uild.ps1 -Gameplay` (add `RELEASE=1` / `-Release` for testers) | `build/strykers-gameplay.ssd` |
 
 `make original` exports the tag's `src/` and `tools/` into `build/original/` (`git archive`, so it
 needs a clone with its tags: `git fetch --tags`), assembles them with the flags the tag's
