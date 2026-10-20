@@ -28,12 +28,11 @@ HUD_COLUMNS     = 4 + HUD_BAR_COLUMNS   \ the lives digit's 4 byte columns, then
 HUD_BYTES       = 8 * HUD_COLUMNS
 IF GAMEPLAY_SHIELD
     HUD_KEY            = hud_serial  \ what the renderer compares to redraw the top line's zone
-    LIVES_ZONE_COLUMNS = HUD_COLUMNS \ and how many columns it covers
+    LIVES_ZONE_COLUMNS = HUD_COLUMNS \ and how many columns it covers (one range: render.6502 add_lives_zone)
 ELSE
     HUD_KEY            = lives
     LIVES_ZONE_COLUMNS = 4
 ENDIF
-ZONE_MAX = 4 + 2 * LIVES_ZONE_COLUMNS  \ the renderer's zone: two scrolls' 2 columns, the lives zone at two views
 colour                                       = &78
 initial_new_movers_offset                    = &78
 ranks_remaining                              = &78

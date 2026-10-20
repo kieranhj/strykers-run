@@ -33,11 +33,11 @@ SECTION ren_vars_z, org = REN_BASE + &822, cmos = TRUE
 .buf_vr_lo      SKIP 3
 .buf_vr_hi      SKIP 3
 .pending_slot   SKIP 2
-IF GAMEPLAY_SHIELD = 0              \ (with it, 24 each, in main RAM after hud_buffer: src/game.6502)
-.zone_lo        SKIP ZONE_MAX       \ two scrolls' 2 columns, the lives zone at two views
-.zone_hi        SKIP ZONE_MAX
-ENDIF
-.zone_count     SKIP 1
+.zone_lo        SKIP 4              \ the columns two scrolls write or leave
+.zone_hi        SKIP 4
+.lz_lo          SKIP 2              \ the lives digit's ranges (add_lives_zone), at one or two views:
+.lz_hi          SKIP 2              \ each by its last column
+.lz_n           SKIP 1
 .span_w2        SKIP 1
 \ the masked renderer's
 .arena_top_lo   SKIP 2           \ per screen: the end of its arena's used part

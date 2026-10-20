@@ -5781,10 +5781,8 @@ ENDSECTION
 MOVED_0A20_SIZE = moved_0a20_end - &0A20
 IF GAMEPLAY_SHIELD
 hud_buffer = moved_0a20_end         \ decision 44: the lives digit and the bar (src/shield.6502), not in the file
-zone_lo = hud_buffer + HUD_BYTES    \ and the renderer's zone, grown to ZONE_MAX: its hole in bank 4 is full
-zone_hi = zone_lo + ZONE_MAX
-ASSERT zone_hi + ZONE_MAX <= &0D00, "hud_buffer and the zone overrun &0CFF by ", zone_hi + ZONE_MAX - &0D00
-ASSERT HI(zone_lo) = HI(zone_hi + ZONE_MAX - 1)
+ASSERT hud_buffer + HUD_BYTES <= &0D00, "hud_buffer overruns &0CFF by ", hud_buffer + HUD_BYTES - &0D00
+ASSERT HI(hud_buffer) = HI(hud_buffer + HUD_BYTES - 1)
 ENDIF
 ASSERT MOVED_0A20_SIZE <= &2E0, "moved_0a20 overruns &0CFF by ", MOVED_0A20_SIZE - &2E0   \ decision 40: to &0CFF
 
