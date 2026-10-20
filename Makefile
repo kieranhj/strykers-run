@@ -60,7 +60,7 @@ COMPARE  = 0
 # Every DEBUG_ and GAMEPLAY_ flag main.6502 reads. Baron cannot default a -D symbol, so
 # each is passed on every build, 0 unless DEFINES names it (decision 9).
 # A new flag goes here and in build.ps1's $flags.
-FLAGS = DEBUG_LIVES DEBUG_FULLREDRAW GAMEPLAY_SHIELD
+FLAGS = DEBUG_LIVES DEBUG_FULLREDRAW GAMEPLAY_SHIELD GAMEPLAY_LIVES
 
 # NOT overridable: main.6502 INCLUDEs "../build/build_time.6502".
 BUILD = build
@@ -68,7 +68,7 @@ BUILD = build
 # Set by `all` through a recursive make, from SHIFT, SHIFTEND and DEFINES;
 # these defaults are the plain build, for `make build/strykers.ssd`.
 STEM = strykers
-DEFS = -D DEBUG_LIVES=0 -D DEBUG_FULLREDRAW=0 -D GAMEPLAY_SHIELD=0
+DEFS = -D DEBUG_LIVES=0 -D DEBUG_FULLREDRAW=0 -D GAMEPLAY_SHIELD=0 -D GAMEPLAY_LIVES=0
 
 SSD    = $(BUILD)/$(STEM).ssd
 LST    = $(BUILD)/$(STEM).lst
@@ -178,7 +178,7 @@ release:
 # name (`make build/strykers.ssd`); `all` always stamps first.
 $(CONFIG):
 	$(PYTHON) tools/build_stamp.py $(BUILD) $(STEM).config RELEASE=$(RELEASE) \
-	    SHIFT=$(SHIFT) SHIFT_END=$(SHIFTEND) DEBUG_LIVES=0 DEBUG_FULLREDRAW=0 GAMEPLAY_SHIELD=0
+	    SHIFT=$(SHIFT) SHIFT_END=$(SHIFTEND) DEBUG_LIVES=0 DEBUG_FULLREDRAW=0 GAMEPLAY_SHIELD=0 GAMEPLAY_LIVES=0
 
 # Baron writes the image, the symbol dump and (on stdout) the listing. A
 # failed assembly removes the image and the dump, so a half-written image

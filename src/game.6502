@@ -2443,7 +2443,11 @@ ENDIF
     AND #&7F                        \ !KEY_PAUSE
     BEQ wait_for_unpause
 .not_paused
+IF GAMEPLAY_LIVES
+    JSR player_or_rewind            \ decision 45: update_player, or a column of the rewind (and the pass ends)
+ELSE
     JSR update_player
+ENDIF
     LDA movers_x_low
     CMP #&ED
     BNE not_at_headquarters
@@ -2455,6 +2459,17 @@ ENDIF
     JSR update_projectiles
     JSR update_movers
     JMP main_game_loop
+IF GAMEPLAY_LIVES
+\ decision 45: a column of the respawn's rewind (src/shield.6502 player_or_rewind), here in main RAM:
+\ the scroll and the frame page other banks, and bank 4's code must find bank 4 again
+.rewind_column
+    JSR scroll_screen_left
+    JSR update_screen_observer      \ the screen moved, drawn and shown, as observer mode does it
+    LDA #&04
+    STA os_ram_copy_of_currently_selected_rom
+    STA romsel                      \ Paged ROM latch
+    RTS
+ENDIF
 
 \ Step 2 (decision 16): X = negative INKEY number, Z set if the key is down - OSBYTE &81's
 \ contract as the callers use it (none reads X, Y or C after), read straight off the System VIA.
@@ -3035,10 +3050,14 @@ move_mover_routine_address_high = * + 2
     LDA movers_frame_and_flip
     AND #&7F
     BNE animate_player_skeleton     \ Zero at end of animation
+IF GAMEPLAY_LIVES
+    JMP player_dead                 \ decision 45: a respawn with lives left, else game over as below
+ELSE
     LDA #&50
     STA game_over_cooldown
     DEC lives                       \ Set to negative to indicate game over
     RTS
+ENDIF
 .animate_player_skeleton
     DEC movers_frame_and_flip
     JMP plot_player
@@ -3631,8 +3650,10 @@ ELSE
 ENDIF
     JSR plot_lives
     LDY &87
+IF GAMEPLAY_LIVES = 0               \ decision 45: every death is the skeleton (and with lives left, a respawn)
     LDA lives                       \ grind: Z (out of lives) from lives itself, which plot_lives leaves alone, not PHP/PLP
     BNE to_plot_mover_2957          \ Don't turn player into skeleton until last life
+ENDIF
 .not_player_292b
     LDX dying_mover_type
     LDA #&0D                        \ MOVER_TYPE_SKELETON
@@ -5781,7 +5802,11 @@ IF GAMEPLAY_SHIELD
 \ decision 44: start_game's lives, and the shield set up at the first pass (src/shield.6502: bank 4,
 \ which start_game, entered from the front end with bank 5 paged, cannot call)
 .shield_new_game
+IF GAMEPLAY_LIVES
+    LDA #LIVES_START                \ decision 45
+ELSE
     LDA #&09                        \ Player starts with nine lives
+ENDIF
     STA lives
     STZ shield_ready                \ 65C02 opcode
     RTS

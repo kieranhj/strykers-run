@@ -18,6 +18,10 @@ SHIELD_FLASH = 12                   \ passes the bar flashes after a hit
 \ lives left went (to_plot_mover_2957).
 .shield_hit
 {
+IF GAMEPLAY_LIVES
+    LDA invulnerable                \ decision 45: just respawned, nothing counts
+    BNE skipped
+ENDIF
     LDX hostile_mover               \ the player ran into it: its type as the collision found it
     BEQ by_update                   \ (kill_mover may have made it an explosion since);
     BMI by_update                   \ 0 or none: the mover being updated hit the player
@@ -54,6 +58,7 @@ SHIELD_FLASH = 12                   \ passes the bar flashes after a hit
     LDA #0                          \ the damage stops at 0
 .taken
     STA shield
+.skipped
     PLA                             \ kill_player skipped
     PLA
     LDY #0                          \ MOVER_PLAYER
@@ -81,7 +86,17 @@ SHIELD_FLASH = 12                   \ passes the bar flashes after a hit
     LDA #&FF
     STA hud_lives                   \ so the HUD is built below
     STA shield_ready
+IF GAMEPLAY_LIVES
+    STZ respawn_left                \ 65C02 opcodes
+    STZ invulnerable
+ENDIF
 .ready
+IF GAMEPLAY_LIVES
+    LDA invulnerable
+    BEQ safe_done
+    DEC invulnerable
+.safe_done
+ENDIF
     LDX #0                          \ X: non-zero if what the bar shows may have changed
     LDA shield_flash
     BEQ flash_done
@@ -213,3 +228,84 @@ SHIELD_FLASH = 12                   \ passes the bar flashes after a hit
 .segment_of_pixel                   \ each pixel's place in the bar (0-5), &FF for a gap
     EQUB 0, 1, 2, &FF, 3, 4, 5, &FF, &FF, &FF
 }
+
+IF GAMEPLAY_LIVES
+\ ---- decision 45: lives that respawn -----------------------------------------------------------
+\ Every death is the skeleton (kill_player, under GAMEPLAY_LIVES). When its animation is over,
+\ update_player comes here: with lives left, the view goes back RESPAWN_COLUMNS columns, a column a
+\ pass (the renderer's history holds a scroll a pass a screen), the player hidden and the rest of the
+\ logic stopped; then the player stands there, shield full, safe for RESPAWN_SAFE passes. With none,
+\ the game is over as the original's.
+.player_dead
+{
+    LDA lives
+    BNE rewind
+    LDA #&50
+    STA game_over_cooldown
+    DEC lives                       \ Set to negative to indicate game over
+    RTS
+.rewind
+    LDA #RESPAWN_COLUMNS
+    STA respawn_left
+    LDA movers_x_high
+    STA respawn_x_hi
+    LDA #&FF                        \ the player hidden: no mover in slot 0 for the renderer or the edge
+    STA movers_x_high               \ (its x low byte goes on: the trigger points read it)
+    RTS
+}
+
+\ player_or_rewind: main_game_loop's update_player, or while a rewind is under way a column of it:
+\ the player (hidden) and the view one column back, the frame drawn and shown, and the pass ends
+\ there (the projectiles and the movers stand still)
+.player_or_rewind
+{
+    LDA respawn_left
+    BNE rewind
+    JMP update_player
+.rewind
+    LDA viewport_left_low           \ at the world's start: no further back
+    ORA viewport_left_high
+    BEQ arrived
+    LDA movers_x_low                \ the player a column back, and its screen address with it (the
+    BNE same_page                   \ renderer places it by that, so it must be right when it shows)
+    DEC respawn_x_hi
+.same_page
+    DEC movers_x_low
+    LDX movers_screen_address_high
+    LDA movers_screen_address_low
+    LDY #0                          \ &0008: a column
+    JSR subtract_delta_from_screen_address_in_AX
+    STA movers_screen_address_low
+    STX movers_screen_address_high
+    JSR rewind_column               \ main RAM: scroll_screen_left, then the frame
+    DEC respawn_left
+    BNE pass_over
+.arrived
+    JSR respawn
+.pass_over
+    PLA                             \ main_game_loop's JSR: the rest of the pass skipped
+    PLA
+    JMP main_game_loop
+}
+
+.respawn
+{
+    STZ respawn_left                \ 65C02 opcodes
+    LDA respawn_x_hi
+    STA movers_x_high               \ the player back, where the view has left it
+    STZ movers_type_and_colour      \ MOVER_TYPE_PLAYER: a soldier again
+    STZ movers_frame_and_flip       \ standing, facing right
+    STZ flip
+    STZ frame
+    STZ player_y_velocity
+    STZ player_jump_direction
+    STZ player_firing_cooldown
+    LDA #SHIELD_FULL
+    STA shield
+    STZ shield_wait
+    LDA #RESPAWN_SAFE
+    STA invulnerable
+    STA shield_flash                \ the bar flashes while it lasts
+    RTS
+}
+ENDIF
