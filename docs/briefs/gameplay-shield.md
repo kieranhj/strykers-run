@@ -114,7 +114,8 @@ death respawns whatever the lives, so the test scripts still never end.
 - **Feedback for a shield hit:** a sound and the bar flashing.
 - **The bar's colours:** cyan for the charged part, red for the empty.
 
-## Open (KC)
-
-- **Which discs to make** for testers (the options are in the reply of 2026-10-20; to be written
-  here once chosen).
+- **Discs:** one disc per build for now: `strykers.ssd` the original (every flag off) and
+  `strykers-gameplay.ssd` with every `GAMEPLAY_*` flag on (a `make gameplay` / `build.ps1`
+  target names the set). Both on one disc with a boot menu (both fit on the 80-track side: 316
+  sectors each of 800) is for a release, once the variations settle; one build with everything
+  switchable costs room and loses the proof that the original is untouched.
