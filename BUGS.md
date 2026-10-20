@@ -323,7 +323,7 @@ By the code that is only the player's last death (`kill_player` reaches
   the same, nothing mirrored; the control, 2 writes mirrored (`&92` at `&294C`), identical over
   1,295 passes. `passlock.mjs`, `helilock.mjs` and `worldrun.mjs` read the generator where each
   build keeps it (`playscript.mjs` `prngAt`), so a fixed build compares with one from before.
-## 13. One hit costs many lives: the explosion it leaves keeps hitting the player (original behaviour; OPEN)
+## 13. One hit costs many lives: the explosion it leaves keeps hitting the player (original behaviour; FIXED in layer 5)
 
 KC, 2026-10-20: "the player takes multiple hits from a single projectile (e.g. helicopter bomb) when
 running into it". Measured with `tools/hitwatch.mjs` (every entry to `kill_player`, with the path and
@@ -342,3 +342,22 @@ lives poked in), jsbeeb 2.10.0, 2026-10-20: the original (the step 1 tag's build
 - Less certain: bullet "repeats" several passes apart may be a new bullet in the same slot; one run
   of 35 is WorldBot's stall, a crouching soldier the collision holds against the player (PLAN.md's
   whole world notes).
+**Fixed** (layer 5, all builds, KC 2026-10-20: "explosions harmless + one hit per pass"):
+- The player walks through explosions and skeletons: `check_for_hostile_collision`'s friendly cutoff
+  for the player is `&0F` (the bullet), not `&0D`. Skeletons never killed the player
+  (`skip_killing_player`) but blocked it, and a fix for the explosions alone exposed why that matters:
+  `update_mover` never updates a mover overlapping the player, so a skeleton under a falling player was
+  never removed, and the player hung in the air for good (the WorldBot stuck at x 5,772 from pass
+  9,440, 10,000+ passes). The original can do the same.
+- A projectile the player runs into is spent (`remove_mover`), as one that lands on the player is
+  (`replace_projectile_with_explosion` removes an explosion overlapping the player): `kill_mover`
+  leaves projectiles alone, so its own update hit the player again in the same pass.
+Both fit the grind's spare bytes after `not_tank`: no code moved. Measured (jsbeeb 2.10.0, whole
+world, `tools/hitwatch.mjs`): 318 hits (was 655 in the same build's world before), 260 objects, 58
+repeats, none in one pass and none from an explosion (28 are the crouching soldier's stall, the rest
+bullets, most several passes apart: likely a new bullet in the same slot); the world completes in
+11,410 passes (was 12,237), with only the known stall. The renderer against the `DEBUG_FULLREDRAW`
+oracle: identical on seeds 1 and 5 (4,000 passes), both helicopter flights and the whole world
+(11,410). Front end and observer mode pass. The game plays differently now, so speed is not
+comparable with layer 4's figures: seed 1 has 5 late frames of 1,998 (0 at layer 4's close),
+holding RIGHT 0 of 598, the whole world 355 of 11,409 (3.1%; 2.8% at the close).
