@@ -2742,8 +2742,10 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     BCC leave_with_carry_clear_242d \ Carry is clear if no collision occurred
     BNE not_player_241b
 .is_player_2411
-    CMP #&0D                        \ MOVER_TYPE_SKELETON
-    BCC leave_with_carry_clear_242d \ Player can walk through all friendly movers
+    CMP #&0F                        \ MOVER_TYPE_BULLET; layer 5 (BUGS #13): was MOVER_TYPE_SKELETON, so skeletons
+    BCC leave_with_carry_clear_242d \ and explosions are now walked through too: an explosion a hit leaves on the
+                                    \ player hit again every pass or two, and a skeleton under the player (which
+                                    \ update_mover never updates, so never removes) held it in the air for good
     CMP #&8C                        \ MOVER_TYPE_ENEMY | MOVER_TYPE_SAM
     BEQ leave_not_hostile_clc_g8c37 \ Player can walk through enemy SAM
     BNE leave_with_carry_set_2429   \ Everything else is hostile to player; always branches
@@ -3228,9 +3230,15 @@ move_mover_routine_address_high = * + 2
 .not_tank    \ ***
     LDY #&00                        \ MOVER_PLAYER
     JSR kill_mover_Y
+    LDY hostile_mover               \ layer 5 (BUGS #13): a projectile (slots &0C-&17) the player ran into is spent,
+    CPY #&0C                        \ as one that lands on the player is (replace_projectile_with_explosion);
+    BCC not_a_projectile            \ kill_mover leaves projectiles alone, so its own update hit the player
+    CPY #&18                        \ again in the same pass
+    BCS not_a_projectile
+    JSR remove_mover
+.not_a_projectile
     JMP skip_plotting_player
-    EQUB &EA, &EA, &EA, &EA, &EA, &EA, &EA, &EA, &EA    \ spare (grind): the 18 bytes freed above, kept so skip_killing_player and all after stay put
-    EQUB &EA, &EA, &EA, &EA, &EA, &EA, &EA, &EA, &EA
+    EQUB &EA, &EA, &EA, &EA, &EA    \ spare (grind's 18; layer 5 took 13), kept so skip_killing_player and all after stay put
 .skip_killing_player
     JSR plot_player
 .skip_plotting_player

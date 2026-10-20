@@ -131,6 +131,10 @@ MOS's sound, skipping transparent bytes, building the column on the pass before.
 - **BUGS #2 closed, no change**: the original never reads past the legs sprite (jsbeeb, 4 seeds x
   30,000 frames on the step 1 layout); the read step 1 saw was its test build's own data, moved
   under the screen by the ground patch's 4 bytes. Step 2's renderer walks counted, decoded columns.
+- **BUGS #13 fixed** (all builds): one hit cost up to 14 lives (the explosion it left kept hitting;
+  a projectile run into hit twice). Explosions and skeletons are walked through, a projectile run into
+  is spent; the whole world's hits 655 -> 318, no repeat in one pass or from an explosion
+  (`tools/hitwatch.mjs`); a skeleton soft-lock found and fixed on the way.
 
 ## Tooling
 

@@ -114,6 +114,7 @@ disassembly's `actually`/`also` notes say what an operand really is.
 - `tools/scrollleft.mjs CONTROL TEST [--left K] [--still S] [--place]` - BUGS #10's cases: the whole world with LEFT held (then no key) wherever a mover is clipped at the left edge, state and newest frame against CONTROL (the `DEBUG_FULLREDRAW` twin) every pass; `--place` moves a lower-slot soldier over the clipped mover
 - `tools/worldrun.mjs DISC [--control CONTROL [--screen] [--unclobber]] [--shots DIR]` - the whole world, start to completion screen (WorldBot: run, jump, grenade what blocks):
   frames as passbench (late frames by world column, ground or air); with `--control`, state and newest frame against CONTROL every pass (the `DEBUG_FULLREDRAW` twin)
+- `tools/hitwatch.mjs DISC [--passes N] [--json F]` - every hit on the player over the whole world: its path, its culprit's type (read before `kill_mover` changes it), runs of hits by one object (BUGS #13)
 - `tools/zplive.mjs DISC` - the zero-page bytes the logic reads first after a render (what `restore_game_zp` must keep)
 - `ZPWATCH=a2-a6,bc-bd node --import ./tools/zpwatch.mjs tools/HARNESS.mjs ...` - every write, read and execute at those addresses in any harness's machines, by phase (boot, front end, game) and the code that made it (BUGS #12)
 - `tools/analyse.py report|annotate` - beebgame's static analyses of the build (liveness, known values, ranges,
