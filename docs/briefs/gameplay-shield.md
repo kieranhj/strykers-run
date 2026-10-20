@@ -37,7 +37,8 @@ proved identical to `main`.
   (0-50); a hit takes 25 or 50; after 125 passes untouched it gains 1 a pass.
 - On foot only: in a helicopter the original's rules stand (wreck, explode, walk away), and the
   shield neither drains nor protects there.
-- **A bar** on the top line beside the lives: two segments, a unit each, filling as it recharges.
+- **A bar** on the top line beside the lives: two segments, a unit each, filling as it recharges;
+  cyan for the charged part, red for the empty. A hit plays a sound and flashes the bar.
 
 **Lives that respawn** (flag `GAMEPLAY_LIVES`, which needs `GAMEPLAY_SHIELD`):
 - A hit at 0 shield is a death: the skeleton plays, a life goes, and with lives left the player
@@ -47,6 +48,8 @@ proved identical to `main`.
   hurt for about 2 seconds (flashing). Enemies and projectiles stay where they are. N is 80 by
   default (a screen), never past the world's start.
 - **Lives** 1-9 or infinite, default 3. The top line shows the digit, or a new glyph for infinite.
+  An infinite-lives game ends by ESCAPE (not entered on the high score table) or by reaching the
+  headquarters (entered as usual).
 
 **The options menu** (flag `GAMEPLAY_OPTIONS`, needed by either of the above to set them): a sixth
 title option, 6 OPTIONS, to set lives (1-9, infinite) and the respawn distance (40, 80, 120, 160
@@ -103,11 +106,15 @@ death respawns whatever the lives, so the test scripts still never end.
 7. **Docs:** decisions 43-46 marked built with their measurements, a `docs/gameplay-shield.md`
    with what was measured and rejected, BUGS.md for the double hit, PLAN.md.
 
+## Answered (KC, 2026-10-20)
+
+- **High scores with infinite lives:** a game with infinite lives ends only by ESCAPE or by
+  reaching the headquarters. ESCAPE leaves it off the high score table; reaching the headquarters
+  puts it on as usual. (A timer mechanic comes later.)
+- **Feedback for a shield hit:** a sound and the bar flashing.
+- **The bar's colours:** cyan for the charged part, red for the empty.
+
 ## Open (KC)
 
-- **High scores with infinite lives:** allowed on the table, kept off it, or marked?
-- **Feedback for a shield hit:** a sound (an existing effect, e.g. the bullet's) and the bar
-  flashing - or nothing but the bar?
-- **The bar's colours:** proposed the foreground cyan for charged, red for the empty part.
-- **One disc or several:** the shipping disc stays the original; a second disc with the
-  variations on, or a disc per flag set, for testers?
+- **Which discs to make** for testers (the options are in the reply of 2026-10-20; to be written
+  here once chosen).
