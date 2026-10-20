@@ -22,7 +22,8 @@ hud_level                                    = &0C      \ the bar's filled pixel
 hit_type                                     = &0D      \ the type the last hostile collision found
 shield_ready                                 = &0E      \ 0 at a game's start (shield_new_game): set up on the first tick
 shield_tmp                                   = &0F
-HUD_BAR_COLUMNS = 6                 \ the bar: 12 pixels, two segments of 5 and a gap after each
+HUD_BAR_COLUMNS = 5                 \ the bar: two segments of 3 pixels, a gap after each, then a blank column
+                                    \ (it wipes the bar's last place when the view scrolls left, as the digit's 4th does)
 HUD_COLUMNS     = 4 + HUD_BAR_COLUMNS   \ the lives digit's 4 byte columns, then the bar's
 HUD_BYTES       = 8 * HUD_COLUMNS
 IF GAMEPLAY_SHIELD

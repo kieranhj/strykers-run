@@ -96,13 +96,16 @@ SHIELD_FLASH = 12                   \ passes the bar flashes after a hit
     BCS level
     INC shield
 .level
-    LDA shield                      \ the bar's filled pixels, shield / 5 (0-10)
+    LDA shield                      \ the bar's filled pixels, 3 * shield / 25 (0-6: 3 a unit)
+    STA shield_tmp
+    ASL A                           \ C = 0 after: shield <= 50
+    ADC shield_tmp                  \ 3 * shield, at most 150
     LDX #&FF
-.fifths
+.thirds
     INX
     SEC
-    SBC #SHIELD_FULL / 10
-    BCS fifths
+    SBC #SHIELD_UNIT
+    BCS thirds
     STX shield_tmp
     LDA shield_flash                \ bit 7 while it flashes, 2 passes on, 2 off
     AND #2
@@ -175,7 +178,7 @@ SHIELD_FLASH = 12                   \ passes the bar flashes after a hit
     BPL column
     INC hud_serial
     RTS
-\ pixel: bar pixel Y (0-11) as a left pixel's MODE 2 bits; keeps X and Y. Green (2) filled, red (1)
+\ pixel: bar pixel Y (0-9) as a left pixel's MODE 2 bits; keeps X and Y. Green (2) filled, red (1)
 \ empty, white (7) all while it flashes, sky (0) between the segments and after them
 .pixel
     LDA segment_of_pixel,Y
@@ -197,6 +200,6 @@ SHIELD_FLASH = 12                   \ passes the bar flashes after a hit
     RTS
 .column_byte
     EQUB 0
-.segment_of_pixel                   \ each pixel's place in the bar (0-9), &FF for a gap
-    EQUB 0, 1, 2, 3, 4, &FF, 5, 6, 7, 8, 9, &FF
+.segment_of_pixel                   \ each pixel's place in the bar (0-5), &FF for a gap
+    EQUB 0, 1, 2, &FF, 3, 4, 5, &FF, &FF, &FF
 }

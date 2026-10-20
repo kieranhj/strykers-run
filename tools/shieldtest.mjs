@@ -7,8 +7,8 @@
 //             (before kill_mover can turn it into an explosion), as tools/hitwatch.mjs reads it
 //   deaths    kill_player (a life) is entered for a hit at 0 shield and only then
 //   refill    the shield rises only after 125 passes without a hit, by 1 a pass, to 50
-//   the bar   hud_buffer's bar shows shield / 5 filled (green) pixels, the rest red, or all white
-//             while it flashes; hud_buffer's digit is lives_digits' for the lives
+//   the bar   hud_buffer's bar shows 3 * shield / 25 filled (green) pixels of 6, the rest red, or
+//             all white while it flashes, and a blank last column; its digit is lives_digits'
 //
 //   node tools/shieldtest.mjs DISC.ssd [--passes N]
 import { loadMachineSession } from "./jsbeeb_src.mjs";
@@ -64,13 +64,13 @@ function judge() {                     // at the start of a pass: the last pass'
     return { shield, lives };
 }
 function checkBar(shield, lives) {
-    const hud = rd(syms.hud_buffer, 80), flash = zp("shield_flash");
+    const hud = rd(syms.hud_buffer, 72), flash = zp("shield_flash");
     const digit = rd(syms.lives_digits + 32 * (lives & 15), 32);
     if (hud.slice(0, 32).some((b, i) => b !== digit[i])) fail(`hud_buffer's digit is not lives_digits' for ${lives}`);
-    const px = Math.floor(shield / 5), white = (flash & 2) !== 0;
-    const seg = [0, 1, 2, 3, 4, -1, 5, 6, 7, 8, 9, -1];
+    const px = Math.floor(3 * shield / 25), white = (flash & 2) !== 0;
+    const seg = [0, 1, 2, -1, 3, 4, 5, -1, -1, -1];
     const left = (p) => seg[p] < 0 ? 0 : white ? 0x2a : seg[p] < px ? 0x08 : 0x02;
-    for (let c = 0; c < 6; c++) {
+    for (let c = 0; c < 5; c++) {
         const fill = left(2 * c) | (left(2 * c + 1) >> 1);
         for (let r = 0; r < 8; r++) {
             const want = r === 0 || r === 7 ? 0 : fill, got = hud[32 + 8 * c + r];

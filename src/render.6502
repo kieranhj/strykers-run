@@ -614,22 +614,45 @@ ENDIF
 .ren_plot_lives
 {
 IF GAMEPLAY_SHIELD
-\ decision 44: the top line's 10 cells are hud_buffer (src/shield.6502 builds it: the digit, then
-\ the bar), 80 bytes in a row unless they can pass &8000 (page &7F only: from &7Exx they end by &7F4F)
+\ decision 44: the top line's HUD_COLUMNS cells are hud_buffer (src/shield.6502 builds it: the
+\ digit, then the bar), HUD_BYTES in a row unless they can pass &8000 (page &7F only: from &7Exx
+\ they end by &7F47). Four bytes a turn: 11.75 cycles a byte for 14
     LDA screen_start_address_high
     CMP #&7F
     BEQ hud_by_cell
-    STA hud_dst + 2
-    LDA screen_start_address_low
-    STA hud_dst + 1
-    LDY #HUD_BYTES - 1
+    STA hud_d0 + 2
+    STA hud_d1 + 2
+    STA hud_d2 + 2
+    STA hud_d3 + 2
+    LDA screen_start_address_low    \ a multiple of 8: + 1, + 2, + 3 by ORA and EOR
+    STA hud_d0 + 1
+    ORA #1
+    STA hud_d1 + 1
+    EOR #3
+    STA hud_d2 + 1
+    ORA #1
+    STA hud_d3 + 1
+    LDY #HUD_BYTES - 4
 .hud_row
+    LDA hud_buffer + 3,Y
+.hud_d3
+    STA &4003,Y                     \ self-modified, as are the three below: the screen start + 3 .. + 0
+    LDA hud_buffer + 2,Y
+.hud_d2
+    STA &4002,Y
+    LDA hud_buffer + 1,Y
+.hud_d1
+    STA &4001,Y
     LDA hud_buffer,Y
-.hud_dst
-    STA &4000,Y                     \ self-modified: the screen start
+.hud_d0
+    STA &4000,Y
+    DEY
+    DEY
+    DEY
     DEY
     BPL hud_row
     RTS
+    ASSERT HUD_BYTES MOD 4 = 0
 .hud_by_cell
     LDA #LO(hud_buffer)
     STA d_ptr
