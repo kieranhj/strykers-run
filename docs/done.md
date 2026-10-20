@@ -122,6 +122,16 @@ MOS's sound, skipping transparent bytes, building the column on the pass before.
   1,998 on seed 1, 0 of 598 holding RIGHT, 339 of 12,235 over the whole world (known and left).
   The milestone tags renamed for what each achieved.
 
+### Layer 5 - the original's quirks (decision 13; from 2026-10-20, in progress)
+
+- **BUGS #1 fixed** (`7517558`): the ground's texture from a fixed 31-byte table, not whatever
+  zero page held; game state identical to the control, the screen to the full-redraw oracle (seed
+  5, the whole world); an unshifted and a shifted build now draw the same ground; work a pass
+  34,825.5 -> 34,794.0 (seed 1), 39,341.1 -> 39,273.5 (holding RIGHT).
+- **BUGS #2 closed, no change**: the original never reads past the legs sprite (jsbeeb, 4 seeds x
+  30,000 frames on the step 1 layout); the read step 1 saw was its test build's own data, moved
+  under the screen by the ground patch's 4 bytes. Step 2's renderer walks counted, decoded columns.
+
 ## Tooling
 
 - **Two builds from one repository** (decision 28, `7e60e02`): the POSIX `Makefile` beside

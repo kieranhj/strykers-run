@@ -19,13 +19,11 @@ and 39,341 holding RIGHT, of the 79,872 two fields give.
 ## Room (the shipping build's listing, 2026-10-20)
 
 Next to none where the renderer can read while it draws: main RAM 9 bytes (`&33F7-&33FF`), bank 4
-43, HAZEL 24. Elsewhere: `moved_0a20` 173, under ANDY 444, banks 5 / 6 / 7 388 / 530 / 481,
+43, HAZEL 24. Elsewhere: `moved_0a20` 142, under ANDY 444, banks 5 / 6 / 7 388 / 530 / 481,
 `MGAME`'s carrying room 849. Any idea below that adds code or data in play starts by finding room.
 
 ## Layer 5 - quirks and original glitches (decision 13)
 
-- BUGS #1, a fixed ground texture table (RAM for cycles item 4's ground textures as columns is
-  the way; it also takes ~520 cycles off a scroll); BUGS #2, the legs sprite overrun.
 - Check in jsbeeb, then fix: a scroll column lost when moving with `frame` >= 0 (firing in a
   helicopter while moving); the column replotted after a hostile collision.
 

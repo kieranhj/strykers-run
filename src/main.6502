@@ -17,8 +17,8 @@
 \ The game moves down, not up, because its resident part already ends at &3FFF, under the
 \ screen. &0D00 is DFS's NMI page and, at &0DF0, the paged ROMs' workspace pointers: free once
 \ the stub has selected *TAPE and (test builds only) taken the ROMs out of the ROM type table.
-\ Test builds also change the two places the original depends on where its data happens to be
-\ (BUGS.md #1, #2), identically in the control and the shifted build. SHIFT=0 is the shipping
+\ Test builds once also changed two places the original was thought to depend on where its data
+\ happens to be (BUGS.md #1, fixed, and #2, closed, in layer 5): no longer. SHIFT=0 is the shipping
 \ build and must stay byte-identical to the reference.
 GAME_DOWN = SHIFT * (1 - SHIFT_END)
 \ The banks move by whole pages only (SHIFT rounded down): their music must stay page-aligned,

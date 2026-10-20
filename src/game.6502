@@ -5026,7 +5026,7 @@ ASSERT shown_screen < &3000
 .unused_33b9    \ # Table would start at &338e
 \ Step 2: the 71 bytes the standard version's table left here (never read or written:
 \ a 30,000-frame watch of &33B9-&33FF, play and title, 2026-10-16) hold layer 1's new code.
-\ Padded to its old end so the font and the sprites above stay where they were (BUGS #1, #2).
+\ Padded to its old end so the font and what follows stay where they were (once for BUGS #1, #2; neither needs it since layer 5).
     INCLUDE "lib/keydown.6502"
 
 \ Step 2 (decision 17): the random numbers the original read from User VIA T2. A 16-bit

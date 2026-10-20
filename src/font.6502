@@ -1,5 +1,5 @@
-\ font.6502 - the in-game font: INCLUDEd by game.6502, before the mover sprites in the
-\ shipping build and after them in the relocation test builds (BUGS.md #2).
+\ font.6502 - the in-game font: INCLUDEd by game.6502, before dummy_sprite (the mover sprites it
+\ once preceded left main RAM in layer 3; BUGS.md #2, closed, was a step 1 test build's).
 
 .font_data    \ # start with A, 60 = " ", six bytes per character
     EQUB &FF, &F9, &19, &19, &FF, &00    \ &00 : "A"

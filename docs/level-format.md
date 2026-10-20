@@ -335,7 +335,7 @@ its own variables in the 56 bytes after each one (decision 32). `src/prebuild.65
 - **MGAME's tables are packed** at `&0E00-&18DE`, with code after them, and main RAM has 20
   bytes free (`SKIP unused_3400_original`). (2026-10-20: decision 40 moved the level tables to
   `moved_0a20`, `&0AB4-&0C65` then, and others to HAZEL; the code now starts at `&14DF`; main RAM
-  has 9 bytes free, `moved_0a20` 173: CLAUDE.md "Memory".) Everything from `&3400` must stay put (BUGS #1, #2).
+  has 9 bytes free, `moved_0a20` 173: CLAUDE.md "Memory".) Everything from `&3400` had to stay put (BUGS #1, #2; neither needs it since layer 5).
   Larger tables must move, and they are read with absolute,X/Y addressing, so a table must stay
   under 256 bytes, or be split, or have its code changed. `scenery_data_*` are read by pointer,
   so they can be any size and anywhere the scroll can see.

@@ -34,7 +34,7 @@ RIGHT. Its `CLC` also makes true again what `edge_left_loop` assumes on entry (C
 round 2, `ground_square` left C = 1 for ground types 1-3, which only changed the prefilter's
 answer for slot 0, the player, never on the edge.
 
-## 2. Drawing the player's legs reads past the end of the sprite (original behaviour; OPEN: layer 5)
+## 2. Drawing the player's legs reads past the end of the sprite (NOT the original's: a step 1 test build's; CLOSED in layer 5)
 
 Seen 2026-10-16 by the relocation test: unpacking `mover_sprite_00` (SPRITE_LEGS_ONE, the last
 mover sprite, ending at &3FFF) with the column pointer advanced by clipping, the unpacker read on
@@ -44,6 +44,28 @@ from &3FE1 (jsbeeb 2.5.0, frame ~2458 of the lockstep script). Not yet understoo
 count outruns the data; to look at in step 2, where the sprites will move and this will read
 something else. The relocation test builds (`SHIFT` set) put the font after this sprite so the
 overrun reads the same bytes in both.
+**Closed** (layer 5, 2026-10-20): the original never reads past this sprite, and step 2 cannot.
+- *The original* (statically): sprite 0 is 7 columns, headers at `&3FDD`, `&3FDF`, `&3FE7`,
+  `&3FEF`, `&3FF9`, `&3FFB`, `&3FFD`, its end marker `&82` at `&3FFF`; both its flipped and
+  unflipped addresses are right (`&3FDD`, `&3FFD`); both clip walks stop only on headers and walk
+  at most the type's width in columns (6, so 7 columns: all of sprite 0); `end_of_column`'s
+  look-ahead reads `&3FFF` at most. *In jsbeeb 2.10.0*, every indexed read based inside a mover
+  sprite watched on the step 1 tag's layout (`DEBUG_LIVES`, 4 seeds x 30,000 frames of the
+  lockstep script; and the reference build, 12,000 frames): no read past any sprite's end; sprite
+  0's bases are exactly its 7 headers.
+- *What was seen*: `&3FE1` is `&3FDD + 4`, and `&3FE1 + &1F` is the sprite's own byte 31 of 35.
+  The relocation builds' ground patch (BUGS #1) added 4 bytes before the sprites; until
+  `unused_3400`'s fragment was shortened by those 4 bytes, the test build's sprite 0 lay at
+  `&3FE1-&4003`, its last bytes under the screen, so the unpacker read its own data from `&4000`.
+  The report, the patch and the shortening landed in one commit (`12017cb`), so that build cannot
+  be rebuilt from git: the arithmetic is the evidence.
+- *Step 2*: since layer 3 the renderer draws decoded columns (`tools/sprites.py` stops at the end
+  marker) and walks exactly `sprite_column_count` columns, each 2 bytes plus its count (all 72
+  straight sprites' counts end exactly at their data); clipping only skips drawing a column;
+  `walk_column` reads no sprite data; the logic's plot calls read `dummy_sprite` (32 zero bytes)
+  and stay inside it; the compiled kinds are code. No change was needed.
+With BUGS #1 fixed as well, nothing depends any more on the data from `&3400` staying where the
+original had it.
 
 ## 3. The palette split is missing from about one field in a hundred (original behaviour; FIXED in layer 1, `1041a13`)
 
