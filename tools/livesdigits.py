@@ -44,5 +44,7 @@ for lives in range(16):
     lines.append("    EQUB " + ", ".join(f"&{b:02X}" for c in cols for b in c) + f"    {BS} {lives}")
     if lives == 10:
         lines.append("ENDIF")
+        lines.append("IF GAMEPLAY_SHIELD = 0   " + BS + " 11-15: never shown; GAMEPLAY_SHIELD's renderer copies the HUD, and wants the room")
+lines.append("ENDIF")
 Path(out).write_text("\n".join(lines) + "\n")
 print(f"wrote {out}: font {len(font)} bytes")
