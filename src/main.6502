@@ -33,6 +33,8 @@ PAD_END   = (SHIFT AND &FF00) * SHIFT_END
 \ Gameplay flags (decision 43), off in the shipping build, which with all of them off is the
 \ original game; each changes how it plays:
 \   GAMEPLAY_SHIELD  a recharging shield in place of lives as hit points (decision 44, src/shield.6502)
+GAMEPLAY_ANY = GAMEPLAY_SHIELD        \ the OR of every GAMEPLAY_ flag: their builds need not keep the main block's
+                                    \ addresses, so its unexecuted padding goes (src/game.6502), room for their hooks
 DEBUG_ANY = DEBUG_LIVES OR DEBUG_FULLREDRAW   \ the OR of every DEBUG_ flag (GAMEPLAY_ flags are not debug: RELEASE allows them)
 VERSION_LINE = "v0.1"
 INCLUDE "../build/build_time.6502"   \ BUILD_TIME, written by tools/build_stamp.py

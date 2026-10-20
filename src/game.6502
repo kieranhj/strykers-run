@@ -1397,7 +1397,9 @@
     BPL scroll_layers_right_loop
     LDA #&14                        \ KC; grind: the walk ends by putting the foreground back (a tail call),
     JMP change_pixel_tables         \ so a prebuilt scroll (whose prebuild did it) skips it below
+IF GAMEPLAY_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
     EQUB &60                        \ grind: never run; keeps layers_right_done and what follows where they were
+ENDIF
 .layers_right_done
     LDY #&01
     JSR add_ground_to_column_buffer \ Plot a column of ground
@@ -1488,7 +1490,9 @@
     BEQ move_backwards_through_sprite\ if scrolling right
 \ #     also     BNE move_backwards_through_sprite                    # if scrolling left
     JMP move_forward_through_sprite
+IF GAMEPLAY_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
     SKIP 5                          \ step 2 (grind): never run; keeps the code after where it was
+ENDIF
 .move_backwards_through_sprite
     JSR use_scenery_sprite_address_for_layer_Y\ Leaves X = scenery_sprite_address_high
     LDA (scenery_sprite_address),Y
@@ -1562,7 +1566,9 @@
     BPL add_ground_to_column_buffer_loop
 .leave_1c4e
     RTS
+IF GAMEPLAY_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
     SKIP 3                          \ layer 5: never executed; keeps ground_left_x_low and what follows where they were
+ENDIF
 
 .ground_left_x_low
     EQUB &00
@@ -1881,7 +1887,9 @@
 .get_mover_type_and_colour
     \ (grind) get_mover_type_and_colour and get_mover_Y_x are inlined into plot_mover below; these
     \ 12 bytes, never executed, keep everything after plot_mover's TAX where it was
+IF GAMEPLAY_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
     SKIP 12
+ENDIF
 not_white = leave_1e3e - 4                \ plot_mover's BCS not_white + 4 lands on an RTS
 .plot_player
     LDY #&00                        \ MOVER_PLAYER
@@ -1971,7 +1979,9 @@ not_white = leave_1e3e - 4                \ plot_mover's BCS not_white + 4 lands
     STA pixel_table_address_low
 .leave_1f08
     RTS
+IF GAMEPLAY_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
     SKIP 13                         \ free (the unpack path's bytes): walk_column stays where it was
+ENDIF
 
 \ Step 2 (layer 2, then layer 3 option C): what unpack_column_of_sprite leaves behind, for the
 \ game's own calls, which no longer draw. The original's logic reads it: mover_x_low, stepped on
@@ -3163,8 +3173,10 @@ move_mover_routine_address_high = * + 2
 .replot_player
     JMP plot_player                 \ grind: plot_player sets Y = 0 and writes C before reading it; the raster wait
                                     \ (check_if_raster_is_in_mover: CLC : RTS) and unbuffer_player (an RTS) went
+IF GAMEPLAY_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
     EQUB &EA, &EA, &EA, &EA, &EA, &EA, &EA, &EA, &EA    \ spare (grind): the 10 bytes freed above, kept so is_descending_helicopter and all after stay put
     EQUB &EA
+ENDIF
 .is_descending_helicopter
     LDA helicopter_fuel_high
     BMI suppress_horizontal_movement
@@ -3248,7 +3260,9 @@ move_mover_routine_address_high = * + 2
     JSR remove_mover
 .not_a_projectile
     JMP skip_plotting_player
+IF GAMEPLAY_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
     EQUB &EA, &EA, &EA, &EA, &EA    \ spare (grind's 18; layer 5 took 13), kept so skip_killing_player and all after stay put
+ENDIF
 .skip_killing_player
     JSR plot_player
 .skip_plotting_player
@@ -3261,7 +3275,9 @@ move_mover_routine_address_high = * + 2
     LDX player_y_velocity
     BNE end_jump
     RTS                             \ was BEQ leave_27b8 (always)
+IF GAMEPLAY_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
     EQUB &EA, &EA                   \ spare: the 21 bytes kept, so nothing after moves
+ENDIF
 .not_on_ground
     LDX player_y_velocity
     BNE not_starting_to_fall
@@ -3294,7 +3310,9 @@ move_mover_routine_address_high = * + 2
     STZ player_y_velocity           \ grind: 65C02 STZ for LDA #&00 : STA
     LDA #&28                        \ Play sound for landing
     JMP play_sound                  \ grind: tail call (its RTS returns to our caller)
+IF GAMEPLAY_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
     SKIP 2                          \ grind: never run; keeps leave_27b8 and all after it in place
+ENDIF
 .leave_27b8
     RTS
 
@@ -3369,7 +3387,9 @@ move_mover_routine_address_high = * + 2
     INC A                           \ 65C02 opcode
     INC A                           \ 65C02 opcode: field_count + 2
     BRA set_flip_field              \ 65C02 opcode
+IF GAMEPLAY_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
     EQUB &00, &00, &00, &00, &00, &00 \ never run: keeps the 18 bytes, so nothing after moves
+ENDIF
 .flip_next_field_eb41b
     INC A                           \ 65C02 opcode: field_count + 1
 .set_flip_field
@@ -4076,7 +4096,9 @@ stf_x_max_high_operand_s = * + 1
     BCC calculate_bullet_screen_address
     INX
     BPL calculate_bullet_screen_address\ Always branches
+IF GAMEPLAY_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
     SKIP 9                          \ Grind: keeps the code after this where it was
+ENDIF
 .subtract_x_offset
     SBC #&04                        \ C = 1
     BCS calculate_bullet_screen_address
@@ -4861,7 +4883,9 @@ ASSERT shown_screen < &3000
 .leave_plot_lives
     RTS
 
+IF GAMEPLAY_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
     SKIP 8                          \ grind: never run (after RTS); the row loop below is 8 bytes
+ENDIF
                                     \ shorter, so everything from its end on stays in place
 .plot_character    \ # Called with A = font offset for characte
     TAX
