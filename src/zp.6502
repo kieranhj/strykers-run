@@ -11,6 +11,7 @@ screen_start_address_high                    = &01
 count                                        = &02
 mover_to_update                              = &03
 unused                                       = &03
+LIVES_ZONE_COLUMNS = 4                          \ the top line's columns the renderer redraws: the lives digit's
 colour                                       = &78
 initial_new_movers_offset                    = &78
 ranks_remaining                              = &78

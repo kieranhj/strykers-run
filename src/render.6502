@@ -360,6 +360,7 @@ MAX_BLOCK   = &2A0                  \ more than any mover's save block: 636 byte
 .zones
     \ ---- the zone: the columns the scroll writes or leaves, and the lives digit's ----
     STZ zone_n
+    STZ lz_n                        \ 65C02 opcode: the lives digit's, as ranges (add_lives_zone)
     LDX pending_n
     BEQ no_scroll_zone
     LDY #0                          \ Y = which pending entry
@@ -818,29 +819,19 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     JMP add_zone_column
 }
 
-\ add_lives_zone: A/X = a viewport_left (low/high); the four columns the lives digit covers
+\ add_lives_zone: A/X = a viewport_left (low/high); the LIVES_ZONE_COLUMNS columns the lives digit
+\ covers, as one range kept by its last column (lz_lo/lz_hi): span_in_zone tests it in one go, where
+\ it tested each column (about 30 cycles a column, for every mover it classified)
 .add_lives_zone
 {
-    STA zone_tmp_lo
-    STX zone_tmp_hi
-    LDA #4
-    STA zone_count
-.each
-    LDY zone_n                      \ add_zone_column inlined: Y = where the list ends
-    TAX                             \ X = 4 (A is zone_count's 4): the columns to add
-.column
-    LDA zone_tmp_lo
-    STA zone_lo,Y
-    LDA zone_tmp_hi
-    STA zone_hi,Y
-    INY
-    INC zone_tmp_lo
-    BNE same_page
-    INC zone_tmp_hi
-.same_page
-    DEX
-    BNE column
-    STY zone_n
+    CLC
+    ADC #LIVES_ZONE_COLUMNS - 1
+    LDY lz_n
+    STA lz_lo,Y
+    TXA
+    ADC #0
+    STA lz_hi,Y
+    INC lz_n
     RTS
 }
 
@@ -863,13 +854,13 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     CLC
     ADC #2
     STA span_w2
-    LDX zone_n
-    BEQ none
     LDA span_x_lo                   \ span_x -= 1 once (span_x is the caller's, dead after):
     BNE no_borrow                   \ then d = column - span_x
     DEC span_x_hi
 .no_borrow
     DEC span_x_lo
+    LDX zone_n
+    BEQ lives
 .each
     DEX
     LDA zone_hi,X                   \ d's high byte less 1 into span_d + 1 ...
@@ -889,6 +880,32 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
 .next
     TXA
     BNE each
+.lives                              \ the lives digit's ranges: [last - (LIVES_ZONE_COLUMNS - 1), last] meets
+    LDX lz_n                        \ [span_x - 1, span_x + A + 1] if 0 <= last - (span_x - 1) <=
+    BEQ none                        \ A + 2 + LIVES_ZONE_COLUMNS - 1: the test above, the width widened
+    LDA span_w2
+    CLC
+    ADC #LIVES_ZONE_COLUMNS - 1
+    STA span_w2
+.lz_each
+    DEX
+    LDA lz_hi,X
+    CLC
+    SBC span_x_hi
+    STA span_d + 1
+    LDA lz_lo,X
+    SEC
+    SBC span_x_lo
+    STA span_d
+    LDA span_d + 1
+    ADC #0
+    BNE lz_next
+    LDA span_w2
+    CMP span_d
+    BCS hit
+.lz_next
+    TXA
+    BNE lz_each
 .none
     CLC
     RTS
