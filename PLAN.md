@@ -15,11 +15,15 @@ and 39,341 holding RIGHT, of the 79,872 two fields give.
   jsbeeb only (`docs/step2-layer2.md` "Open").
 - **Which ideas to build** (below): each changes how the original plays (rule 1), so each needs a
   decision first.
+- **The front end on hardware**: the scroll text and the credit line run in the vsync interrupt
+  with interrupts re-enabled (decisions 57, 60); seen in jsbeeb only.
 
 ## Room (the shipping build's listing, 2026-10-20; the main block 2026-10-21)
 
 Next to none where the renderer can read while it draws: the main block 4 bytes (its limit is
-`kc_slot0_y` + 257 <= `&3400`, `src/kindcache.6502`, not the `SKIP` after it), bank 4 43, HAZEL 24. Elsewhere: `moved_0a20` 142, under ANDY 444, banks 5 / 6 / 7 388 / 530 / 481,
+`kc_slot0_y` + 257 <= `&3400`, `src/kindcache.6502`, not the `SKIP` after it), bank 4 43, HAZEL 24.
+Elsewhere: `moved_0a20` 142, under ANDY 444, banks 5 / 6 / 7 28 + 17 / 530 / 481 (bank 5:
+before its music / at its end, after decisions 57 and 60; 2026-10-21),
 `MGAME`'s carrying room 849. Any idea below that adds code or data in play starts by finding room.
 
 ## Layer 5 - quirks and original glitches (decision 13)
@@ -27,7 +31,7 @@ Next to none where the renderer can read while it draws: the main block 4 bytes 
 - Check in jsbeeb, then fix: a scroll column lost when moving with `frame` >= 0 (firing in a
   helicopter while moving); the column replotted after a hostile collision.
 
-## Gameplay variations (decisions 43-55, branch `gameplay-shield`)
+## Gameplay variations (decisions 43-56, 59, branch `gameplay-shield`)
 
 Kept separate from `main` for now (KC, 2026-10-21); `main` merged into it as it moves. Each
 variation is a `GAMEPLAY_*` flag, off by default (flags off: byte-identical to `main`);
@@ -45,8 +49,12 @@ Built (2026-10-20/21), each with its harness:
   recharge 2/5/8/10 s, the run time 5/10/15/20 s/off and its charge 5/10/15/20 s, the timer's limit
   3/5/8/10/15 minutes (decision 55). Infinite lives ended by ESCAPE stay
   off the high score table. `tools/optionstest.mjs`.
-- **The timer** (`GAMEPLAY_TIMER`, 47): counting up with a bonus for time under par, or counting
-  down to the skeleton and game over. `tools/timertest.mjs`.
+- **The timer** (`GAMEPLAY_TIMER`, 47, 59): counting up with a bonus for time under par, or counting
+  down to the skeleton and game over; shown as MM:SS.t. `tools/timertest.mjs`.
+- **The front end** (`GAMEPLAY_OPTIONS`, 56): any key leaves the high score table for the menu; the
+  game rules page's layout (heading centred, values right-aligned, "ESCAPE TO RETURN" in the
+  copyright's row); define controls asks for RUN before PAUSE. (The front end's changes for every
+  build, decisions 51, 57, 58, 60, are `main`'s: `docs/done.md`.)
 - **Hits through a friendly soldier** (decision 49, KC's bug): the original passed a projectile's hit
   on to the player when the mover it hit touched the player; gameplay builds let the mover take
   it. `tools/selfhit.mjs`.
@@ -72,8 +80,9 @@ Left:
   item 10). Needs a measured design, and b2 or real hardware.
 - **Merging into `main`**, when KC says: then one disc with both builds and a boot menu, for a
   release (the brief, "Discs").
-- **Room** in the build with every flag (2026-10-21): bank 4 2 and 4 under ANDY (nearly gone), bank 5 478 + 162 + 388, main
-  block 29 below `kc_slot0_y`'s limit, bank 6 28, bank 7 281 (the brief, items 8, 15 and 20).
+- **Room** in the build with every flag (2026-10-21, after decision 60): bank 4 2 and 4 under ANDY
+  (nearly gone), main block 29 below `kc_slot0_y`'s limit, bank 6 28, bank 7 281, bank 5 155 + 16 + 17 (its &8000 block, before the music, at its end)
+  (the brief, items 8, 15 and 20).
   The timer and the game rules need the unshifted banks.
 
 ## The level editor, v1 (decision 41)

@@ -140,6 +140,19 @@ MOS's sound, skipping transparent bytes, building the column on the pass before.
   (X = 1) 3 or 5, else a message and back to the prompt; jsbeeb B (the message) and Master (frontend
   0 failed); the Compact's value documented, not measured (jsbeeb has none).
 
+### The front end (2026-10-21, all builds)
+
+- **The loader stops on anything but a Master 128 or Compact** (decision 51, `86a457a`, `ee37141`):
+  OSBYTE 0 (X = 1) 3 or 5, else "Needs a BBC Master 128 or Compact." and back to the prompt; jsbeeb B
+  (the message) and Master (frontend 0 failed); the Compact's value documented, not measured.
+- **The scroll text a pixel every 2 fields** (decision 57, `9c00de9`): the original moved 2 pixels
+  every 4; `scroll_pixel`, the same 25 pixels a second, run with interrupts on (the MOS's 100 Hz
+  tick, the music, unharmed). `tools/scrolltext.mjs`: 197 exact one-pixel steps in 400 fields.
+- **Define controls aligned on its colons; "OPTIONS" gone from the menu** (decision 58, `dd44f04`).
+- **The credit line cycles with "REDUX BY BITSHIFTERS 2026"** (decision 60, `2216a31`): every 5 s,
+  each glyph wiped a pixel at a time in its cell, a step every 2 fields on the fields the scroll text
+  does not use. `tools/credits.mjs`: every field matched against both lines at every shift.
+
 ## Tooling
 
 - **Two builds from one repository** (decision 28, `7e60e02`): the POSIX `Makefile` beside
