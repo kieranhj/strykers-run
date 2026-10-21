@@ -2441,7 +2441,7 @@ IF GAMEPLAY_SHIELD
     JSR shield_tick                 \ decision 44 (src/shield.6502, bank 4: ROMSEL &04 here)
 ENDIF
 IF GAMEPLAY_TIMER OR GAMEPLAY_RUN
-    JSR timer_tick_call             \ decisions 47, 52 (src/timer.6502, src/run.6502: bank 6)
+    JSR timer_tick_call             \ decisions 47, 52 (src/timer.6502 in bank 6, src/run.6502 in bank 7)
 ENDIF
     JSR check_for_player_input
     LDA keys_pressed_bitmap         \ Negative if  &80 (KEY_PAUSE) set
@@ -2469,16 +2469,20 @@ ENDIF
     JSR update_movers
     JMP main_game_loop
 IF GAMEPLAY_TIMER OR GAMEPLAY_RUN
-\ decisions 47, 52: the timer's and the run meter's code is in bank 6 (src/timer.6502, src/run.6502):
-\ paged in for it, bank 4 back after
+\ decisions 47, 52, 59: the run meter's code is in bank 7 (src/run.6502), the timer's in bank 6
+\ (src/timer.6502): each paged in for it, bank 4 back after
 .timer_tick_call
+  IF GAMEPLAY_RUN
+    LDA #7
+    STA os_ram_copy_of_currently_selected_rom
+    STA romsel                      \ Paged ROM latch
+    JSR run_tick
+  ENDIF
+  IF GAMEPLAY_TIMER
     LDA #6
     STA os_ram_copy_of_currently_selected_rom
     STA romsel                      \ Paged ROM latch
-  IF GAMEPLAY_TIMER
-    JSR timer_tick                  \ (which ticks the run meter first, with GAMEPLAY_RUN)
-  ELSE
-    JSR run_tick
+    JSR timer_tick
   ENDIF
 .bank4_back
     LDA #&04
@@ -2488,7 +2492,7 @@ IF GAMEPLAY_TIMER OR GAMEPLAY_RUN
 ENDIF
 IF GAMEPLAY_TIMER
 .timer_bonus_call
-    LDA #6
+    LDA #7                          \ decision 59: the bonus in bank 7 (src/timer_bonus.6502)
     STA os_ram_copy_of_currently_selected_rom
     STA romsel
     JSR timer_bonus
@@ -5578,18 +5582,22 @@ target_address_high = * + 2
     STA sound_data_0880 - 1,X
     DEX
     BNE move_4600_to_46df_loop
-    LDX #0                          \ decision 40: the block at &0A20, its whole hole (&0A20-&0CFF)
+    LDX #0                          \ decision 40: the block at MOVED_ORG, its whole hole (to &0CFF)
 .move_0a20_loop
     LDA moved_0a20_load,X
-    STA &0A20,X
+    STA MOVED_ORG,X
     LDA moved_0a20_load + &100,X
-    STA &0B20,X
+    STA MOVED_ORG + &100,X
+IF GAMEPLAY_ANY                     \ decision 59: from &0982, three pages and the rest
+    LDA moved_0a20_load + &200,X
+    STA MOVED_ORG + &200,X
+ENDIF
     INX
     BNE move_0a20_loop
-    LDX #&E0
+    LDX #LO(&D00 - MOVED_ORG)
 .move_0a20_loop_2
-    LDA moved_0a20_load + &200 - 1,X
-    STA &0C20 - 1,X
+    LDA moved_0a20_load + (&D00 - MOVED_ORG) - LO(&D00 - MOVED_ORG) - 1,X
+    STA &D00 - LO(&D00 - MOVED_ORG) - 1,X
     DEX
     BNE move_0a20_loop_2
     JSR unpack_for_play             \ step 2 layer 4: HAZEL's compiled kinds, the tunes
@@ -5751,7 +5759,12 @@ SECTION moved_0880, org = &0880, cmos = TRUE
 ENDSECTION
 
 .moved_0a20_load     \ step 2 (RAM for cycles 4): carried in the save arena (decision 33), copied to &0A20 at start-up
-SECTION moved_0a20, org = &0A20, cmos = TRUE
+IF GAMEPLAY_ANY                     \ decision 59: gameplay builds start it at &0982, after movers_helicopter_fuel_high
+    MOVED_ORG = &0982               \ (&0982-&0A1F: !BOOT's and SRRUN's, dead in play; nothing writes there in a game
+ELSE                                \ or the front end after, measured 2026-10-21), for the HUD's room after it
+    MOVED_ORG = &0A20
+ENDIF
+SECTION moved_0a20, org = MOVED_ORG, cmos = TRUE
 \ &0982-&0CFF is never read or written after start-up but by the game (front end and play, 50,000
 \ frames, 2026-10-17); &0A00-&0A1F is kept clear: the relocation test builds read it as the ground.
 \ Decision 40: the section fills the hole to &0CFF (times_78 is in HAZEL) and the level tables are in it.
@@ -5910,19 +5923,29 @@ ENDIF
 
 .moved_0a20_end
 ENDSECTION
-MOVED_0A20_SIZE = moved_0a20_end - &0A20
+MOVED_0A20_SIZE = moved_0a20_end - MOVED_ORG
 IF GAMEPLAY_SHIELD
-hud_buffer = moved_0a20_end         \ decision 44: the lives digit and the bar (src/shield.6502), not in the file
+hud_buffer = &0C00                  \ decision 44: the lives digit, the bar, the timer (src/shield.6502), not in the file;
+ASSERT moved_0a20_end <= hud_buffer \ a page of its own after moved_0a20 (decision 59), so the renderer's index never crosses one
 game_completed = hud_buffer + HUD_BYTES   \ decision 46: non-zero once the headquarters is reached (options_high_score)
 run_meter = game_completed + 1      \ decision 52 (src/run.6502): the meter, 8.8 (0-RUN_FULL.0), and what a pass
 run_drain = run_meter + 2           \ running takes from it and one not running gives back (shield_new_game)
 run_charge = run_drain + 2
 timer_limit = run_charge + 2        \ decision 55: the timer's start (down) and par (up), BCD seconds, high first
+changed = timer_limit + 2           \ decision 59 (src/timer.6502): the MM:SS.t display's state: a digit drawn
+shown_hi = changed + 1              \ this pass; the seconds shown (BCD); the tenth and seconds last drawn;
+shown_lo = changed + 2              \ the seconds in binary as they are split into minutes
+last_t = changed + 3
+last_hi = changed + 4
+last_lo = changed + 5
+n_lo = changed + 6
+n_hi = changed + 7
+ASSERT n_hi < &0D00
 ASSERT timer_limit + 1 < &0D00, "the run meter and the timer's limit overrun &0CFF"
 ASSERT game_completed < &0D00, "hud_buffer overruns &0CFF by ", game_completed + 1 - &0D00
 ASSERT HI(hud_buffer) = HI(hud_buffer + HUD_BYTES - 1)
 ENDIF
-ASSERT MOVED_0A20_SIZE <= &2E0, "moved_0a20 overruns &0CFF by ", MOVED_0A20_SIZE - &2E0   \ decision 40: to &0CFF
+ASSERT moved_0a20_end <= &D00, "moved_0a20 overruns &0CFF by ", moved_0a20_end - &D00   \ decision 40: to &0CFF
 
 \ ---- Step 2 layer 4: run once from entry_point, carried in the save arena (decision 33) ----
 \ unpack_for_play: the player's compiled sprite kinds that live in HAZEL (tools/compiled.py) copied

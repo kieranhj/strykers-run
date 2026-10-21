@@ -73,7 +73,7 @@ Left:
 - **Merging into `main`**, when KC says: then one disc with both builds and a boot menu, for a
   release (the brief, "Discs").
 - **Room** in the build with every flag (2026-10-21): bank 4 2 and 4 under ANDY (nearly gone), bank 5 478 + 162 + 388, main
-  block 29 below `kc_slot0_y`'s limit, bank 6 78, bank 7 481 (the brief, items 8 and 15).
+  block 29 below `kc_slot0_y`'s limit, bank 6 28, bank 7 281 (the brief, items 8, 15 and 20).
   The timer and the game rules need the unshifted banks.
 
 ## The level editor, v1 (decision 41)

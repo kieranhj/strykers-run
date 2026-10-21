@@ -197,6 +197,11 @@ death respawns whatever the lives, so the test scripts still never end.
    turns about one hit in four into a death; no single wall. A bot's numbers compare the discs, not
    whether a person can finish one.
 
+20. **The timer as MM:SS.t** (decision 59, KC 2026-10-21): the seconds counted as before, the
+   display worked out each pass (the tenths of the pass in the second; counting down, what is left);
+   13 HUD columns. Room: `moved_0a20` from `&0982` in gameplay builds, `hud_buffer` at `&0C00`; the
+   run meter and the bonus to bank 7. Banks after: 6, 28 bytes; 7, 281.
+
 ## Answered (KC, 2026-10-20)
 
 - **High scores with infinite lives:** a game with infinite lives ends only by ESCAPE or by

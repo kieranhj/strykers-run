@@ -2,7 +2,8 @@
 \ 48) lasts RUN_TIME seconds of running, then the player is back to the original's pace until the
 \ meter has refilled past half; it refills whenever the player is not running, empty to full in
 \ RUN_CHARGE seconds. No meter on the screen (KC): a sound when it runs out and one when it is back.
-\ Bank 6, ticked once a pass through timer_tick_call (ROMSEL &06), before the timer.
+\ Bank 7 (decision 59: room for the timer in bank 6), ticked once a pass through timer_tick_call (ROMSEL
+\ &07), before the timer.
 \
 \ run_state (zero page): &80 the player may run; the main block's run check (is_soldier_on_ground)
 \ DECs it to &7F in a pass it runs; 0 tired. run_meter is 8.8: its high byte 0-RUN_FULL.

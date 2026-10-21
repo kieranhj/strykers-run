@@ -180,9 +180,6 @@ SECTION DATA3, org = &8000, load = &FFFF1900, exec = &FFFF1900, filename = "DATA
 IF GAMEPLAY_TIMER
     INCLUDE "timer.6502"            \ decision 47: the timer (called through timer_tick_call: ROMSEL &06)
 ENDIF
-IF GAMEPLAY_RUN
-    INCLUDE "run.6502"              \ decision 52: the run meter (called through timer_tick_call too)
-ENDIF
     ASSERT * + PAD_END <= &C000, "bank 6 overruns its 16K by ", * + PAD_END - &C000
     SKIP PAD_END
 ENDSECTION
@@ -191,6 +188,12 @@ SECTION DATA4, org = &8000, load = &FFFF1900, exec = &FFFF1D00, filename = "DATA
     SKIP PAD_START
     INCLUDE "bank7.6502"
     INCLUDE "compiled_bank7.6502"   \ step 2 layer 4: compiled kinds of the player's parts
+IF GAMEPLAY_RUN
+    INCLUDE "run.6502"              \ decision 52: the run meter (timer_tick_call pages bank 7 for it)
+ENDIF
+IF GAMEPLAY_TIMER
+    INCLUDE "timer_bonus.6502"      \ decisions 47, 59: the time bonus (timer_bonus_call pages bank 7)
+ENDIF
     ASSERT * + PAD_END <= &C000, "bank 7 overruns its 16K by ", * + PAD_END - &C000
     SKIP PAD_END
 ENDSECTION

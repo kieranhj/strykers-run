@@ -45,7 +45,8 @@ RESPAWN_COLUMNS = 40                \ how far the view goes back: half a screen 
 RESPAWN_SAFE    = 50                \ passes of invulnerability after it (2 seconds), the bar flashing
 HUD_BAR_COLUMNS = 4                 \ the bar: 6 pixels in a row (KC, 2026-10-21: contiguous), then a blank column
                                     \ (it wipes the bar's last place when the view scrolls left, as the digit's 4th does)
-TIMER_COLUMNS   = 7                 \ decision 47: three digits of two byte columns, then a blank one
+TIMER_COLUMNS   = 13                \ decisions 47, 59: MM:SS.t, the digits two byte columns each, the colon and
+                                    \ the point one, then a blank one
 IF GAMEPLAY_TIMER
     HUD_COLUMNS = 4 + HUD_BAR_COLUMNS + TIMER_COLUMNS   \ the lives digit's 4 byte columns, the bar's, the timer's
 ELSE

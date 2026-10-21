@@ -1,0 +1,66 @@
+\ timer_bonus.6502 - GAMEPLAY_TIMER's bonus at the headquarters (decision 47): bank 7 (decision 59: room
+\ for the MM:SS.t display in bank 6), through timer_bonus_call (ROMSEL &07).
+
+\ timer_bonus: the headquarters reached (completion_screen): 10 points a second, for each second
+\ under the par (counting up) or each second left (counting down)
+.timer_bonus
+{
+    LDA timer_mode
+    BEQ done
+    CMP #2
+    BNE up
+.each
+    LDA timer_lo
+    ORA timer_hi
+    BEQ done
+    SED
+    SEC
+    LDA timer_lo
+    SBC #1
+    STA timer_lo
+    LDA timer_hi
+    SBC #0
+    STA timer_hi
+    CLD
+    JSR add_ten
+    BRA each                        \ 65C02 opcode
+.up
+    LDA timer_hi                    \ until the time reaches the par
+    CMP timer_limit                 \ decision 55: the par
+    BCC under
+    BNE done
+    LDA timer_lo
+    CMP timer_limit + 1
+    BCS done
+.under
+    SED
+    CLC
+    LDA timer_lo
+    ADC #1
+    STA timer_lo
+    LDA timer_hi
+    ADC #0
+    STA timer_hi
+    CLD
+    JSR add_ten
+    BRA up                          \ 65C02 opcode
+.done
+    RTS
+\ add_ten: 10 points: the score's tens digit up one, carried as increase_score carries
+.add_ten
+    LDX #4                          \ the tens (game_over_text + 24); the units are never added to
+.carry
+    LDA game_over_text + 20,X
+    CLC
+    ADC #6                          \ a digit is 6 bytes of the font on
+    CMP #&A8                        \ past "9"
+    BCC store
+    LDA #&6C                        \ "0", and one into the next digit up
+    STA game_over_text + 20,X
+    DEX
+    BPL carry
+    RTS
+.store
+    STA game_over_text + 20,X
+    RTS
+}

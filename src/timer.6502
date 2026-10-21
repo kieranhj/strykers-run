@@ -14,11 +14,14 @@
 \ rules screen's limit replaces it (decision 55): timer_limit, set at the game's start (BCD, high first)
 
 \ timer_tick: once a pass (main_game_loop, after shield_tick)
+TIMER_MM    = HUD_TIMER             \ decision 59: the byte offsets in hud_buffer of the minutes' two digits,
+TIMER_COLON = HUD_TIMER + 32        \ the colon, the seconds' two, the point and the tenth
+TIMER_SS    = HUD_TIMER + 40
+TIMER_POINT = HUD_TIMER + 72
+TIMER_TENTH = HUD_TIMER + 80
+
 .timer_tick
 {
-IF GAMEPLAY_RUN
-    JSR run_tick                    \ decision 52 (src/run.6502): the run meter, through the same paging
-ENDIF
     LDA timer_ready
     BNE ready
     STZ timer_hi                    \ 65C02 opcodes
@@ -41,15 +44,24 @@ ENDIF
     BPL clear
     DEC timer_ready                 \ &FF
     LDA timer_mode
-    BNE show                        \ off: the digits stay blank
+    BNE start_show                  \ off: the digits stay blank
     RTS
+.start_show                         \ decision 59: the colon and the point, once; the rest forced to draw
+    LDA #&28                        \ a left pixel, black: the colon's rows 3 and 5, the point's 6
+    STA hud_buffer + TIMER_COLON + 3
+    STA hud_buffer + TIMER_COLON + 5
+    STA hud_buffer + TIMER_POINT + 6
+    LDA #&FF
+    STA last_t
+    STA last_lo
+    JMP show
 .ready
     LDA timer_mode
-    BEQ done
+    BEQ out_off
     INC timer_frac
     LDA timer_frac
     CMP #25                         \ a second of the design speed
-    BCC done
+    BCC show                        \ (decision 59: the tenths each pass)
     STZ timer_frac
     SED
     LDA timer_mode
@@ -72,6 +84,7 @@ ENDIF
     BRA show                        \ over (time_up_now, src/shield_hi.6502). 65C02 opcode
 .out
     CLD
+.out_off
     RTS
 .up
     CLC
@@ -89,25 +102,163 @@ ENDIF
     LDA #&99
     STA timer_lo
     CLD
-    RTS
+    BRA show                        \ 65C02 opcode
 .show
-    LDY #HUD_TIMER                  \ hundreds, tens, units: two byte columns each
+\ decision 59 (KC: "make the timer be MM:SS.t"): the seconds count as before (BCD, timer_hi/lo, the
+\ game's rules and the bonus read them); what is shown is worked out each pass: counting up, the
+\ seconds and a tenth from the pass in the second (timer_frac, 0-24); counting down, what is left
+\ (a second less once the second has begun, and the tenths of the passes left in it). Only what changed is drawn
+\ (the tenth every 2-3 passes, the minutes and seconds once a second), and then hud_serial bumped
+    STZ changed                     \ 65C02 opcodes
+    LDX timer_frac
+    LDA timer_lo
+    STA shown_lo
     LDA timer_hi
-    JSR digit
-    LDY #HUD_TIMER + 16
+    STA shown_hi
+    LDA timer_mode
+    CMP #2
+    BNE shown_up
+    TXA
+    BEQ whole                       \ counting down at the second's start: S.0
     LDA timer_lo
-    LSR A
-    LSR A
-    LSR A
-    LSR A
-    JSR digit
-    LDY #HUD_TIMER + 32
+    ORA timer_hi
+    BEQ whole                       \ (or at 0: time is up)
+    SED                             \ a second less, and 9 less the tenth of the pass before
     LDA timer_lo
+    SEC
+    SBC #1
+    STA shown_lo
+    LDA timer_hi
+    SBC #0
+    STA shown_hi
+    CLD
+    LDA #25                         \ the tenths of the passes left in this second (25 - frac)
+    SEC
+    SBC timer_frac
+    TAX
+    JSR tenth
+    BRA shown_t                     \ 65C02 opcode
+.whole
+    LDA #0
+    BRA shown_t
+.shown_up
+    JSR tenth
+.shown_t
+    CMP last_t
+    BEQ same_tenth
+    STA last_t
+    LDY #TIMER_TENTH
+    JSR digit
+    INC changed
+.same_tenth
+    LDA shown_lo
+    CMP last_lo
+    BNE new_second
+    LDA shown_hi
+    CMP last_hi
+    BEQ shown_done
+.new_second
+    LDA shown_lo
+    STA last_lo
+    LDA shown_hi
+    STA last_hi
+    INC changed
+    LDA shown_lo                    \ the seconds in binary (0-999): units, + 10 a ten, + 100 a hundred
     AND #15
-    JSR digit
+    STA n_lo
+    STZ n_hi
+    LDA shown_lo
+    LSR A
+    LSR A
+    LSR A
+    LSR A
+    TAX
+    BEQ tens_done
+.tens
+    LDA n_lo
+    CLC
+    ADC #10
+    STA n_lo
+    DEX
+    BNE tens
+.tens_done
+    LDX shown_hi
+    BEQ hundreds_done
+.hundreds
+    LDA n_lo
+    CLC
+    ADC #100
+    STA n_lo
+    BCC hundred_page
+    INC n_hi
+.hundred_page
+    DEX
+    BNE hundreds
+.hundreds_done
+    LDX #0                          \ minutes: 60s taken away
+.minutes
+    LDA n_lo
+    SEC
+    SBC #60
+    TAY
+    LDA n_hi
+    SBC #0
+    BCC minutes_done
+    STA n_hi
+    STY n_lo
+    INX
+    BRA minutes                     \ 65C02 opcode
+.minutes_done
+    LDA n_lo                        \ the seconds, kept: two_digits uses n_lo
+    PHA
+    TXA
+    LDY #TIMER_MM
+    JSR two_digits
+    PLA
+    LDY #TIMER_SS
+    JSR two_digits
+.shown_done
+    LDA changed
+    BEQ done
     INC hud_serial                  \ the renderer redraws the top line
 .done
     RTS
+
+\ tenth: X (a pass in the second, 0-24) as a tenth: 2 * X DIV 5
+.tenth
+    TXA
+    ASL A
+    LDY #&FF
+.fifths
+    INY
+    SEC
+    SBC #5
+    BCS fifths
+    TYA
+    RTS
+
+\ two_digits: A (0-99) as two digits at Y and Y + 16
+.two_digits
+    LDX #0
+.ten
+    CMP #10
+    BCC units
+    SBC #10                         \ C = 1
+    INX
+    BRA ten                         \ 65C02 opcode
+.units
+    PHA
+    STY n_lo                        \ (the seconds' binary is no longer needed)
+    TXA
+    JSR digit
+    LDA n_lo
+    CLC
+    ADC #16
+    TAY
+    PLA
+    JMP digit
+
+
 
 \ digit: A (0-9) into hud_buffer at Y (its two byte columns' rows 2-6, in black, colour 6)
 .digit
@@ -153,68 +304,4 @@ ENDIF
     EQUB 7, 1, 1, 1, 1              \ 7
     EQUB 7, 5, 7, 5, 7              \ 8
     EQUB 7, 5, 7, 1, 7              \ 9
-}
-
-\ timer_bonus: the headquarters reached (completion_screen): 10 points a second, for each second
-\ under the par (counting up) or each second left (counting down)
-.timer_bonus
-{
-    LDA timer_mode
-    BEQ done
-    CMP #2
-    BNE up
-.each
-    LDA timer_lo
-    ORA timer_hi
-    BEQ done
-    SED
-    SEC
-    LDA timer_lo
-    SBC #1
-    STA timer_lo
-    LDA timer_hi
-    SBC #0
-    STA timer_hi
-    CLD
-    JSR add_ten
-    BRA each                        \ 65C02 opcode
-.up
-    LDA timer_hi                    \ until the time reaches the par
-    CMP timer_limit                 \ decision 55: the par
-    BCC under
-    BNE done
-    LDA timer_lo
-    CMP timer_limit + 1
-    BCS done
-.under
-    SED
-    CLC
-    LDA timer_lo
-    ADC #1
-    STA timer_lo
-    LDA timer_hi
-    ADC #0
-    STA timer_hi
-    CLD
-    JSR add_ten
-    BRA up                          \ 65C02 opcode
-.done
-    RTS
-\ add_ten: 10 points: the score's tens digit up one, carried as increase_score carries
-.add_ten
-    LDX #4                          \ the tens (game_over_text + 24); the units are never added to
-.carry
-    LDA game_over_text + 20,X
-    CLC
-    ADC #6                          \ a digit is 6 bytes of the font on
-    CMP #&A8                        \ past "9"
-    BCC store
-    LDA #&6C                        \ "0", and one into the next digit up
-    STA game_over_text + 20,X
-    DEX
-    BPL carry
-    RTS
-.store
-    STA game_over_text + 20,X
-    RTS
 }

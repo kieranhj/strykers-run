@@ -7,7 +7,7 @@
 //              (counting up) or left (counting down), and by nothing else
 //   time up    --short (counting down only): the timer poked to 5 seconds at the start; at 0 the
 //              player turns into the skeleton (KC, 2026-10-21), then the game is over (game_over_screen)
-//   the digits hud_buffer shows the time (the 3x5 font, black), after every tick
+//   the digits hud_buffer shows the time as MM:SS.t (the 3x5 font, black; decision 59), after every tick
 //
 //   --bonus    the bonus by itself: set times and limits, timer_bonus_call called directly
 //
@@ -57,15 +57,27 @@ if (BONUS) {
     process.exit(fails.length ? 1 : 0);
 }
 let bonus = null, ticks = 0, gameOverAt = null, zeroAt = null, quietUntil = 0, skeletonAt = null;
+// decision 59: MM:SS.t. What should show, from the seconds (BCD), the pass in the second and the mode:
+// counting up the seconds and 2 * frac DIV 5; counting down, once a second has begun, a second less and
+// the tenths of the passes left in it (2 * (25 - frac) DIV 5); then the minutes and seconds of it
 const checkDigits = () => {
-    const t = bcd(zp("timer_hi"), zp("timer_lo")), digits = [Math.floor(t / 100), Math.floor(t / 10) % 10, t % 10];
-    const hud = rd(syms.hud_buffer + HUD_TIMER, 56);
-    for (let d = 0; d < 3; d++) for (let r = 0; r < 8; r++) {
-        const f = r >= 2 && r <= 6 ? FONT[digits[d]][r - 2] : 0;
+    const S = bcd(zp("timer_hi"), zp("timer_lo")), frac = zp("timer_frac");
+    let sec = S, t = Math.floor(2 * frac / 5);
+    if (down) { if (frac === 0 || S === 0) t = 0; else { sec = S - 1; t = Math.floor(2 * (25 - frac) / 5); } }
+    const mm = Math.floor(sec / 60), ss = sec % 60;
+    const cells = [[0, Math.floor(mm / 10)], [16, mm % 10], [40, Math.floor(ss / 10)], [56, ss % 10], [80, t]];
+    const hud = rd(syms.hud_buffer + HUD_TIMER, 8 * (syms.TIMER_COLUMNS ?? 13));
+    const shown = `${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}.${t}`;
+    for (const [at, dg] of cells) for (let r = 0; r < 8; r++) {
+        const f = r >= 2 && r <= 6 ? FONT[dg][r - 2] : 0;
         const c0 = (f & 4 ? 0x28 : 0) | (f & 2 ? 0x14 : 0), c1 = f & 1 ? 0x28 : 0;
-        if (hud[16 * d + r] !== c0 || hud[16 * d + 8 + r] !== c1) { fail(`timer digit ${d} row ${r} wrong for ${t}`); return; }
+        if (hud[at + r] !== c0 || hud[at + 8 + r] !== c1) { fail(`timer digit at +${at} row ${r} wrong for ${shown} (S ${S}, frac ${frac})`); return; }
     }
-    if (hud.slice(48).some((b) => b)) fail("the timer's last column is not blank");
+    for (let r = 0; r < 8; r++) {
+        if (hud[32 + r] !== (r === 3 || r === 5 ? 0x28 : 0)) { fail(`the colon's row ${r}`); return; }
+        if (hud[72 + r] !== (r === 6 ? 0x28 : 0)) { fail(`the point's row ${r}`); return; }
+        if (hud[96 + r] !== 0) { fail("the timer's last column is not blank"); return; }
+    }
 };
 cpu.debugInstruction.add((pc) => {
     if (pc === syms.timer_bonus && (cpu.romsel & 15) === 6 && !bonus) bonus = { score: score(), t: bcd(zp("timer_hi"), zp("timer_lo")) };
