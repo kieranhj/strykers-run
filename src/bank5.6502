@@ -227,6 +227,16 @@ ENDIF
     STY text_offset
     JSR get_keypress
     LDY key_offset
+IF GAMEPLAY_RUN
+    CPY #7                          \ decision 48: the 8th line is RUN (keys + 8), the 9th PAUSE (keys + 7)
+    BCC key_slot
+    PHA
+    TYA
+    EOR #&0F                        \ 7 <-> 8
+    TAY
+    PLA
+.key_slot
+ENDIF
     CMP #&70                        \ ESCAPE
     BNE not_escape
     JMP display_title_screen
@@ -805,12 +815,16 @@ ENDIF
     EQUB &80, &65, &0C    \ at &6580, colour &0c (GG)
     EQUB &0E, &17, &1D, &0E, &1B, &32, &15, &0E, &0A, &1F, &0E, &2F, &25    \ "ENTER/LEAVE: "
     EQUB &FF    \ end of text
-    EQUB &80, &6A, &3E    \ at &6a80, colour &3e (WC)
+IF GAMEPLAY_RUN                     \ decision 48: RUN before PAUSE (KC); define_controls swaps the keys they set
+    EQUB &80, &6A, &0F    \ at &6a80, colour &0f (YY)
+    EQUB &1B, &1E, &17, &2F, &25    \ "RUN: "
+    EQUB &FF    \ end of text
+    EQUB &80, &6F, &3E    \ at &6f80, colour &3e (WC)
     EQUB &19, &0A, &1E, &1C, &0E, &25, &10, &0A, &16, &0E, &2F, &25    \ "PAUSE GAME: "
     EQUB &FF    \ end of text
-IF GAMEPLAY_RUN
-    EQUB &80, &6F, &0F    \ decision 48: at &6f80, colour &0f (YY)
-    EQUB &1B, &1E, &17, &2F, &25    \ "RUN: "
+ELSE
+    EQUB &80, &6A, &3E    \ at &6a80, colour &3e (WC)
+    EQUB &19, &0A, &1E, &1C, &0E, &25, &10, &0A, &16, &0E, &2F, &25    \ "PAUSE GAME: "
     EQUB &FF    \ end of text
 ENDIF
 

@@ -39,7 +39,7 @@ ENDIF
     EQUB &FF
 
 .options_text                       \ rows 1 (the title), 3-17 two apart (the font is two rows tall), 19
-    EQUB LO(&4000 + 1 * &280 + 120), HI(&4000 + 1 * &280 + 120), &3E   \ white on cyan (WC)
+    EQUB LO(&4000 + 1 * &280 + 200), HI(&4000 + 1 * &280 + 200), &3E   \ white on cyan (WC): centred (KC), 10 of 24 in 640
     EQUB &10, &0A, &16, &0E, &25, &1B, &1E, &15, &0E, &1C           \ "GAME RULES"
     EQUB &FE
     EQUB LO(OPT_LINE + 3 * &280), HI(OPT_LINE + 3 * &280), &03      \ red (RR)
@@ -68,6 +68,7 @@ ENDIF
     EQUB LO(OPT_LINE + 17 * &280), HI(OPT_LINE + 17 * &280), &0F    \ yellow (YY): decision 55
     EQUB &08, &25, &1D, &12, &16, &0E, &25, &15, &12, &16, &12, &1D \ "8 TIME LIMIT"
     EQUB &FE
-    EQUB LO(&4000 + 19 * &280 + 128), HI(&4000 + 19 * &280 + 128), &0C \ green (GG): centred (KC), 16 of 24 in 640
+    EQUB LO(&4000 + 24 * &280 + 128), HI(&4000 + 24 * &280 + 128), &0C \ green (GG): centred (KC), 16 of 24 in 640, in the
+                                    \ copyright line's place (row 24, options_screen clears it; the menu puts it back)
     EQUB &0E, &1C, &0C, &0A, &19, &0E, &25, &1D, &18, &25, &1B, &0E, &1D, &1E, &1B, &17   \ "ESCAPE TO RETURN"
     EQUB &FF

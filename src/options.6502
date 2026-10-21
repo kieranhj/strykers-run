@@ -99,6 +99,17 @@ ENDIF
 
 .options_screen
 {
+    LDX #0                          \ row 24 (&7C00-&7E7F, the copyright line: plot_title_screen_text clears
+    TXA                             \ only to &71FF) cleared for "ESCAPE TO RETURN" (KC)
+.clear_row
+    STA &7C00,X
+    STA &7D00,X
+    CPX #&80
+    BCS cleared_high
+    STA &7E00,X
+.cleared_high
+    INX
+    BNE clear_row
     LDX #HI(options_text)
     LDY #LO(options_text)
     JSR plot_title_screen_text

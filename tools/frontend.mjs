@@ -82,7 +82,8 @@ await press("SPACE", 10, 150); await shot("title-after-instructions");
 
 await press("K2", 10, 100); await shot("define-controls");
 const RUN = defines.GAMEPLAY_RUN > 0;                            // GAMEPLAY_RUN (decision 48): a ninth, the run key (O)
-for (const k of ["Q", "W", "E", "R", "T", "Y", "U", "I", ...(RUN ? ["O"] : [])]) await press(k, 10, 50);
+// in screen order: a GAMEPLAY_RUN build asks for RUN (keys + 8) before PAUSE (keys + 7)
+for (const k of ["Q", "W", "E", "R", "T", "Y", "U", ...(RUN ? ["O", "I"] : ["I"])]) await press(k, 10, 50);
 await run(100); await shot("define-controls-done");
 const want = [16, 33, 34, 51, 35, 68, 53, 37, ...(RUN ? [54] : [])].map((n) => n ^ 0xff);
 const keys = rd(syms.keys, want.length);
