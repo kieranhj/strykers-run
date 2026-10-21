@@ -81,9 +81,9 @@ INFO_STAGE = &7E00
 
 MACRO BUILD_STAMP
     BOOT_STAMP_HEAD "Stryker's Run (Enhanced), Master 128"
-    BOOT_FLAG DEBUG_LIVES, "DEBUG_LIVES: infinite lives"
-    BOOT_FLAG DEBUG_FULLREDRAW, "DEBUG_FULLREDRAW: every mover redrawn every pass"
-    BOOT_FLAG SHIFT, "SHIFT: relocation test build"
+    BOOT_FLAG DEBUG_LIVES, "DEBUG_LIVES"
+    BOOT_FLAG DEBUG_FULLREDRAW, "DEBUG_FULLREDRAW"
+    BOOT_FLAG SHIFT, "SHIFT: relocation test"
     BOOT_STAMP_TIME
 ENDMACRO
 
@@ -130,7 +130,7 @@ SECTION Boot, org = BOOT_STAGE, guard = BOOT_STAGE + 256, filename = "!BOOT", ex
     BUILD_STAMP
     EQUB 0
 .boot_refused
-    EQUS 13, "Stryker's Run (Enhanced) needs a", 13, "BBC Master 128 or Master Compact.", 13
+    EQUS "Needs a BBC Master 128 or Compact.", 13   \ (short: !BOOT is one page, with the debug flags' lines)
     EQUB 0
 .boot_run
     EQUS "RUN SRRUN", 13
