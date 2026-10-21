@@ -4651,12 +4651,11 @@ ASSERT shown_screen < &3000
     BNE replot_mover                \ Always branches
 
 .update_mover    \ grind: check_if_mover_can_be_updated inlined; the paths that do not update leave by RTS (C is dead in update_mover's caller)
-    LDX mover_to_update
-    JSR check_for_player_collision_with_mover_Y\ Returns carry set if collision
-    BCS leave_3160                  \ Leave if mover overlaps player
-    LDX viewport_right_high
-    LDA viewport_right_low
-    ADC #&0A                        \ C=0 here (BCS above not taken)
+    JSR get_mover_Y_x_and_y         \ the mover's x (mover_x_low, &C5) for the test below, as the overlap test got it
+    CLC                             \ layer 5 (BUGS #13): the overlap test is below, past the skeletons
+    LDX viewport_right_high         \ and explosions (the player walks through them now, and one under
+    LDA viewport_right_low          \ the player stood frozen: KC, 2026-10-21); C = 0 for the ADC
+    ADC #&0A
     BCC um0db5_skip_overflow
     INX
 .um0db5_skip_overflow
@@ -4669,14 +4668,16 @@ ASSERT shown_screen < &3000
     LDY mover_to_update
     LDA movers_type_and_colour,Y
     AND #&7F
-    CMP #&0D                        \ MOVER_TYPE_SKELETON: below it, update (C=0)
+    CMP #&0D                        \ MOVER_TYPE_SKELETON: below it, update
     BCC um0db5_update
-    CMP #&13                        \ MOVER_TYPE_MINE: mines are updated too (C=0)
-    BCS um0db5_mine
+    CMP #&13                        \ MOVER_TYPE_MINE: mines are updated too
+    BCS um0db5_update
     JMP animate_explosion_or_skeleton\ Explosion or skeleton: animate it and leave (its RTS returns from update_mover)
-.um0db5_mine
-    CLC
 .um0db5_update
+    LDX mover_to_update
+    JSR check_for_player_collision_with_mover_Y\ Returns carry set if collision
+    BCS leave_3160                  \ Leave if mover overlaps player (C = 0 on: consider_mover_firing_bullet)
+    LDY mover_to_update
     JSR consider_mover_firing_bullet\ Returns carry clear if mover fired bullet
     BCC leave_3160
     JSR consider_mover_firing_grenade\ Returns carry clear if mover fired grenade
