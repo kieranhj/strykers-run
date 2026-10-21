@@ -171,7 +171,7 @@ death respawns whatever the lives, so the test scripts still never end.
    to bank 7 was costed first: the kinds' sizes, 569-921 bytes, do not pack into what banks 6 and 7
    have.)
 
-16. **The run meter: DONE** (decision 52, KC 2026-10-21): 10 s of running, 10 s to refill, half
+16. **The run meter: DONE** (decision 52, KC 2026-10-21): 5 s of running (KC, at first 10), 10 s to refill, half
    full to run again after running dry; no meter on screen, the landing sound when it runs out and
    the jumping sound when it is back (KC: a sound; the effects are placeholders to choose). Game
    rules "6 RUN TIME" (5/10/15/20 s/OFF) and "7 RUN CHARGE" (5/10/15/20 s). Holding RIGHT and the

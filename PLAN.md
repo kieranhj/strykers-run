@@ -50,7 +50,7 @@ Built (2026-10-20/21), each with its harness:
   on to the player when the mover it hit touched the player; gameplay builds let the mover take
   it. `tools/selfhit.mjs`.
 - **The run key** (`GAMEPLAY_RUN`, 48, 52): SHIFT held runs a column a pass, a jump's speed, not
-  half a column, for 10 s, then refills over 10 s (usable again past half; sounds, no meter);
+  half a column, for 5 s, then refills over 10 s (usable again past half; sounds, no meter);
   redefinable in define controls; its times on the game rules screen.
 - Speed: the HUD copied a byte column a turn; every flag on, 6 late frames of 1,998 against 5 with
   every flag off (passbench, seed 1, unshifted `DEBUG_LIVES` builds, 2026-10-21).

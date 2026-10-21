@@ -76,8 +76,8 @@ await shot("game-rules-shield");
 if (RUN) {
     const rn = () => ({ time: rd(syms.opt_run_time)[0], charge: rd(syms.opt_run_charge)[0] });
     const r0 = rn();
-    check("the run's defaults (10 s, 10 s)", r0.time === 1 && r0.charge === 1, JSON.stringify(r0));
-    for (let i = 0; i < 3; i++) await press("K6");             // 10 -> 15 -> 20 -> off
+    check("the run's defaults (5 s, 10 s)", r0.time === 0 && r0.charge === 1, JSON.stringify(r0));
+    for (let i = 0; i < 4; i++) await press("K6");             // 5 -> 10 -> 15 -> 20 -> off
     const off = rn().time;
     await press("K6"); await press("K6");                      // off -> 5 -> 10
     await press("K7"); await press("K7"); await press("K7"); await press("K7"); await press("K7");   // 10 -> 15 -> 20 -> 5 -> 10 -> 15

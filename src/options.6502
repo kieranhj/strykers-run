@@ -13,7 +13,7 @@ OPT_INFINITE = 10                   \ opt_lives for infinite lives: lives shows 
 .opt_hits           EQUB 1          \ decision 50: an index into opt_hits_unit: 2 hits (decision 44's)
 .opt_recharge       EQUB 1          \ an index into opt_recharge_passes: 5 seconds (decision 44's)
 IF GAMEPLAY_RUN
-.opt_run_time       EQUB 1          \ decision 52: an index into opt_run_drain: 10 seconds
+.opt_run_time       EQUB 0          \ decision 52: an index into opt_run_drain: 5 seconds (KC, 2026-10-21)
 .opt_run_charge     EQUB 1          \ an index into opt_run_give: 10 seconds
 .opt_run_drain_lo                   \ 8.8 a pass: RUN_FULL over 5, 10, 15, 20 seconds, and off (0)
     EQUB LO(2560 DIV 5), LO(2560 DIV 10), LO((2560 + 7) DIV 15), LO(2560 DIV 20), 0

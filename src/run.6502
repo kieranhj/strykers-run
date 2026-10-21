@@ -10,7 +10,7 @@
 \ (shield_new_game sets them: the game rules screen's, or these defaults).
 
 RUN_FULL   = 250                    \ the meter full (a byte: 10 seconds a unit a pass)
-RUN_TIME   = 10                     \ seconds of running, full to empty (KC, 2026-10-21)
+RUN_TIME   = 5                      \ seconds of running, full to empty (KC, 2026-10-21: 5, then 10 to refill)
 RUN_CHARGE = 10                     \ seconds to refill, empty to full
 RUN_OUT_SOUND   = &28               \ the player landing: the run is spent
 RUN_READY_SOUND = &30               \ the player jumping: it may run again
