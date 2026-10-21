@@ -9,14 +9,16 @@
 //              player turns into the skeleton (KC, 2026-10-21), then the game is over (game_over_screen)
 //   the digits hud_buffer shows the time (the 3x5 font, black), after every tick
 //
-//   node tools/timertest.mjs DISC.ssd [--passes N] [--short]
+//   --bonus    the bonus by itself: set times and limits, timer_bonus_call called directly
+//
+//   node tools/timertest.mjs DISC.ssd [--passes N] [--short] [--bonus]
 import { loadMachineSession } from "./jsbeeb_src.mjs";
 import { WorldBot, startWorldGame, toWorldPass, worldState, pressKeys } from "./playscript.mjs";
 const MachineSession = await loadMachineSession();
 const args = process.argv.slice(2);
 const opt = (name, dflt) => { const i = args.indexOf(name); if (i < 0) return dflt; const v = args[i + 1]; args.splice(i, 2); return v; };
 const flag = (name) => { const i = args.indexOf(name); if (i < 0) return false; args.splice(i, 1); return true; };
-const PASSES = +opt("--passes", 16000), SHORT = flag("--short");
+const PASSES = +opt("--passes", 16000), SHORT = flag("--short"), BONUS = flag("--bonus");
 const disc = args[0];
 
 const m = await startWorldGame(MachineSession, disc);
@@ -32,6 +34,28 @@ const fails = [];
 const fail = (msg) => { if (fails.length < 30) fails.push(`pass ${m.passes}: ${msg}`); };
 const FONT = [[7, 5, 5, 5, 7], [2, 6, 2, 2, 7], [7, 1, 7, 4, 7], [7, 1, 7, 1, 7], [5, 5, 7, 1, 1], [7, 4, 7, 1, 7], [7, 4, 7, 5, 7], [7, 1, 1, 1, 1], [7, 5, 7, 5, 7], [7, 5, 7, 1, 7]];
 const HUD_TIMER = syms.HUD_TIMER;
+// --bonus: the bonus by itself, the bot not needed to reach the headquarters: at pass 30 each case's
+// mode, time and limit (decision 55) are set and timer_bonus_call is called from the stopped pass;
+// the score it added is read where it pages bank 4 back
+if (BONUS) {
+    const { callFrom } = await import("./playscript.mjs");
+    await toWorldPass(m, 30);
+    let back = false;
+    cpu.debugInstruction.add((pc) => { if (pc === syms.bank4_back) back = true; return false; });
+    const cases = [[1, 120, 180], [1, 179, 180], [1, 200, 180], [1, 0, 900], [2, 45, 600], [2, 0, 300], [0, 100, 600]];
+    for (const [mode, t, limit] of cases) {
+        s.writeMemory(syms.timer_mode, [mode]); s.writeMemory(syms.timer_hi, toBcd(t)); s.writeMemory(syms.timer_limit, toBcd(limit));
+        const before = score();
+        back = false; callFrom(s, syms.timer_bonus_call, 0);
+        for (let i = 0; i < 400 && !back; i++) await s.runFor(2000);
+        const got = score() - before, want = 10 * (mode === 2 ? t : mode === 1 ? Math.max(0, limit - t) : 0);
+        console.log(`  mode ${mode}, time ${t} s, limit ${limit} s: +${got}${got === want ? "" : `, expected +${want}`}`);
+        if (!back) fail(`mode ${mode} ${t}/${limit}: timer_bonus_call never came back`);
+        else if (got !== want) fail(`mode ${mode} ${t}/${limit}: the bonus ${got}, expected ${want}`);
+    }
+    console.log(fails.length ? `FAILED:\n  ` + fails.join("\n  ") : "all rules held");
+    process.exit(fails.length ? 1 : 0);
+}
 let bonus = null, ticks = 0, gameOverAt = null, zeroAt = null, quietUntil = 0, skeletonAt = null;
 const checkDigits = () => {
     const t = bcd(zp("timer_hi"), zp("timer_lo")), digits = [Math.floor(t / 100), Math.floor(t / 10) % 10, t % 10];
