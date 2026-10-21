@@ -16,10 +16,10 @@ and 39,341 holding RIGHT, of the 79,872 two fields give.
 - **Which ideas to build** (below): each changes how the original plays (rule 1), so each needs a
   decision first.
 
-## Room (the shipping build's listing, 2026-10-20)
+## Room (the shipping build's listing, 2026-10-20; the main block 2026-10-21)
 
-Next to none where the renderer can read while it draws: main RAM 9 bytes (`&33F7-&33FF`), bank 4
-43, HAZEL 24. Elsewhere: `moved_0a20` 142, under ANDY 444, banks 5 / 6 / 7 388 / 530 / 481,
+Next to none where the renderer can read while it draws: the main block 4 bytes (its limit is
+`kc_slot0_y` + 257 <= `&3400`, `src/kindcache.6502`, not the `SKIP` after it), bank 4 43, HAZEL 24. Elsewhere: `moved_0a20` 142, under ANDY 444, banks 5 / 6 / 7 388 / 530 / 481,
 `MGAME`'s carrying room 849. Any idea below that adds code or data in play starts by finding room.
 
 ## Layer 5 - quirks and original glitches (decision 13)
@@ -55,7 +55,15 @@ Built (2026-10-20/21), each with its harness:
 - Speed: the HUD copied a byte column a turn; every flag on, 6 late frames of 1,998 against 5 with
   every flag off (passbench, seed 1, unshifted `DEBUG_LIVES` builds, 2026-10-21).
 
+Next (KC, 2026-10-21): **jump and fire without stopping.** The original stops the player to jump
+(a crouch first, `FRAME_PREJUMP`) and to fire (`FRAME_SHOOTING`, with `player_firing_cooldown`
+holding the player still), though a grenade is thrown on the move: so both can be done on the move.
+Each a flag and a decision, as the others.
+
 Left:
+- **KC's choices:** the run meter's two sounds (now the landing's and the jump's, placeholders);
+  whether bullets should destroy SAM launchers or stop at dying enemies (both pass through, as in
+  the original: what KC saw as a bullet passing through an enemy, 2026-10-21).
 - **KC's review** of play: the rewind's speed and distance, the timer's par (10 minutes) and its
   bonus (10 points a second).
 - **The HUD's cost** (KC's idea): rupture the screen so the top line is one fixed area of RAM, drawn
@@ -82,8 +90,8 @@ rest, a grind round 3. Most want room the renderer can read while it draws.
 Each changes how the original plays (rule 1), so each needs a decision before it is built.
 
 KC, 2026-10-17:
-- Jump at once, without the player stopping first.
-- Fire while running, without stopping.
+- Jump at once, without the player stopping first; fire while running, without stopping: next
+  (above).
 - Run at the jumping speed, or a run modifier key: the key built (`GAMEPLAY_RUN`, decision 48,
   above).
 - Health packs.

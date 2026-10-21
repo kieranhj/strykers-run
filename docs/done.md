@@ -135,6 +135,10 @@ MOS's sound, skipping transparent bytes, building the column on the pass before.
   a projectile run into hit twice). Explosions and skeletons are walked through, a projectile run into
   is spent; the whole world's hits 655 -> 318, no repeat in one pass or from an explosion
   (`tools/hitwatch.mjs`); a skeleton soft-lock found and fixed on the way.
+- **Explosions and skeletons animate while the player is in them** (`0152c63`, BUGS #13's follow-up).
+- **The loader stops on anything but a Master 128 or Compact** (decision 51, `86a457a`): OSBYTE 0
+  (X = 1) 3 or 5, else a message and back to the prompt; jsbeeb B (the message) and Master (frontend
+  0 failed); the Compact's value documented, not measured (jsbeeb has none).
 
 ## Tooling
 
@@ -144,3 +148,5 @@ MOS's sound, skipping transparent bytes, building the column on the pass before.
   helilock (two builds in step by pass), passbench (speed by pass), fieldcost and fieldsim (the
   50 Hz model), pcprof and drawprof (per instruction and per draw), frontend (15 checks), and the
   dataflow analyses (`tools/analyse.py`).
+- **`build/` kept tidy** (2026-10-21, `44291cd`): the shipping, gameplay and original discs by
+  name, harness screenshots in `build/shots/`, the rest a session's scratch (CLAUDE.md).
