@@ -723,9 +723,7 @@ text_colour = * + 1
     EQUB &A8, &45, &0C    \ at &45a8, colour &0c (GG)
     EQUB &24, &24, &24, &24, &24, &24, &24, &24, &24, &24, &24, &24    \ "============"
     EQUB &FE    \ end of string
-    EQUB &E0, &4A, &0F    \ at &4ae0, colour &0f (YY)
-    EQUB &18, &19, &1D, &12, &18, &17, &1C    \ "OPTIONS"
-    EQUB &FE    \ end of string
+    \ decision 58: "OPTIONS" (at &4ae0, yellow) removed (KC: "it's redundant")
     EQUB &90, &4F, &03    \ at &4f90, colour &03 (RR)
     EQUB &01, &25, &1C, &1D, &0A, &1B, &1D, &25, &10, &0A, &16, &0E    \ "1 START GAME"
     EQUB &FE    \ end of string
@@ -738,10 +736,14 @@ text_colour = * + 1
     EQUB &18, &17, &1C
     EQUB &FE    \ end of string
     EQUB &C0, &5E, &3C    \ at &5ec0, colour &3c (CC)
-    EQUB &04, &25, &16, &1E, &1C, &12, &0C, &25, &18, &0F, &0F    \ "4 MUSIC OFF"
+    EQUB &04, &25, &16, &1E, &1C, &12, &0C, &25, &18    \ "4 MUSIC O"
+.title_music_word
+    EQUB &0F, &0F    \ "FF" (toggle_music writes "N " over it)
     EQUB &FE    \ end of string
     EQUB &C0, &63, &03    \ at &63c0, colour &03 (RR)
-    EQUB &05, &25, &1C, &18, &1E, &17, &0D, &25, &18, &0F, &0F    \ "5 SOUND OFF"
+    EQUB &05, &25, &1C, &18, &1E, &17, &0D, &25, &18    \ "5 SOUND O"
+.title_sound_word
+    EQUB &0F, &0F    \ "FF" (toggle_sound writes "N " over it)
     EQUB &FE    \ end of string
     EQUB &20, &7C, &3E    \ at &7c20, colour &3e (WC)
     EQUB &26, &25, &1C, &1E, &19, &0E, &1B, &12, &18, &1B, &25, &1C, &18, &0F, &1D, &20    \ "(c) SUPERIOR SOFTWARE 1986"
@@ -772,32 +774,40 @@ text_colour = * + 1
     EQUB &2F, &A1, &A8, &1C, &0C, &10, &11, &17, &15, &2E, &30, &B3, &D0, &23, &D4, &1F    \ &30
     EQUB &0B, &16, &31, &27, &32, &DA, &DF, &41, &42, &43, &45, &46, &48, &49, &2A, &E6    \ &40
 
+\ decision 58 (KC: "make the redefine keys page more readable ... centre align so each row matches up at
+\ : in the middle"): each label right-aligned to its colon in character 12 (24 bytes a character), the
+\ key's name after it from character 14: "JUMP/MOVE UP: " and "RIGHT CURSOR", the longest, fill 26
+\ of the row's 26 2/3. The original had them all at the row's left
+\ decision 58 (KC: "make the redefine keys page more readable ... centre align so each row matches up at
+\ : in the middle"): each label right-aligned to its colon in character 12 (24 bytes a character), the
+\ key name after it from character 14 ("JUMP/MOVE UP: " and "RIGHT CURSOR", the longest, fill 26 of
+\ the row's 26 2/3); the heading centred. The original had every label at the row's left.
 .define_controls_text
-    EQUB &E0, &42, &03    \ at &42e0, colour &03 (RR)
+    EQUB LO(&4000 + 1 * &280 + 136), HI(&4000 + 1 * &280 + 136), &03    \ row 1, colour &03 (RR): centred (decision 58)
     EQUB &0D, &0E, &0F, &12, &17, &0E, &25, &0C, &18, &17, &1D, &1B, &18, &15, &1C    \ "DEFINE CONTROLS"
     EQUB &FF    \ end of text
-    EQUB &80, &47, &0F    \ at &4780, colour &0f (YY)
+    EQUB LO(&4000 + 3 * &280 + 0), HI(&4000 + 3 * &280 + 0), &0F    \ row 3, colour &0f (YY): its colon at character 12 (decision 58)
     EQUB &13, &1E, &16, &19, &32, &16, &18, &1F, &0E, &25, &1E, &19, &2F, &25    \ "JUMP/MOVE UP: "
     EQUB &FF    \ end of text
-    EQUB &80, &4C, &0C    \ at &4c80, colour &0c (GG)
+    EQUB LO(&4000 + 5 * &280 + 192), HI(&4000 + 5 * &280 + 192), &0C    \ row 5, colour &0c (GG): its colon at character 12 (decision 58)
     EQUB &0D, &1E, &0C, &14, &2F, &25    \ "DUCK: "
     EQUB &FF    \ end of text
-    EQUB &80, &51, &33    \ at &5180, colour &33 (MM)
+    EQUB LO(&4000 + 7 * &280 + 48), HI(&4000 + 7 * &280 + 48), &33    \ row 7, colour &33 (MM): its colon at character 12 (decision 58)
     EQUB &16, &18, &1F, &0E, &25, &1B, &12, &10, &11, &1D, &2F, &25    \ "MOVE RIGHT: "
     EQUB &FF    \ end of text
-    EQUB &80, &56, &03    \ at &5680, colour &03 (RR)
+    EQUB LO(&4000 + 9 * &280 + 72), HI(&4000 + 9 * &280 + 72), &03    \ row 9, colour &03 (RR): its colon at character 12 (decision 58)
     EQUB &16, &18, &1F, &0E, &25, &15, &0E, &0F, &1D, &2F, &25    \ "MOVE LEFT: "
     EQUB &FF    \ end of text
-    EQUB &80, &5B, &3F    \ at &5b80, colour &3f (WW)
+    EQUB LO(&4000 + 11 * &280 + 48), HI(&4000 + 11 * &280 + 48), &3F    \ row 11, colour &3f (WW): its colon at character 12 (decision 58)
     EQUB &0F, &12, &1B, &0E, &25, &15, &0A, &1C, &0E, &1B, &2F, &25    \ "FIRE LASER: "
     EQUB &FF    \ end of text
-    EQUB &80, &60, &03    \ at &6080, colour &03 (RR)
+    EQUB LO(&4000 + 13 * &280 + 0), HI(&4000 + 13 * &280 + 0), &03    \ row 13, colour &03 (RR): its colon at character 12 (decision 58)
     EQUB &10, &1B, &0E, &17, &0A, &0D, &0E, &32, &0B, &18, &16, &0B, &2F, &25    \ "GRENADE/BOMB: "
     EQUB &FF    \ end of text
-    EQUB &80, &65, &0C    \ at &6580, colour &0c (GG)
+    EQUB LO(&4000 + 15 * &280 + 24), HI(&4000 + 15 * &280 + 24), &0C    \ row 15, colour &0c (GG): its colon at character 12 (decision 58)
     EQUB &0E, &17, &1D, &0E, &1B, &32, &15, &0E, &0A, &1F, &0E, &2F, &25    \ "ENTER/LEAVE: "
     EQUB &FF    \ end of text
-    EQUB &80, &6A, &3E    \ at &6a80, colour &3e (WC)
+    EQUB LO(&4000 + 17 * &280 + 48), HI(&4000 + 17 * &280 + 48), &3E    \ row 17, colour &3e (WC): its colon at character 12 (decision 58)
     EQUB &19, &0A, &1E, &1C, &0E, &25, &10, &0A, &16, &0E, &2F, &25    \ "PAUSE GAME: "
     EQUB &FF    \ end of text
 
@@ -900,14 +910,14 @@ text_colour = * + 1
     CMP #&12                        \ "4"
     BNE title_screen_loop
 .toggle_music
-    LDA title_screen_text + 115
+    LDA title_music_word
     CMP #&17                        \ "F"
     BEQ enable_music
 .disable_music
     LDA #&17                        \ "N"
-    STA title_screen_text + 115
+    STA title_music_word
     LDA #&25                        \ " "
-    STA title_screen_text + 116
+    STA title_music_word + 1
     STA music_muted
     LDA #&0D                        \ Disable event
     LDX #&05                        \ interval timer crossing zero
@@ -918,27 +928,27 @@ text_colour = * + 1
     JMP display_title_screen
 .enable_music
     LDA #&0F                        \ "F"
-    STA title_screen_text + 115
-    STA title_screen_text + 116
+    STA title_music_word
+    STA title_music_word + 1
     STZ music_muted
     JSR start_title_screen_music
     JMP display_title_screen
 
 .toggle_sound
-    LDA title_screen_text + 130
+    LDA title_sound_word
     CMP #&17
     BNE disable_sound
 .enable_sound
     LDA #&0F                        \ "F"
-    STA title_screen_text + 130
-    STA title_screen_text + 131
+    STA title_sound_word
+    STA title_sound_word + 1
     STZ sound_muted                 \ 65C02 opcode
     JMP display_title_screen
 .disable_sound
     LDA #&17                        \ "N"
-    STA title_screen_text + 130
+    STA title_sound_word
     LDA #&25                        \ "O"
-    STA title_screen_text + 131
+    STA title_sound_word + 1
     STA sound_muted
     JMP display_title_screen
 
