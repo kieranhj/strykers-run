@@ -42,7 +42,9 @@ ASSERT GAMEPLAY_SHIELD * 2 >= GAMEPLAY_TIMER AND GAMEPLAY_TIMER <= 2, "GAMEPLAY_
 \                    src/options.6502; with GAMEPLAY_LIVES and GAMEPLAY_TIMER, whose settings it sets)
 ASSERT GAMEPLAY_OPTIONS = 0 OR (GAMEPLAY_LIVES <> 0 AND GAMEPLAY_TIMER <> 0), "GAMEPLAY_OPTIONS needs GAMEPLAY_LIVES and GAMEPLAY_TIMER"
 ASSERT SHIFT = 0 OR (GAMEPLAY_TIMER = 0 AND GAMEPLAY_OPTIONS = 0), "GAMEPLAY_TIMER and GAMEPLAY_OPTIONS do not fit the relocation test builds' banks (256 bytes smaller): build them unshifted"
-GAMEPLAY_ANY = GAMEPLAY_SHIELD OR GAMEPLAY_LIVES OR GAMEPLAY_TIMER OR GAMEPLAY_OPTIONS   \ the OR of every GAMEPLAY_ flag: their builds need not keep the main block's
+\   GAMEPLAY_RUN     a run key (SHIFT): held, the player runs at a jump's speed, a column a pass
+\                    (decision 48)
+GAMEPLAY_ANY = GAMEPLAY_SHIELD OR GAMEPLAY_LIVES OR GAMEPLAY_TIMER OR GAMEPLAY_OPTIONS OR GAMEPLAY_RUN   \ the OR of every GAMEPLAY_ flag: their builds need not keep the main block's
                                     \ addresses, so its unexecuted padding goes (src/game.6502), room for their hooks
 DEBUG_ANY = DEBUG_LIVES OR DEBUG_FULLREDRAW   \ the OR of every DEBUG_ flag (GAMEPLAY_ flags are not debug: RELEASE allows them)
 VERSION_LINE = "v0.1"

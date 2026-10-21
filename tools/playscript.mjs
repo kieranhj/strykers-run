@@ -21,6 +21,7 @@ const ACTIONS = ["A", "Z", "RIGHT", "LEFT", "SHIFT", "DELETE", "CTRL", "P"];
  *  build with other keys plays the same game as one with the original's. Anything else (ONE, or
  *  SHIFT for the boot, which uses KEY directly) is KEY's. Call it once the game is loaded. */
 export function gameKey(s, k) {
+    if (k === "RUN") return KEY.SHIFT;                  // GAMEPLAY_RUN's run key (decision 48): SHIFT
     if (!ACTIONS.includes(k)) return KEY[k];
     if (!s._gameKeys) {
         const syms = {};

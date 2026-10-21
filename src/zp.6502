@@ -29,6 +29,7 @@ invulnerable                                 = &12      \ passes left in which n
 respawn_columns                              = &17      \ how far a death rewinds the view (shield_new_game)
 timer_mode                                   = &18      \ decision 47: 0 off, 1 up, 2 down (shield_new_game)
 time_up                                      = &19      \ decision 47: non-zero when counting down reached 0
+run_held                                     = &1A      \ decision 48: bit 7 set while the run key is down (check_for_player_input)
 \ GAMEPLAY_TIMER (decision 47, src/timer.6502): &13-&16
 timer_ready                                  = &13      \ 0 at a game's start (shield_new_game)
 timer_hi                                     = &14      \ the seconds, BCD: hundreds

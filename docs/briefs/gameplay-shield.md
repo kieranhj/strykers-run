@@ -138,6 +138,12 @@ death respawns whatever the lives, so the test scripts still never end.
    `game_completed` (`&0CF2`) 13. The timer and the game rules do not fit the
    relocation test builds' banks (256 bytes smaller, `SHIFT`): ASSERTed; check them unshifted.
 
+11. **A run key: DONE** (`GAMEPLAY_RUN`, decision 48, KC 2026-10-21): SHIFT held while moving on
+   the ground updates the player every pass, not one in two: a column a pass, a jump's speed in
+   the air. In `-Gameplay` and `make gameplay`. The key is fixed: making it redefinable wants room
+   in bank 5 (1 byte left) for define controls or the game rules screen. Main block 21 bytes left
+   in the build with every flag.
+
 ## Answered (KC, 2026-10-20)
 
 - **High scores with infinite lives:** a game with infinite lives ends only by ESCAPE or by

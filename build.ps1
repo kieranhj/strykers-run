@@ -8,7 +8,7 @@
 #   .\build.ps1 -Shift 256             the relocation test: the game assembled 256 bytes lower,
 #                                      each bank's contents a page higher (src/main.6502)
 #   .\build.ps1 -Shift 256 -ShiftEnd   its control: the same padding where it moves nothing
-#   .\build.ps1 -Gameplay              every GAMEPLAY_ flag (decisions 43-47): the gameplay disc, also
+#   .\build.ps1 -Gameplay              every GAMEPLAY_ flag (decisions 43-48): the gameplay disc, also
 #                                      copied to build\strykers-gameplay.ssd (with -Release for testers)
 #
 # Every -D symbol the source reads is passed on every build (Baron cannot default one).
@@ -17,7 +17,7 @@
 # Tools: baron from $env:BARON, then bin\baron.exe, then the PATH. Put machine-specific paths in
 # local.ps1 beside this file (gitignored); it is run first if it exists.
 param([switch]$Release, [switch]$Compare, [switch]$NoCompare, [int]$Shift = 0, [switch]$ShiftEnd, [string[]]$Define = @(), [switch]$Gameplay)
-if ($Gameplay) { $Define += @('GAMEPLAY_SHIELD', 'GAMEPLAY_LIVES', 'GAMEPLAY_TIMER', 'GAMEPLAY_OPTIONS') }
+if ($Gameplay) { $Define += @('GAMEPLAY_SHIELD', 'GAMEPLAY_LIVES', 'GAMEPLAY_TIMER', 'GAMEPLAY_OPTIONS', 'GAMEPLAY_RUN') }
 
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
@@ -39,7 +39,7 @@ $relDef = if ($Release) { 'RELEASE=1' } else { 'RELEASE=0' }
 $endDef = if ($ShiftEnd) { 'SHIFT_END=1' } else { 'SHIFT_END=0' }
 $stem = 'strykers' + $(if ($Shift) { "-shift$Shift" + $(if ($ShiftEnd) { 'end' } else { '' }) } else { '' })
 # -Define DEBUG_LIVES=1 (repeatable): extra -D symbols, which also mark the build's name
-$flags = [ordered]@{ DEBUG_LIVES = '0'; DEBUG_FULLREDRAW = '0'; GAMEPLAY_SHIELD = '0'; GAMEPLAY_LIVES = '0'; GAMEPLAY_TIMER = '0'; GAMEPLAY_OPTIONS = '0' }
+$flags = [ordered]@{ DEBUG_LIVES = '0'; DEBUG_FULLREDRAW = '0'; GAMEPLAY_SHIELD = '0'; GAMEPLAY_LIVES = '0'; GAMEPLAY_TIMER = '0'; GAMEPLAY_OPTIONS = '0'; GAMEPLAY_RUN = '0' }
 foreach ($d in $Define) {
     $k, $v = $d -split '=', 2
     if (-not $flags.Contains($k)) { throw "unknown flag $k (known: $($flags.Keys -join ', '))" }

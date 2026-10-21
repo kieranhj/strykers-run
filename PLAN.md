@@ -27,7 +27,7 @@ Next to none where the renderer can read while it draws: main RAM 9 bytes (`&33F
 - Check in jsbeeb, then fix: a scroll column lost when moving with `frame` >= 0 (firing in a
   helicopter while moving); the column replotted after a hostile collision.
 
-## Gameplay variations (decisions 43-47, branch `gameplay-shield`)
+## Gameplay variations (decisions 43-48, branch `gameplay-shield`)
 
 Kept separate from `main` for now (KC, 2026-10-21); `main` merged into it as it moves. Each
 variation is a `GAMEPLAY_*` flag, off by default (flags off: byte-identical to `main`);
@@ -45,6 +45,8 @@ Built (2026-10-20/21), each with its harness:
   off the high score table. `tools/optionstest.mjs`.
 - **The timer** (`GAMEPLAY_TIMER`, 47): counting up with a bonus for time under par, or counting
   down to the skeleton and game over. `tools/timertest.mjs`.
+- **The run key** (`GAMEPLAY_RUN`, 48): SHIFT held runs a column a pass, a jump's speed, not
+  half a column. Fixed to SHIFT for now (bank 5 has no room for defining it).
 - Speed: the HUD copied a byte column a turn; every flag on, 6 late frames of 1,998 against 5 with
   every flag off (passbench, seed 1, unshifted `DEBUG_LIVES` builds, 2026-10-21).
 
@@ -57,7 +59,7 @@ Left:
 - **Merging into `main`**, when KC says: then one disc with both builds and a boot menu, for a
   release (the brief, "Discs").
 - **Room** is nearly gone in the build with every flag (bank 4 2 and 4 under ANDY, bank 5 1, main
-  block 25; bank 6 181, bank 7 481: the brief, item 8): the next variation starts by finding room.
+  block 21; bank 6 181, bank 7 481: the brief, item 8): the next variation starts by finding room.
   The timer and the game rules need the unshifted banks.
 
 ## The level editor, v1 (decision 41)
@@ -77,9 +79,8 @@ Each changes how the original plays (rule 1), so each needs a decision before it
 KC, 2026-10-17:
 - Jump at once, without the player stopping first.
 - Fire while running, without stopping.
-- Run at the jumping and helicopter speed, which scrolls more smoothly: running moves the view
-  0.46 columns a pass, jumping 0.65-0.67 (`docs/step2-layer3.md`).
-- Or a run modifier key: today's speed becomes a jog, and the key gives a faster run.
+- Run at the jumping speed, or a run modifier key: the key built (`GAMEPLAY_RUN`, decision 48,
+  above).
 - Health packs.
 - Shields: built (`GAMEPLAY_SHIELD`, above).
 - Music in the game, now 25 Hz holds with time to spare: cycles every field, and RAM for the

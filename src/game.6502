@@ -3135,6 +3135,11 @@ ENDIF
 .to_to_consider_falling
     BNE to_consider_falling
 .is_soldier_on_ground
+IF GAMEPLAY_RUN
+    LDA frame                       \ decision 48: moving (&FF) with the run key down (bit 7): every pass,
+    AND run_held                    \ a column a pass as in a jump, not one in two
+    BMI check_for_player_firing
+ENDIF
     LDA helicopter_to_update
     AND #&01
     BEQ check_for_player_firing     \ Branch one in two frames
@@ -4397,6 +4402,10 @@ ASSERT shown_screen < &3000
 \ Step 2 (decision 27, KC): the default keys are Z X K M L, SPACE, RETURN, P; the original's
 \ were A, Z, RIGHT, LEFT, SHIFT, DELETE, CTRL, P. Negative INKEY numbers; define controls
 \ rewrites them.
+IF GAMEPLAY_RUN
+.run_key
+    EQUB &FF    \ decision 48: the run key: SHIFT (read first, so it ends in C: run_held)
+ENDIF
 .keys
     EQUB &B9    \ &01 (KEY_UP)      : K
     EQUB &9A    \ &02 (KEY_DOWN)    : M
@@ -4408,11 +4417,17 @@ ASSERT shown_screen < &3000
     EQUB &C8    \ &80 (KEY_PAUSE)   : P
 
 .check_for_player_input
+IF GAMEPLAY_RUN
+    LDY #&F7                        \ decision 48: nine keys, the run key first; INY's Z ends the loop,
+.check_for_player_input_loop        \ so C keeps the ninth ROR's bit out: the run key
+    LDA run_key - &F7,Y             \ the key's INKEY number
+ELSE
     LDY #&00                        \ grind: Y indexes the keys (keydown_int inlined below)
     LDA #&80                        \ grind: a sentinel, shifted out into C by the eighth ROR
     STA keys_pressed_bitmap
 .check_for_player_input_loop
     LDA keys,Y                      \ the key's INKEY number
+ENDIF
     EOR #&FF                        \ INKEY number -> internal key number (check_for_keypress, inlined)
     TAX                             \ keydown_int (src/lib/keydown.6502) inlined: X = the key number
     LDA #&03                        \ KBD_LATCH_OFF: latch line 3 = 0
@@ -4428,7 +4443,12 @@ ASSERT shown_screen < &3000
     CLI
     ROR keys_pressed_bitmap         \ key in at bit 7: after eight, key N is bit N
     INY
+IF GAMEPLAY_RUN
+    BNE check_for_player_input_loop
+    ROR run_held                    \ the run key, out of the bitmap's bottom, into bit 7
+ELSE
     BCC check_for_player_input_loop \ C = 1 only when the sentinel falls out
+ENDIF
     ASSERT HI(keys) = HI(keys + 7)  \ LDA keys,Y never crosses a page
 .leave_2f89
     RTS

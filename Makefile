@@ -60,7 +60,7 @@ COMPARE  = 0
 # Every DEBUG_ and GAMEPLAY_ flag main.6502 reads. Baron cannot default a -D symbol, so
 # each is passed on every build, 0 unless DEFINES names it (decision 9).
 # A new flag goes here and in build.ps1's $flags.
-FLAGS = DEBUG_LIVES DEBUG_FULLREDRAW GAMEPLAY_SHIELD GAMEPLAY_LIVES GAMEPLAY_TIMER GAMEPLAY_OPTIONS
+FLAGS = DEBUG_LIVES DEBUG_FULLREDRAW GAMEPLAY_SHIELD GAMEPLAY_LIVES GAMEPLAY_TIMER GAMEPLAY_OPTIONS GAMEPLAY_RUN
 
 # NOT overridable: main.6502 INCLUDEs "../build/build_time.6502".
 BUILD = build
@@ -68,7 +68,7 @@ BUILD = build
 # Set by `all` through a recursive make, from SHIFT, SHIFTEND and DEFINES;
 # these defaults are the plain build, for `make build/strykers.ssd`.
 STEM = strykers
-DEFS = -D DEBUG_LIVES=0 -D DEBUG_FULLREDRAW=0 -D GAMEPLAY_SHIELD=0 -D GAMEPLAY_LIVES=0 -D GAMEPLAY_TIMER=0 -D GAMEPLAY_OPTIONS=0
+DEFS = -D DEBUG_LIVES=0 -D DEBUG_FULLREDRAW=0 -D GAMEPLAY_SHIELD=0 -D GAMEPLAY_LIVES=0 -D GAMEPLAY_TIMER=0 -D GAMEPLAY_OPTIONS=0 -D GAMEPLAY_RUN=0
 
 SSD    = $(BUILD)/$(STEM).ssd
 LST    = $(BUILD)/$(STEM).lst
@@ -175,19 +175,19 @@ release:
 	@$(MAKE) RELEASE=1 all
 	@echo "RELEASE build: every DEBUG_ flag off"
 
-# Every GAMEPLAY_ flag (decisions 43-47): the gameplay disc, also copied to
+# Every GAMEPLAY_ flag (decisions 43-48): the gameplay disc, also copied to
 # build/strykers-gameplay.ssd (make gameplay RELEASE=1 for testers), as build.ps1 -Gameplay
 gameplay:
-	@$(MAKE) DEFINES=GAMEPLAY_SHIELD,GAMEPLAY_LIVES,GAMEPLAY_TIMER,GAMEPLAY_OPTIONS all
-	@cp $(BUILD)/strykers-gameplay_shield-gameplay_lives-gameplay_timer-gameplay_options.ssd $(BUILD)/strykers-gameplay.ssd
-	@cp $(BUILD)/strykers-gameplay_shield-gameplay_lives-gameplay_timer-gameplay_options.symbols.json $(BUILD)/strykers-gameplay.symbols.json
+	@$(MAKE) DEFINES=GAMEPLAY_SHIELD,GAMEPLAY_LIVES,GAMEPLAY_TIMER,GAMEPLAY_OPTIONS,GAMEPLAY_RUN all
+	@cp $(BUILD)/strykers-gameplay_shield-gameplay_lives-gameplay_timer-gameplay_options-gameplay_run.ssd $(BUILD)/strykers-gameplay.ssd
+	@cp $(BUILD)/strykers-gameplay_shield-gameplay_lives-gameplay_timer-gameplay_options-gameplay_run.symbols.json $(BUILD)/strykers-gameplay.symbols.json
 	@echo "       copied to $(BUILD)/strykers-gameplay.ssd"
 
 # Only reached when the .config is missing and the image was asked for by
 # name (`make build/strykers.ssd`); `all` always stamps first.
 $(CONFIG):
 	$(PYTHON) tools/build_stamp.py $(BUILD) $(STEM).config RELEASE=$(RELEASE) \
-	    SHIFT=$(SHIFT) SHIFT_END=$(SHIFTEND) DEBUG_LIVES=0 DEBUG_FULLREDRAW=0 GAMEPLAY_SHIELD=0 GAMEPLAY_LIVES=0 GAMEPLAY_TIMER=0 GAMEPLAY_OPTIONS=0
+	    SHIFT=$(SHIFT) SHIFT_END=$(SHIFTEND) DEBUG_LIVES=0 DEBUG_FULLREDRAW=0 GAMEPLAY_SHIELD=0 GAMEPLAY_LIVES=0 GAMEPLAY_TIMER=0 GAMEPLAY_OPTIONS=0 GAMEPLAY_RUN=0
 
 # Baron writes the image, the symbol dump and (on stdout) the listing. A
 # failed assembly removes the image and the dump, so a half-written image
