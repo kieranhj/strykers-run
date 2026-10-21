@@ -27,7 +27,7 @@ Next to none where the renderer can read while it draws: the main block 4 bytes 
 - Check in jsbeeb, then fix: a scroll column lost when moving with `frame` >= 0 (firing in a
   helicopter while moving); the column replotted after a hostile collision.
 
-## Gameplay variations (decisions 43-52, branch `gameplay-shield`)
+## Gameplay variations (decisions 43-54, branch `gameplay-shield`)
 
 Kept separate from `main` for now (KC, 2026-10-21); `main` merged into it as it moves. Each
 variation is a `GAMEPLAY_*` flag, off by default (flags off: byte-identical to `main`);
@@ -52,13 +52,11 @@ Built (2026-10-20/21), each with its harness:
 - **The run key** (`GAMEPLAY_RUN`, 48, 52): SHIFT held runs a column a pass, a jump's speed, not
   half a column, for 5 s, then refills over 10 s (usable again past half; sounds, no meter);
   redefinable in define controls; its times on the game rules screen.
+- **Jumping and firing on the move** (`GAMEPLAY_JUMP`, `GAMEPLAY_FIRE`, decisions 53, 54): the jump
+  on UP's press after one update's crouch (again on each landing while held); the bullet at once
+  with one update's shooting pose, as a grenade's throw.
 - Speed: the HUD copied a byte column a turn; every flag on, 6 late frames of 1,998 against 5 with
   every flag off (passbench, seed 1, unshifted `DEBUG_LIVES` builds, 2026-10-21).
-
-Next (KC, 2026-10-21): **jump and fire without stopping.** The original stops the player to jump
-(a crouch first, `FRAME_PREJUMP`) and to fire (`FRAME_SHOOTING`, with `player_firing_cooldown`
-holding the player still), though a grenade is thrown on the move: so both can be done on the move.
-Each a flag and a decision, as the others.
 
 Left:
 - **KC's choices:** the run meter's two sounds (now the landing's and the jump's, placeholders);
@@ -72,7 +70,7 @@ Left:
 - **Merging into `main`**, when KC says: then one disc with both builds and a boot menu, for a
   release (the brief, "Discs").
 - **Room** in the build with every flag (2026-10-21): bank 4 2 and 4 under ANDY (nearly gone), bank 5 478 + 162 + 388, main
-  block 24 below `kc_slot0_y`'s limit, bank 6 78, bank 7 481 (the brief, items 8 and 15).
+  block 29 below `kc_slot0_y`'s limit, bank 6 78, bank 7 481 (the brief, items 8 and 15).
   The timer and the game rules need the unshifted banks.
 
 ## The level editor, v1 (decision 41)
@@ -90,8 +88,8 @@ rest, a grind round 3. Most want room the renderer can read while it draws.
 Each changes how the original plays (rule 1), so each needs a decision before it is built.
 
 KC, 2026-10-17:
-- Jump at once, without the player stopping first; fire while running, without stopping: next
-  (above).
+- Jump at once, without the player stopping first; fire while running, without stopping: built
+  (decisions 53, 54, above).
 - Run at the jumping speed, or a run modifier key: the key built (`GAMEPLAY_RUN`, decision 48,
   above).
 - Health packs.

@@ -2648,11 +2648,13 @@ ENDIF
     LDA #&06                        \ FRAME_SHOOTING
     STA frame
     STA firing_frame
+IF GAMEPLAY_FIRE = 0                \ decision 54: gameplay builds fire at once, on foot as in a helicopter, the
     LDA player_helicopter           \ Non-zero if in helicopter
     BNE add_player_bullet
-    LDA #&04
+    LDA #&04                        \ (the original: the player held still for 4 updates, then the bullet)
     STA player_firing_cooldown
     RTS
+ENDIF                               \ shooting pose for this update only, as a grenade's throw
 
 .add_player_bullet
     LDX #&05                        \ MOVER_PLAYER_BULLET - &c
@@ -3205,6 +3207,10 @@ ENDIF
     LDA #&0D                        \ FRAME_CROUCHING
     BNE set_player_frame            \ Always branches
 .prepare_for_jump
+IF GAMEPLAY_JUMP
+    CPX #&09                        \ decision 53: crouched the update before (X: its frame): jump now, not on
+    BEQ start_jump                  \ UP's release (frame still &FF or 0 from the keys: the scroll goes on)
+ENDIF
     LDA #&09                        \ FRAME_PREJUMP
 .set_player_frame
     STA frame

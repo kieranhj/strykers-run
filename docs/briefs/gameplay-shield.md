@@ -178,6 +178,13 @@ death respawns whatever the lives, so the test scripts still never end.
    run key from pass 20: a column a pass for 250 passes of running, then the original's pace with
    the meter refilling (a death's rewind between refilled it). `tools/runmeter.mjs`.
 
+17. **Jumping and firing on the move: DONE** (decisions 53, 54, KC 2026-10-21): `GAMEPLAY_JUMP`
+   jumps on UP's press after one update's crouch, and again on each landing while UP is held;
+   `GAMEPLAY_FIRE` fires at once with one update's shooting pose, as a grenade is thrown. Both
+   always on in the gameplay disc (no game rules line). passlock, every flag (unshifted,
+   `DEBUG_LIVES`) against its `DEBUG_FULLREDRAW` twin, 3,000 passes (the script jumps and fires
+   often): state and screens identical.
+
 ## Answered (KC, 2026-10-20)
 
 - **High scores with infinite lives:** a game with infinite lives ends only by ESCAPE or by
