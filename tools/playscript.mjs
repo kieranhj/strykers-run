@@ -157,6 +157,8 @@ export function loadSyms(disc) {
         for (const [k, v] of Object.entries(sec.labels || {})) if (v && typeof v.value === "number") out[k] = v.value;
     for (const sec of secs)
         for (const [k, v] of Object.entries(sec.assignments || {})) if (v && typeof v.value === "number" && !(k in out)) out[k] = v.value;
+    for (const sec of secs)                  // the -D flags (GAMEPLAY_JUMP ...), where no label or assignment has the name
+        for (const [k, v] of Object.entries(sec.defines || {})) if (v && typeof v.value === "number" && !(k in out)) out[k] = v.value;
     return out;
 }
 

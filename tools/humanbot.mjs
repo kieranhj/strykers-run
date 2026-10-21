@@ -47,6 +47,11 @@ export function see(m) {
     st.shield = syms.shield !== undefined ? rd(syms.shield)[0] / 50 : 1;
     st.canRun = syms.run_state !== undefined && rd(syms.run_state)[0] !== 0;
     st.hasRun = syms.run_state !== undefined;
+    // the controls: GAMEPLAY_JUMP jumps on UP's press (after one update's crouch), the original on its
+    // release (crouched while it is held); GAMEPLAY_FIRE fires on the move, the original stands the
+    // player still for 4 updates and then fires
+    st.jumpOnPress = (syms.GAMEPLAY_JUMP ?? 0) > 0;
+    st.fireOnMove = (syms.GAMEPLAY_FIRE ?? 0) > 0;
     return st;
 }
 
@@ -84,7 +89,19 @@ export class HumanBot {
         const ahead = enemies.filter((o) => o.dx > -2 && o.dx < this.RANGE && !EMPLACEMENTS.has(o.type)).sort((a, b) => a.dx - b.dx);
         const behind = enemies.filter((o) => o.dx <= -2 && o.dx > -14);
         const shots = st.movers.filter((o) => o.vx !== undefined && !o.mine && o.type === T.BULLET && o.y < 100);
-        const fire = () => { this.fireTap = (this.fireTap + 1) % 5; return this.fireTap < 2; };   // 2 passes on, 3 off
+        // firing: in taps on the move (GAMEPLAY_FIRE: 2 passes on, 3 off); in the original a shot stands the
+        // player still for 4 updates first, so fire is held and the player stops to shoot
+        const fire = () => { if (!st.fireOnMove) return true; this.fireTap = (this.fireTap + 1) % 5; return this.fireTap < 2; };
+        // a jump: GAMEPLAY_JUMP holds UP (the crouch, then the jump on the next update); the original holds
+        // UP to crouch for 3 passes and releases it to jump, the direction held then the jump's: it leaves
+        // the ground about 2 passes later, so the timing windows below move by LATE
+        const LATE = st.jumpOnPress ? 0 : 2;
+        const jump = (dir) => {
+            this.log.jump++;
+            this.plan = st.jumpOnPress ? Array.from({ length: 7 }, () => [...dir, "A"])
+                : [["A"], ["A"], ["A"], ...Array.from({ length: 7 }, () => [...dir])];
+            return this.plan.shift();
+        };
 
         // dodge: a bullet coming at the player, from the right (vx < 0) or the left. Seen from 40 columns.
         // mover_types_height_table: the player 30 high (y 24-54), 17 crouched (24-41), a bullet 3: a
@@ -97,10 +114,9 @@ export class HumanBot {
         const gunInRange = enemies.some((o) => EMPLACEMENTS.has(o.type) && o.dx > 0 && o.dx <= 30);
         for (const b of gunInRange ? [] : shots) {                            // in range of one: shoot, don't dodge
             if (gunAhead && b.vx < 0 && b.dx > 0) {
-                if (onGround && b.y < DUCK_Y && b.dx - 7 >= 14 && b.dx - 7 <= 28 && this.ready(p, b)) {
-                    this.why = "rush-jump"; this.log.jump++;
-                    this.plan = Array.from({ length: 7 }, () => ["RIGHT", "A"]);
-                    return this.plan.shift();
+                if (onGround && b.y < DUCK_Y && b.dx - 7 >= 14 + 2 * LATE && b.dx - 7 <= 28 + 2 * LATE && this.ready(p, b)) {
+                    this.why = "rush-jump";
+                    return jump(["RIGHT"]);
                 }
                 continue;
             }
@@ -108,12 +124,10 @@ export class HumanBot {
             if (!coming || !this.ready(p, b)) continue;
             const t = b.vx < 0 ? (b.dx - 7) / -b.vx : (-b.dx) / b.vx;         // passes to impact, standing
             if (b.y >= DUCK_Y && onGround && t < 8) { this.why = "duck"; this.log.duck++; return ["Z"]; }
-            if (b.y < DUCK_Y && onGround && t >= 7 && t <= 11) { this.why = "jump";
-                this.log.jump++;
-                this.plan = Array.from({ length: 7 }, () => ["A"]);            // on the spot: the timing holds
-                return this.plan.shift();
+            if (b.y < DUCK_Y && onGround && t >= 7 + LATE && t <= 11 + LATE) { this.why = "jump";
+                return jump([]);                                               // on the spot: the timing holds
             }
-            if (b.y < DUCK_Y && onGround && t < 7) { this.why = "wait-bullet"; return []; }                      // too late to jump: stop, don't walk in
+            if (b.y < DUCK_Y && onGround && t < 7 + LATE) { this.why = "wait-bullet"; return []; }                      // too late to jump: stop, don't walk in
         }
         // grenades, bombs and shells coming down: where each will reach the player's head height (y 54;
         // falling speed grows by 1 a pass to 6, the sideways speed stays), and out of the way: forward if
@@ -128,7 +142,7 @@ export class HumanBot {
         }
         // mines: jump them
         const mine = st.movers.find((o) => o.slot < 0x0c && o.type === T.MINE && o.dx > 3 && o.dx < 10);
-        if (mine && onGround && this.ready(p, mine)) { this.why = "mine"; this.log.jump++; return ["RIGHT", "A"]; }
+        if (mine && onGround && this.ready(p, mine)) { this.why = "mine"; return jump(["RIGHT"]); }
         // emplacements: the type &0A nest (column ~2,270) fires a stream at y 38 (every 6 passes) while
         // the player is near; a y 38 bullet hits even a crouch, and a jump clears one, not a stream.
         // The player's bullets (2 columns a pass for 12) reach ~24-30 columns, so: rush in (jumping
@@ -149,7 +163,9 @@ export class HumanBot {
         // soldiers ahead: fire; hold back while the shield recharges
         if (ahead.length && this.ready(p, ahead[0])) { this.why = "fight";
             const near = ahead[0].dx < 12;
-            const keys = st.shield < 0.5 || near ? [] : ["RIGHT"];
+            // the original stops to shoot: only from where its bullet reaches (~26 columns); walk in until then
+            if (!st.fireOnMove && ahead[0].dx > 26) return ["RIGHT"];
+            const keys = st.shield < 0.5 || near || !st.fireOnMove ? [] : ["RIGHT"];
             if (keys.length === 0) this.log.hold++;
             if (fire()) { keys.push("SHIFT"); this.log.fire++; }               // (no direction key: the facing is kept)
             return keys;

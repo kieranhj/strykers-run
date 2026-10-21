@@ -17,6 +17,8 @@ const m = await startWorldGame(MachineSession, disc, { keepAlive: KEEP });
 const { s, cpu, syms } = m;
 const rd = (a, n = 1) => [...s.readMemory(a, n, { shadow: false })];
 const ev = { hits: 0, deaths: 0, shots: 0, grenades: 0, jumps: 0 }, kinds = {};
+const byBand = {};                       // hits (lives in the original) by 500 columns of the view
+const band = () => { const v = rd(syms.viewport_left_low)[0] + 256 * rd(syms.viewport_left_high)[0]; return 500 * Math.floor(v / 500); };
 cpu.debugInstruction.add((pc) => {
     if (pc === (syms.shield_hit ?? -1)) {
         ev.hits++;
@@ -27,7 +29,8 @@ cpu.debugInstruction.add((pc) => {
         const k = `type &${(rd(syms.movers_type_and_colour + sl)[0] & 0x7f).toString(16)} ${ran ? "ran into" : "hit by"} slot-${sl < 0x0c ? "soldier" : "proj"} ${x - px < 0 ? "behind" : "ahead"} y${rd(syms.movers_y + sl)[0]} ${(rd(syms.movers_frame_and_flip)[0] & 0x7f) === 0x0d ? "crouched" : rd(syms.movers_y)[0] > 24 ? "in the air" : "standing"}`;
         kinds[k] = (kinds[k] || 0) + 1;
     }
-    if (pc === syms.kill_player) ev.deaths++;
+    if (pc === syms.kill_player) { ev.deaths++; const b = band(); (byBand[b] ||= { hits: 0, deaths: 0 }).deaths++; }
+    if (pc === (syms.shield_hit ?? syms.kill_player)) { const b = band(); (byBand[b] ||= { hits: 0, deaths: 0 }).hits++; }
     if (pc === syms.play_sound) { if (cpu.a === 0x20) ev.shots++; if (cpu.a === 0x18) ev.grenades++; if (cpu.a === 0x30) ev.jumps++; }
     return false;
 });
@@ -45,3 +48,4 @@ const score = rd(syms.game_over_text + 20, 6).map((b) => (b - 0x6c) / 6).join(""
 console.log(`${disc} ${BOT}${BOT === "human" ? " seed " + SEED : ""}${KEEP ? " keep-alive" : ""}: ${m.passes} passes (${end}), furthest column ${best}; ` +
     `hits ${ev.hits}, deaths ${ev.deaths}; sounds (anyone's): firing ${ev.shots}, grenades ${ev.grenades}, the player's jumps ${ev.jumps}; score ${score}` + (bot.log ? `\n  ${JSON.stringify(bot.log)}` : ""));
 for (const [k, n] of Object.entries(kinds).sort((a, b) => b[1] - a[1])) console.log(`  ${String(n).padStart(3)}  ${k}`);
+console.log("  by 500 columns (hits, deaths): " + Object.entries(byBand).sort((a, b) => a[0] - b[0]).map(([b, v]) => `${b}: ${v.hits}/${v.deaths}`).join("  "));
