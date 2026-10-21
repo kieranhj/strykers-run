@@ -2,36 +2,36 @@
 \ room before its page-aligned music that the gameplay builds free (unused_925f); the code that uses
 \ them is src/options.6502, at the bank's end. All read with bank 5 paged, as the front end runs.
 
-.values                             \ title font: digits &00-&09, A &0A .. Z &23, space &25
-    EQUB &25, &04, &00, &25         \ " 40 "
-    EQUB &25, &08, &00, &25         \ " 80 "
-    EQUB &01, &02, &00, &25         \ "120 "
-    EQUB &01, &06, &00, &25         \ "160 "
+.values                             \ title font: digits &00-&09, A &0A .. Z &23, space &25; right-aligned (KC)
+    EQUB &25, &25, &04, &00         \ "  40"
+    EQUB &25, &25, &08, &00         \ "  80"
+    EQUB &25, &01, &02, &00         \ " 120"
+    EQUB &25, &01, &06, &00         \ " 160"
 .timer_names
-    EQUB &18, &0F, &0F, &25         \ "OFF "
-    EQUB &1E, &19, &25, &25         \ "UP  "
+    EQUB &25, &18, &0F, &0F         \ " OFF"
+    EQUB &25, &25, &1E, &19         \ "  UP"
     EQUB &0D, &18, &20, &17         \ "DOWN"
 .recharge_names
-    EQUB &25, &02, &1C, &25         \ " 2S "
-    EQUB &25, &05, &1C, &25         \ " 5S "
-    EQUB &25, &08, &1C, &25         \ " 8S "
-    EQUB &01, &00, &1C, &25         \ "10S "
+    EQUB &25, &25, &02, &1C         \ "  2S"
+    EQUB &25, &25, &05, &1C         \ "  5S"
+    EQUB &25, &25, &08, &1C         \ "  8S"
+    EQUB &25, &01, &00, &1C         \ " 10S"
 IF GAMEPLAY_RUN
 .run_names                          \ decision 52: run time (all five) and run charge (the first four)
-    EQUB &25, &05, &1C, &25         \ " 5S "
-    EQUB &01, &00, &1C, &25         \ "10S "
-    EQUB &01, &05, &1C, &25         \ "15S "
-    EQUB &02, &00, &1C, &25         \ "20S "
-    EQUB &18, &0F, &0F, &25         \ "OFF "
+    EQUB &25, &25, &05, &1C         \ "  5S"
+    EQUB &25, &01, &00, &1C         \ " 10S"
+    EQUB &25, &01, &05, &1C         \ " 15S"
+    EQUB &25, &02, &00, &1C         \ " 20S"
+    EQUB &25, &18, &0F, &0F         \ " OFF"
 ENDIF
 .limit_names                        \ decision 55: the timer's limit
-    EQUB &25, &03, &16, &25         \ " 3M "
-    EQUB &25, &05, &16, &25         \ " 5M "
-    EQUB &25, &08, &16, &25         \ " 8M "
-    EQUB &01, &00, &16, &25         \ "10M "
-    EQUB &01, &05, &16, &25         \ "15M "
+    EQUB &25, &25, &03, &16         \ "  3M"
+    EQUB &25, &25, &05, &16         \ "  5M"
+    EQUB &25, &25, &08, &16         \ "  8M"
+    EQUB &25, &01, &00, &16         \ " 10M"
+    EQUB &25, &01, &05, &16         \ " 15M"
 .lives_inf
-    EQUB &12, &17, &0F, &25         \ "INF "
+    EQUB &25, &12, &17, &0F         \ " INF"
 
 .options_title_line
     EQUB LO(&4000 + 16 * &280 + 192), HI(&4000 + 16 * &280 + 192), &0F   \ row 16, yellow (YY)

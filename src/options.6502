@@ -258,11 +258,11 @@ ENDIF
     BNE copy_inf
     BRA plot_value
 .digit
-    STA option_value + 3            \ the digit, then three spaces
+    STA option_value + 6            \ three spaces, then the digit (right-aligned, KC)
     LDA #&25
+    STA option_value + 3
     STA option_value + 4
     STA option_value + 5
-    STA option_value + 6
 .plot_value
     LDX #HI(option_value)
     LDY #LO(option_value)
