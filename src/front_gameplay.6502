@@ -15,7 +15,21 @@ IF GAMEPLAY_OPTIONS
     LDA opt_timer
     STA timer_mode
     STZ game_completed              \ 65C02 opcode: the headquarters not reached
+    LDX opt_hits                    \ decision 50: the shield's hits and its recharge
+    LDA opt_hits_unit,X
+    STA shield_unit
+    ASL A
+    STA shield_unit2
+    LDX opt_recharge
+    LDA opt_recharge_passes,X
+    STA shield_recharge
 ELSE
+    LDA #SHIELD_UNIT                \ decision 50: as decision 44
+    STA shield_unit
+    LDA #2 * SHIELD_UNIT
+    STA shield_unit2
+    LDA #SHIELD_WAIT
+    STA shield_recharge
   IF GAMEPLAY_LIVES
     LDA #LIVES_START                \ decision 45
   ELSE

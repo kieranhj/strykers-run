@@ -209,10 +209,14 @@ text_colour = * + 1
     RTS
 
 .define_controls
+IF GAMEPLAY_ANY
+    STZ key_offset                  \ decision 43: room before the music (65C02 opcode; &03's 1 unread here)
+ELSE
     LDX #&00
     STX key_offset
     INX
     STX unused                      \ Unused variable
+ENDIF
     LDX #HI(define_controls_text)
     LDY #LO(define_controls_text)
     JSR plot_title_screen_text      \ Write "DEFINE CONTROLS"
@@ -858,8 +862,8 @@ ENDIF
     LDA #&7F
     STA title_screen_cooldown
 IF GAMEPLAY_OPTIONS
-    JSR options_title               \ decision 46: the title's text and "6 GAME RULES"; the same 7 bytes,
-    EQUB &EA, &EA, &EA, &EA         \ so the music after stays page-aligned (NOPs)
+    JSR options_title               \ decision 46: the title's text and "6 GAME RULES" (the room before
+                                    \ the music absorbs the size: unused_925f's SKIP)
 ELSE
     LDX #HI(title_screen_text)      \ &8a2d = title_screen_text
     LDY #LO(title_screen_text)
@@ -896,8 +900,7 @@ ENDIF
     JMP prepare_to_start_game
 .not_one
 IF GAMEPLAY_OPTIONS
-    JMP options_key                 \ decision 46: "2" as before, "6" the game rules; the same 4 bytes
-    EQUB &EA
+    JMP options_key                 \ decision 46: "2" as before, "6" the game rules
 ELSE
     CMP #&02                        \ "2"
     BCS title_screen_loop
@@ -1136,6 +1139,9 @@ ENDIF
     EQUB &0F, &25, &0C, &1B, &12, &1C, &19, &1C, &25, &20, &0E, &1B, &0E, &25, &0D, &0E    \ "F CRISPS WERE DE"
     EQUB &16, &18, &15, &12, &1C, &11, &0E, &0D, &27, &25, &25, &25, &25, &FF    \ "MOLISHED.    "
 
+IF GAMEPLAY_OPTIONS
+    INCLUDE "options_data.6502"     \ decisions 46, 50: the game rules' settings and text
+ENDIF
 IF GAMEPLAY_ANY
     ASSERT * <= &9300 + PAD_START, "bank 5's code before the music overruns its page by ", * - &9300 - PAD_START
     SKIP &9300 + PAD_START - *      \ decision 43: the gameplay builds' room, over the dead copy below

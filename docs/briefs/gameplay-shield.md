@@ -152,6 +152,12 @@ death respawns whatever the lives, so the test scripts still never end.
    (`kc_slot0_y` `&32EA`) in the build with every flag after this fix, which took 13 out; it was 8
    before, not the 21 item 11 said.
 
+13. **The shield on the game rules screen: DONE** (decision 50, KC 2026-10-21): "4 SHIELD" (the
+   bullets a full shield takes: 1/2/3/4/6) and "5 RECHARGE" (2/5/8/10 s before it refills); the
+   rows now 6-14, two apart (the title font is two rows tall). `tools/optionstest.mjs` (18 checks),
+   `tools/shieldtest.mjs --unit U --wait W` (the rules with other settings: 50/50 and 9/250 held
+   over 8,000 passes). Bank 5 is full again: 12 bytes left.
+
 ## Answered (KC, 2026-10-20)
 
 - **High scores with infinite lives:** a game with infinite lives ends only by ESCAPE or by

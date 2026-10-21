@@ -35,7 +35,7 @@ ENDIF
     LDA movers_type_and_colour,X
 .typed
     AND #&7F
-    LDX #SHIELD_UNIT
+    LDX shield_unit                 \ decision 50: the game rules' (or SHIELD_UNIT)
     CMP #&10                        \ MOVER_TYPE_GRENADE
     BCC damage
     CMP #&14                        \ MOVER_TYPE_TANK: the grenade, bomb, rocket and mine below it
@@ -43,10 +43,10 @@ ENDIF
     CMP #&1B                        \ MOVER_TYPE_SHELL
     BNE damage
 .double
-    LDX #2 * SHIELD_UNIT
+    LDX shield_unit2
 .damage
     STX shield_tmp
-    LDA #SHIELD_WAIT
+    LDA shield_recharge             \ decision 50: the game rules' (or SHIELD_WAIT)
     STA shield_wait
     LDA #SHIELD_FLASH
     STA shield_flash

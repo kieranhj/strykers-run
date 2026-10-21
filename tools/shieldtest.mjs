@@ -10,13 +10,17 @@
 //   the bar   hud_buffer's bar shows 3 * shield / 25 filled (green) pixels of 6, the rest red, or
 //             all white while it flashes, and a blank last column; its digit is lives_digits'
 //
-//   node tools/shieldtest.mjs DISC.ssd [--passes N]
+//   --unit U --wait W: the shield's settings (decision 50: a bullet's damage U, an explosive's 2U, the
+//   refill after W passes) poked into shield_unit / shield_unit2 / shield_recharge at the first pass,
+//   as the game rules screen sets them; by default the build's (25 and 125, decision 44's)
+//
+//   node tools/shieldtest.mjs DISC.ssd [--passes N] [--unit U --wait W]
 import { loadMachineSession } from "./jsbeeb_src.mjs";
 import { WorldBot, startWorldGame, toWorldPass, worldState, pressKeys } from "./playscript.mjs";
 const MachineSession = await loadMachineSession();
 const args = process.argv.slice(2);
 const opt = (name, dflt) => { const i = args.indexOf(name); if (i < 0) return dflt; const v = args[i + 1]; args.splice(i, 2); return v; };
-const PASSES = +opt("--passes", 13000);
+const PASSES = +opt("--passes", 13000), UNIT_ARG = opt("--unit", null), WAIT_ARG = opt("--wait", null);
 const disc = args[0];
 
 const m = await startWorldGame(MachineSession, disc);
@@ -26,6 +30,10 @@ for (const k of ["shield_hit", "shield_tick", "hud_buffer", "font_data"])
 const rd = (a, n = 1) => [...s.readMemory(a, n, { shadow: false })];
 const zp = (name) => rd(syms[name])[0];
 const EXPLOSIVE = new Set([0x10, 0x11, 0x12, 0x13, 0x1b]);
+if (UNIT_ARG !== null) s.writeMemory(syms.shield_unit, [+UNIT_ARG, Math.min(255, 2 * UNIT_ARG)]);   // shield_unit, shield_unit2
+if (WAIT_ARG !== null) s.writeMemory(syms.shield_recharge, [+WAIT_ARG]);
+const UNIT = zp("shield_unit"), WAIT = zp("shield_recharge");
+if (!UNIT || !WAIT) throw new Error(`${disc}: shield_unit ${UNIT}, shield_recharge ${WAIT}: not set at the game's start`);
 
 let pre = null;                           // the movers' types where a collision path began
 const snapshot = () => { pre = rd(syms.movers_type_and_colour, 0x22); };
@@ -58,7 +66,7 @@ function judge() {                     // at the start of a pass: the last pass'
     if (hit && hit.pass === m.passes - 1 && !hit.judged) {
         hit.judged = true;
         hit.after = shield;
-        const dmg = hit.type !== null && EXPLOSIVE.has(hit.type) ? 50 : 25;
+        const dmg = hit.type !== null && EXPLOSIVE.has(hit.type) ? 2 * UNIT : UNIT;
         hit.expected = hit.before === 0 ? 50 : Math.max(0, hit.before - dmg);
         if (hit.after !== hit.expected) fail(`hit by type ${hit.type} (slot ${hit.slot}) took the shield ${hit.before} -> ${hit.after}, expected ${hit.expected}`);
         if (hit.died !== (hit.before === 0)) fail(`hit at shield ${hit.before}: kill_player ${hit.died ? "entered" : "not entered"}`);
@@ -100,9 +108,9 @@ for (let p = 1; p <= PASSES; p++) {
         if (shield > last) {
             refillPasses++;
             if (shield !== last + 1) fail(`shield rose ${last} -> ${shield} in a pass`);
-            if (quiet <= 125) fail(`shield rose ${quiet} passes after a hit (125 must pass first)`);
+            if (quiet <= WAIT) fail(`shield rose ${quiet} passes after a hit (${WAIT} must pass first)`);
         } else if (shield < last) fail(`shield fell ${last} -> ${shield} with no hit`);
-        else if (quiet > 126 && shield < 50) fail(`shield stayed at ${shield} ${quiet} passes after a hit`);
+        else if (quiet > WAIT + 1 && shield < 50) fail(`shield stayed at ${shield} ${quiet} passes after a hit`);
         if (last < 50 && shield === 50) refills++;
     } else if (hitLast) quiet = 0;
     last = shield;

@@ -1,0 +1,48 @@
+\ options_data.6502 - GAMEPLAY_OPTIONS' settings, values and text (decisions 46, 50): bank 5, in the
+\ room before its page-aligned music that the gameplay builds free (unused_925f); the code that uses
+\ them is src/options.6502, at the bank's end. All read with bank 5 paged, as the front end runs.
+
+.values                             \ title font: digits &00-&09, A &0A .. Z &23, space &25
+    EQUB &25, &04, &00, &25         \ " 40 "
+    EQUB &25, &08, &00, &25         \ " 80 "
+    EQUB &01, &02, &00, &25         \ "120 "
+    EQUB &01, &06, &00, &25         \ "160 "
+.timer_names
+    EQUB &18, &0F, &0F, &25         \ "OFF "
+    EQUB &1E, &19, &25, &25         \ "UP  "
+    EQUB &0D, &18, &20, &17         \ "DOWN"
+.recharge_names
+    EQUB &25, &02, &1C, &25         \ " 2S "
+    EQUB &25, &05, &1C, &25         \ " 5S "
+    EQUB &25, &08, &1C, &25         \ " 8S "
+    EQUB &01, &00, &1C, &25         \ "10S "
+.lives_inf
+    EQUB &12, &17, &0F, &25         \ "INF "
+
+.options_title_line
+    EQUB LO(&4000 + 16 * &280 + 192), HI(&4000 + 16 * &280 + 192), &0F   \ row 16, yellow (YY)
+    EQUB &06, &25, &10, &0A, &16, &0E, &25, &1B, &1E, &15, &0E, &1C   \ "6 GAME RULES"
+    EQUB &FF
+
+.options_text
+    EQUB LO(&4000 + 3 * &280 + 120), HI(&4000 + 3 * &280 + 120), &3E   \ row 3, white on cyan (WC)
+    EQUB &10, &0A, &16, &0E, &25, &1B, &1E, &15, &0E, &1C           \ "GAME RULES"
+    EQUB &FE
+    EQUB LO(&4000 + 6 * &280 + 96), HI(&4000 + 6 * &280 + 96), &03   \ row 6, red (RR)
+    EQUB &01, &25, &15, &12, &1F, &0E, &1C                          \ "1 LIVES"
+    EQUB &FE
+    EQUB LO(&4000 + 8 * &280 + 96), HI(&4000 + 8 * &280 + 96), &33   \ row 8, magenta (MM)
+    EQUB &02, &25, &1B, &0E, &1C, &19, &0A, &20, &17                \ "2 RESPAWN"
+    EQUB &FE
+    EQUB LO(&4000 + 10 * &280 + 96), HI(&4000 + 10 * &280 + 96), &3C \ row 10, cyan (CC)
+    EQUB &03, &25, &1D, &12, &16, &0E, &1B                          \ "3 TIMER"
+    EQUB &FE
+    EQUB LO(&4000 + 12 * &280 + 96), HI(&4000 + 12 * &280 + 96), &0F \ row 12, yellow (YY): decision 50
+    EQUB &04, &25, &1C, &11, &12, &0E, &15, &0D                     \ "4 SHIELD"
+    EQUB &FE
+    EQUB LO(&4000 + 14 * &280 + 96), HI(&4000 + 14 * &280 + 96), &3F \ row 14, white (WW)
+    EQUB &05, &25, &1B, &0E, &0C, &11, &0A, &1B, &10, &0E           \ "5 RECHARGE"
+    EQUB &FE
+    EQUB LO(&4000 + 18 * &280 + 48), HI(&4000 + 18 * &280 + 48), &0C \ row 18, green (GG)
+    EQUB &0E, &1C, &0C, &0A, &19, &0E, &25, &1D, &18, &25, &1B, &0E, &1D, &1E, &1B, &17   \ "ESCAPE TO RETURN"
+    EQUB &FF

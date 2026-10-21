@@ -1,8 +1,10 @@
 // optionstest.mjs - GAMEPLAY_OPTIONS checked (decision 46): the game rules screen and what it sets.
 //   the title       "6" opens the game rules screen (options_screen)
 //   the settings    "1" cycles the lives 1-9 then infinite (10), "2" the rewind 40/80/120/160 columns,
-//                   "3" the timer off/up/down; ESCAPE goes back to the title
-//   a game          starts with them: lives, respawn_columns, timer_mode; with infinite lives the
+//                   "3" the timer off/up/down, "4" the shield's hits 1/2/3/4/6, "5" its recharge
+//                   2/5/8/10 s (decision 50); ESCAPE goes back to the title
+//   a game          starts with them: lives, respawn_columns, timer_mode, shield_unit(2),
+//                   shield_recharge; with infinite lives the
 //                   HUD's digit is lives_digits' entry 10 (the infinite glyph)
 //   high scores     an infinite-lives game ended by ESCAPE does not reach the name entry, with a
 //                   score that would rank (poked to 020000); a 3-lives game ended the same way does
@@ -17,7 +19,7 @@ const [disc, PREFIX = "options"] = process.argv.slice(2);
 const syms = loadSyms(disc);
 for (const k of ["options_screen", "opt_lives", "shield_new_game", "finished_shuffling_names"])
     if (syms[k] === undefined) throw new Error(`${disc}: no ${k} - not a GAMEPLAY_OPTIONS build?`);
-const K = { K1: [0, 3], K2: [1, 3], K3: [1, 1], K6: [4, 3], ESCAPE: [0, 7] };
+const K = { K1: [0, 3], K2: [1, 3], K3: [1, 1], K4: [2, 1], K5: [3, 1], K6: [4, 3], ESCAPE: [0, 7] };
 const s = await bootMaster(MachineSession, disc);
 const cpu = s._machine.processor;
 const rd = (a, n = 1) => [...s.readMemory(a, n, { shadow: false })];
@@ -58,6 +60,16 @@ check("lives to infinite (10), the rewind round to 40, the timer down", o2.lives
 await shot("game-rules-set");
 await press("K1"); const wrap = opts().lives; await press("K3"); const toff = opts().timer;
 check("lives wrap infinite -> 1, the timer down -> off", wrap === 1 && toff === 0, `lives ${wrap}, timer ${toff}`);
+const sh = () => ({ hits: rd(syms.opt_hits)[0], recharge: rd(syms.opt_recharge)[0] });
+const sh0 = sh();
+check("the shield's defaults (2 hits, 5 s)", sh0.hits === 1 && sh0.recharge === 1, JSON.stringify(sh0));
+await press("K4"); const h2 = sh().hits;
+for (let i = 0; i < 3; i++) await press("K4");
+const h0 = sh().hits;
+await press("K5"); await press("K5"); await press("K5"); const r0 = sh().recharge;
+await press("K5"); await press("K5");
+check("4 steps the hits and wraps 6 -> 1, 5 the recharge and wraps 10 s -> 2 s", h2 === 2 && h0 === 0 && r0 === 0 && sh().recharge === 2, `hits ${h2}, ${h0}; recharge ${r0}, ${sh().recharge}`);
+await shot("game-rules-shield");
 for (let i = 1; i < 10; i++) await press("K1");
 await press("K3"); await press("K3");                      // back to infinite, the timer down
 const loops = seen.loop;
@@ -67,6 +79,8 @@ check("game 1 (infinite lives) started", await startGame());
 await run(100);
 const g1 = { lives: rd(syms.lives)[0], cols: rd(syms.respawn_columns)[0], timer: rd(syms.timer_mode)[0] };
 check("the game took the settings", g1.lives === 10 && g1.cols === 40 && g1.timer === 2, JSON.stringify(g1));
+const g1s = { unit: rd(syms.shield_unit)[0], unit2: rd(syms.shield_unit2)[0], recharge: rd(syms.shield_recharge)[0] };
+check("the shield took them: 1 hit, 8 s", g1s.unit === 50 && g1s.unit2 === 100 && g1s.recharge === 200, JSON.stringify(g1s));
 const digit = rd(syms.hud_buffer, 32), glyph = [0x18, 0x24, 0x18, 0x18, 0x24, 0x18], inf = [];
 for (let c = 0; c < 3; c++) for (let y = 0; y < 8; y++) inf.push((glyph[2 * c] >> y & 1 ? 0x28 : 0) | (glyph[2 * c + 1] >> y & 1 ? 0x14 : 0));
 for (let y = 0; y < 8; y++) inf.push(0);

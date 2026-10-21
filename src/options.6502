@@ -1,6 +1,7 @@
 \ options.6502 - GAMEPLAY_OPTIONS (decision 46; docs/briefs/gameplay-shield.md): "6 GAME RULES" on
-\ the title screen, a screen to set the lives (1-9 or infinite), how far a death rewinds the view
-\ and the timer (off, counting up, counting down), kept for the session. In bank 5 with the front
+\ the title screen, a screen to set the lives (1-9 or infinite), how far a death rewinds the view,
+\ the timer (off, counting up, counting down), and the shield's hits and recharge (decision 50),
+\ kept for the session. In bank 5 with the front
 \ end, after its music (the hooks before it are the same size as what they replace, so the music
 \ stays page-aligned). start_game (shield_new_game, run with bank 5 paged) copies the settings in.
 
@@ -9,8 +10,19 @@ OPT_INFINITE = 10                   \ opt_lives for infinite lives: lives shows 
 .opt_lives          EQUB LIVES_START
 .opt_respawn        EQUB 0          \ an index into opt_respawn_columns: 40 (KC, 2026-10-21)
 .opt_timer          EQUB GAMEPLAY_TIMER   \ 0 off, 1 counting up, 2 counting down
+.opt_hits           EQUB 1          \ decision 50: an index into opt_hits_unit: 2 hits (decision 44's)
+.opt_recharge       EQUB 1          \ an index into opt_recharge_passes: 5 seconds (decision 44's)
 .opt_respawn_columns
     EQUB 40, 80, 120, 160
+.opt_hits_unit                      \ a bullet's damage: a full shield (SHIELD_FULL, 50) takes 1, 2, 3, 4, 6
+    EQUB 50, 25, 17, 13, 9
+.opt_hits_digit                     \ what the screen shows for each
+    EQUB 1, 2, 3, 4, 6
+.opt_recharge_passes                \ 2, 5, 8, 10 seconds of the design speed (25 passes)
+    EQUB 50, 125, 200, 250
+
+.option_value                       \ a value's text: where, colour, four characters, the end
+    EQUB 0, 0, &3F, 0, 0, 0, 0, &FF
 
 \ options_title: the title's text, and the sixth line (display_title_screen's LDX/LDY/JSR, replaced)
 .options_title
@@ -70,6 +82,20 @@ OPT_INFINITE = 10                   \ opt_lives for infinite lives: lives shows 
     LDA #LO(OPT_TIMER_AT)
     LDY #HI(OPT_TIMER_AT)
     JSR value_x
+    LDX opt_hits                    \ decision 50: a digit
+    LDA opt_hits_digit,X
+    TAX
+    LDA #LO(OPT_HITS_AT)
+    LDY #HI(OPT_HITS_AT)
+    JSR value_digit
+    LDA opt_recharge
+    ASL A
+    ASL A
+    ADC #recharge_names - values
+    TAX
+    LDA #LO(OPT_RECHARGE_AT)
+    LDY #HI(OPT_RECHARGE_AT)
+    JSR value_x
 .key
     JSR get_keypress
     CMP #&70                        \ ESCAPE: back to the title
@@ -95,6 +121,25 @@ OPT_INFINITE = 10                   \ opt_lives for infinite lives: lives shows 
     STA opt_respawn
     BRA show
 .not_respawn
+    CMP #&12                        \ "4": the shield's hits, 1 / 2 / 3 / 4 / 6 (decision 50)
+    BNE not_hits
+    LDA opt_hits
+    INC A
+    CMP #5
+    BCC hits_ok
+    LDA #0
+.hits_ok
+    STA opt_hits
+    BRA show
+.not_hits
+    CMP #&13                        \ "5": the recharge, 2 / 5 / 8 / 10 seconds
+    BNE not_recharge
+    LDA opt_recharge
+    INC A
+    AND #3
+    STA opt_recharge
+    JMP show                        \ (out of a branch's reach)
+.not_recharge
     CMP #&11                        \ "3": the timer, off / up / down
     BNE key
     LDA opt_timer
@@ -104,7 +149,7 @@ OPT_INFINITE = 10                   \ opt_lives for infinite lives: lives shows 
     LDA #0
 .timer_ok
     STA opt_timer
-    BRA show
+    JMP show
 
 \ value: the lives' four characters (a digit and three spaces, or INF); value_x: X the respawn's or
 \ the timer's four, from values. A/Y: where on the screen
@@ -120,6 +165,11 @@ OPT_INFINITE = 10                   \ opt_lives for infinite lives: lives shows 
     CPY #4
     BNE copy
     BRA plot_value                  \ 65C02 opcode
+.value_digit                        \ X: the digit
+    STA option_value
+    STY option_value + 1
+    TXA
+    BRA digit                       \ 65C02 opcode
 .value
     STA option_value
     STY option_value + 1
@@ -150,43 +200,8 @@ OPT_INFINITE = 10                   \ opt_lives for infinite lives: lives shows 
     LDY #0
     JMP plot_title_screen_text_loop
 
-.option_value                       \ a value's text: where, colour, four characters, the end
-    EQUB 0, 0, &3F, 0, 0, 0, 0, &FF
-
-.values                             \ title font: digits &00-&09, A &0A .. Z &23, space &25
-    EQUB &25, &04, &00, &25         \ " 40 "
-    EQUB &25, &08, &00, &25         \ " 80 "
-    EQUB &01, &02, &00, &25         \ "120 "
-    EQUB &01, &06, &00, &25         \ "160 "
-.timer_names
-    EQUB &18, &0F, &0F, &25         \ "OFF "
-    EQUB &1E, &19, &25, &25         \ "UP  "
-    EQUB &0D, &18, &20, &17         \ "DOWN"
-.lives_inf
-    EQUB &12, &17, &0F, &25         \ "INF "
-
-OPT_LIVES_AT   = &4000 + 7 * &280 + 96 + 11 * 24   \ after "1 LIVES", character row 7 (the values in one column)
-OPT_RESPAWN_AT = &4000 + 10 * &280 + 96 + 11 * 24  \ after "2 RESPAWN", row 10
-OPT_TIMER_AT   = &4000 + 13 * &280 + 96 + 11 * 24  \ after "3 TIMER", row 13
-
-.options_title_line
-    EQUB LO(&4000 + 16 * &280 + 192), HI(&4000 + 16 * &280 + 192), &0F   \ row 16, yellow (YY)
-    EQUB &06, &25, &10, &0A, &16, &0E, &25, &1B, &1E, &15, &0E, &1C   \ "6 GAME RULES"
-    EQUB &FF
-
-.options_text
-    EQUB LO(&4000 + 3 * &280 + 120), HI(&4000 + 3 * &280 + 120), &3E   \ row 3, white on cyan (WC)
-    EQUB &10, &0A, &16, &0E, &25, &1B, &1E, &15, &0E, &1C           \ "GAME RULES"
-    EQUB &FE
-    EQUB LO(&4000 + 7 * &280 + 96), HI(&4000 + 7 * &280 + 96), &03   \ row 7, red (RR)
-    EQUB &01, &25, &15, &12, &1F, &0E, &1C                          \ "1 LIVES"
-    EQUB &FE
-    EQUB LO(&4000 + 10 * &280 + 96), HI(&4000 + 10 * &280 + 96), &33 \ row 10, magenta (MM)
-    EQUB &02, &25, &1B, &0E, &1C, &19, &0A, &20, &17                \ "2 RESPAWN"
-    EQUB &FE
-    EQUB LO(&4000 + 13 * &280 + 96), HI(&4000 + 13 * &280 + 96), &3C \ row 13, cyan (CC)
-    EQUB &03, &25, &1D, &12, &16, &0E, &1B                          \ "3 TIMER"
-    EQUB &FE
-    EQUB LO(&4000 + 18 * &280 + 48), HI(&4000 + 18 * &280 + 48), &0C \ row 18, green (GG)
-    EQUB &0E, &1C, &0C, &0A, &19, &0E, &25, &1D, &18, &25, &1B, &0E, &1D, &1E, &1B, &17   \ "ESCAPE TO RETURN"
-    EQUB &FF
+OPT_LIVES_AT    = &4000 + 6 * &280 + 96 + 11 * 24  \ after "1 LIVES", character row 6 (the values in one column;
+OPT_RESPAWN_AT  = &4000 + 8 * &280 + 96 + 11 * 24  \ the font is two rows tall, as define controls spaces it)
+OPT_TIMER_AT    = &4000 + 10 * &280 + 96 + 11 * 24
+OPT_HITS_AT     = &4000 + 12 * &280 + 96 + 11 * 24 \ decision 50
+OPT_RECHARGE_AT = &4000 + 14 * &280 + 96 + 11 * 24
