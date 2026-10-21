@@ -21,7 +21,7 @@ const disc = args[0];
 
 const m = await startWorldGame(MachineSession, disc);
 const { s, cpu, syms } = m;
-for (const k of ["shield_hit", "shield_tick", "hud_buffer", "lives_digits"])
+for (const k of ["shield_hit", "shield_tick", "hud_buffer", "font_data"])
     if (syms[k] === undefined) throw new Error(`${disc}: no ${k} - not a GAMEPLAY_SHIELD build?`);
 const rd = (a, n = 1) => [...s.readMemory(a, n, { shadow: false })];
 const zp = (name) => rd(syms[name])[0];
@@ -46,6 +46,8 @@ cpu.debugInstruction.add((pc) => {
         pre = null;
     }
     if (pc === syms.kill_player && hit && hit.pass === m.passes) hit.died = true;
+    if (pc === syms.play_sound && hit && hit.pass === m.passes) (hit.sounds ||= []).push(cpu.a);
+    if (pc === syms.not_the_player && hit && hit.pass === m.passes && rd(0x87)[0] === 0) hit.deathSounds = true;   // the death's sounds follow
     // just after main_game_loop's JSR shield_tick: the bar as the tick left it
     if (pc === syms.not_game_over + 3 && m.passes > 2) checkBar(zp("shield"), zp("lives"));
     return false;
@@ -60,16 +62,22 @@ function judge() {                     // at the start of a pass: the last pass'
         hit.expected = hit.before === 0 ? 50 : Math.max(0, hit.before - dmg);
         if (hit.after !== hit.expected) fail(`hit by type ${hit.type} (slot ${hit.slot}) took the shield ${hit.before} -> ${hit.after}, expected ${hit.expected}`);
         if (hit.died !== (hit.before === 0)) fail(`hit at shield ${hit.before}: kill_player ${hit.died ? "entered" : "not entered"}`);
+        const snd = hit.sounds || [];                       // KC: an absorbed hit its own sound (&38), not the death's (&00, &10)
+        if (hit.before > 0 && (!snd.includes(0x38) || hit.deathSounds)) fail(`absorbed hit: its sound ${snd.includes(0x38) ? "played" : "missing"}, the death's ${hit.deathSounds ? "played" : "not"}`);
+        if (hit.before === 0 && (!hit.deathSounds || snd.includes(0x38))) fail(`a death: its sounds ${hit.deathSounds ? "played" : "missing"}, the shield's ${snd.includes(0x38) ? "played" : "not"}`);
     }
     return { shield, lives };
 }
 function checkBar(shield, lives) {
     const hud = rd(syms.hud_buffer, 72), flash = zp("shield_flash");
-    const digit = rd(syms.lives_digits + 32 * (lives & 15), 32);
-    if (hud.slice(0, 32).some((b, i) => b !== digit[i])) fail(`hud_buffer's digit is not lives_digits' for ${lives}`);
+    const font = rd(syms.font_data + 0x6c + 6 * lives, 6);     // plot_lives' character, as livesdigits.py made it
+    const digit = [];
+    for (let c = 0; c < 3; c++) for (let y = 0; y < 8; y++) digit.push((font[2 * c] >> y & 1 ? 0x28 : 0) | (font[2 * c + 1] >> y & 1 ? 0x14 : 0));
+    for (let y = 0; y < 8; y++) digit.push(0);
+    if (lives < 10 && hud.slice(0, 32).some((b, i) => b !== digit[i])) fail(`hud_buffer's digit is not the font's for ${lives}`);
     const px = Math.floor(3 * shield / 25), white = (flash & 2) !== 0;
     const seg = [0, 1, 2, -1, 3, 4, 5, -1, -1, -1];
-    const left = (p) => seg[p] < 0 ? 0 : white ? 0x2a : seg[p] < px ? 0x08 : 0x02;
+    const left = (p) => seg[p] < 0 ? 0 : white ? 0x2a : seg[p] < px ? 0x20 : 0x02;
     for (let c = 0; c < 5; c++) {
         const fill = left(2 * c) | (left(2 * c + 1) >> 1);
         for (let r = 0; r < 8; r++) {

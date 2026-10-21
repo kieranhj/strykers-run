@@ -1,0 +1,159 @@
+\ shield_hi.6502 - the shield's code that lives above &9000 in bank 4 (decisions 44-47): the room the
+\ lives digit's table left (the renderer copies the HUD in these builds, and does not read it). The
+\ logic calls it with ROMSEL &04, which shows bank 4's &9000 on as well as the 4K under ANDY.
+
+\ hud_build: hud_buffer from what it shows (shield_tick, when that changed: hud_level in shield_tmp,
+\ lives): the lives digit made from the game's font, as plot_lives drew it (tools/livesdigits.py
+\ made the same bytes into a table), then the bar; bumps hud_serial so the renderer redraws it
+.hud_build
+{
+    LDA shield_tmp
+    STA hud_level
+    LDA lives
+    STA hud_lives
+    LDX #LO(infinity)               \ infinite lives (decision 46: lives 10) its own glyph
+    LDY #HI(infinity)
+    CMP #10
+    BEQ source
+    STA font_index                  \ else the character "0" + lives: font_data + &6C + 6 * lives
+    ASL A
+    ADC font_index                  \ C = 0 after the ASL (lives <= 9)
+    ASL A                           \ 6 * lives
+    ADC #LO(font_data + &6C)
+    TAX
+    LDA #HI(font_data + &6C)
+    ADC #0
+    TAY
+.source
+    STX read + 1
+    STY read + 2
+    LDX #0                          \ the font's byte
+    LDY #0                          \ hud_buffer's
+.cell                               \ three byte columns, each two of the font's (left and right
+    JSR read                        \ pixel), row Y of the cell its bit Y
+    STA font_left
+    JSR read
+    STA font_right
+.row
+    LDA #0
+    LSR font_left
+    BCC no_left
+    ORA #&28                        \ the left pixel, colour 6 (black)
+.no_left
+    LSR font_right
+    BCC no_right
+    ORA #&14                        \ the right
+.no_right
+    STA hud_buffer,Y
+    INY
+    TYA
+    AND #7
+    BNE row
+    CPY #24
+    BNE cell
+    LDA #0                          \ the fourth column blank
+.blank
+    STA hud_buffer,Y
+    INY
+    CPY #32
+    BNE blank
+    LDX #HUD_BAR_COLUMNS - 1        \ the bar, a byte column (two pixels) at a time, right to left
+.column
+    TXA
+    ASL A
+    TAY                             \ Y = its left pixel
+    JSR pixel
+    STA column_byte
+    INY
+    JSR pixel
+    LSR A                           \ the right pixel's bits
+    ORA column_byte
+    PHA
+    TXA
+    ASL A
+    ASL A
+    ASL A
+    TAY                             \ Y = 8 * the column: its 8 rows in hud_buffer
+    PLA
+    STA hud_buffer + 32 + 1,Y       \ rows 1-6 the bar, 0 and 7 sky
+    STA hud_buffer + 32 + 2,Y
+    STA hud_buffer + 32 + 3,Y
+    STA hud_buffer + 32 + 4,Y
+    STA hud_buffer + 32 + 5,Y
+    STA hud_buffer + 32 + 6,Y
+    LDA #0
+    STA hud_buffer + 32 + 0,Y
+    STA hud_buffer + 32 + 7,Y
+    DEX
+    BPL column
+    INC hud_serial
+    RTS
+.read
+    LDA &FFFF,X                     \ self-modified: the glyph's six bytes
+    INX
+    RTS
+\ pixel: bar pixel Y (0-9) as a left pixel's MODE 2 bits; keeps X and Y. Blue (4) filled (KC: it
+\ shows up better than green on the sky), red (1) empty, white (7) all while it flashes, sky (0)
+\ between the segments and after them
+.pixel
+    LDA segment_of_pixel,Y
+    BMI sky
+    BIT hud_level
+    BMI white
+    CMP shield_tmp                  \ hud_level here, its flash bit clear
+    BCS empty
+    LDA #&20                        \ blue, as a left pixel
+    RTS
+.white
+    LDA #&2A                        \ white
+    RTS
+.empty
+    LDA #&02                        \ red
+    RTS
+.sky
+    LDA #0
+    RTS
+.column_byte
+    EQUB 0
+.font_index
+.font_left
+    EQUB 0
+.font_right
+    EQUB 0
+.segment_of_pixel                   \ each pixel's place in the bar (0-5), &FF for a gap
+    EQUB 0, 1, 2, &FF, 3, 4, 5, &FF, &FF, &FF
+.infinity                           \ two loops, in the font's form: a byte a pixel column, bit Y row Y
+    EQUB &18, &24, &18, &18, &24, &18
+}
+
+IF GAMEPLAY_TIMER
+\ time_up_now: the timer reached 0 counting down (timer_tick set time_up): KC, 2026-10-21, the
+\ skeleton first, then the game over. A soldier on foot dies as at the last life (lives 1, the
+\ shield 0: the death takes it to 0, and the skeleton's end is the game over); otherwise (flying,
+\ dying, rewinding) the game is over at once
+.time_up_now
+{
+    STZ time_up                     \ 65C02 opcodes
+    LDA player_helicopter
+    ORA player_helicopter_explosion
+  IF GAMEPLAY_LIVES
+    ORA respawn_left
+  ENDIF
+    ORA movers_type_and_colour      \ MOVER_TYPE_PLAYER (0): a soldier, not the skeleton
+    BNE over
+    LDA #1
+    STA lives
+    STZ shield
+  IF GAMEPLAY_LIVES
+    STZ invulnerable
+  ENDIF
+    LDY #0                          \ MOVER_PLAYER
+    JMP kill_mover_Y
+.over
+    LDA #&FF                        \ lives negative: main_game_loop's game over, after the cooldown
+    STA lives
+    LDA #&50
+    STA game_over_cooldown
+    RTS
+}
+ENDIF

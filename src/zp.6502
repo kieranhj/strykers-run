@@ -28,13 +28,14 @@ respawn_x_hi                                 = &11      \ the player's x high by
 invulnerable                                 = &12      \ passes left in which no hit counts
 respawn_columns                              = &17      \ how far a death rewinds the view (shield_new_game)
 timer_mode                                   = &18      \ decision 47: 0 off, 1 up, 2 down (shield_new_game)
+time_up                                      = &19      \ decision 47: non-zero when counting down reached 0
 \ GAMEPLAY_TIMER (decision 47, src/timer.6502): &13-&16
 timer_ready                                  = &13      \ 0 at a game's start (shield_new_game)
 timer_hi                                     = &14      \ the seconds, BCD: hundreds
 timer_lo                                     = &15      \ tens and units
 timer_frac                                   = &16      \ passes into this second (0-24)
 LIVES_START     = 3                 \ decision 45: lives at a game's start
-RESPAWN_COLUMNS = 80                \ how far the view goes back: a screen
+RESPAWN_COLUMNS = 40                \ how far the view goes back: half a screen (KC, 2026-10-21; it was 80)
 RESPAWN_SAFE    = 50                \ passes of invulnerability after it (2 seconds), the bar flashing
 HUD_BAR_COLUMNS = 5                 \ the bar: two segments of 3 pixels, a gap after each, then a blank column
                                     \ (it wipes the bar's last place when the view scrolls left, as the digit's 4th does)

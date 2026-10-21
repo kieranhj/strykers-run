@@ -34,7 +34,8 @@ Branch `gameplay-shield`, `docs/briefs/gameplay-shield.md`: the double hit is fi
 (`GAMEPLAY_LIVES`, 45), the game rules screen (`GAMEPLAY_OPTIONS`, 46) and the timer
 (`GAMEPLAY_TIMER`, 47, KC's request, its details for KC to review). Left: the gameplay disc's
 make target, KC's review (hit sound, rewind speed and distance, the timer's par and bonus), the
-HUD's cost, and merging the branch. Open for KC: high scores with infinite lives, hit feedback, the bar's
+HUD's cost (KC's idea: rupture the screen so the top line is one fixed area of RAM, drawn once:
+the brief, item 10), and the branch kept separate for now (KC, 2026-10-21). Open for KC: high scores with infinite lives, hit feedback, the bar's
 colours, which discs to make.
 
 ## The level editor, v1 (decision 41)

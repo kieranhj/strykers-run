@@ -7,7 +7,7 @@
 OPT_INFINITE = 10                   \ opt_lives for infinite lives: lives shows the glyph lives_digits has at 10
 
 .opt_lives          EQUB LIVES_START
-.opt_respawn        EQUB 1          \ an index into opt_respawn_columns
+.opt_respawn        EQUB 0          \ an index into opt_respawn_columns: 40 (KC, 2026-10-21)
 .opt_timer          EQUB GAMEPLAY_TIMER   \ 0 off, 1 counting up, 2 counting down
 .opt_respawn_columns
     EQUB 40, 80, 120, 160

@@ -4,8 +4,8 @@
 //              at 999), or down from 600 (=2)
 //   the bonus  at the headquarters (completion_screen), the score rises by 10 a second under 600
 //              (counting up) or left (counting down), and by nothing else
-//   time up    --short (counting down only): the timer poked to 5 seconds at the start; at 0 the game
-//              must be over (game_over_screen) within the game over cooldown's passes
+//   time up    --short (counting down only): the timer poked to 5 seconds at the start; at 0 the
+//              player turns into the skeleton (KC, 2026-10-21), then the game is over (game_over_screen)
 //   the digits hud_buffer shows the time (the 3x5 font, black), after every tick
 //
 //   node tools/timertest.mjs DISC.ssd [--passes N] [--short]
@@ -31,7 +31,7 @@ const fails = [];
 const fail = (msg) => { if (fails.length < 30) fails.push(`pass ${m.passes}: ${msg}`); };
 const FONT = [[7, 5, 5, 5, 7], [2, 6, 2, 2, 7], [7, 1, 7, 4, 7], [7, 1, 7, 1, 7], [5, 5, 7, 1, 1], [7, 4, 7, 1, 7], [7, 4, 7, 5, 7], [7, 1, 1, 1, 1], [7, 5, 7, 5, 7], [7, 5, 7, 1, 7]];
 const HUD_TIMER = syms.HUD_TIMER;
-let bonus = null, ticks = 0, gameOverAt = null, zeroAt = null, quietUntil = 0;
+let bonus = null, ticks = 0, gameOverAt = null, zeroAt = null, quietUntil = 0, skeletonAt = null;
 const checkDigits = () => {
     const t = bcd(zp("timer_hi"), zp("timer_lo")), digits = [Math.floor(t / 100), Math.floor(t / 10) % 10, t % 10];
     const hud = rd(syms.hud_buffer + HUD_TIMER, 56);
@@ -47,6 +47,7 @@ cpu.debugInstruction.add((pc) => {
     if (pc === syms.render_finish && bonus && bonus.after === undefined) bonus.after = score();
     if (pc === syms.bank4_back && m.passes > 2 && m.passes > quietUntil && !bonus) { ticks++; checkDigits(); }   // (bonus: timer_bonus_call returns here too)   // timer_tick_call, after its JSR timer_tick
     if (pc === syms.game_over_screen && gameOverAt === null) gameOverAt = m.passes;
+    if (pc === syms.kill_player && zeroAt !== null && skeletonAt === null) skeletonAt = m.passes;
     return false;
 });
 const bot = new WorldBot();
@@ -58,7 +59,11 @@ for (let p = 1; p <= PASSES; p++) {
     const t = bcd(zp("timer_hi"), zp("timer_lo")), f = zp("timer_frac");
     if (p === 3) {
         down = t !== 0;
-        if (SHORT) { if (!down) throw new Error("--short is for a counting-down build"); const [h, l] = toBcd(5); s.writeMemory(syms.timer_hi, [h, l]); quietUntil = p + 26; }   // the digits show the poke from the next second
+        if (SHORT) {
+            if (!down) throw new Error("--short is for a counting-down build");
+            const [h, l] = toBcd(5); s.writeMemory(syms.timer_hi, [h, l]); quietUntil = p + 26;   // the digits show the poke from the next second
+            if (m.infiniteLives !== "DEBUG_LIVES") s.writeMemory(syms.kill_player, [0xc6]);        // DEC lives again: the time-up death must end the game
+        }   // the digits show the poke from the next second
     }
     if (prev && p > 3 && zeroAt === null) {
         const want = f === 0 ? (down ? Math.max(0, prev.t - 1) : Math.min(999, prev.t + 1)) : prev.t;
@@ -77,9 +82,10 @@ if (bonus) {
 }
 if (SHORT) {
     if (zeroAt === null) fail("--short: the time never reached 0");
-    else if (gameOverAt === null || gameOverAt - zeroAt > 120) fail(`--short: time up at pass ${zeroAt}, game over ${gameOverAt === null ? "never" : "at pass " + gameOverAt}`);
+    else if (gameOverAt === null || gameOverAt - zeroAt > 400) fail(`--short: time up at pass ${zeroAt}, game over ${gameOverAt === null ? "never" : "at pass " + gameOverAt}`);
+    else if (skeletonAt === null || skeletonAt - zeroAt > 2) fail(`--short: no skeleton at time up (kill_player ${skeletonAt === null ? "never" : "at pass " + skeletonAt})`);
 }
 console.log(`${disc}: ${m.passes} passes (${end}), counting ${down ? "down" : "up"}; ${ticks} ticks with the digits checked` +
-    (bonus ? `; at the headquarters at ${bonus.t} s the score ${bonus.score} -> ${bonus.after}` : "") + (zeroAt ? `; time up at pass ${zeroAt}` : "") + (gameOverAt ? `, game over at pass ${gameOverAt}` : ""));
+    (bonus ? `; at the headquarters at ${bonus.t} s the score ${bonus.score} -> ${bonus.after}` : "") + (zeroAt ? `; time up at pass ${zeroAt}, the skeleton at ${skeletonAt}` : "") + (gameOverAt ? `, game over at pass ${gameOverAt}` : ""));
 console.log(fails.length ? `FAILED (${fails.length}${fails.length === 30 ? "+" : ""}):\n  ` + fails.join("\n  ") : "all rules held");
 process.exit(fails.length ? 1 : 0);

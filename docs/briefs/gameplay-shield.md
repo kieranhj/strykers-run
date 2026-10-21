@@ -118,6 +118,20 @@ death respawns whatever the lives, so the test scripts still never end.
    gameplay builds' cost: 72 bytes with the shield, 128 with the timer, at each scroll on each
    screen. Every flag against flag-off (unshifted `DEBUG_LIVES` builds, passbench, seed 1): 6 late
    frames of 1,998 for 5.
+9. **KC's tweaks (2026-10-21):** the bar blue, not green (it shows up better on the sky); the
+   rewind 40 columns by default (the screen's first setting); time up shows the skeleton, then the
+   game over (`time_up_now`: lives 1 and the shield 0 for a death as at the last life; flying,
+   dying or rewinding, the game ends at once as before); an absorbed hit plays its own sound (`&38`,
+   a bullet's impact) and not the death's (the hit hook moved to `kill_mover_Y`, before them); more
+   RAM: the gameplay builds drop `lives_digits` (the HUD's digit is made from the game's font,
+   `src/shield_hi.6502`, in the room it leaves above `&9000`) and let the main block grow over the
+   dead BASIC fragment at `&3400`. The branch stays separate (KC).
+10. **An idea for the HUD's cost (KC, 2026-10-21):** each screen keeps its own copy of the top line,
+   redrawn at every scroll because the hardware scroll moves it. A rupture (the CRTC's vertical
+   rupture, a second CRTC frame for the top character row from a fixed address) would give the top
+   line one fixed area of RAM, drawn once and only when it changes: no copy at scrolls at all.
+   Needs a measured design (the vsync and palette interrupts already time the frame) and b2 or real
+   hardware, which jsbeeb alone cannot vouch for.
 8. **Room left** (2026-10-21, the listing of the build with every flag): main block 25 bytes (after
    the grind's padding is dropped in gameplay builds, `GAMEPLAY_ANY`); bank 4 2 (the renderer's area)
    and 4 (under ANDY); bank 5 1; bank 6 181 (the timer takes 349); bank 7 481; main RAM after

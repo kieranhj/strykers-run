@@ -767,7 +767,9 @@ ENDIF
     BNE column
     RTS
 }
+IF GAMEPLAY_SHIELD = 0              \ (the HUD's renderer copies hud_buffer: src/shield_hi.6502 makes the digit)
 INCLUDE "lives_digits.6502"
+ENDIF
 
 \ ---- write_column: X = history slot. The original update_screen's loop, from the history:
 \ 200 bytes down the column, a character row (8 bytes) at a time, unrolled (layer 3, D) -----

@@ -3653,6 +3653,20 @@ cm_x_max_high_operand = * + 1
 .kill_mover_Y
     STY &87
     JSR set_dying_mover_type
+IF GAMEPLAY_SHIELD
+    TYA                             \ decision 44: the player hit on foot: the shield first, before the
+    BNE not_the_player              \ death's sounds (an absorbed hit plays its own)
+    LDA player_helicopter
+    BNE not_the_player
+    JSR shield_hit                  \ returns only for a hit at 0 shield (a life); else on to plot_mover
+  IF GAMEPLAY_OPTIONS
+    LDA lives                       \ decision 46: infinite lives (OPT_INFINITE): a life back for the one
+    CMP #10                         \ kill_player takes
+    BNE not_the_player
+    INC lives
+  ENDIF
+.not_the_player
+ENDIF
     LDA #&00                        \ Play sound for explosion
     JSR play_sound
     LDX dying_mover_type
@@ -3667,16 +3681,6 @@ cm_x_max_high_operand = * + 1
 .is_player_291c
     LDA player_helicopter           \ Zero if player not in helicopter
     BNE kill_player_helicopter
-IF GAMEPLAY_SHIELD
-    JSR shield_hit                  \ decision 44: returns only for a hit at 0 shield (a life); else on to plot_mover
-ENDIF
-IF GAMEPLAY_OPTIONS
-    LDA lives                       \ decision 46: infinite lives (OPT_INFINITE): a life back for the one
-    CMP #10                         \ kill_player takes
-    BNE lives_counted
-    INC lives
-.lives_counted
-ENDIF
 .kill_player
 IF DEBUG_LIVES
     LDA #lives                      \ DEBUG_LIVES: the disassembly's infinite lives poke (&2920 = &A9)
@@ -5268,13 +5272,21 @@ compiled_back = * + 1               \ self-modified: the ROMSEL to come back to
     RTS
     INCLUDE "kindcache_build.6502"  \ step 2 layer 4 (decision 36): the kind cache's builder
 
+IF GAMEPLAY_ANY
+    unused_3400_original = &340D - GAME_DOWN    \ decision 43: over the dead fragment below; the font stays put
+ELSE
     unused_3400_original = &3400 - GAME_DOWN
+ENDIF
     ASSERT * <= unused_3400_original, "layer 1's code overruns the free block by ", * - unused_3400_original, " bytes"
     SKIP unused_3400_original - *
 
+IF GAMEPLAY_ANY
+    unused_3400 = &3400 - GAME_DOWN \ (unused sprites &30, &31 point here: the same bytes)
+ELSE
 .unused_3400    \ # Source code fragment
     EQUB &0D    \ # Start of BASIC program
     EQUB &00, &00, &13, &F4, &20, &53, &41, &56, &45, &22, &53, &4F    \ 0REM SAVE"SO ...
+ENDIF
 
     INCLUDE "font.6502"
 

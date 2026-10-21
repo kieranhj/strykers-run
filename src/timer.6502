@@ -20,6 +20,7 @@ TIMER_START = &0600
     BNE ready
     STZ timer_hi                    \ 65C02 opcodes
     STZ timer_lo
+    STZ time_up
     LDA timer_mode
     CMP #2
     BNE start_set
@@ -64,11 +65,8 @@ TIMER_START = &0600
     CLD
     ORA timer_lo
     BNE show
-    LDA #&FF                        \ time is up: the game is over (main_game_loop: lives negative,
-    STA lives                       \ then the cooldown)
-    LDA #&50
-    STA game_over_cooldown
-    BRA show                        \ 65C02 opcode
+    DEC time_up                     \ time is up: shield_tick shows the skeleton, then the game is
+    BRA show                        \ over (time_up_now, src/shield_hi.6502). 65C02 opcode
 .out
     CLD
     RTS
