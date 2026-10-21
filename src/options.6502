@@ -12,6 +12,14 @@ OPT_INFINITE = 10                   \ opt_lives for infinite lives: lives shows 
 .opt_timer          EQUB GAMEPLAY_TIMER   \ 0 off, 1 counting up, 2 counting down
 .opt_hits           EQUB 1          \ decision 50: an index into opt_hits_unit: 2 hits (decision 44's)
 .opt_recharge       EQUB 1          \ an index into opt_recharge_passes: 5 seconds (decision 44's)
+IF GAMEPLAY_RUN
+.opt_run_time       EQUB 1          \ decision 52: an index into opt_run_drain: 10 seconds
+.opt_run_charge     EQUB 1          \ an index into opt_run_give: 10 seconds
+.opt_run_drain_lo                   \ 8.8 a pass: RUN_FULL over 5, 10, 15, 20 seconds, and off (0)
+    EQUB LO(2560 DIV 5), LO(2560 DIV 10), LO((2560 + 7) DIV 15), LO(2560 DIV 20), 0
+.opt_run_drain_hi
+    EQUB HI(2560 DIV 5), HI(2560 DIV 10), HI((2560 + 7) DIV 15), HI(2560 DIV 20), 0
+ENDIF
 .opt_respawn_columns
     EQUB 40, 80, 120, 160
 .opt_hits_unit                      \ a bullet's damage: a full shield (SHIELD_FULL, 50) takes 1, 2, 3, 4, 6
@@ -96,6 +104,24 @@ OPT_INFINITE = 10                   \ opt_lives for infinite lives: lives shows 
     LDA #LO(OPT_RECHARGE_AT)
     LDY #HI(OPT_RECHARGE_AT)
     JSR value_x
+IF GAMEPLAY_RUN
+    LDA opt_run_time                \ decision 52
+    ASL A
+    ASL A
+    ADC #run_names - values
+    TAX
+    LDA #LO(OPT_RUN_AT)
+    LDY #HI(OPT_RUN_AT)
+    JSR value_x
+    LDA opt_run_charge
+    ASL A
+    ASL A
+    ADC #run_names - values
+    TAX
+    LDA #LO(OPT_CHARGE_AT)
+    LDY #HI(OPT_CHARGE_AT)
+    JSR value_x
+ENDIF
 .key
     JSR get_keypress
     CMP #&70                        \ ESCAPE: back to the title
@@ -111,7 +137,7 @@ OPT_INFINITE = 10                   \ opt_lives for infinite lives: lives shows 
     LDA #1
 .lives_ok
     STA opt_lives
-    BRA show                        \ 65C02 opcode
+    JMP show
 .not_lives
     CMP #&31                        \ "2": the rewind, 40 / 80 / 120 / 160 columns
     BNE not_respawn
@@ -119,7 +145,7 @@ OPT_INFINITE = 10                   \ opt_lives for infinite lives: lives shows 
     INC A
     AND #3
     STA opt_respawn
-    BRA show
+    JMP show
 .not_respawn
     CMP #&12                        \ "4": the shield's hits, 1 / 2 / 3 / 4 / 6 (decision 50)
     BNE not_hits
@@ -130,7 +156,7 @@ OPT_INFINITE = 10                   \ opt_lives for infinite lives: lives shows 
     LDA #0
 .hits_ok
     STA opt_hits
-    BRA show
+    JMP show
 .not_hits
     CMP #&13                        \ "5": the recharge, 2 / 5 / 8 / 10 seconds
     BNE not_recharge
@@ -140,8 +166,31 @@ OPT_INFINITE = 10                   \ opt_lives for infinite lives: lives shows 
     STA opt_recharge
     JMP show                        \ (out of a branch's reach)
 .not_recharge
+IF GAMEPLAY_RUN
+    CMP #&34                        \ "6": the run time, 5 / 10 / 15 / 20 seconds or off (decision 52)
+    BNE not_run_time
+    LDA opt_run_time
+    INC A
+    CMP #5
+    BCC run_time_ok
+    LDA #0
+.run_time_ok
+    STA opt_run_time
+    JMP show
+.not_run_time
+    CMP #&24                        \ "7": the run charge, 5 / 10 / 15 / 20 seconds
+    BNE not_run_charge
+    LDA opt_run_charge
+    INC A
+    AND #3
+    STA opt_run_charge
+    JMP show
+.not_run_charge
+ENDIF
     CMP #&11                        \ "3": the timer, off / up / down
-    BNE key
+    BEQ timer_key
+    JMP key
+.timer_key
     LDA opt_timer
     INC A
     CMP #3
@@ -200,8 +249,12 @@ OPT_INFINITE = 10                   \ opt_lives for infinite lives: lives shows 
     LDY #0
     JMP plot_title_screen_text_loop
 
-OPT_LIVES_AT    = &4000 + 6 * &280 + 96 + 11 * 24  \ after "1 LIVES", character row 6 (the values in one column;
-OPT_RESPAWN_AT  = &4000 + 8 * &280 + 96 + 11 * 24  \ the font is two rows tall, as define controls spaces it)
-OPT_TIMER_AT    = &4000 + 10 * &280 + 96 + 11 * 24
-OPT_HITS_AT     = &4000 + 12 * &280 + 96 + 11 * 24 \ decision 50
-OPT_RECHARGE_AT = &4000 + 14 * &280 + 96 + 11 * 24
+OPT_LINE        = &4000 + 96        \ a setting's line: its row's first byte + 96 (the values at character 13)
+OPT_VALUE       = OPT_LINE + 13 * 24
+OPT_LIVES_AT    = OPT_VALUE + 5 * &280
+OPT_RESPAWN_AT  = OPT_VALUE + 7 * &280
+OPT_TIMER_AT    = OPT_VALUE + 9 * &280
+OPT_HITS_AT     = OPT_VALUE + 11 * &280            \ decision 50
+OPT_RECHARGE_AT = OPT_VALUE + 13 * &280
+OPT_RUN_AT      = OPT_VALUE + 15 * &280            \ decision 52
+OPT_CHARGE_AT   = OPT_VALUE + 17 * &280

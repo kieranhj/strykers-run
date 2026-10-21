@@ -16,6 +16,9 @@ TIMER_START = &0600
 \ timer_tick: once a pass (main_game_loop, after shield_tick)
 .timer_tick
 {
+IF GAMEPLAY_RUN
+    JSR run_tick                    \ decision 52 (src/run.6502): the run meter, through the same paging
+ENDIF
     LDA timer_ready
     BNE ready
     STZ timer_hi                    \ 65C02 opcodes

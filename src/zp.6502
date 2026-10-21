@@ -32,6 +32,7 @@ time_up                                      = &19      \ decision 47: non-zero 
 shield_unit                                  = &1B      \ decision 50: a bullet's damage (an explosive's twice): SHIELD_FULL / the hits
 shield_unit2                                 = &1C      \ twice that (shield_new_game)
 shield_recharge                              = &1D      \ passes without damage before it refills (shield_new_game)
+run_state                                    = &1E      \ decision 52: &80 may run, &7F ran this pass, 0 tired (src/run.6502)
 run_held                                     = &1A      \ decision 48: bit 7 set while the run key is down (check_for_player_input)
 \ GAMEPLAY_TIMER (decision 47, src/timer.6502): &13-&16
 timer_ready                                  = &13      \ 0 at a game's start (shield_new_game)

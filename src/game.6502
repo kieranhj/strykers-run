@@ -2440,8 +2440,8 @@ ENDIF
 IF GAMEPLAY_SHIELD
     JSR shield_tick                 \ decision 44 (src/shield.6502, bank 4: ROMSEL &04 here)
 ENDIF
-IF GAMEPLAY_TIMER
-    JSR timer_tick_call             \ decision 47 (src/timer.6502, bank 6)
+IF GAMEPLAY_TIMER OR GAMEPLAY_RUN
+    JSR timer_tick_call             \ decisions 47, 52 (src/timer.6502, src/run.6502: bank 6)
 ENDIF
     JSR check_for_player_input
     LDA keys_pressed_bitmap         \ Negative if  &80 (KEY_PAUSE) set
@@ -2468,18 +2468,25 @@ ENDIF
     JSR update_projectiles
     JSR update_movers
     JMP main_game_loop
-IF GAMEPLAY_TIMER
-\ decision 47: the timer's code is in bank 6 (src/timer.6502): paged in for it, bank 4 back after
+IF GAMEPLAY_TIMER OR GAMEPLAY_RUN
+\ decisions 47, 52: the timer's and the run meter's code is in bank 6 (src/timer.6502, src/run.6502):
+\ paged in for it, bank 4 back after
 .timer_tick_call
     LDA #6
     STA os_ram_copy_of_currently_selected_rom
     STA romsel                      \ Paged ROM latch
-    JSR timer_tick
+  IF GAMEPLAY_TIMER
+    JSR timer_tick                  \ (which ticks the run meter first, with GAMEPLAY_RUN)
+  ELSE
+    JSR run_tick
+  ENDIF
 .bank4_back
     LDA #&04
     STA os_ram_copy_of_currently_selected_rom
     STA romsel
     RTS
+ENDIF
+IF GAMEPLAY_TIMER
 .timer_bonus_call
     LDA #6
     STA os_ram_copy_of_currently_selected_rom
@@ -3138,7 +3145,12 @@ ENDIF
 IF GAMEPLAY_RUN
     LDA frame                       \ decision 48: moving (&FF) with the run key down (bit 7): every pass,
     AND run_held                    \ a column a pass as in a jump, not one in two
-    BMI check_for_player_firing
+    BPL not_running
+    BIT run_state                   \ decision 52: bit 7 while the run meter allows it (src/run.6502)
+    BPL not_running
+    DEC run_state                   \ &80 -> &7F: run_tick drains the meter for this pass
+    BRA check_for_player_firing     \ 65C02 opcode
+.not_running
 ENDIF
     LDA helicopter_to_update
     AND #&01
@@ -3376,10 +3388,12 @@ ENDIF
     \ wait_for_timer_281a's floor; the pass is now locked to the field counter instead.
     \ grind: the loop unrolled, slot 2 first as before, the next enemy soldier (9 -> 1) from um_next
     \ (X and Y take turns, as LDX abs,Y and LDY abs,X are all there are). The base is 1-9 always.
+IF GAMEPLAY_ANY = 0                 \ (gameplay builds: um_next in moved_0a20, decision 52: room)
     BRA um_populate
 .um_next    \ the mover after mover i (1-9): i + 1, MOVER_FIRST_ENEMY after MOVER_LAST_ENEMY_SOLDIER
     EQUB &02, &03, &04, &05, &06, &07, &08, &09, &01
     ASSERT HI(um_next - 1) == HI(um_next + 8)   \ um_next - 1,Y/X (1-9) must not cross a page
+ENDIF
 .um_populate
     LDX #&02
     STX movers_to_update_count
@@ -5882,6 +5896,11 @@ SECTION moved_0a20, org = &0A20, cmos = TRUE
     EQUB &03, &03, &03, &03, &29, &03, &03, &03, &03, &03, &03, &29, &03, &03, &03, &03    \ &00-&0F
     EQUB &29, &03, &03, &16, &03, &03, &03, &29, &03, &03, &29, &03, &03, &03, &03         \ &10-&1E
 ASSERT HI(ground_columns) = HI(* - 1), "the ground's columns cross a page"
+IF GAMEPLAY_ANY
+.um_next    \ update_movers' (src/game.6502), here in gameplay builds (decision 52: the main block's room)
+    EQUB &02, &03, &04, &05, &06, &07, &08, &09, &01
+    ASSERT HI(um_next - 1) == HI(um_next + 8)   \ um_next - 1,Y/X (1-9) must not cross a page
+ENDIF
 
 .moved_0a20_end
 ENDSECTION
@@ -5889,6 +5908,10 @@ MOVED_0A20_SIZE = moved_0a20_end - &0A20
 IF GAMEPLAY_SHIELD
 hud_buffer = moved_0a20_end         \ decision 44: the lives digit and the bar (src/shield.6502), not in the file
 game_completed = hud_buffer + HUD_BYTES   \ decision 46: non-zero once the headquarters is reached (options_high_score)
+run_meter = game_completed + 1      \ decision 52 (src/run.6502): the meter, 8.8 (0-RUN_FULL.0), and what a pass
+run_drain = run_meter + 2           \ running takes from it and one not running gives back (shield_new_game)
+run_charge = run_drain + 2
+ASSERT run_charge + 1 < &0D00, "the run meter overruns &0CFF"
 ASSERT game_completed < &0D00, "hud_buffer overruns &0CFF by ", game_completed + 1 - &0D00
 ASSERT HI(hud_buffer) = HI(hud_buffer + HUD_BYTES - 1)
 ENDIF

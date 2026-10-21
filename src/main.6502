@@ -43,7 +43,9 @@ ASSERT GAMEPLAY_SHIELD * 2 >= GAMEPLAY_TIMER AND GAMEPLAY_TIMER <= 2, "GAMEPLAY_
 ASSERT GAMEPLAY_OPTIONS = 0 OR (GAMEPLAY_LIVES <> 0 AND GAMEPLAY_TIMER <> 0), "GAMEPLAY_OPTIONS needs GAMEPLAY_LIVES and GAMEPLAY_TIMER"
 ASSERT SHIFT = 0 OR (GAMEPLAY_TIMER = 0 AND GAMEPLAY_OPTIONS = 0), "GAMEPLAY_TIMER and GAMEPLAY_OPTIONS do not fit the relocation test builds' banks (256 bytes smaller): build them unshifted"
 \   GAMEPLAY_RUN     a run key (SHIFT): held, the player runs at a jump's speed, a column a pass
-\                    (decision 48)
+\                    (decision 48), for as long as its meter lasts (decision 52: with GAMEPLAY_SHIELD,
+\                    whose game start and RAM it uses)
+ASSERT GAMEPLAY_SHIELD >= GAMEPLAY_RUN, "GAMEPLAY_RUN needs GAMEPLAY_SHIELD"
 GAMEPLAY_ANY = GAMEPLAY_SHIELD OR GAMEPLAY_LIVES OR GAMEPLAY_TIMER OR GAMEPLAY_OPTIONS OR GAMEPLAY_RUN   \ the OR of every GAMEPLAY_ flag: their builds need not keep the main block's
                                     \ addresses, so its unexecuted padding goes (src/game.6502), room for their hooks
 DEBUG_ANY = DEBUG_LIVES OR DEBUG_FULLREDRAW   \ the OR of every DEBUG_ flag (GAMEPLAY_ flags are not debug: RELEASE allows them)
@@ -173,6 +175,9 @@ SECTION DATA3, org = &8000, load = &FFFF1900, exec = &FFFF1900, filename = "DATA
     INCLUDE "compiled_bank6.6502"   \ step 2 layer 4: compiled kinds of the player's parts
 IF GAMEPLAY_TIMER
     INCLUDE "timer.6502"            \ decision 47: the timer (called through timer_tick_call: ROMSEL &06)
+ENDIF
+IF GAMEPLAY_RUN
+    INCLUDE "run.6502"              \ decision 52: the run meter (called through timer_tick_call too)
 ENDIF
     ASSERT * + PAD_END <= &C000, "bank 6 overruns its 16K by ", * + PAD_END - &C000
     SKIP PAD_END

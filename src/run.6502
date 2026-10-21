@@ -1,0 +1,69 @@
+\ run.6502 - GAMEPLAY_RUN's meter (decision 52; docs/briefs/gameplay-shield.md): the run key (decision
+\ 48) lasts RUN_TIME seconds of running, then the player is back to the original's pace until the
+\ meter has refilled past half; it refills whenever the player is not running, empty to full in
+\ RUN_CHARGE seconds. No meter on the screen (KC): a sound when it runs out and one when it is back.
+\ Bank 6, ticked once a pass through timer_tick_call (ROMSEL &06), before the timer.
+\
+\ run_state (zero page): &80 the player may run; the main block's run check (is_soldier_on_ground)
+\ DECs it to &7F in a pass it runs; 0 tired. run_meter is 8.8: its high byte 0-RUN_FULL.
+\ run_drain and run_charge are what a pass of running takes and one of not running gives back
+\ (shield_new_game sets them: the game rules screen's, or these defaults).
+
+RUN_FULL   = 250                    \ the meter full (a byte: 10 seconds a unit a pass)
+RUN_TIME   = 10                     \ seconds of running, full to empty (KC, 2026-10-21)
+RUN_CHARGE = 10                     \ seconds to refill, empty to full
+RUN_OUT_SOUND   = &28               \ the player landing: the run is spent
+RUN_READY_SOUND = &30               \ the player jumping: it may run again
+
+.run_tick
+{
+    LDA run_state
+    CMP #&7F                        \ ran this pass: drain
+    BNE not_running
+    SEC
+    LDA run_meter
+    SBC run_drain
+    STA run_meter
+    LDA run_meter + 1
+    SBC run_drain + 1
+    STA run_meter + 1
+    BCC spent                       \ below 0
+    LDA #&80                        \ may still run
+    STA run_state
+    RTS
+.spent
+    STZ run_meter                   \ 65C02 opcodes
+    STZ run_meter + 1
+    STZ run_state                   \ tired until it is past half again
+    LDA #RUN_OUT_SOUND
+    JMP play_sound
+.not_running
+    LDA run_meter + 1               \ refill, up to full
+    CMP #RUN_FULL
+    BCS full
+    CLC
+    LDA run_meter
+    ADC run_charge
+    STA run_meter
+    LDA run_meter + 1
+    ADC run_charge + 1
+    STA run_meter + 1
+    CMP #RUN_FULL
+    BCC refilled
+.full
+    LDA #RUN_FULL
+    STA run_meter + 1
+    STZ run_meter                   \ 65C02 opcode
+.refilled
+    BIT run_state                   \ tired: may run again once past half
+    BMI done
+    LDA run_meter + 1
+    CMP #RUN_FULL DIV 2 + 1
+    BCC done
+    LDA #&80
+    STA run_state
+    LDA #RUN_READY_SOUND
+    JMP play_sound
+.done
+    RTS
+}

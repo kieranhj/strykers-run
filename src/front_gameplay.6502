@@ -45,6 +45,34 @@ ELSE
     STA timer_mode
   ENDIF
 ENDIF
+IF GAMEPLAY_RUN
+  IF GAMEPLAY_OPTIONS
+    LDX opt_run_time                \ decision 52: the run meter's drain and charge (the same table:
+    LDA opt_run_drain_lo,X          \ RUN_FULL over the seconds, 8.8 a pass)
+    STA run_drain
+    LDA opt_run_drain_hi,X
+    STA run_drain + 1
+    LDX opt_run_charge
+    LDA opt_run_drain_lo,X
+    STA run_charge
+    LDA opt_run_drain_hi,X
+    STA run_charge + 1
+  ELSE
+    LDA #LO(2560 DIV RUN_TIME)
+    STA run_drain
+    LDA #HI(2560 DIV RUN_TIME)
+    STA run_drain + 1
+    LDA #LO(2560 DIV RUN_CHARGE)
+    STA run_charge
+    LDA #HI(2560 DIV RUN_CHARGE)
+    STA run_charge + 1
+  ENDIF
+    STZ run_meter                   \ full, and may run
+    LDA #RUN_FULL
+    STA run_meter + 1
+    LDA #&80
+    STA run_state
+ENDIF
     STZ shield_ready                \ 65C02 opcode
 IF GAMEPLAY_TIMER
     STZ timer_ready                 \ decision 47

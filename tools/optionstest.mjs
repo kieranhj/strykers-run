@@ -2,7 +2,8 @@
 //   the title       "6" opens the game rules screen (options_screen)
 //   the settings    "1" cycles the lives 1-9 then infinite (10), "2" the rewind 40/80/120/160 columns,
 //                   "3" the timer off/up/down, "4" the shield's hits 1/2/3/4/6, "5" its recharge
-//                   2/5/8/10 s (decision 50); ESCAPE goes back to the title
+//                   2/5/8/10 s (decision 50), with GAMEPLAY_RUN "6" the run time 5/10/15/20 s or off
+//                   and "7" its charge 5/10/15/20 s (decision 52); ESCAPE goes back to the title
 //   a game          starts with them: lives, respawn_columns, timer_mode, shield_unit(2),
 //                   shield_recharge; with infinite lives the
 //                   HUD's digit is lives_digits' entry 10 (the infinite glyph)
@@ -20,7 +21,8 @@ const [disc, PREFIX = "options"] = process.argv.slice(2);
 const syms = loadSyms(disc);
 for (const k of ["options_screen", "opt_lives", "shield_new_game", "finished_shuffling_names"])
     if (syms[k] === undefined) throw new Error(`${disc}: no ${k} - not a GAMEPLAY_OPTIONS build?`);
-const K = { K1: [0, 3], K2: [1, 3], K3: [1, 1], K4: [2, 1], K5: [3, 1], K6: [4, 3], ESCAPE: [0, 7] };
+const K = { K1: [0, 3], K2: [1, 3], K3: [1, 1], K4: [2, 1], K5: [3, 1], K6: [4, 3], K7: [4, 2], ESCAPE: [0, 7] };
+const RUN = syms.opt_run_time !== undefined;
 const s = await bootMaster(MachineSession, disc);
 const cpu = s._machine.processor;
 const rd = (a, n = 1) => [...s.readMemory(a, n, { shadow: false })];
@@ -71,6 +73,18 @@ await press("K5"); await press("K5"); await press("K5"); const r0 = sh().recharg
 await press("K5"); await press("K5");
 check("4 steps the hits and wraps 6 -> 1, 5 the recharge and wraps 10 s -> 2 s", h2 === 2 && h0 === 0 && r0 === 0 && sh().recharge === 2, `hits ${h2}, ${h0}; recharge ${r0}, ${sh().recharge}`);
 await shot("game-rules-shield");
+if (RUN) {
+    const rn = () => ({ time: rd(syms.opt_run_time)[0], charge: rd(syms.opt_run_charge)[0] });
+    const r0 = rn();
+    check("the run's defaults (10 s, 10 s)", r0.time === 1 && r0.charge === 1, JSON.stringify(r0));
+    for (let i = 0; i < 3; i++) await press("K6");             // 10 -> 15 -> 20 -> off
+    const off = rn().time;
+    await press("K6"); await press("K6");                      // off -> 5 -> 10
+    await press("K7"); await press("K7"); await press("K7"); await press("K7"); await press("K7");   // 10 -> 15 -> 20 -> 5 -> 10 -> 15
+    check("6 steps the run time to off and round, 7 the charge round", off === 4 && rn().time === 1 && rn().charge === 2, `off at ${off}, then ${JSON.stringify(rn())}`);
+    for (let i = 0; i < 3; i++) await press("K6");             // 10 -> 15 -> 20 -> off: an unlimited run for game 1
+    await shot("game-rules-run");
+}
 for (let i = 1; i < 10; i++) await press("K1");
 await press("K3"); await press("K3");                      // back to infinite, the timer down
 const loops = seen.loop;
@@ -82,6 +96,11 @@ const g1 = { lives: rd(syms.lives)[0], cols: rd(syms.respawn_columns)[0], timer:
 check("the game took the settings", g1.lives === 10 && g1.cols === 40 && g1.timer === 2, JSON.stringify(g1));
 const g1s = { unit: rd(syms.shield_unit)[0], unit2: rd(syms.shield_unit2)[0], recharge: rd(syms.shield_recharge)[0] };
 check("the shield took them: 1 hit, 8 s", g1s.unit === 50 && g1s.unit2 === 100 && g1s.recharge === 200, JSON.stringify(g1s));
+if (RUN) {
+    const r16 = (a) => rd(a)[0] + 256 * rd(a + 1)[0];
+    const g1r = { drain: r16(syms.run_drain), charge: r16(syms.run_charge), state: rd(syms.run_state)[0] };
+    check("the run took them: off (no drain), 15 s charge (171)", g1r.drain === 0 && g1r.charge === 171 && (g1r.state & 0x80 || g1r.state === 0x7f), JSON.stringify(g1r));
+}
 const digit = rd(syms.hud_buffer, 32), glyph = [0x18, 0x24, 0x18, 0x18, 0x24, 0x18], inf = [];
 for (let c = 0; c < 3; c++) for (let y = 0; y < 8; y++) inf.push((glyph[2 * c] >> y & 1 ? 0x28 : 0) | (glyph[2 * c + 1] >> y & 1 ? 0x14 : 0));
 for (let y = 0; y < 8; y++) inf.push(0);
