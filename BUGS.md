@@ -361,3 +361,10 @@ oracle: identical on seeds 1 and 5 (4,000 passes), both helicopter flights and t
 (11,410). Front end and observer mode pass. The game plays differently now, so speed is not
 comparable with layer 4's figures: seed 1 has 5 late frames of 1,998 (0 at layer 4's close),
 holding RIGHT 0 of 598, the whole world 355 of 11,409 (3.1%; 2.8% at the close).
+
+**Its cost in play** (2026-10-21, `docs/difficulty.md`): `tools/humanbot.mjs` played the whole world on
+the 1986 original and on the shipping build (the original's rules with this fix), two seeds each:
+334 and 301 lives lost against 175 and 190, about 1.7-1.9 lives a hit, almost all the difference
+quick repeats (172 deaths within 10 passes of the one before, against 57). The original's 9 lives
+were worth about 5 hits.
+

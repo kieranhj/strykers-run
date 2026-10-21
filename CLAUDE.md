@@ -135,8 +135,8 @@ disassembly's `actually`/`also` notes say what an operand really is.
   30 columns, holds back on a low shield, runs when the way is clear; seeded reaction times and pauses. With real deaths
   it finishes the gameplay disc's world (seed 1: 19,792 passes, 36 deaths; seed 2: 19,075, 29); the WorldBot does not
 - `tools/botcompare.mjs DISC [--bot human|world] [--passes N] [--seed S] [--keep-alive]` - a bot's game measured: how far,
-  the hits by culprit (type, ran into or hit by, ahead or behind, y, the player standing, crouched or in the air), deaths,
-  score; `tools/bottrace.mjs DISC FROM TO` - the human bot's reason for its keys, pass by pass
+  the hits by culprit (type, ran into or hit by, ahead or behind, y, the player standing, crouched or in the air), deaths
+  (and those within 10 passes of the one before), hits and deaths by 500 columns, score (`docs/difficulty.md`); `tools/bottrace.mjs DISC FROM TO` - the human bot's reason for its keys, pass by pass
 - `tools/runmeter.mjs DISC [--passes N] [--every E --hold H] [--drain D --charge C]` - `GAMEPLAY_RUN`'s meter, every pass: drain, charge, running dry and back past half, its sounds
 - `tools/shieldtest.mjs DISC [--passes N] [--unit U --wait W]` - a `GAMEPLAY_SHIELD` build's rules over the whole world: damage by culprit type, lives only at 0 shield, the refill, the bar after every tick
 - `tools/zplive.mjs DISC` - the zero-page bytes the logic reads first after a render (what `restore_game_zp` must keep)

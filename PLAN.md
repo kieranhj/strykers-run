@@ -63,6 +63,9 @@ Left:
 - **KC's choices:** the run meter's two sounds (now the landing's and the jump's, placeholders);
   whether bullets should destroy SAM launchers or stop at dying enemies (both pass through, as in
   the original: what KC saw as a bullet passing through an enemy, 2026-10-21).
+- **Difficulty** (`docs/difficulty.md`, 2026-10-21): the bot finds the gameplay disc far kinder
+  than the original (35 deaths against 175 with the multi-hit fix, 334 without); whether 3 lives is
+  enough for a person wants a playtest, or a count of the hits nobody could avoid (a floor).
 - **KC's review** of play: the rewind's speed and distance, the timer's bonus (10 points a second).
 - **The HUD's cost** (KC's idea): rupture the screen so the top line is one fixed area of RAM, drawn
   once and only when it changes, instead of copied at every scroll on both screens (the brief,

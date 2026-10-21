@@ -189,6 +189,14 @@ death respawns whatever the lives, so the test scripts still never end.
    LIMIT" 3/5/8/10/15 minutes, default 10, the start counting down and the par counting up; the
    screen two rows higher to hold eight settings.
 
+19. **How hard each disc is** (KC 2026-10-21: "is the game completable with standard issue 3
+   lives?"): `docs/difficulty.md`. `tools/humanbot.mjs` (a bot that plays as a person might, each
+   build's own controls) over the whole world, infinite lives, every death counted: the 1986
+   original 334 / 301 deaths, the original's rules with BUGS #13 fixed 175 / 190, the gameplay disc
+   112 / 108 hits and 35 / 28 deaths. The multi-hit bug about doubles the original's cost; the shield
+   turns about one hit in four into a death; no single wall. A bot's numbers compare the discs, not
+   whether a person can finish one.
+
 ## Answered (KC, 2026-10-20)
 
 - **High scores with infinite lives:** a game with infinite lives ends only by ESCAPE or by

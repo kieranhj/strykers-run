@@ -148,5 +148,9 @@ MOS's sound, skipping transparent bytes, building the column on the pass before.
   helilock (two builds in step by pass), passbench (speed by pass), fieldcost and fieldsim (the
   50 Hz model), pcprof and drawprof (per instruction and per draw), frontend (15 checks), and the
   dataflow analyses (`tools/analyse.py`).
+- **Bots and videos** (2026-10-21): `startWorldGame`'s `keepAlive` (the WorldBot finishes the gameplay
+  disc's world); `tools/humanbot.mjs` (plays as a person might, each build's controls),
+  `tools/botcompare.mjs`, `tools/bottrace.mjs`; `tools/playvideo.mjs` (a whole-world video, either
+  bot); the difficulty comparison, `docs/difficulty.md`.
 - **`build/` kept tidy** (2026-10-21, `44291cd`): the shipping, gameplay and original discs by
   name, harness screenshots in `build/shots/`, the rest a session's scratch (CLAUDE.md).
