@@ -152,6 +152,7 @@ text_colour = * + 1
 .plot_title_screen_text
     STX text_address_high
     STY text_address_low
+    STZ credit_on                   \ decision 60: another screen: the credit line still (65C02 opcode)
     JSR clear_part_of_title_screen  \ ***
     LDY #&00
 .plot_title_screen_text_loop
@@ -614,7 +615,7 @@ text_colour = * + 1
     BIT scroll_busy                 \ decision 57: a vsync while scroll_pixel runs (interrupts on): on to the MOS
     BMI leave_title_screen_irq1_handler
     DEC scrolltext_cooldown
-    BPL leave_title_screen_irq1_handler
+    BPL credit_field                \ decision 60: the other field, the credit line's
     LDA result_low                  \ Also used for source_address_low
     PHA
     LDA result_high                 \ Also used for source_address_high
@@ -677,6 +678,11 @@ text_colour = * + 1
     PLY                             \ 65C02 opcode
     PLX                             \ 65C02 opcode
     JMP (previous_irq1_vector_for_title_screen_low)
+.credit_field                       \ decision 60 (src/credits.6502): a step of the credit line, on the menu
+    BIT credit_on
+    BPL leave_title_screen_irq1_handler
+    JSR credit_step
+    BRA leave_title_screen_irq1_handler   \ 65C02 opcode
 
 .high_scores
     EQUB &00, &01, &00, &00, &00, &00    \ 010000
@@ -859,6 +865,7 @@ text_colour = * + 1
     LDX #HI(title_screen_text)      \ &8a2d = title_screen_text
     LDY #LO(title_screen_text)
     JSR plot_title_screen_text
+    JSR credit_start                \ decision 60: the menu's credit line cycles (src/credits.6502)
 .title_screen_loop
     LDX #&AD                        \ C                                         # If the C, H, R, I and S keys are pressed,
     JSR check_for_title_screen_keypress

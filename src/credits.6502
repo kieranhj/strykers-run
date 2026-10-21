@@ -1,0 +1,199 @@
+\ credits.6502 - the title's credit line cycling (decision 60, KC: "every 5 seconds the (C) SUPERIOR
+\ SOFTWARE 1986 should cycle with REDUX BY BITSHIFTERS 2026 ... fade out by shifting the pixels of
+\ each glyph left once per frame masked against the glyph width, and then appear by shifting right one
+\ pixel column per frame in reverse"). Bank 5, with the front end; all builds.
+\
+\ The line is row 24 (&7C00). A title glyph is 6 pixel columns of 8 rows, a byte each in
+\ title_screen_font_data (bit r the row r down), drawn as 3 byte columns (left pixel, right pixel:
+\ MODE 2's &AA and &55 bits). credit_draw draws a whole line with every glyph shifted credit_k pixels
+\ left inside its own cell (font columns 2j + k and 2j + 1 + k for byte column j, blank past the 6th):
+\ out is k = 1 .. 6 (blank), then the other line, in is k = 5 .. 0. A step every 2 fields, on the
+\ fields the scroll text does not move (title_screen_irq1_handler): 12 steps, ~0.5 s; each line held
+\ CREDIT_HOLD steps, 5 s. ~17,000 cycles a step, run with interrupts on behind scroll_busy, as the
+\ scroll text is. Only while the menu shows: credit_start (display_title_screen) begins it, any other
+\ screen's plot_title_screen_text stops it (the game rules page uses row 24 for its ESCAPE line).
+
+CREDIT_HOLD   = 125                 \ steps of 2 fields: 5 seconds
+CREDIT_LEFT   = &3E AND &AA         \ the line's colour (the copyright's, &3E), a left pixel
+CREDIT_RIGHT  = &3E AND &55         \ and a right one
+
+.credit_start
+    STZ credit_on                   \ 65C02 opcodes
+    STZ credit_which                \ the copyright line
+    STZ credit_phase
+    STZ credit_count
+    STZ credit_k
+    LDA #0                          \ row 24 cleared and the copyright drawn whole: the menu's own text
+    TAX                             \ draws it in its cells over what was there, and REDUX's (from 16,
+.credit_clear                       \ not 32) would show at its ends
+    STA &7C00,X
+    STA &7D00,X
+    CPX #&80
+    BCS credit_cleared
+    STA &7E00,X
+.credit_cleared
+    INX
+    BNE credit_clear
+    JSR credit_draw                 \ (its zero page is the text plotter's scratch, set before each use)
+    LDA #&80
+    STA credit_on
+    RTS
+
+.credit_step
+    LDA credit_phase
+    BNE credit_active
+    INC credit_count                \ held: count to the next change
+    LDA credit_count
+    CMP #CREDIT_HOLD
+    BCC credit_rts
+    STZ credit_count
+    INC credit_phase                \ 1: out
+    STZ credit_k
+.credit_active
+    LDA #&80                        \ as scroll_pixel: interrupts on, a vsync meanwhile on to the MOS
+    STA scroll_busy
+    LDA &CA                         \ the zero page it uses, kept
+    PHA
+    LDA &CB
+    PHA
+    LDA text_screen_address_low
+    PHA
+    LDA text_screen_address_low + 1
+    PHA
+    CLI
+    LDA credit_phase
+    CMP #1
+    BNE credit_in
+    INC credit_k                    \ out: a pixel further left
+    JSR credit_draw
+    LDA credit_k
+    CMP #6
+    BCC credit_end
+    LDA credit_which                \ gone: the other line, from 6 pixels left
+    EOR #1
+    STA credit_which
+    LDA #2
+    STA credit_phase
+    BRA credit_end                  \ 65C02 opcode
+.credit_in
+    DEC credit_k                    \ in: a pixel further right
+    JSR credit_draw
+    LDA credit_k
+    BNE credit_end
+    STZ credit_phase                \ 65C02 opcode: in place, held
+.credit_end
+    SEI
+    PLA
+    STA text_screen_address_low + 1
+    PLA
+    STA text_screen_address_low
+    PLA
+    STA &CB
+    PLA
+    STA &CA
+    STZ scroll_busy                 \ 65C02 opcode
+.credit_rts
+    RTS
+
+\ credit_draw: line credit_which, every glyph shifted credit_k (0-6) pixels left in its cell
+.credit_draw
+    LDX credit_which
+    LDA credit_text_lo,X
+    STA credit_char + 1             \ self-modified: LDA text,Y
+    LDA credit_text_hi,X
+    STA credit_char + 2
+    LDA credit_at,X
+    STA text_screen_address_low
+    LDA #&7C                        \ row 24
+    STA text_screen_address_low + 1
+    LDA credit_len,X
+    STA credit_n
+    STZ credit_i                    \ 65C02 opcode
+.credit_glyph
+    LDY credit_i
+.credit_char
+    LDA &FFFF,Y                     \ the glyph's number: its font bytes at title_screen_font_data + 6 * it
+    STA &CA
+    STZ &CB                         \ 65C02 opcode
+    ASL A
+    ADC &CA                         \ 3 * it (C = 0: it is below &80)
+    ASL A                           \ 6 * it
+    ROL &CB
+    CLC
+    ADC #LO(title_screen_font_data)
+    STA &CA
+    LDA &CB
+    ADC #HI(title_screen_font_data)
+    STA &CB
+    STZ credit_col                  \ 65C02 opcode
+.credit_column
+    LDA credit_col                  \ the byte column's two pixels: font columns 2j + k and 2j + 1 + k
+    ASL A
+    CLC
+    ADC credit_k
+    TAY
+    LDA #0
+    CPY #6
+    BCS credit_left_blank
+    LDA (&CA),Y
+.credit_left_blank
+    STA credit_left
+    INY
+    LDA #0
+    CPY #6
+    BCS credit_right_blank
+    LDA (&CA),Y
+.credit_right_blank
+    STA credit_right
+    LDY #0
+.credit_row
+    LDA #0
+    LSR credit_left
+    BCC credit_no_left
+    LDA #CREDIT_LEFT
+.credit_no_left
+    LSR credit_right
+    BCC credit_no_right
+    ORA #CREDIT_RIGHT
+.credit_no_right
+    STA (text_screen_address_low),Y
+    INY
+    CPY #8
+    BNE credit_row
+    LDA text_screen_address_low     \ the next byte column
+    CLC
+    ADC #8
+    STA text_screen_address_low
+    BCC credit_same_page
+    INC text_screen_address_low + 1
+.credit_same_page
+    INC credit_col
+    LDA credit_col
+    CMP #3
+    BNE credit_column
+    INC credit_i
+    LDA credit_i
+    CMP credit_n
+    BNE credit_glyph
+    RTS
+
+.credit_text_lo     EQUB LO(credit_copyright), LO(credit_redux)
+.credit_text_hi     EQUB HI(credit_copyright), HI(credit_redux)
+.credit_at          EQUB 32, 16     \ centred: 24 glyphs of 24 bytes from 32 (the original's), 25 from 16
+.credit_len         EQUB 24, 25
+.credit_copyright                   \ title font: digits &00-&09, A &0A .. Z &23, space &25, (c) &26
+    EQUB &26, &25, &1C, &1E, &19, &0E, &1B, &12, &18, &1B, &25, &1C, &18, &0F, &1D, &20    \ "(c) SUPERIOR SOFTWARE 1986"
+    EQUB &0A, &1B, &0E, &25, &01, &09, &08, &06
+.credit_redux
+    EQUB &1B, &0E, &0D, &1E, &21, &25, &0B, &22, &25, &0B, &12, &1D, &1C, &11, &12, &0F    \ "REDUX BY BITSHIFTERS 2026"
+    EQUB &1D, &0E, &1B, &1C, &25, &02, &00, &02, &06
+.credit_on      EQUB 0              \ bit 7: the menu shows, the line cycles
+.credit_which   EQUB 0              \ 0 the copyright, 1 REDUX
+.credit_phase   EQUB 0              \ 0 held, 1 out, 2 in
+.credit_k       EQUB 0              \ the glyphs' shift left, in pixels
+.credit_count   EQUB 0
+.credit_n       EQUB 0
+.credit_i       EQUB 0
+.credit_col     EQUB 0
+.credit_left    EQUB 0
+.credit_right   EQUB 0
