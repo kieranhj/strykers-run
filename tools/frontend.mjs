@@ -8,11 +8,12 @@
 // ESCAPE with the score poked to 020000 (the game over screen's hash printed, to compare between
 // builds), so the game over goes through the high score name entry
 // (A, B, RETURN); the music (4) and sound (5) toggles; a second game; ESCAPE again. Saves
-// build/<PREFIX>-<step>.png (default PREFIX "frontend") and prints one line per check. Where the
+// build/shots/<PREFIX>-<step>.png (default PREFIX "frontend") and prints one line per check. Where the
 // build has layer 1's irq_owned, it also checks the MOS state handed over and back: the keyboard
 // semaphore &0242, the System VIA IRQ mask &0279, the System VIA IER, and &EC on the title.
 // Key positions are matrix [col, row], measured 2026-10-16 with the jsbeeb MCP's key_down by name.
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+mkdirSync("build/shots", { recursive: true });   // screenshots, apart from the discs
 import { loadMachineSession } from "./jsbeeb_src.mjs";
 import { bootMaster, BOOT_FRAMES } from "./playscript.mjs";
 const MachineSession = await loadMachineSession();
@@ -37,7 +38,7 @@ const rd = (a, n = 1) => [...s.readMemory(a, n, { shadow: false })];   // main R
 const run = (n) => s.runFrames(n);
 const press = async (k, hold = 10, after = 40) => { s.keyDownRaw(K[k]); await run(hold); s.keyUpRaw(K[k]); await run(after); };
 let step = 0, fails = 0;
-const shot = async (name) => writeFileSync(`build/${PREFIX}-${String(++step).padStart(2, "0")}-${name}.png`, await s.screenshotActive({ scale: 1 }));
+const shot = async (name) => writeFileSync(`build/shots/${PREFIX}-${String(++step).padStart(2, "0")}-${name}.png`, await s.screenshotActive({ scale: 1 }));
 const check = (what, ok, detail = "") => { console.log(`${ok ? "ok  " : "FAIL"} ${what}${detail ? ": " + detail : ""}`); if (!ok) { fails++; pcReport = true; } };
 let pcReport = false;
 let inLoop = 0;

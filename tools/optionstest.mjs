@@ -8,10 +8,11 @@
 //                   HUD's digit is lives_digits' entry 10 (the infinite glyph)
 //   high scores     an infinite-lives game ended by ESCAPE does not reach the name entry, with a
 //                   score that would rank (poked to 020000); a 3-lives game ended the same way does
-// Saves build/<PREFIX>-<step>.png (default "options").
+// Saves build/shots/<PREFIX>-<step>.png (default "options").
 //
 //   node tools/optionstest.mjs DISC.ssd [PREFIX]
-import { writeFileSync } from "node:fs";
+import { writeFileSync, mkdirSync } from "node:fs";
+mkdirSync("build/shots", { recursive: true });   // screenshots, apart from the discs
 import { loadMachineSession } from "./jsbeeb_src.mjs";
 import { bootMaster, loadSyms } from "./playscript.mjs";
 const MachineSession = await loadMachineSession();
@@ -26,7 +27,7 @@ const rd = (a, n = 1) => [...s.readMemory(a, n, { shadow: false })];
 const run = (fields) => s.runFor(40000 * fields);
 const press = async (k, hold = 10, after = 40) => { s.keyDownRaw(K[k]); await run(hold); s.keyUpRaw(K[k]); await run(after); };
 let step = 0, fails = 0;
-const shot = async (name) => writeFileSync(`build/${PREFIX}-${String(++step).padStart(2, "0")}-${name}.png`, await s.screenshotActive({ scale: 1 }));
+const shot = async (name) => writeFileSync(`build/shots/${PREFIX}-${String(++step).padStart(2, "0")}-${name}.png`, await s.screenshotActive({ scale: 1 }));
 const check = (what, ok, detail = "") => { console.log(`${ok ? "ok  " : "FAIL"} ${what}${detail ? ": " + detail : ""}`); if (!ok) fails++; };
 const seen = { options: 0, loop: 0, entry: 0, newGame: 0 };
 cpu.debugInstruction.add((pc) => {

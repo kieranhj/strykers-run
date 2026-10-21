@@ -43,6 +43,10 @@ decision 2). One assembly, `src/main.6502`, so the game and the banks share one 
 `build/strykers.lst` is the listing, `build/strykers.symbols.json` the symbol dump: take
 addresses from there (`python tools/listing.py symbols build/strykers.symbols.json NAME`).
 `build_stamp.py` stamps the last commit's time (`+` if the tree is dirty) into `INFO` and `!BOOT`.
+`build/` (gitignored, all regenerable) is kept to: `strykers.*` (the shipping disc), `strykers-gameplay.*`
+(`-Gameplay` / `make gameplay`, named so; `make NAME=x` names any build), `strykers-original.*` and
+`original/` (`make original`), `build_time.6502`; other flag sets are `strykers-<flags>.*`, harness
+screenshots go in `build/shots/`, and anything else is a session's scratch: delete it when done.
 
 ## Source (`src/`)
 

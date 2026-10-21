@@ -18,7 +18,8 @@
 // Prints one line per checkpoint, and at the end a JSON summary:
 //   {"frames":N,"identical":true}  or  {"firstDifference":F,"what":"screen RAM &xxxx"}
 import { createHash } from "node:crypto";
-import { writeFileSync } from "node:fs";
+import { writeFileSync, mkdirSync } from "node:fs";
+mkdirSync("build/shots", { recursive: true });   // screenshots, apart from the discs
 import { loadMachineSession } from "./jsbeeb_src.mjs";
 const MachineSession = await loadMachineSession();
 
@@ -99,7 +100,7 @@ for (let f = 1; f <= FRAMES; f++) {
         };
         break;
     }
-    if (SHOTS && f % SHOTS === 0) writeFileSync(`build/lockstep-${f}.png`, await b.screenshotActive({ scale: 1 }));
+    if (SHOTS && f % SHOTS === 0) writeFileSync(`build/shots/lockstep-${f}.png`, await b.screenshotActive({ scale: 1 }));
     if (f % 500 === 0) console.error(`  frame ${f}: identical (cycles ${a.elapsedCycles} / ${b.elapsedCycles})`);
 }
 console.log(JSON.stringify(result));

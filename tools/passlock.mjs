@@ -221,9 +221,9 @@ for (let p = 1; p <= PASSES; p++) {
             const other = B.s.readMemory(0x4000, 0x4000, { shadow: !b.shadow });
             for (let i = 0, k = 0; i < 0x4000 && k < 6; i++) if (a[i] !== b.bytes[i]) { k++;
                 console.log(`  &${(0x4000 + i).toString(16)}: control ${a[i].toString(16)}, test shown (${b.shadow ? "shadow" : "main"}) ${b.bytes[i].toString(16)}, test hidden ${other[i].toString(16)}`); }
-            const { writeFileSync } = await import("node:fs");
-            writeFileSync(`build/passlock-${p}-control.png`, await A.s.screenshotActive({ scale: 1 }));
-            writeFileSync(`build/passlock-${p}-test.png`, await B.s.screenshotActive({ scale: 1 }));
+            const { writeFileSync, mkdirSync } = await import("node:fs"); mkdirSync("build/shots", { recursive: true });
+            writeFileSync(`build/shots/passlock-${p}-control.png`, await A.s.screenshotActive({ scale: 1 }));
+            writeFileSync(`build/shots/passlock-${p}-test.png`, await B.s.screenshotActive({ scale: 1 }));
             const mv = (m) => { const r = (a, n) => [...m.s.readMemory(a, n, { shadow: false })]; const x = r(m.syms.movers_x_low, 34), xh = r(m.syms.movers_x_high, 34), t = r(m.syms.movers_type_and_colour, 34);
                 return x.map((v, i) => xh[i] < 0x80 ? `${i}:t${(t[i] & 0x7f).toString(16)}@${xh[i] * 256 + v}` : null).filter(Boolean).join(" "); };
             console.log(`  movers: ${mv(A)}; viewport ${A.s.readMemory(0xb2, 1)[0] + 256 * A.s.readMemory(0xba, 1)[0]}`);

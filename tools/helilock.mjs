@@ -62,8 +62,8 @@ for (let p = 1; p <= PASSES; p++) {
     if (d) { diffs++; if (firstDiff === null) firstDiff = `pass ${p} (${phase}): ${d} bytes`; }
     const px = x(0), heli = rdm(A, 0x84)[0], expl = rdm(A, 0x8f)[0];
     if (process.env.SHOTS && (expl || (exploded !== null && p < exploded + 12))) {
-        const { writeFileSync } = await import("node:fs");
-        writeFileSync(`build/heli-${VARIANT}-${p}.png`, await B.s.screenshotActive({ scale: 1 }));
+        const { writeFileSync, mkdirSync } = await import("node:fs"); mkdirSync("build/shots", { recursive: true });
+        writeFileSync(`build/shots/heli-${VARIANT}-${p}.png`, await B.s.screenshotActive({ scale: 1 }));
         const sl = (i) => `${i}:t${(rdm(A, A.syms.movers_type_and_colour + i)[0] & 0x7f).toString(16)} x${x(i)} y${rdm(A, A.syms.movers_y + i)[0]} s${(rdm(A, A.syms.movers_screen_address_high + i)[0] * 256 + rdm(A, A.syms.movers_screen_address_low + i)[0]).toString(16)}`;
         log.push(`pass ${p}: ${[0, 12, 17].filter((i) => rdm(A, A.syms.movers_x_high + i)[0] < 0x80).map(sl).join("  ")}; view ${rdm(A, 0xb2)[0] + 256 * rdm(A, 0xba)[0]}`);
     }

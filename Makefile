@@ -148,6 +148,7 @@ all:
 	    stem=$$stem-`echo "$$k" | tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz'`; \
 	    if [ "$$v" != 1 ]; then stem=$$stem$$v; fi; \
 	done; \
+	if [ -n "$(NAME)" ]; then stem=$(NAME); fi; \
 	defs=; stamp=; \
 	for f in $(FLAGS); do \
 	    eval "v=\$${f_$$f:-0}"; defs="$$defs -D $$f=$$v"; stamp="$$stamp $$f=$$v"; \
@@ -175,13 +176,10 @@ release:
 	@$(MAKE) RELEASE=1 all
 	@echo "RELEASE build: every DEBUG_ flag off"
 
-# Every GAMEPLAY_ flag (decisions 43-48): the gameplay disc, also copied to
-# build/strykers-gameplay.ssd (make gameplay RELEASE=1 for testers), as build.ps1 -Gameplay
+# Every GAMEPLAY_ flag (decisions 43-50): the gameplay disc, build/strykers-gameplay.ssd
+# (make gameplay RELEASE=1 for testers), as build.ps1 -Gameplay. NAME= names any build's files
 gameplay:
-	@$(MAKE) DEFINES=GAMEPLAY_SHIELD,GAMEPLAY_LIVES,GAMEPLAY_TIMER,GAMEPLAY_OPTIONS,GAMEPLAY_RUN all
-	@cp $(BUILD)/strykers-gameplay_shield-gameplay_lives-gameplay_timer-gameplay_options-gameplay_run.ssd $(BUILD)/strykers-gameplay.ssd
-	@cp $(BUILD)/strykers-gameplay_shield-gameplay_lives-gameplay_timer-gameplay_options-gameplay_run.symbols.json $(BUILD)/strykers-gameplay.symbols.json
-	@echo "       copied to $(BUILD)/strykers-gameplay.ssd"
+	@$(MAKE) DEFINES=GAMEPLAY_SHIELD,GAMEPLAY_LIVES,GAMEPLAY_TIMER,GAMEPLAY_OPTIONS,GAMEPLAY_RUN NAME=strykers-gameplay all
 
 # Only reached when the .config is missing and the image was asked for by
 # name (`make build/strykers.ssd`); `all` always stamps first.

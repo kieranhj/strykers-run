@@ -8,8 +8,8 @@
 #   .\build.ps1 -Shift 256             the relocation test: the game assembled 256 bytes lower,
 #                                      each bank's contents a page higher (src/main.6502)
 #   .\build.ps1 -Shift 256 -ShiftEnd   its control: the same padding where it moves nothing
-#   .\build.ps1 -Gameplay              every GAMEPLAY_ flag (decisions 43-48): the gameplay disc, also
-#                                      copied to build\strykers-gameplay.ssd (with -Release for testers)
+#   .\build.ps1 -Gameplay              every GAMEPLAY_ flag (decisions 43-50): the gameplay disc,
+#                                      build\strykers-gameplay.ssd (with -Release for testers)
 #
 # Every -D symbol the source reads is passed on every build (Baron cannot default one).
 # The Makefile is the same build for POSIX systems and produces the same image; a change to the
@@ -46,6 +46,7 @@ foreach ($d in $Define) {
     $flags[$k] = $(if ($v) { $v } else { '1' })
     $stem += '-' + $k.ToLower() + $(if ($flags[$k] -ne '1') { $flags[$k] } else { '' })   # a value other than 1 named too (GAMEPLAY_TIMER=2)
 }
+if ($Gameplay -and $Define.Count -eq 5 -and -not $Shift) { $stem = 'strykers-gameplay' }   # the gameplay disc by its own name
 $extra = @(); $stampFlags = @()
 foreach ($k in $flags.Keys) { $extra += @('-D', "$k=$($flags[$k])"); $stampFlags += "$k=$($flags[$k])" }
 
@@ -63,11 +64,6 @@ try {
         throw "baron failed ($LASTEXITCODE)"
     }
     "Built  build\$stem.ssd"
-    if ($Gameplay) {   # with its symbol dump, which the harnesses read beside a disc
-        Copy-Item "build\$stem.ssd" 'build\strykers-gameplay.ssd'
-        Copy-Item "build\$stem.symbols.json" 'build\strykers-gameplay.symbols.json'
-        "       copied to build\strykers-gameplay.ssd"
-    }
     (Get-FileHash "build\$stem.ssd" -Algorithm SHA256).Hash.ToLower() | ForEach-Object { "       sha256 $_" }
 
     $reference = 'reference\sth\StrykersRun.ssd'

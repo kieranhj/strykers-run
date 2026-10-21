@@ -3,9 +3,10 @@
 //   node tools/play.mjs DISC.ssd [FRAMES] [EVERY] [PREFIX]
 //
 // A smoke test with the game actually played: boots on a Master, starts a game, runs the input
-// script for FRAMES frames and writes build/<PREFIX>-<frame>.png every EVERY frames (defaults
+// script for FRAMES frames and writes build/shots/<PREFIX>-<frame>.png every EVERY frames (defaults
 // 20000, 2000, "play"). Prints the frame count and the cycles it took.
-import { writeFileSync } from "node:fs";
+import { writeFileSync, mkdirSync } from "node:fs";
+mkdirSync("build/shots", { recursive: true });   // screenshots, apart from the discs
 import { loadMachineSession } from "./jsbeeb_src.mjs";
 import { makeScript, applyEvents, bootMaster } from "./playscript.mjs";
 const MachineSession = await loadMachineSession();
@@ -23,6 +24,6 @@ const s = await bootMaster(MachineSession, disc);
 for (let f = 1; f <= FRAMES; f++) {
     applyEvents(events, f, [s]);
     await s.runFrames(1);
-    if (EVERY && f % EVERY === 0) writeFileSync(`build/${PREFIX}-${f}.png`, await s.screenshotActive({ scale: 1 }));
+    if (EVERY && f % EVERY === 0) writeFileSync(`build/shots/${PREFIX}-${f}.png`, await s.screenshotActive({ scale: 1 }));
 }
 console.log(JSON.stringify({ frames: FRAMES, cycles: s.elapsedCycles }));
