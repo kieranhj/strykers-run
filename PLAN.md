@@ -15,11 +15,14 @@ and 39,341 holding RIGHT, of the 79,872 two fields give.
   jsbeeb only (`docs/step2-layer2.md` "Open").
 - **Which ideas to build** (below): each changes how the original plays (rule 1), so each needs a
   decision first.
+- **The front end on hardware**: the scroll text and the credit line run in the vsync interrupt
+  with interrupts re-enabled (decisions 57, 60); seen in jsbeeb only.
 
 ## Room (the shipping build's listing, 2026-10-20)
 
 Next to none where the renderer can read while it draws: main RAM 9 bytes (`&33F7-&33FF`), bank 4
-43, HAZEL 24. Elsewhere: `moved_0a20` 142, under ANDY 444, banks 5 / 6 / 7 388 / 530 / 481,
+43, HAZEL 24. Elsewhere: `moved_0a20` 142, under ANDY 444, banks 5 / 6 / 7 28 + 17 / 530 / 481 (bank 5:
+before its music / at its end, after decisions 57 and 60; 2026-10-21),
 `MGAME`'s carrying room 849. Any idea below that adds code or data in play starts by finding room.
 
 ## Layer 5 - quirks and original glitches (decision 13)
