@@ -92,9 +92,9 @@
     LDA &FFFF,X                     \ self-modified: the glyph's six bytes
     INX
     RTS
-\ pixel: bar pixel Y (0-9) as a left pixel's MODE 2 bits; keeps X and Y. Blue (4) filled (KC: it
+\ pixel: bar pixel Y (0-7) as a left pixel's MODE 2 bits; keeps X and Y. Blue (4) filled (KC: it
 \ shows up better than green on the sky), red (1) empty, white (7) all while it flashes, sky (0)
-\ between the segments and after them
+\ after them
 .pixel
     LDA segment_of_pixel,Y
     BMI sky
@@ -120,8 +120,8 @@
     EQUB 0
 .font_right
     EQUB 0
-.segment_of_pixel                   \ each pixel's place in the bar (0-5), &FF for a gap
-    EQUB 0, 1, 2, &FF, 3, 4, 5, &FF, &FF, &FF
+.segment_of_pixel                   \ each pixel's place in the bar (0-5), &FF after it (KC: contiguous)
+    EQUB 0, 1, 2, 3, 4, 5, &FF, &FF
 .infinity                           \ two loops, in the font's form: a byte a pixel column, bit Y row Y
     EQUB &18, &24, &18, &18, &24, &18
 }

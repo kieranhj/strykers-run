@@ -84,9 +84,9 @@ function checkBar(shield, lives) {
     for (let y = 0; y < 8; y++) digit.push(0);
     if (lives < 10 && hud.slice(0, 32).some((b, i) => b !== digit[i])) fail(`hud_buffer's digit is not the font's for ${lives}`);
     const px = Math.floor(3 * shield / 25), white = (flash & 2) !== 0;
-    const seg = [0, 1, 2, -1, 3, 4, 5, -1, -1, -1];
+    const seg = [0, 1, 2, 3, 4, 5, -1, -1];                     // 6 pixels in a row, then sky (KC, 2026-10-21)
     const left = (p) => seg[p] < 0 ? 0 : white ? 0x2a : seg[p] < px ? 0x20 : 0x02;
-    for (let c = 0; c < 5; c++) {
+    for (let c = 0; c < 4; c++) {
         const fill = left(2 * c) | (left(2 * c + 1) >> 1);
         for (let r = 0; r < 8; r++) {
             const want = r === 0 || r === 7 ? 0 : fill, got = hud[32 + 8 * c + r];

@@ -158,6 +158,12 @@ death respawns whatever the lives, so the test scripts still never end.
    `tools/shieldtest.mjs --unit U --wait W` (the rules with other settings: 50/50 and 9/250 held
    over 8,000 passes). Bank 5 is full again: 12 bytes left.
 
+14. **The bar contiguous** (KC, 2026-10-21): 6 pixels in a row, not two segments of 3 with a gap,
+   then one blank column: `HUD_BAR_COLUMNS` 5 to 4, so the HUD is a byte column narrower (8 bytes
+   less to copy at each scroll on each screen; the timer one column left). shieldtest's bar check
+   follows; passlock against the `DEBUG_FULLREDRAW` twin (every flag, unshifted `DEBUG_LIVES`), 3,000
+   passes: state and screens identical.
+
 ## Answered (KC, 2026-10-20)
 
 - **High scores with infinite lives:** a game with infinite lives ends only by ESCAPE or by
