@@ -27,7 +27,7 @@ Next to none where the renderer can read while it draws: main RAM 9 bytes (`&33F
 - Check in jsbeeb, then fix: a scroll column lost when moving with `frame` >= 0 (firing in a
   helicopter while moving); the column replotted after a hostile collision.
 
-## Gameplay variations (decisions 43-48, branch `gameplay-shield`)
+## Gameplay variations (decisions 43-49, branch `gameplay-shield`)
 
 Kept separate from `main` for now (KC, 2026-10-21); `main` merged into it as it moves. Each
 variation is a `GAMEPLAY_*` flag, off by default (flags off: byte-identical to `main`);
@@ -45,6 +45,9 @@ Built (2026-10-20/21), each with its harness:
   off the high score table. `tools/optionstest.mjs`.
 - **The timer** (`GAMEPLAY_TIMER`, 47): counting up with a bonus for time under par, or counting
   down to the skeleton and game over. `tools/timertest.mjs`.
+- **Hits through a friendly soldier** (decision 49, KC's bug): the original passed a projectile's hit
+  on to the player when the mover it hit touched the player; gameplay builds let the mover take
+  it. `tools/selfhit.mjs`.
 - **The run key** (`GAMEPLAY_RUN`, 48): SHIFT held runs a column a pass, a jump's speed, not
   half a column; redefinable in define controls.
 - Speed: the HUD copied a byte column a turn; every flag on, 6 late frames of 1,998 against 5 with
@@ -59,7 +62,7 @@ Left:
 - **Merging into `main`**, when KC says: then one disc with both builds and a boot menu, for a
   release (the brief, "Discs").
 - **Room** is nearly gone in the build with every flag (bank 4 2 and 4 under ANDY, bank 5 152, main
-  block 21; bank 6 181, bank 7 481: the brief, item 8): the next variation starts by finding room.
+  block 21 below `kc_slot0_y`'s limit; bank 6 181, bank 7 481: the brief, item 8): the next variation starts by finding room.
   The timer and the game rules need the unshifted banks.
 
 ## The level editor, v1 (decision 41)

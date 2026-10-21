@@ -119,6 +119,7 @@ disassembly's `actually`/`also` notes say what an operand really is.
   frames as passbench (late frames by world column, ground or air); with `--control`, state and newest frame against CONTROL every pass (the `DEBUG_FULLREDRAW` twin)
 - `tools/hitwatch.mjs DISC [--passes N] [--json F]` - every hit on the player over the whole world: its path, its culprit's type (read before `kill_mover` changes it), runs of hits by one object (BUGS #13)
 - `tools/livestest.mjs DISC [--passes N] [--finite]`, `tools/timertest.mjs DISC [--passes N] [--short]`, `tools/optionstest.mjs DISC` - `GAMEPLAY_LIVES`', `GAMEPLAY_TIMER`'s and `GAMEPLAY_OPTIONS`' rules: deaths, rewinds and respawns; the time, its digits and the bonus; the game rules screen and what it sets
+- `tools/selfhit.mjs DISC [--passes N] [--point-blank]` - projectiles that hit a mover touching the player and hit the player instead (the original's rule; none in `GAMEPLAY_SHIELD` builds, decision 49); `--point-blank` puts a friendly soldier on the player, who fires
 - `tools/shieldtest.mjs DISC [--passes N]` - a `GAMEPLAY_SHIELD` build's rules over the whole world: damage by culprit type, lives only at 0 shield, the refill, the bar after every tick
 - `tools/zplive.mjs DISC` - the zero-page bytes the logic reads first after a render (what `restore_game_zp` must keep)
 - `ZPWATCH=a2-a6,bc-bd node --import ./tools/zpwatch.mjs tools/HARNESS.mjs ...` - every write, read and execute at those addresses in any harness's machines, by phase (boot, front end, game) and the code that made it (BUGS #12)
@@ -203,7 +204,7 @@ left as a carrier, 2026-10-20); `hazel_b`
 and the packed tunes follow `&4000` to `mgame_end` (`&4C1F`), so `MGAME` loads to `&572F`, 849
 bytes under the loading picture at `&5A80` (ASSERTed). Bank 5's `&8000-&83FF` (the player buffer) is free:
 masked drawing made it unnecessary.
-Gameplay builds (`GAMEPLAY_*`, branch `gameplay-shield`, decisions 43-48) add: zero page `&07-&1A`
+Gameplay builds (`GAMEPLAY_*`, branch `gameplay-shield`, decisions 43-49) add: zero page `&07-&1A`
 (the shield, the respawn, the timer, the run key: `src/zp.6502`); the HUD buffer and `game_completed` at
 `&0C72-&0CF2`, after `moved_0a20` (not in the file); the shield, the respawn and the HUD builder in
 bank 4 under ANDY; the timer in bank 6; `shield_new_game` and the game rules screen in bank 5 after

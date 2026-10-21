@@ -145,6 +145,13 @@ death respawns whatever the lives, so the test scripts still never end.
    of `&1F5F-&1FFF` before the page-aligned music): 152 bytes left there; main block 21.
    `tools/frontend.mjs` defines nine keys on a `GAMEPLAY_RUN` build and checks the run key.
 
+12. **Hit through a friendly soldier: FIXED** (decision 49, KC 2026-10-21): the original passes a
+   projectile's hit on to the player when the mover it hit touches the player; gameplay builds
+   let the mover take it. `tools/selfhit.mjs` (and `--point-blank`). Room: the main block's real
+   limit is `kc_slot0_y` + 257 <= `&3400` (`src/kindcache.6502`), not the `SKIP` after it: 21 bytes
+   (`kc_slot0_y` `&32EA`) in the build with every flag after this fix, which took 13 out; it was 8
+   before, not the 21 item 11 said.
+
 ## Answered (KC, 2026-10-20)
 
 - **High scores with infinite lives:** a game with infinite lives ends only by ESCAPE or by

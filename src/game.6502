@@ -3850,12 +3850,14 @@ ENDIF
     CMP #&14                        \ MOVER_TYPE_TANK                       ***
     BEQ explode_projectile          \ *** Tank is not damaged by bullets
 .not_bullet    \ ***
+IF GAMEPLAY_SHIELD = 0              \ decision 49: gameplay builds hit the mover the projectile hit (Y = &8D)
     LDX &8D
     BEQ projectile_hit_player
     JSR check_for_player_collision_with_mover_Y\ Returns carry set if collision
     LDY hostile_mover
     BCC projectile_hit_player
-    LDY #&00                        \ MOVER_PLAYER
+    LDY #&00                        \ MOVER_PLAYER: the original's, when the mover hit touched the player
+ENDIF                               \ (an enemy's bullet into a friendly soldier beside the player hit the player)
 .projectile_hit_player
     JSR kill_mover
     JMP replace_projectile_with_explosion
