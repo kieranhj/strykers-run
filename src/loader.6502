@@ -95,14 +95,18 @@ ENDSECTION
 
 SECTION Boot, org = BOOT_STAGE, guard = BOOT_STAGE + 256, filename = "!BOOT", exec = &FFFF0000 + bootfile
 .bootfile
+    LDA #0                          \ OSBYTE 0, X = 1: X = the MOS. 3 the Master 128 (MOS 3.20, 3.50),
+    LDX #1                          \ 5 the Master Compact (MOS 5.x); 1 a BBC B, 2 a B+ (the B and the
+    JSR osbyte                      \ Master measured in jsbeeb, 2026-10-21; it has no Compact or B+).
+    CPX #3                          \ The game needs a Master's 65C12, sideways RAM 4-7, shadow RAM,
+    BEQ boot_on_a_master            \ ANDY and HAZEL: anything else stops here, before loading
+    CPX #5                          \ (6502 opcodes only up to here, so a B runs it)
+    BEQ boot_on_a_master
+    LDX #boot_refused - boot_text
+    JMP boot_print                  \ the reason, then back to the prompt (boot_print's RTS)
+.boot_on_a_master
     LDX #0
-.boot_print
-    LDA boot_text,X
-    BEQ boot_printed
-    JSR osasci
-    INX
-    BNE boot_print
-.boot_printed
+    JSR boot_print
     LDA #&90                        \ *TV255,1: display moved up a line, interlace off
     LDX #255
     LDY #1
@@ -114,8 +118,19 @@ SECTION Boot, org = BOOT_STAGE, guard = BOOT_STAGE + 256, filename = "!BOOT", ex
     LDX #LO(boot_run)
     LDY #HI(boot_run)
     JMP oscli
+.boot_print                         \ the text from boot_text + X to its 0
+    LDA boot_text,X
+    BEQ boot_printed
+    JSR osasci
+    INX
+    BNE boot_print
+.boot_printed
+    RTS
 .boot_text
     BUILD_STAMP
+    EQUB 0
+.boot_refused
+    EQUS 13, "Stryker's Run (Enhanced) needs a", 13, "BBC Master 128 or Master Compact.", 13
     EQUB 0
 .boot_run
     EQUS "RUN SRRUN", 13
