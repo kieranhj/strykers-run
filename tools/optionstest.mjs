@@ -32,13 +32,15 @@ const press = async (k, hold = 10, after = 40) => { s.keyDownRaw(K[k]); await ru
 let step = 0, fails = 0;
 const shot = async (name) => writeFileSync(`build/shots/${PREFIX}-${String(++step).padStart(2, "0")}-${name}.png`, await s.screenshotActive({ scale: 1 }));
 const check = (what, ok, detail = "") => { console.log(`${ok ? "ok  " : "FAIL"} ${what}${detail ? ": " + detail : ""}`); if (!ok) fails++; };
-const seen = { options: 0, loop: 0, entry: 0, newGame: 0 };
+const seen = { options: 0, loop: 0, entry: 0, newGame: 0, table: 0, title: 0 };
 cpu.debugInstruction.add((pc) => {
     const b5 = (cpu.romsel & 15) === 5;
     if (pc === syms.options_screen && b5) seen.options++;
     if (pc === syms.main_game_loop) seen.loop++;
     if (pc === syms.finished_shuffling_names && b5) seen.entry++;
     if (pc === syms.shield_new_game && b5) seen.newGame++;
+    if (pc === syms.display_high_scores && b5) seen.table++;
+    if (pc === syms.display_title_screen && b5) seen.title++;
     return false;
 });
 const opts = () => { const [l, r, t] = [rd(syms.opt_lives)[0], rd(syms.opt_respawn)[0], rd(syms.opt_timer)[0]]; return { lives: l, respawn: r, timer: t }; };
@@ -50,6 +52,16 @@ await run(2000);
 s.releaseAllKeys();                     // the boot's SHIFT (SHIFT+BREAK): get_keypress waits for it to go
 await run(50);
 await shot("title");
+{   // decision 56: any key on the high score table goes back to the menu (and is not taken as an option)
+    const t0 = seen.table;
+    for (let i = 0; i < 40 && seen.table === t0; i++) await run(50);   // the title cycles to the table by itself
+    await run(30);
+    const title0 = seen.title, loop0 = seen.loop;
+    await press("K1", 10, 60);                                         // "1": on the menu it would start a game
+    check("any key on the high score table: back to the menu, no game", seen.table > t0 && seen.title > title0 && seen.loop === loop0,
+        `table ${seen.table - t0}, menu ${seen.title - title0}, game passes ${seen.loop - loop0}`);
+    await shot("after-table-key");
+}
 check("6 opens the game rules screen", await toOptions());
 await shot("game-rules");
 const o0 = opts();

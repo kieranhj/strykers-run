@@ -912,8 +912,15 @@ ENDIF
     LDA #&50
     STA title_screen_cooldown
 .high_score_screen
+IF GAMEPLAY_OPTIONS
+    JSR options_high_scores         \ decision 56: display_high_scores, and any key back to the menu
+ELSE
     JSR display_high_scores
+ENDIF
 .high_score_screen_loop
+IF GAMEPLAY_OPTIONS
+    JSR options_high_score_key      \ (leaves for display_title_screen on a key)
+ENDIF
     LDA title_screen_cooldown
     BPL high_score_screen_loop
     BRA display_title_screen        \ 65C02 opcode

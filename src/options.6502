@@ -58,6 +58,32 @@ ENDIF
     BEQ options_screen
     JMP title_screen_loop
 
+\ options_high_scores, options_high_score_key: the high score table (decision 56, KC: "pressing any key
+\ on the high score should return to the menu"). A key counts only once every key has been up since
+\ the table appeared (RETURN from the name entry may still be down), and the menu is entered only
+\ once it is let go (else the title loop would take it as an option: "1" would start a game)
+.options_high_scores
+    STZ hs_armed                    \ 65C02 opcode
+    JMP display_high_scores
+.options_high_score_key
+    LDA os_most_recently_pressed_key
+    BEQ hs_up
+    BIT hs_armed
+    BPL hs_done                     \ still the key from before
+.hs_release
+    LDA os_most_recently_pressed_key
+    BNE hs_release
+    PLA                             \ the loop's JSR: to the menu instead
+    PLA
+    JMP display_title_screen
+.hs_up
+    LDA #&80
+    STA hs_armed
+.hs_done
+    RTS
+.hs_armed
+    EQUB 0
+
 \ options_high_score: the title's check_for_high_score, but an infinite-lives game ended by ESCAPE
 \ (not at the headquarters: game_completed 0) does not go on the table (KC, 2026-10-20)
 .options_high_score
