@@ -160,6 +160,7 @@ ENDIF
     INCLUDE "lib/sfx50.6502"
     INCLUDE "sfx_data.6502"
     INCLUDE "compiled_bank5.6502"   \ step 2 layer 4: compiled kinds of the player's parts
+    INCLUDE "credits.6502"          \ decision 60: the title's credit line cycling
     \ Step 2 layer 3: the sprites that live in ANDY (&8000-&8FFF, the Master's 4K that ROMSEL
     \ bit 7 pages over the first 4K of a bank), carried here and copied in at start-up
     \ (src/game.6502 initialisation). The renderer runs with ROMSEL = &84: ANDY, then bank 4.
