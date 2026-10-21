@@ -5917,7 +5917,8 @@ game_completed = hud_buffer + HUD_BYTES   \ decision 46: non-zero once the headq
 run_meter = game_completed + 1      \ decision 52 (src/run.6502): the meter, 8.8 (0-RUN_FULL.0), and what a pass
 run_drain = run_meter + 2           \ running takes from it and one not running gives back (shield_new_game)
 run_charge = run_drain + 2
-ASSERT run_charge + 1 < &0D00, "the run meter overruns &0CFF"
+timer_limit = run_charge + 2        \ decision 55: the timer's start (down) and par (up), BCD seconds, high first
+ASSERT timer_limit + 1 < &0D00, "the run meter and the timer's limit overrun &0CFF"
 ASSERT game_completed < &0D00, "hud_buffer overruns &0CFF by ", game_completed + 1 - &0D00
 ASSERT HI(hud_buffer) = HI(hud_buffer + HUD_BYTES - 1)
 ENDIF

@@ -1,8 +1,9 @@
 // timertest.mjs - GAMEPLAY_TIMER's rules checked (decision 47): the WorldBot plays a timer build
 // (infinite lives poked in, as tools/worldrun.mjs does) and the timer is judged every pass:
 //   the time   a second (BCD, timer_hi/timer_lo) every 25 passes: up from 0 (GAMEPLAY_TIMER=1, held
-//              at 999), or down from 600 (=2)
-//   the bonus  at the headquarters (completion_screen), the score rises by 10 a second under 600
+//              at 999), or down from the limit (=2; timer_limit, 600 by default: decision 55)
+//   the bonus  at the headquarters (completion_screen), the score rises by 10 a second under the par
+//              (timer_limit)
 //              (counting up) or left (counting down), and by nothing else
 //   time up    --short (counting down only): the timer poked to 5 seconds at the start; at 0 the
 //              player turns into the skeleton (KC, 2026-10-21), then the game is over (game_over_screen)
@@ -77,7 +78,8 @@ for (let p = 1; p <= PASSES; p++) {
 if (gameOverAt !== null) end = "game over";
 if (end === "completed") await m.s.runFor(4000000);      // on from completion_screen (where startWorldGame stops): the bonus and render_finish
 if (bonus) {
-    const want = 10 * (down ? bonus.t : Math.max(0, 600 - bonus.t));
+    const par = syms.timer_limit !== undefined ? bcd(...rd(syms.timer_limit, 2)) : 600;
+    const want = 10 * (down ? bonus.t : Math.max(0, par - bonus.t));
     if (bonus.after - bonus.score !== want) fail(`the bonus at ${bonus.t} s was ${bonus.after - bonus.score}, expected ${want}`);
 }
 if (SHORT) {

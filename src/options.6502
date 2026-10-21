@@ -20,6 +20,11 @@ IF GAMEPLAY_RUN
 .opt_run_drain_hi
     EQUB HI(2560 DIV 5), HI(2560 DIV 10), HI((2560 + 7) DIV 15), HI(2560 DIV 20), 0
 ENDIF
+.opt_limit          EQUB 3          \ decision 55: an index into opt_limit_hi/lo: 10 minutes (decision 47's)
+.opt_limit_hi                       \ the limit in BCD seconds: 3, 5, 8, 10, 15 minutes
+    EQUB &01, &03, &04, &06, &09
+.opt_limit_lo
+    EQUB &80, &00, &80, &00, &00
 .opt_respawn_columns
     EQUB 40, 80, 120, 160
 .opt_hits_unit                      \ a bullet's damage: a full shield (SHIELD_FULL, 50) takes 1, 2, 3, 4, 6
@@ -104,6 +109,14 @@ ENDIF
     LDA #LO(OPT_RECHARGE_AT)
     LDY #HI(OPT_RECHARGE_AT)
     JSR value_x
+    LDA opt_limit                   \ decision 55
+    ASL A
+    ASL A
+    ADC #limit_names - values
+    TAX
+    LDA #LO(OPT_LIMIT_AT)
+    LDY #HI(OPT_LIMIT_AT)
+    JSR value_x
 IF GAMEPLAY_RUN
     LDA opt_run_time                \ decision 52
     ASL A
@@ -166,6 +179,17 @@ ENDIF
     STA opt_recharge
     JMP show                        \ (out of a branch's reach)
 .not_recharge
+    CMP #&15                        \ "8": the timer's limit, 3 / 5 / 8 / 10 / 15 minutes (decision 55)
+    BNE not_limit
+    LDA opt_limit
+    INC A
+    CMP #5
+    BCC limit_ok
+    LDA #0
+.limit_ok
+    STA opt_limit
+    JMP show
+.not_limit
 IF GAMEPLAY_RUN
     CMP #&34                        \ "6": the run time, 5 / 10 / 15 / 20 seconds or off (decision 52)
     BNE not_run_time
@@ -251,10 +275,11 @@ ENDIF
 
 OPT_LINE        = &4000 + 96        \ a setting's line: its row's first byte + 96 (the values at character 13)
 OPT_VALUE       = OPT_LINE + 13 * 24
-OPT_LIVES_AT    = OPT_VALUE + 5 * &280
-OPT_RESPAWN_AT  = OPT_VALUE + 7 * &280
-OPT_TIMER_AT    = OPT_VALUE + 9 * &280
-OPT_HITS_AT     = OPT_VALUE + 11 * &280            \ decision 50
-OPT_RECHARGE_AT = OPT_VALUE + 13 * &280
-OPT_RUN_AT      = OPT_VALUE + 15 * &280            \ decision 52
-OPT_CHARGE_AT   = OPT_VALUE + 17 * &280
+OPT_LIVES_AT    = OPT_VALUE + 3 * &280
+OPT_RESPAWN_AT  = OPT_VALUE + 5 * &280
+OPT_TIMER_AT    = OPT_VALUE + 7 * &280
+OPT_HITS_AT     = OPT_VALUE + 9 * &280            \ decision 50
+OPT_RECHARGE_AT = OPT_VALUE + 11 * &280
+OPT_RUN_AT      = OPT_VALUE + 13 * &280            \ decision 52
+OPT_CHARGE_AT   = OPT_VALUE + 15 * &280
+OPT_LIMIT_AT    = OPT_VALUE + 17 * &280            \ decision 55

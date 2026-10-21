@@ -1,17 +1,17 @@
 \ timer.6502 - GAMEPLAY_TIMER (decision 47; docs/briefs/gameplay-shield.md): a game timer in seconds
 \ of the design speed (25 passes), shown on the top line after the shield's bar. Its mode, timer_mode
 \ (set at a game's start: the build's GAMEPLAY_TIMER, or the game rules screen's, decision 46):
-\   1  counting up from 0; at the headquarters, 10 points for each second under TIMER_PAR
+\   1  counting up from 0; at the headquarters, 10 points for each second under the par (timer_limit)
 \      (completion_screen: timer_bonus)
-\   2  counting down from TIMER_START; at 0 the game is over; at the headquarters, 10 points for
+\   2  counting down from timer_limit; at 0 the game is over; at the headquarters, 10 points for
 \      each second left
 \   0  off: nothing shown, no bonus
 \ Sideways bank 6, called through timer_tick_call and timer_bonus_call (main RAM: they page bank 6 in
 \ and bank 4 back). It reads and writes only zero page and main RAM: hud_buffer, the score digits
 \ (game_over_text + 20 on, font offsets: "0" &6C, 6 a digit) and lives.
 
-TIMER_PAR   = &0600                 \ BCD seconds: 10 minutes
-TIMER_START = &0600
+\ TIMER_LIMIT (src/zp.6502, 10 minutes) is the start counting down and the par counting up; the game
+\ rules screen's limit replaces it (decision 55): timer_limit, set at the game's start (BCD, high first)
 
 \ timer_tick: once a pass (main_game_loop, after shield_tick)
 .timer_tick
@@ -27,9 +27,9 @@ ENDIF
     LDA timer_mode
     CMP #2
     BNE start_set
-    LDA #HI(TIMER_START)
+    LDA timer_limit                 \ decision 55
     STA timer_hi
-    LDA #LO(TIMER_START)
+    LDA timer_limit + 1
     STA timer_lo
 .start_set
     STZ timer_frac
@@ -156,7 +156,7 @@ ENDIF
 }
 
 \ timer_bonus: the headquarters reached (completion_screen): 10 points a second, for each second
-\ under TIMER_PAR (counting up) or each second left (counting down)
+\ under the par (counting up) or each second left (counting down)
 .timer_bonus
 {
     LDA timer_mode
@@ -180,11 +180,11 @@ ENDIF
     BRA each                        \ 65C02 opcode
 .up
     LDA timer_hi                    \ until the time reaches the par
-    CMP #HI(TIMER_PAR)
+    CMP timer_limit                 \ decision 55: the par
     BCC under
     BNE done
     LDA timer_lo
-    CMP #LO(TIMER_PAR)
+    CMP timer_limit + 1
     BCS done
 .under
     SED

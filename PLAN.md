@@ -27,7 +27,7 @@ Next to none where the renderer can read while it draws: the main block 4 bytes 
 - Check in jsbeeb, then fix: a scroll column lost when moving with `frame` >= 0 (firing in a
   helicopter while moving); the column replotted after a hostile collision.
 
-## Gameplay variations (decisions 43-54, branch `gameplay-shield`)
+## Gameplay variations (decisions 43-55, branch `gameplay-shield`)
 
 Kept separate from `main` for now (KC, 2026-10-21); `main` merged into it as it moves. Each
 variation is a `GAMEPLAY_*` flag, off by default (flags off: byte-identical to `main`);
@@ -42,7 +42,8 @@ Built (2026-10-20/21), each with its harness:
   by default) and the player returns with the shield full and 2 s safe. `tools/livestest.mjs`.
 - **The game rules screen** (`GAMEPLAY_OPTIONS`, 46, 50): "6 GAME RULES" on the title: lives 1-9 or
   infinite, the rewind 40/80/120/160, the timer off/up/down, the shield's hits 1/2/3/4/6 and its
-  recharge 2/5/8/10 s, the run time 5/10/15/20 s/off and its charge 5/10/15/20 s. Infinite lives ended by ESCAPE stay
+  recharge 2/5/8/10 s, the run time 5/10/15/20 s/off and its charge 5/10/15/20 s, the timer's limit
+  3/5/8/10/15 minutes (decision 55). Infinite lives ended by ESCAPE stay
   off the high score table. `tools/optionstest.mjs`.
 - **The timer** (`GAMEPLAY_TIMER`, 47): counting up with a bonus for time under par, or counting
   down to the skeleton and game over. `tools/timertest.mjs`.
@@ -62,8 +63,7 @@ Left:
 - **KC's choices:** the run meter's two sounds (now the landing's and the jump's, placeholders);
   whether bullets should destroy SAM launchers or stop at dying enemies (both pass through, as in
   the original: what KC saw as a bullet passing through an enemy, 2026-10-21).
-- **KC's review** of play: the rewind's speed and distance, the timer's par (10 minutes) and its
-  bonus (10 points a second).
+- **KC's review** of play: the rewind's speed and distance, the timer's bonus (10 points a second).
 - **The HUD's cost** (KC's idea): rupture the screen so the top line is one fixed area of RAM, drawn
   once and only when it changes, instead of copied at every scroll on both screens (the brief,
   item 10). Needs a measured design, and b2 or real hardware.
@@ -110,5 +110,4 @@ KC and the community, 2026-10-20 (gameplay first, rather than cheats; "more fun 
 KC, 2026-10-21:
 - **Game rules presets**: ORIGINAL / EASY / MEDIUM / HARD, each setting every rule on the game
   rules screen at once (ORIGINAL as close to the original game as the gameplay build allows).
-- **The timer's value configurable** on the game rules screen: the start when counting down and the
-  par when counting up (now 10 minutes, `TIMER_START` / `TIMER_PAR`, decision 47).
+- The timer's value configurable: built ("8 TIME LIMIT", decision 55, above).

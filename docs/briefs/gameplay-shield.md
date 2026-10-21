@@ -185,6 +185,10 @@ death respawns whatever the lives, so the test scripts still never end.
    `DEBUG_LIVES`) against its `DEBUG_FULLREDRAW` twin, 3,000 passes (the script jumps and fires
    often): state and screens identical.
 
+18. **The timer's limit on the game rules screen: DONE** (decision 55, KC 2026-10-21): "8 TIME
+   LIMIT" 3/5/8/10/15 minutes, default 10, the start counting down and the par counting up; the
+   screen two rows higher to hold eight settings.
+
 ## Answered (KC, 2026-10-20)
 
 - **High scores with infinite lives:** a game with infinite lives ends only by ESCAPE or by

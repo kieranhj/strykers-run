@@ -39,6 +39,7 @@ timer_ready                                  = &13      \ 0 at a game's start (s
 timer_hi                                     = &14      \ the seconds, BCD: hundreds
 timer_lo                                     = &15      \ tens and units
 timer_frac                                   = &16      \ passes into this second (0-24)
+TIMER_LIMIT     = &0600             \ decision 47: 10 minutes, BCD seconds (decision 55: the game rules' default)
 LIVES_START     = 3                 \ decision 45: lives at a game's start
 RESPAWN_COLUMNS = 40                \ how far the view goes back: half a screen (KC, 2026-10-21; it was 80)
 RESPAWN_SAFE    = 50                \ passes of invulnerability after it (2 seconds), the bar flashing

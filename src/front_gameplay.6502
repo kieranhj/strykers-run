@@ -14,6 +14,11 @@ IF GAMEPLAY_OPTIONS
     STA respawn_columns
     LDA opt_timer
     STA timer_mode
+    LDX opt_limit                   \ decision 55: the timer's start counting down, its par counting up
+    LDA opt_limit_hi,X
+    STA timer_limit
+    LDA opt_limit_lo,X
+    STA timer_limit + 1
     STZ game_completed              \ 65C02 opcode: the headquarters not reached
     LDX opt_hits                    \ decision 50: the shield's hits and its recharge
     LDA opt_hits_unit,X
@@ -43,6 +48,10 @@ ELSE
   IF GAMEPLAY_TIMER
     LDA #GAMEPLAY_TIMER
     STA timer_mode
+    LDA #HI(TIMER_LIMIT)            \ decision 55: decision 47's 10 minutes
+    STA timer_limit
+    LDA #LO(TIMER_LIMIT)
+    STA timer_limit + 1
   ENDIF
 ENDIF
 IF GAMEPLAY_RUN

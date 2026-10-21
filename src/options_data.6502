@@ -24,6 +24,12 @@ IF GAMEPLAY_RUN
     EQUB &02, &00, &1C, &25         \ "20S "
     EQUB &18, &0F, &0F, &25         \ "OFF "
 ENDIF
+.limit_names                        \ decision 55: the timer's limit
+    EQUB &25, &03, &16, &25         \ " 3M "
+    EQUB &25, &05, &16, &25         \ " 5M "
+    EQUB &25, &08, &16, &25         \ " 8M "
+    EQUB &01, &00, &16, &25         \ "10M "
+    EQUB &01, &05, &16, &25         \ "15M "
 .lives_inf
     EQUB &12, &17, &0F, &25         \ "INF "
 
@@ -32,33 +38,36 @@ ENDIF
     EQUB &06, &25, &10, &0A, &16, &0E, &25, &1B, &1E, &15, &0E, &1C   \ "6 GAME RULES"
     EQUB &FF
 
-.options_text                       \ rows 2 (the title), 5-17 two apart (the font is two rows tall), 19
-    EQUB LO(&4000 + 2 * &280 + 120), HI(&4000 + 2 * &280 + 120), &3E   \ white on cyan (WC)
+.options_text                       \ rows 1 (the title), 3-17 two apart (the font is two rows tall), 19
+    EQUB LO(&4000 + 1 * &280 + 120), HI(&4000 + 1 * &280 + 120), &3E   \ white on cyan (WC)
     EQUB &10, &0A, &16, &0E, &25, &1B, &1E, &15, &0E, &1C           \ "GAME RULES"
     EQUB &FE
-    EQUB LO(OPT_LINE + 5 * &280), HI(OPT_LINE + 5 * &280), &03      \ red (RR)
+    EQUB LO(OPT_LINE + 3 * &280), HI(OPT_LINE + 3 * &280), &03      \ red (RR)
     EQUB &01, &25, &15, &12, &1F, &0E, &1C                          \ "1 LIVES"
     EQUB &FE
-    EQUB LO(OPT_LINE + 7 * &280), HI(OPT_LINE + 7 * &280), &33      \ magenta (MM)
+    EQUB LO(OPT_LINE + 5 * &280), HI(OPT_LINE + 5 * &280), &33      \ magenta (MM)
     EQUB &02, &25, &1B, &0E, &1C, &19, &0A, &20, &17                \ "2 RESPAWN"
     EQUB &FE
-    EQUB LO(OPT_LINE + 9 * &280), HI(OPT_LINE + 9 * &280), &3C      \ cyan (CC)
+    EQUB LO(OPT_LINE + 7 * &280), HI(OPT_LINE + 7 * &280), &3C      \ cyan (CC)
     EQUB &03, &25, &1D, &12, &16, &0E, &1B                          \ "3 TIMER"
     EQUB &FE
-    EQUB LO(OPT_LINE + 11 * &280), HI(OPT_LINE + 11 * &280), &0F    \ yellow (YY): decision 50
+    EQUB LO(OPT_LINE + 9 * &280), HI(OPT_LINE + 9 * &280), &0F    \ yellow (YY): decision 50
     EQUB &04, &25, &1C, &11, &12, &0E, &15, &0D                     \ "4 SHIELD"
     EQUB &FE
-    EQUB LO(OPT_LINE + 13 * &280), HI(OPT_LINE + 13 * &280), &3F    \ white (WW)
+    EQUB LO(OPT_LINE + 11 * &280), HI(OPT_LINE + 11 * &280), &3F    \ white (WW)
     EQUB &05, &25, &1B, &0E, &0C, &11, &0A, &1B, &10, &0E           \ "5 RECHARGE"
     EQUB &FE
 IF GAMEPLAY_RUN
-    EQUB LO(OPT_LINE + 15 * &280), HI(OPT_LINE + 15 * &280), &33    \ magenta (MM): decision 52
+    EQUB LO(OPT_LINE + 13 * &280), HI(OPT_LINE + 13 * &280), &33    \ magenta (MM): decision 52
     EQUB &06, &25, &1B, &1E, &17, &25, &1D, &12, &16, &0E           \ "6 RUN TIME"
     EQUB &FE
-    EQUB LO(OPT_LINE + 17 * &280), HI(OPT_LINE + 17 * &280), &3C    \ cyan (CC)
+    EQUB LO(OPT_LINE + 15 * &280), HI(OPT_LINE + 15 * &280), &3C    \ cyan (CC)
     EQUB &07, &25, &1B, &1E, &17, &25, &0C, &11, &0A, &1B, &10, &0E \ "7 RUN CHARGE"
     EQUB &FE
 ENDIF
+    EQUB LO(OPT_LINE + 17 * &280), HI(OPT_LINE + 17 * &280), &0F    \ yellow (YY): decision 55
+    EQUB &08, &25, &1D, &12, &16, &0E, &25, &15, &12, &16, &12, &1D \ "8 TIME LIMIT"
+    EQUB &FE
     EQUB LO(&4000 + 19 * &280 + 48), HI(&4000 + 19 * &280 + 48), &0C \ green (GG)
     EQUB &0E, &1C, &0C, &0A, &19, &0E, &25, &1D, &18, &25, &1B, &0E, &1D, &1E, &1B, &17   \ "ESCAPE TO RETURN"
     EQUB &FF
