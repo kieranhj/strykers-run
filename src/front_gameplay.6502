@@ -53,4 +53,5 @@ ENDIF
 
 IF GAMEPLAY_OPTIONS
     INCLUDE "options.6502"          \ decision 46: the game rules screen
+    INCLUDE "options_data.6502"     \ decisions 46, 50: its settings and text
 ENDIF

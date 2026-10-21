@@ -1139,9 +1139,6 @@ ENDIF
     EQUB &0F, &25, &0C, &1B, &12, &1C, &19, &1C, &25, &20, &0E, &1B, &0E, &25, &0D, &0E    \ "F CRISPS WERE DE"
     EQUB &16, &18, &15, &12, &1C, &11, &0E, &0D, &27, &25, &25, &25, &25, &FF    \ "MOLISHED.    "
 
-IF GAMEPLAY_OPTIONS
-    INCLUDE "options_data.6502"     \ decisions 46, 50: the game rules' settings and text
-ENDIF
 IF GAMEPLAY_ANY
     ASSERT * <= &9300 + PAD_START, "bank 5's code before the music overruns its page by ", * - &9300 - PAD_START
     SKIP &9300 + PAD_START - *      \ decision 43: the gameplay builds' room, over the dead copy below

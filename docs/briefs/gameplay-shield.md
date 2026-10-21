@@ -164,6 +164,13 @@ death respawns whatever the lives, so the test scripts still never end.
    follows; passlock against the `DEBUG_FULLREDRAW` twin (every flag, unshifted `DEBUG_LIVES`), 3,000
    passes: state and screens identical.
 
+15. **Room in bank 5** (2026-10-21, for the run meter's settings): gameplay builds load `DATA2`
+   from `&8000` and put `front_gameplay.6502` (with the game rules screen and its text) in bank 5's
+   `&8000-&83FF`, the old player buffer, free since masked drawing and never loaded before. Bank 5
+   then has 478 bytes free there, 162 before the music and 388 at the end. (Moving a compiled kind
+   to bank 7 was costed first: the kinds' sizes, 569-921 bytes, do not pack into what banks 6 and 7
+   have.)
+
 ## Answered (KC, 2026-10-20)
 
 - **High scores with infinite lives:** a game with infinite lives ends only by ESCAPE or by

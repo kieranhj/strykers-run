@@ -207,7 +207,7 @@ front end's tunes (`src/music.6502` -> `tools/packmusic.py` -> `src/music_packed
 left as a carrier, 2026-10-20); `hazel_b`
 and the packed tunes follow `&4000` to `mgame_end` (`&4C1F`), so `MGAME` loads to `&572F`, 849
 bytes under the loading picture at `&5A80` (ASSERTed). Bank 5's `&8000-&83FF` (the player buffer) is free:
-masked drawing made it unnecessary.
+masked drawing made it unnecessary; gameplay builds (`GAMEPLAY_SHIELD`) load `DATA2` from `&8000` and put their front end there (`front_gameplay.6502`, the game rules screen; 8 zero bytes first, so the MOS never takes it for a ROM header).
 Gameplay builds (`GAMEPLAY_*`, branch `gameplay-shield`, decisions 43-50) add: zero page `&07-&1D`
 (the shield and its settings, the respawn, the timer, the run key: `src/zp.6502`); the HUD buffer and `game_completed` at
 `&0C72-&0CF2`, after `moved_0a20` (not in the file); the shield, the respawn and the HUD builder in
