@@ -106,3 +106,9 @@ KC and the community, 2026-10-20 (gameplay first, rather than cheats; "more fun 
 - **Weapons to collect**: e.g. a shoulder-mounted long-range rocket launcher for the machine-gun
   nests; limited ammunition for some, collected as pickups.
 - **A dithering option for non-NuLA machines**, to make the palette easier on the eye.
+
+KC, 2026-10-21:
+- **Game rules presets**: ORIGINAL / EASY / MEDIUM / HARD, each setting every rule on the game
+  rules screen at once (ORIGINAL as close to the original game as the gameplay build allows).
+- **The timer's value configurable** on the game rules screen: the start when counting down and the
+  par when counting up (now 10 minutes, `TIMER_START` / `TIMER_PAR`, decision 47).
