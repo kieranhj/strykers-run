@@ -20,13 +20,15 @@ const MachineSession = await loadMachineSession();
 const [disc, prefixArg] = process.argv.slice(2);
 if (!disc) { console.error("usage: node tools/frontend.mjs DISC.ssd [PREFIX]"); process.exit(2); }
 const PREFIX = prefixArg || "frontend";
-const syms = {};
-for (const sec of JSON.parse(readFileSync(disc.replace(/\.ssd$/, ".symbols.json"), "utf8")).assemblies[0].sections)
+const syms = {}, defines = {};
+for (const sec of JSON.parse(readFileSync(disc.replace(/\.ssd$/, ".symbols.json"), "utf8")).assemblies[0].sections) {
     for (const [k, v] of Object.entries(sec.labels || {})) if (v && typeof v.value === "number") syms[k] = v.value;
+    for (const [k, v] of Object.entries(sec.defines || {})) defines[k] = v.value;   // the -D flags
+}
 
 const K = {
     K1: [0, 3], K2: [1, 3], K3: [1, 1], K4: [2, 1], K5: [3, 1], SPACE: [2, 6], RETURN: [9, 4],
-    Q: [0, 1], W: [1, 2], E: [2, 2], R: [3, 3], T: [3, 2], Y: [4, 4], U: [5, 3], I: [5, 2],
+    Q: [0, 1], W: [1, 2], E: [2, 2], R: [3, 3], T: [3, 2], Y: [4, 4], U: [5, 3], I: [5, 2], O: [6, 3],
     A: [1, 4], B: [4, 6], RIGHT: [9, 7], ESCAPE: [0, 7], SHIFT: [0, 0],
 };
 const s = await bootMaster(MachineSession, disc);
@@ -78,10 +80,11 @@ await press("SPACE", 10, 100); await shot("instructions-3");
 await press("SPACE", 10, 150); await shot("title-after-instructions");
 
 await press("K2", 10, 100); await shot("define-controls");
-for (const k of ["Q", "W", "E", "R", "T", "Y", "U", "I"]) await press(k, 10, 50);
+const RUN = defines.GAMEPLAY_RUN > 0;                            // GAMEPLAY_RUN (decision 48): a ninth, the run key (O)
+for (const k of ["Q", "W", "E", "R", "T", "Y", "U", "I", ...(RUN ? ["O"] : [])]) await press(k, 10, 50);
 await run(100); await shot("define-controls-done");
-const want = [16, 33, 34, 51, 35, 68, 53, 37].map((n) => n ^ 0xff);
-const keys = rd(syms.keys, 8);
+const want = [16, 33, 34, 51, 35, 68, 53, 37, ...(RUN ? [54] : [])].map((n) => n ^ 0xff);
+const keys = rd(syms.keys, want.length);
 check("define controls: keys table", JSON.stringify(keys) === JSON.stringify(want), keys.map((b) => b.toString(16)).join(" "));
 
 await startGame(); await run(100); await shot("game-1");
@@ -91,8 +94,17 @@ if (layer1) check("in play: irq_owned &FF, &0242 0, &0279 bit 1 clear, IER CA2/C
     inGame.owned === 0xff && inGame.sem === 0 && (inGame.mask & 2) === 0 && (inGame.ier & 0x11) === 0, JSON.stringify(inGame));
 let x0 = x(); s.keyDownRaw(K.E); await run(200); s.keyUpRaw(K.E); await run(20);
 check("redefined right (E) moves the player right", x() > x0, `${x0} -> ${x()}`);
+const walked = x() - x0;
 x0 = x(); s.keyDownRaw(K.RIGHT); await run(200); s.keyUpRaw(K.RIGHT); await run(20);
 check("RIGHT no longer bound", x() === x0, `${x0} -> ${x()}`);
+if (RUN) {   // after the checks above: running into something here can cost a life, and a rewind moves x
+    // 100 fields each (half the walk's), SHIFT first: the longer the run, the likelier a death (and
+    // with GAMEPLAY_LIVES the rewind, x high &FF while the player is hidden): rerun in a quieter spot
+    x0 = x(); s.keyDownRaw(K.E); s.keyDownRaw(K.SHIFT); await run(100); s.keyUpRaw(K.SHIFT); s.keyUpRaw(K.E); await run(20);
+    check("SHIFT no longer the run key", x() - x0 < walked * 0.75, `${walked} in 200 fields walking, ${x() - x0} in 100 with SHIFT`);
+    x0 = x(); s.keyDownRaw(K.E); s.keyDownRaw(K.O); await run(100); s.keyUpRaw(K.O); s.keyUpRaw(K.E); await run(20);
+    check("redefined run (O) with E runs faster", x() - x0 > walked * 0.75, `${walked} in 200 fields walking, ${x() - x0} in 100 running`);
+}
 await press("I", 10, 50); const p0 = inLoop; await run(100);
 check("pause (I) stops the main loop", inLoop === p0, `${inLoop - p0} passes while paused`);
 await shot("paused");

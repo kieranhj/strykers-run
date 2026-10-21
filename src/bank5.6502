@@ -277,7 +277,11 @@ text_colour = * + 1
     LDY text_offset
     INC key_offset
     LDA key_offset
+IF GAMEPLAY_RUN
+    CMP #&09                        \ decision 48: and the run key, keys + 8
+ELSE
     CMP #&08
+ENDIF
     BCC define_controls_loop
 
 .get_keypress
@@ -798,6 +802,11 @@ text_colour = * + 1
     EQUB &80, &6A, &3E    \ at &6a80, colour &3e (WC)
     EQUB &19, &0A, &1E, &1C, &0E, &25, &10, &0A, &16, &0E, &2F, &25    \ "PAUSE GAME: "
     EQUB &FF    \ end of text
+IF GAMEPLAY_RUN
+    EQUB &80, &6F, &0F    \ decision 48: at &6f80, colour &0f (YY)
+    EQUB &1B, &1E, &17, &2F, &25    \ "RUN: "
+    EQUB &FF    \ end of text
+ENDIF
 
 .title_screen
     JSR give_irq_back               \ step 2: was JSR clear_title_screen, which this ends in
@@ -1127,6 +1136,10 @@ ENDIF
     EQUB &0F, &25, &0C, &1B, &12, &1C, &19, &1C, &25, &20, &0E, &1B, &0E, &25, &0D, &0E    \ "F CRISPS WERE DE"
     EQUB &16, &18, &15, &12, &1C, &11, &0E, &0D, &27, &25, &25, &25, &25, &FF    \ "MOLISHED.    "
 
+IF GAMEPLAY_ANY
+    ASSERT * <= &9300 + PAD_START, "bank 5's code before the music overruns its page by ", * - &9300 - PAD_START
+    SKIP &9300 + PAD_START - *      \ decision 43: the gameplay builds' room, over the dead copy below
+ELSE
 .unused_925f    \ # &925f - &92ff is a copy of &1f5f - &1fff
     EQUB &B2, &60, &A9, &04, &85, &F4, &8D, &30, &FE, &A9, &A9, &8D, &E2, &1C, &A9, &FF
     EQUB &8D, &E3, &1C, &A0, &01, &84, &03, &A4, &03, &20, &48, &1E, &20, &EC, &1F, &90
@@ -1139,6 +1152,7 @@ ENDIF
     EQUB &85, &F9, &B9, &87, &15, &85, &F8, &B9, &A9, &15, &85, &C5, &60, &20, &DA, &1F
     EQUB &A6, &7A, &A4, &C5, &C4, &B4, &90, &0A, &F0, &02, &18, &60, &A5, &B5, &C5, &F8
     EQUB &90
+ENDIF
 
 \ Step 2 layer 4: the front end's tunes (title, then high score, page-aligned as the event handler
 \ needs) are unpacked here at start-up from src/music_packed.6502 (src/game.6502 unpack_for_play;

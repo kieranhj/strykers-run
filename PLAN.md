@@ -46,7 +46,7 @@ Built (2026-10-20/21), each with its harness:
 - **The timer** (`GAMEPLAY_TIMER`, 47): counting up with a bonus for time under par, or counting
   down to the skeleton and game over. `tools/timertest.mjs`.
 - **The run key** (`GAMEPLAY_RUN`, 48): SHIFT held runs a column a pass, a jump's speed, not
-  half a column. Fixed to SHIFT for now (bank 5 has no room for defining it).
+  half a column; redefinable in define controls.
 - Speed: the HUD copied a byte column a turn; every flag on, 6 late frames of 1,998 against 5 with
   every flag off (passbench, seed 1, unshifted `DEBUG_LIVES` builds, 2026-10-21).
 
@@ -58,7 +58,7 @@ Left:
   item 10). Needs a measured design, and b2 or real hardware.
 - **Merging into `main`**, when KC says: then one disc with both builds and a boot menu, for a
   release (the brief, "Discs").
-- **Room** is nearly gone in the build with every flag (bank 4 2 and 4 under ANDY, bank 5 1, main
+- **Room** is nearly gone in the build with every flag (bank 4 2 and 4 under ANDY, bank 5 152, main
   block 21; bank 6 181, bank 7 481: the brief, item 8): the next variation starts by finding room.
   The timer and the game rules need the unshifted banks.
 

@@ -140,9 +140,10 @@ death respawns whatever the lives, so the test scripts still never end.
 
 11. **A run key: DONE** (`GAMEPLAY_RUN`, decision 48, KC 2026-10-21): SHIFT held while moving on
    the ground updates the player every pass, not one in two: a column a pass, a jump's speed in
-   the air. In `-Gameplay` and `make gameplay`. The key is fixed: making it redefinable wants room
-   in bank 5 (1 byte left) for define controls or the game rules screen. Main block 21 bytes left
-   in the build with every flag.
+   the air. In `-Gameplay` and `make gameplay`. Redefinable (KC): define controls' ninth line,
+   "RUN: ", its key at `keys + 8`. Room: gameplay builds free `unused_925f` in bank 5 (a dead copy
+   of `&1F5F-&1FFF` before the page-aligned music): 152 bytes left there; main block 21.
+   `tools/frontend.mjs` defines nine keys on a `GAMEPLAY_RUN` build and checks the run key.
 
 ## Answered (KC, 2026-10-20)
 

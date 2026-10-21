@@ -14,20 +14,19 @@ export const KEY = {
 
 // The game's actions, named by the original's keys, in the order of its `keys` table: up, down,
 // right, left, fire, grenade, enter, pause.
-const ACTIONS = ["A", "Z", "RIGHT", "LEFT", "SHIFT", "DELETE", "CTRL", "P"];
+const ACTIONS = ["A", "Z", "RIGHT", "LEFT", "SHIFT", "DELETE", "CTRL", "P", "RUN"];   // RUN: GAMEPLAY_RUN's (decision 48)
 
 /** The key that session's game has for an action (named by the original's key: "A" is up,
  *  "SHIFT" fire...): read once from the build's own `keys` table (negative INKEY numbers), so a
  *  build with other keys plays the same game as one with the original's. Anything else (ONE, or
  *  SHIFT for the boot, which uses KEY directly) is KEY's. Call it once the game is loaded. */
 export function gameKey(s, k) {
-    if (k === "RUN") return KEY.SHIFT;                  // GAMEPLAY_RUN's run key (decision 48): SHIFT
     if (!ACTIONS.includes(k)) return KEY[k];
     if (!s._gameKeys) {
         const syms = {};
         for (const sec of JSON.parse(readFileSync(s._disc.replace(/\.ssd$/, ".symbols.json"), "utf8")).assemblies[0].sections)
             for (const [n, v] of Object.entries(sec.labels || {})) if (v && typeof v.value === "number") syms[n] = v.value;
-        const t = s.readMemory(syms.keys, 8, { shadow: false });
+        const t = s.readMemory(syms.keys, 9, { shadow: false });   // keys + 8: the run key, or the next byte
         s._gameKeys = {};
         ACTIONS.forEach((n, i) => { const key = ~t[i] & 0x7f; s._gameKeys[n] = [key & 15, key >> 4]; });
     }

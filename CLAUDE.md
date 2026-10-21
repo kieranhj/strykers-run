@@ -90,7 +90,7 @@ disassembly's `actually`/`also` notes say what an operand really is.
 - `tools/tracediff.mjs CONTROL SHIFTED SHIFT [@FRAME]` - the first instruction or screen write that differs, both stopped there, from each build's `entry_point` (`DUMP=05` shows the bytes at a zero-page pointer)
 - `tools/profile.mjs DISC [FROM] [FRAMES]`, `tools/speed.mjs DISC` - passes/s, fields per pass, flat profile; speed with RIGHT held
 - `tools/irqprofile.mjs DISC [FROM] [FRAMES]` - every interrupt by the VIA source it serviced, its cycles by MOS subroutine (nesting handled: the MOS's tick re-enables interrupts)
-- `tools/frontend.mjs DISC` - title, instructions, define controls, pause, high score entry, toggles, two games: 15 checks, plus the MOS state handed over and back
+- `tools/frontend.mjs DISC` - title, instructions, define controls, pause, high score entry, toggles, two games: 15 checks (17 on a `GAMEPLAY_RUN` build: the run key defined and used), plus the MOS state handed over and back
 - `tools/observer.mjs DISC` - observer mode's RIGHT, LEFT and ESCAPE (a key path play never takes: BUGS #11); one of the grind's checks
 - `tools/split.mjs DISC FROM FRAMES`, `tools/splitscroll.mjs DISC` - when the palette writes land after vsync, every field / on scrolling fields
 - `tools/soundfx.mjs DISC OUT.json` - each sound effect's SN76489 writes, for comparing two builds (fired from the pause loop by a faked JSR: no stub in RAM)
