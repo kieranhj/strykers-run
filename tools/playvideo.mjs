@@ -1,13 +1,14 @@
 // playvideo.mjs - one build playing the whole world, start to completion screen, as a 50 fps video
 // with its sound: what the viewer sees, field by field.
 //
-//   node tools/playvideo.mjs DISC.ssd OUT.mp4 [--title T] [--scale 2] [--no-run] [--after 500]
-//        [--max-fields 60000] [--ffmpeg PATH]
+//   node tools/playvideo.mjs DISC.ssd OUT.mp4 [--bot world|human] [--seed S] [--title T] [--scale 2]
+//        [--no-run] [--after 250] [--max-fields 90000] [--ffmpeg PATH]
 //
-// The game is tools/playscript.mjs's: startWorldGame (infinite lives poked in; keepAlive in a
-// GAMEPLAY_SHIELD build, so a hit on an empty shield is absorbed and nobody dies or rewinds) and
-// the WorldBot (run right, jump every 30 passes, a grenade and shots at what blocks), with the run
-// key held too in a GAMEPLAY_RUN build (--no-run: not). The capture is tools/sidebyside.mjs's: after
+// The game is tools/playscript.mjs's startWorldGame (infinite lives poked in) and a bot: the WorldBot
+// (run right, jump every 30 passes, a grenade and shots at what blocks; keepAlive in a GAMEPLAY_SHIELD
+// build, so nobody dies or rewinds, and the run key held in a GAMEPLAY_RUN build, --no-run: not), or
+// with --bot human tools/humanbot.mjs (it shoots, dodges and rushes; it dies and is rewound as the
+// build's rules say; --seed its reaction times). The capture is tools/sidebyside.mjs's: after
 // every field the displayed frame is cropped from jsbeeb's completed framebuffer, under a caption
 // (pass, column, score, and the shield and time where the build has them), piped to ffmpeg as raw
 // RGBA (H.264, yuv420p, 50 fps; --scale nearest-neighbour); the SN76489 as jsbeeb renders it,
@@ -20,13 +21,15 @@ import { spawn, spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { loadMachineSession, resolveJsbeebSrc } from "./jsbeeb_src.mjs";
 import { WorldBot, startWorldGame, worldState, pressKeys } from "./playscript.mjs";
+import { HumanBot, see } from "./humanbot.mjs";
 
 const args = process.argv.slice(2);
 const opt = (name, dflt) => { const i = args.indexOf(name); if (i < 0) return dflt; const v = args[i + 1]; args.splice(i, 2); return v; };
 const flag = (name) => { const i = args.indexOf(name); if (i < 0) return false; args.splice(i, 1); return true; };
 const TITLE = opt("--title", "Stryker's Run (Enhanced), BBC Master");
-const SCALE = parseInt(opt("--scale", "2"), 10), AFTER = parseInt(opt("--after", "500"), 10);
-const MAX = parseInt(opt("--max-fields", "60000"), 10), FFMPEG_OPT = opt("--ffmpeg", null), NORUN = flag("--no-run");
+const SCALE = parseInt(opt("--scale", "2"), 10), AFTER = parseInt(opt("--after", "250"), 10);
+const BOT = opt("--bot", "world"), SEED = parseInt(opt("--seed", "1"), 10);
+const MAX = parseInt(opt("--max-fields", "90000"), 10), FFMPEG_OPT = opt("--ffmpeg", null), NORUN = flag("--no-run");
 const [disc, outPath] = args;
 if (!outPath) { console.error("usage: node tools/playvideo.mjs DISC.ssd OUT.mp4 [--title T] [--scale K] [--no-run] [--after F] [--max-fields N]"); process.exit(2); }
 
@@ -43,14 +46,20 @@ function findFfmpeg() {
 }
 
 // the game: the bot's keys chosen at each pass's start
-const bot = new WorldBot();
+const human = BOT === "human";
+const bot = human ? new HumanBot({ seed: SEED }) : new WorldBot();
 let runKey = false;
 const m = await startWorldGame(MachineSession, disc, {
-    keepAlive: true,
-    onPass: (mm) => { const st = worldState(mm); const k = bot.step(mm.passes, st); if (runKey) k.push("RUN"); pressKeys(mm, k); },
+    keepAlive: !human,
+    onPass: (mm) => {
+        if (mm.completed) return pressKeys(mm, []);
+        const k = human ? bot.step(mm.passes, see(mm)) : bot.step(mm.passes, worldState(mm));
+        if (runKey) k.push("RUN");
+        pressKeys(mm, k);
+    },
 });
 const { s, syms } = m;
-runKey = !NORUN && syms.run_state !== undefined;
+runKey = !human && !NORUN && syms.run_state !== undefined;   // (the human bot chooses when to run)
 m.target = Infinity;                    // startWorldGame stops at each target pass: here it runs on
 m.held = [];                            // startWorldGame released every key after its first pass
 const rd = (a, n = 1) => [...s.readMemory(a, n, { shadow: false })];
@@ -101,13 +110,17 @@ async function caption(line) {
     return c;
 }
 const bcd = (hi, lo) => (hi & 15) * 100 + (lo >> 4) * 10 + (lo & 15);
+let lastLine = "", deaths = 0;
+if (syms.kill_player !== undefined) m.cpu.debugInstruction.add((pc) => { if (pc === syms.kill_player) deaths++; return false; });
 function line() {
+    if (m.completed) return lastLine.replace(/   shield.*$/, "") + "   HEADQUARTERS";   // the completion screen reuses the score's bytes
     const view = rd(syms.viewport_left_low)[0] + 256 * rd(syms.viewport_left_high)[0];
     const score = rd(syms.game_over_text + 20, 6).map((b) => (b - 0x6c) / 6).join("");
     let t = `pass ${String(m.passes).padStart(5)}   column ${String(view).padStart(4)}   score ${score}`;
     if (syms.shield !== undefined) t += `   shield ${String(Math.round(rd(syms.shield)[0] * 2)).padStart(3)}%`;
     if (syms.timer_hi !== undefined && rd(syms.timer_mode)[0]) t += `   time ${bcd(rd(syms.timer_hi)[0], rd(syms.timer_lo)[0])} s`;
-    return t;
+    if (human) t += `   deaths ${deaths}`;
+    return (lastLine = t);
 }
 
 mkdirSync(dirname(outPath) || ".", { recursive: true });
@@ -119,7 +132,8 @@ const ff = spawn(ffmpeg, ["-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fm
     ...vf, "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p", "-movflags", "+faststart", videoTmp],
     { stdio: ["pipe", "inherit", "inherit"] });
 ff.on("close", (code) => { if (!ffDone) { console.error(`ffmpeg exited (${code}) before the last frame`); process.exit(1); } });
-const write = (buf) => new Promise((res, rej) => { if (ff.stdin.write(buf)) res(); else ff.stdin.once("drain", res); ff.stdin.once("error", rej); });
+ff.stdin.on("error", (e) => { console.error(`ffmpeg: ${e.message}`); process.exit(1); });
+const write = (buf) => new Promise((res) => { if (ff.stdin.write(buf)) res(); else ff.stdin.once("drain", res); });
 for (let i = 0; i < W * H; i++) { frame[i * 4] = BG[0]; frame[i * 4 + 1] = BG[1]; frame[i * 4 + 2] = BG[2]; frame[i * 4 + 3] = 255; }
 
 const t0 = Date.now();
@@ -147,6 +161,6 @@ const r = spawnSync(ffmpeg, ["-y", "-loglevel", "error", "-i", videoTmp, "-i", w
     "-movflags", "+faststart", outPath], { stdio: "inherit" });
 if (r.status !== 0) throw new Error("ffmpeg mux failed");
 unlinkSync(videoTmp); unlinkSync(wav);
-const summary = { disc, fields: f, seconds: +(f / 50).toFixed(1), passes: m.passes, completed: m.completed, runKey, sound, video: { path: outPath, width: W * SCALE, height: H * SCALE, fps: 50 } };
+const summary = { disc, bot: BOT, seed: human ? SEED : undefined, deaths: human ? deaths : undefined, fields: f, seconds: +(f / 50).toFixed(1), passes: m.passes, completed: m.completed, runKey, sound, video: { path: outPath, width: W * SCALE, height: H * SCALE, fps: 50 } };
 writeFileSync(outPath.replace(/\.mp4$/i, "") + ".json", JSON.stringify(summary, null, 1));
 console.log(JSON.stringify(summary, null, 1));

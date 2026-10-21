@@ -126,9 +126,17 @@ disassembly's `actually`/`also` notes say what an operand really is.
 - `tools/hitwatch.mjs DISC [--passes N] [--json F]` - every hit on the player over the whole world: its path, its culprit's type (read before `kill_mover` changes it), runs of hits by one object (BUGS #13)
 - `tools/livestest.mjs DISC [--passes N] [--finite]`, `tools/timertest.mjs DISC [--passes N] [--short] [--bonus]`, `tools/optionstest.mjs DISC` - `GAMEPLAY_LIVES`', `GAMEPLAY_TIMER`'s and `GAMEPLAY_OPTIONS`' rules: deaths, rewinds and respawns; the time, its digits and the bonus; the game rules screen and what it sets
 - `tools/selfhit.mjs DISC [--passes N] [--point-blank]` - projectiles that hit a mover touching the player and hit the player instead (the original's rule; none in `GAMEPLAY_SHIELD` builds, decision 49); `--point-blank` puts a friendly soldier on the player, who fires
-- `tools/playvideo.mjs DISC OUT.mp4 [--title T] [--scale 2] [--no-run] [--after F]` - one build playing the whole world (the
-  WorldBot, `keepAlive`, the run key held in a `GAMEPLAY_RUN` build) as a 50 fps video with its sound, a caption of pass,
-  column, score, shield and time; to the completion screen (`sidebyside.mjs`'s capture)
+- `tools/playvideo.mjs DISC OUT.mp4 [--bot world|human] [--seed S] [--title T] [--scale 2] [--no-run] [--after F]` - one build
+  playing the whole world as a 50 fps video with its sound, a caption of pass, column, score, shield, time (and deaths); to
+  the completion screen (`sidebyside.mjs`'s capture). The WorldBot with `keepAlive` and the run key held, or the human bot
+- `tools/humanbot.mjs` - a bot that plays more as a person would (2026-10-21, KC): it reads the mover tables and shoots
+  soldiers in range, ducks y 42 bullets (a crouch is 17 high), jumps lower ones at the top of the jump, steps out from
+  under falling bombs and grenades, jumps mines, rushes gun emplacements (the type `&0A` nest's stream) and shoots them from
+  30 columns, holds back on a low shield, runs when the way is clear; seeded reaction times and pauses. With real deaths
+  it finishes the gameplay disc's world (seed 1: 19,792 passes, 36 deaths; seed 2: 19,075, 29); the WorldBot does not
+- `tools/botcompare.mjs DISC [--bot human|world] [--passes N] [--seed S] [--keep-alive]` - a bot's game measured: how far,
+  the hits by culprit (type, ran into or hit by, ahead or behind, y, the player standing, crouched or in the air), deaths,
+  score; `tools/bottrace.mjs DISC FROM TO` - the human bot's reason for its keys, pass by pass
 - `tools/runmeter.mjs DISC [--passes N] [--every E --hold H] [--drain D --charge C]` - `GAMEPLAY_RUN`'s meter, every pass: drain, charge, running dry and back past half, its sounds
 - `tools/shieldtest.mjs DISC [--passes N] [--unit U --wait W]` - a `GAMEPLAY_SHIELD` build's rules over the whole world: damage by culprit type, lives only at 0 shield, the refill, the bar after every tick
 - `tools/zplive.mjs DISC` - the zero-page bytes the logic reads first after a render (what `restore_game_zp` must keep)
