@@ -89,7 +89,8 @@ disassembly's `actually`/`also` notes say what an operand really is.
 - `tools/listing.py`, `tools/dfs.py`, `tools/jsbeeb_src.mjs` - the kit's
 - `tools/disasm2baron.py` - the one-shot converter (audit trail)
 - `tools/playscript.mjs` - the scripted game (boot, start, run/fire/jump); `tools/play.mjs DISC` plays it with screenshots. Also `WorldBot` and
-  `startWorldGame` (the whole world by pass, infinite lives poked into a build without `DEBUG_LIVES`), `loadSyms` (labels and assignments),
+  `startWorldGame` (the whole world by pass, infinite lives poked into a build without `DEBUG_LIVES`; `keepAlive`: in a
+  `GAMEPLAY_SHIELD` build a hit on an empty shield finds it at 1, so nobody dies and rewinds and the bot finishes the world), `loadSyms` (labels and assignments),
   `moverTables` (the state passlock compares), `readAt` (main RAM or HAZEL by address), `callFrom` (a JSR faked from a stopped CPU)
 - `tools/lockstep.mjs A B [FRAMES]` - two builds on the same input, first frame whose screen differs
 - `tools/tracediff.mjs CONTROL SHIFTED SHIFT [@FRAME]` - the first instruction or screen write that differs, both stopped there, from each build's `entry_point` (`DUMP=05` shows the bytes at a zero-page pointer)
@@ -125,6 +126,9 @@ disassembly's `actually`/`also` notes say what an operand really is.
 - `tools/hitwatch.mjs DISC [--passes N] [--json F]` - every hit on the player over the whole world: its path, its culprit's type (read before `kill_mover` changes it), runs of hits by one object (BUGS #13)
 - `tools/livestest.mjs DISC [--passes N] [--finite]`, `tools/timertest.mjs DISC [--passes N] [--short] [--bonus]`, `tools/optionstest.mjs DISC` - `GAMEPLAY_LIVES`', `GAMEPLAY_TIMER`'s and `GAMEPLAY_OPTIONS`' rules: deaths, rewinds and respawns; the time, its digits and the bonus; the game rules screen and what it sets
 - `tools/selfhit.mjs DISC [--passes N] [--point-blank]` - projectiles that hit a mover touching the player and hit the player instead (the original's rule; none in `GAMEPLAY_SHIELD` builds, decision 49); `--point-blank` puts a friendly soldier on the player, who fires
+- `tools/playvideo.mjs DISC OUT.mp4 [--title T] [--scale 2] [--no-run] [--after F]` - one build playing the whole world (the
+  WorldBot, `keepAlive`, the run key held in a `GAMEPLAY_RUN` build) as a 50 fps video with its sound, a caption of pass,
+  column, score, shield and time; to the completion screen (`sidebyside.mjs`'s capture)
 - `tools/runmeter.mjs DISC [--passes N] [--every E --hold H] [--drain D --charge C]` - `GAMEPLAY_RUN`'s meter, every pass: drain, charge, running dry and back past half, its sounds
 - `tools/shieldtest.mjs DISC [--passes N] [--unit U --wait W]` - a `GAMEPLAY_SHIELD` build's rules over the whole world: damage by culprit type, lives only at 0 shield, the refill, the bar after every tick
 - `tools/zplive.mjs DISC` - the zero-page bytes the logic reads first after a render (what `restore_game_zp` must keep)

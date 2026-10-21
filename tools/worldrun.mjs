@@ -74,8 +74,8 @@ function newest(m) {
 }
 const shot = async (m, what) => { if (!SHOTS) return; const f = `${SHOTS}/worldrun-${basename(m.disc, ".ssd")}-${what}.png`; writeFileSync(f, await m.s.screenshotActive({ scale: 1 })); console.log(`  ${f}`); };
 
-const T = await startWorldGame(MS, disc, { onPass });
-const C = CONTROL ? await startWorldGame(MS, CONTROL, { onPass }) : null;
+const T = await startWorldGame(MS, disc, { onPass, keepAlive: true });   // gameplay builds: no deaths' rewinds
+const C = CONTROL ? await startWorldGame(MS, CONTROL, { onPass, keepAlive: true }) : null;
 const machines = C ? [C, T] : [T];
 for (const m of machines) { watchFrames(m); m.view = worldState(m).view; m.clobbers = prngClobber(m, { undo: UNCLOBBER }); console.log(`${m.disc}: game started; infinite lives: ${m.infiniteLives}`); }
 const lead = C || T;                                  // the keys come from this machine's state

@@ -231,12 +231,17 @@ export function readAt(s, addr, n) {
  *  byte for byte before it is written. The fuel table (`movers_helicopter_fuel_high`, which holds
  *  !BOOT's stamp until a helicopter is added) is zeroed at the first pass, as passlock does, so two
  *  builds with different stamps compare equal. */
-export async function startWorldGame(MachineSession, disc, { onPass } = {}) {
+export async function startWorldGame(MachineSession, disc, { onPass, keepAlive = false } = {}) {
     const syms = loadSyms(disc);
     const s = await bootMaster(MachineSession, disc);
     const cpu = s._machine.processor;
     const m = { s, cpu, syms, disc, passes: 0, target: 1, lastStop: -1, completed: null, held: [], infiniteLives: null };
+    // keepAlive (GAMEPLAY_SHIELD builds, decision 44): a hit on an empty shield finds it at 1, so it is
+    // absorbed (the bar falls and flashes) and nobody dies: the bot plays on as DEBUG_LIVES's player
+    // does, where a death would rewind it (decision 45) and the world could take it forever
+    const keep = keepAlive && syms.shield_hit !== undefined;
     cpu.debugInstruction.add((pc) => {
+        if (keep && pc === syms.shield_hit && s.readMemory(syms.shield, 1, { shadow: false })[0] === 0) s.writeMemory(syms.shield, [1]);
         if (pc === syms.completion_screen && m.completed === null) { m.completed = { pass: m.passes, cycles: s.elapsedCycles }; return true; }
         if (pc !== syms.main_game_loop) return false;
         const c = s.elapsedCycles;

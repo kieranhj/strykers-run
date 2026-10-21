@@ -21,7 +21,7 @@ const flag = (name) => { const i = args.indexOf(name); if (i < 0) return false; 
 const PASSES = +opt("--passes", 16000), SHORT = flag("--short"), BONUS = flag("--bonus");
 const disc = args[0];
 
-const m = await startWorldGame(MachineSession, disc);
+const m = await startWorldGame(MachineSession, disc, { keepAlive: !SHORT });   // to the headquarters (the bonus): no deaths' rewinds
 const { s, cpu, syms } = m;
 for (const k of ["timer_tick", "timer_bonus", "timer_hi", "hud_buffer"])
     if (syms[k] === undefined) throw new Error(`${disc}: no ${k} - not a GAMEPLAY_TIMER build?`);
