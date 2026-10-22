@@ -599,6 +599,11 @@ ENDIF
     BEQ done                        \ main is shown, and newest
     JSR render                      \ draws into main, the hidden one
     SEI
+IF HUD_RUPTURE
+    LDA crtc_start_address_low      \ decision 67: M's start (rupture_t1 writes R12/R13 and D)
+    LDX crtc_start_address_high
+    JSR rup_set_m_start
+ELSE
     LDX #&0C                        \ R12/R13 now: the text follows at once
     STX crtc_reg
     LDA crtc_start_address_high
@@ -610,6 +615,7 @@ ENDIF
     LDA acccon
     AND #&FE                        \ D = 0: the video shows main
     STA acccon
+ENDIF
     STZ shown_screen
     STZ flip_pending
     CLI
@@ -621,6 +627,9 @@ ENDIF
 \ not depend on what was there: src/lives_digits.6502, from tools/livesdigits.py) -------------
 .ren_plot_lives
 {
+IF HUD_RUPTURE
+    RTS                             \ decision 67: the HUD is its own CRTC frame: nothing to copy
+ELSE
 IF GAMEPLAY_SHIELD
 \ decision 44: the top line's HUD_COLUMNS cells are hud_buffer (src/shield.6502 builds it: the
 \ digit, then the bar, the timer), HUD_BYTES in a row unless they can pass &8000 (page &7F only:
@@ -773,6 +782,7 @@ ENDIF
     DEX
     BNE column
     RTS
+ENDIF
 }
 IF GAMEPLAY_SHIELD = 0              \ (the HUD's renderer copies hud_buffer: src/shield_hi.6502 makes the digit)
 INCLUDE "lives_digits.6502"

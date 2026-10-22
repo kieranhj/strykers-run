@@ -1438,6 +1438,10 @@ ENDIF
     STA romsel                      \ Paged ROM latch
     JMP history_push
 .update_screen_without_delay        \ the original's, still used to build the screen at the start
+IF HUD_RUPTURE
+    BIT rupture                     \ decision 67: with the rupture on, only M's start (rupture_t1
+    BMI usw_rupture                 \ writes R12/R13 in its rows)
+ENDIF
     LDX #&0C                        \ R12: Displayed screen start address register (high)
     STX crtc_reg                    \ video register number
     LDA crtc_start_address_high
@@ -1446,6 +1450,12 @@ ENDIF
     STX crtc_reg                    \ video register number
     LDA crtc_start_address_low
     STA crtc_data                   \ video register value
+IF HUD_RUPTURE
+.usw_rupture
+    LDA crtc_start_address_low      \ decision 67: and M's start
+    LDX crtc_start_address_high
+    JSR rup_set_m_start
+ENDIF
     LDY #&00
     LDX #&C8
 .plot_column_from_buffer_loop
@@ -2566,6 +2576,10 @@ ENDIF
     LDY &0301,X
     LDA &0300,X
     TAX
+IF HUD_RUPTURE
+    BIT rupture                     \ decision 67: the vsync handler armed T1 for the HUD's row and
+    BMI wait_rup_timers             \ started T2; re-arming them here would break this field's frames
+ENDIF
     LDA sysvia_acr                 \ System VIA auxiliary control register***
     AND #&DF                        \ *** Set System VIA timer 2 to one-shot mode
     STA usrvia_acr                  \ User VIA auxiliary control register  ***
@@ -2583,6 +2597,9 @@ ENDIF
     STA usrvia_t1cl                 \ User VIA timer 1 counter LSB         ***
     LDA #&29                        \ ***
     STA usrvia_t1ch                 \ User VIA timer 1 counter MSB         ***
+IF HUD_RUPTURE
+.wait_rup_timers
+ENDIF
     LDA #&01                        \ *** Set colour 0 to cyan for sky
     STA ula_palette                 \ video ULA palette register           ***
     RTS                             \ ***
@@ -2604,6 +2621,19 @@ ENDIF
     JSR pre_cancel                  \ decision 38: a column built ahead undone, its state put back
     STZ pre_valid                   \ step 2 (layer 3): no column built ahead, no scroll yet
     STZ last_dir
+IF HUD_RUPTURE
+    BIT rupture                     \ decision 67: with the rupture on, M's start, not R12/R13
+    BPL rss_crtc
+    LDY #&00
+    STY crtc_start_address_low
+    LDA #&08
+    STA crtc_start_address_high
+    TYA
+    LDX #&08
+    JSR rup_set_m_start             \ (Y still 0, as the writes below leave it: all that is read after)
+    BRA rss_done                    \ 65C02 opcode
+.rss_crtc
+ENDIF
     LDX #&0D                        \ R13: Displayed screen start address register (low)
     STX crtc_reg                    \ video register number
     LDY #&00
@@ -2614,6 +2644,9 @@ ENDIF
     LDA #&08
     STA crtc_start_address_high
     STA crtc_data                   \ video register value
+IF HUD_RUPTURE
+.rss_done
+ENDIF
     DEY
     STY viewport_right_low
     STY viewport_left_high
@@ -4311,6 +4344,10 @@ ENDIF
     CMP #&C0
     BNE to_leave_irq1_handler
     LDA usrvia_t1cl                 \ User VIA timer 1 counter LSB
+IF HUD_RUPTURE
+    JMP rupture_t1                  \ decision 67: the rupture's events first (moved_0a20)
+.rupture_palette
+ENDIF
     LDA bottom_palette_value
     STA ula_palette                 \ video ULA palette register
     JMP leave_irq1_handler_owned    \ Step 2 (decision 15): the MOS only offered this to the ROMs
@@ -4330,10 +4367,27 @@ ENDIF
     STA usrvia_acr                  \ User VIA auxiliary control register
     LDA #&C0                        \ Enable User VIA timer 1 interrupts
     STA usrvia_ier                  \ User VIA interrupt enable register
+IF HUD_RUPTURE
+    BIT rupture                     \ decision 67: T1 first in the HUD row (rupture_t1), else at row 111
+    BMI rup_arm
+ENDIF
     LDA #&00
     STA usrvia_t1cl                 \ User VIA timer 1 counter LSB
     LDA #&29
     STA usrvia_t1ch                 \ User VIA timer 1 counter MSB
+IF HUD_RUPTURE
+    BRA rup_armed                   \ 65C02 opcode
+.rup_arm
+    LDA acccon                      \ decision 67: main RAM for the HUD row's frame (rupture_t1 shows
+    AND #&FE                        \ the screen from the boundary)
+    STA acccon
+    STZ rup_phase                   \ 65C02 opcode
+    LDA #LO(RUP_E1)
+    STA usrvia_t1cl
+    LDA #HI(RUP_E1)
+    STA usrvia_t1ch
+.rup_armed
+ENDIF
     LDA top_palette_value           \ ***
     STA ula_palette                 \ video ULA palette register
     DEC game_over_cooldown
@@ -4347,6 +4401,11 @@ ENDIF
     BNE no_flip
     BIT flip_pending
     BPL no_flip
+IF HUD_RUPTURE
+    LDA flip_crtc_lo                \ decision 67: the next frame is the HUD's; M's start is set in it
+    LDX flip_crtc_hi
+    JSR rup_set_m_start
+ELSE
     LDA #&0C                        \ R12: Displayed screen start address register (high)
     STA crtc_reg
     LDA flip_crtc_hi
@@ -4355,12 +4414,18 @@ ENDIF
     STA crtc_reg
     LDA flip_crtc_lo
     STA crtc_data
+ENDIF
+IF HUD_RUPTURE
+    LDA flip_screen                 \ decision 67: D is rupture_t1's, at the HUD row's end
+    STA shown_screen
+ELSE
     LDA acccon
     AND #&FE
     ORA flip_screen
     STA acccon                      \ D: which RAM the video shows
     AND #&01                        \ = flip_screen (0 or 1): the D bit just ORed in
     STA shown_screen
+ENDIF
     STZ flip_pending                \ 65C02 opcode
 .no_flip
     BIT irq_owned
@@ -5343,6 +5408,75 @@ ELSE
     INCLUDE "kindcache_build.6502"  \ step 2 layer 4 (decision 36): the kind cache's builder
 ENDIF
 
+IF HUD_RUPTURE
+\ Decision 67: rupture_on, from take_irq_for_play (interrupts off): the ROMs' workspace bytes at
+\ &0DF0-&0DFF kept (paged ROMs 9 and 13 read them on the front end, tools/zpwatch.mjs), the HUD row
+\ cleared, R6 24 rows and R7 the vsync a row earlier (the HUD's frame takes the first), M's start.
+.rupture_on
+    LDX #15
+.rup_keep
+    LDA &0DF0,X
+    STA rom_ws_save,X
+    DEX
+    BPL rup_keep
+    LDX #0
+    TXA
+.rup_clear
+    STA HUD_ROW,X
+    STA HUD_ROW + &100,X
+    CPX #&80
+    BCS rup_cleared
+    STA HUD_ROW + &200,X
+.rup_cleared
+    INX
+    BNE rup_clear
+    LDX #6
+    LDA #24
+    JSR rup_crtc
+    LDX #7
+    LDA #&1F
+    JSR rup_crtc
+    LDA crtc_start_address_low
+    LDX crtc_start_address_high
+    JSR rup_set_m_start
+    LDA #2                          \ this field's T1 was armed for row 111 (the rupture was off at
+    STA rup_phase                   \ its vsync): the palette's, not the HUD row's
+    LDA #&80
+    STA rupture
+    RTS
+\ rupture_off, from give_irq_back (interrupts off): the one frame back, the ROMs' bytes back
+.rupture_off
+    STZ rupture                     \ 65C02 opcode
+    LDX #4
+    LDA #&26
+    JSR rup_crtc
+    LDX #6
+    LDA #&19
+    JSR rup_crtc
+    LDX #7
+    LDA #&20
+    JSR rup_crtc
+    LDX #12
+    LDA crtc_start_address_high
+    JSR rup_crtc
+    LDX #13
+    LDA crtc_start_address_low
+    JSR rup_crtc
+    LDX #15
+.rup_back
+    LDA rom_ws_save,X
+    STA &0DF0,X
+    DEX
+    BPL rup_back
+    RTS
+.rup_crtc
+    STX crtc_reg
+    STA crtc_data
+    RTS
+.hud_vars       SKIP 17             \ game_completed .. n_hi (the HUD's, src/game.6502 after moved_0a20; vehicle_hits
+                                    \ below HUD_ROW, rom_ws_save in bank 5's &8000 block)
+ENDIF
+
 IF GAMEPLAY_ANY
     unused_3400_original = &340D - GAME_DOWN    \ decision 43: over the dead fragment below; the font stays put
 ELSE
@@ -5794,6 +5928,7 @@ SECTION moved_0a20, org = MOVED_ORG, cmos = TRUE
 \ multiply_by_78: A x &4E as multiply_A_by_X_2f1e with X = &4E leaves everything: the result,
 \ multiplicand and multiplier_low 0, multiplier_high &4E, A = result_high, X = &4E, Y = 0, C clear,
 \ Z set, N clear (V is never read). The tables are made at start-up.
+IF HUD_RUPTURE = 0                  \ (decision 67: no caller since the grind inlined it; its room is the rupture's)
 .multiply_by_78
     TAX
     LDA times_78_lo,X
@@ -5805,6 +5940,7 @@ SECTION moved_0a20, org = MOVED_ORG, cmos = TRUE
     LDX #&4E
     STX multiplier_high             \ grind: C, Y, N and Z are dead at the RTS (the one caller reloads Y; its callee writes C before reading it)
     RTS
+ENDIF
 
 \ rows_up: subtract_Y_rows_from_screen_address_in_AX's rows (unused_0076 of them, 1 or more) in
 \ a step each: those inside the cell, the whole cells, and the last cell's crossing by the
@@ -5875,16 +6011,9 @@ SECTION moved_0a20, org = MOVED_ORG, cmos = TRUE
 \ Decision 40: the level tables, from the main block. Read-only, and read only when a mover or a
 \ trigger comes up (under 0.05 times a pass on both measured games), so their page crossings cost
 \ nothing measurable and they follow the code with no gap.
-.trigger_points_x_low_table
-    EQUB &FF, &44, &08, &90, &1C, &AE, &30, &C2, &80, &28, &D7, &58, &B5, &DD, &48, &C7
-    EQUB &CB, &52, &D0, &8E, &80, &FA, &B1, &64, &F0, &0C, &82, &78, &16, &20, &FA, &AC
-    EQUB &66, &3E, &CD, &7A, &02
-
-.trigger_points_x_high_table
-    EQUB &FE, &01, &02, &02, &03, &03, &04, &04, &05, &07, &07, &08, &08, &09, &0A, &0A
-    EQUB &0B, &0C, &0C, &0D, &0E, &0E, &0F, &10, &10, &12, &12, &13, &14, &15, &15, &16
-    EQUB &17, &18, &18, &19, &1A, &63
-
+IF HUD_RUPTURE = 0
+    INCLUDE "level_triggers.6502"   \ HUD_RUPTURE: in HAZEL (hazel_b)
+ENDIF
 .new_movers_type
     EQUB &01, &13, &01, &83, &13, &83, &01, &83, &83, &83, &01, &83, &83, &83, &83, &13
     EQUB &01, &83, &89, &83, &83, &83, &82, &8C, &83, &82, &83, &82, &84, &83, &8C, &82
@@ -5895,15 +6024,9 @@ SECTION moved_0a20, org = MOVED_ORG, cmos = TRUE
     EQUB &83, &82, &83, &8C, &83, &83, &8A, &82, &83, &13, &83, &84, &83, &84, &89, &83
     EQUB &01, &02, &83, &82, &01
 
-.new_movers_initial_x_low
-    EQUB &1E, &BC, &D2, &FA, &04, &0A, &38, &6E, &82, &8C, &C1, &26, &42, &74, &B6, &DC
-    EQUB &3A, &5A, &64, &82, &B4, &F6, &32, &3C, &5A, &B4, &DA, &1A, &2C, &BE, &E6, &24
-    EQUB &46, &80, &92, &A0, &30, &3C, &5E, &AA, &B5, &BE, &04, &1E, &50, &40, &58, &70
-    EQUB &96, &BC, &C8, &16, &AA, &D2, &1A, &42, &6E, &90, &FC, &12, &1E, &8C, &AA, &DC
-    EQUB &00, &DC, &E6, &FA, &02, &46, &6E, &A0, &00, &28, &76, &B4, &C8, &F8, &3C, &5E
-    EQUB &66, &74, &82, &AA, &D0, &06, &82, &C6, &F0, &0A, &64, &02, &46, &6E, &9E, &BA
-    EQUB &8E, &A0, &AA, &FA, &46, &6E, &B4, &01, &32, &8C, &B4, &DC, &1F, &6E, &8C, &C8
-    EQUB &08, &2E, &50, &78, &96
+IF HUD_RUPTURE = 0
+    INCLUDE "level_movers_x_low.6502"   \ HUD_RUPTURE: in HAZEL (hazel_b's end)
+ENDIF
 
 .new_movers_initial_x_high_and_flags
     EQUB &80, &00, &40, &80, &01, &81, &41, &41, &81, &41, &81, &42, &42, &82, &82, &02
@@ -5915,6 +6038,7 @@ SECTION moved_0a20, org = MOVED_ORG, cmos = TRUE
     EQUB &56, &56, &96, &16, &57, &57, &17, &98, &58, &18, &58, &58, &59, &99, &19, &59
     EQUB &9A, &5A, &9A, &5A, &9A
 
+IF HUD_RUPTURE = 0
 .new_helicopter_types
     EQUB &85    \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_MISSILE
     EQUB &86    \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER
@@ -5924,32 +6048,116 @@ SECTION moved_0a20, org = MOVED_ORG, cmos = TRUE
     EQUB &9A    \ MOVER_TYPE_ENEMY | MOVER_TYPE_GREEN_WHITE_HELICOPTER_WITH_MISSILE
     EQUB &99    \ MOVER_TYPE_ENEMY | MOVER_TYPE_FLYING_SCOOTER
     EQUB &98    \ MOVER_TYPE_ENEMY | MOVER_TYPE_GREEN_WHITE_CRAFT_TWO
+ENDIF
 
-\ Layer 5 (BUGS #1 fixed, decision 13): the ground's texture, fixed. The original took row Y of a
-\ type t column as ground_pixel_values[ZP[t * t + Y] AND 7], so its ground changed with what was in
-\ zero page &0000-&001E (the screen start, two counters, the sprite unpacker's code and its last
-\ sprite's address). This is ground_pixel_values[b AND 7] for each of those bytes b as a scroll
-\ leaves them in step 2: &00-&03 = &00, &40 (the screen's start: its low byte always a multiple of
-\ 8, its high byte fixed here at &40), &00 (count), &22 (mover_to_update); &04-&06 = &B9, &B5, &34
-\ (LDA dummy_sprite,Y); &07-&1E the dead unpacker's bytes (moved_0004). Type t's rows 0-21, bottom
-\ up, are ground_columns + t * t to + t * t + 21, as the original's were in zero page.
-.ground_columns
-    EQUB &03, &03, &03, &03, &29, &03, &03, &03, &03, &03, &03, &29, &03, &03, &03, &03    \ &00-&0F
-    EQUB &29, &03, &03, &16, &03, &03, &03, &29, &03, &03, &29, &03, &03, &03, &03         \ &10-&1E
-ASSERT HI(ground_columns) = HI(* - 1), "the ground's columns cross a page"
+IF HUD_RUPTURE = 0
+    INCLUDE "ground_columns.6502"   \ HUD_RUPTURE: in HAZEL (hazel_b's end)
+ENDIF
 IF GAMEPLAY_ANY
 .um_next    \ update_movers' (src/game.6502), here in gameplay builds (decision 52: the main block's room)
     EQUB &02, &03, &04, &05, &06, &07, &08, &09, &01
     ASSERT HI(um_next - 1) == HI(um_next + 8)   \ um_next - 1,Y/X (1-9) must not cross a page
 ENDIF
 
+IF HUD_RUPTURE
+\ Decision 67: the HUD row as a CRTC rupture. Each field is two CRTC frames: H, one character row
+\ read from HUD_ROW (main RAM below &3000, the same whichever screen is shown), then M, the scrolling
+\ screen's 24 rows from its second row (the start + 640) with the border and the vsync, 38 rows: 39
+\ in all, as the one 25-row frame was. User VIA T1 fires three times a field from the vsync: in H's
+\ row (rup_phase 0: R4 0, so H ends after it, and M's start), in M's first row (1: R4 back to 37,
+\ and HUD_ROW for the next H), then at row 111 for the palette (2, as before). Each is re-armed from
+\ T2's count (T2 runs from &FFFF at the vsync), so a late one does not move the next.
+.rupture_t1                         \ from not_vsync_2ed0, T1 acknowledged; X, Y and A saved
+    BIT rupture
+    BPL rup_palette
+    LDX rup_phase
+    CPX #2
+    BCS rup_palette
+    INC rup_phase
+    TXA
+    BEQ rup_writes                  \ in the HUD row: its frame ends after it, M's start
+\ At the HUD row's end: its frame shows main RAM (D = 0 from the vsync: with D set, the CRTC's
+\ addresses below &3000 read ANDY and HAZEL, KC 2026-10-23), the shown screen from M's first line:
+\ D set in the horizontal blank after the HUD's last line, T1 timed to it from T2 and its flag
+\ polled. Then, M begun, R4 back to its 38 rows and HUD_ROW for the next frame.
+    LDX #2
+    JSR rup_rearm                   \ A = the count's high byte: not 0 if this ran too late to wait
+    BNE rup_switch
+.rup_wait
+    BIT usrvia_ifr                  \ V = T1's flag
+    BVC rup_wait
+.rup_switch
+    LDA acccon
+    AND #&FE
+    ORA shown_screen
+    STA acccon
+    LDX #1
+.rup_writes                         \ X = 0: the HUD row's writes, 1: M's
+    LDA #4                          \ R4: vertical total (H's must be in before its last line's C0 = 1)
+    STA crtc_reg
+    LDA rup_r4,X
+    STA crtc_data
+    JSR rup_rearm                   \ T1: X = 0 the boundary's event, 1 row 111's (writing it clears its flag)
+    LDA #12                         \ R12, R13: the next frame's start, after the re-arm: from the boundary,
+    STA crtc_reg                    \ well into M's first line (the 6845 latches them at a frame's start)
+    LDA rup_start_hi,X
+    STA crtc_data
+    LDA #13
+    STA crtc_reg
+    LDA rup_start_lo,X
+    STA crtc_data
+    JMP leave_irq1_handler_owned
+.rup_palette
+    JMP rupture_palette
+\ rup_rearm: T1 = T2's count + K[X] (the high byte read again: the low one may have wrapped)
+.rup_rearm
+    LDY usrvia_t2ch
+    LDA usrvia_t2cl
+    CPY usrvia_t2ch
+    BEQ rup_t2
+    LDY usrvia_t2ch
+    LDA usrvia_t2cl
+.rup_t2
+    CLC
+    ADC rup_k_lo,X
+    STA usrvia_t1cl
+    TYA
+    ADC rup_k_hi,X
+    STA usrvia_t1ch
+    RTS
+\ rup_set_m_start: M's start, the screen start's CRTC address + 80 (a character row) round the 16K
+.rup_set_m_start                    \ A = the start's low byte, X its high
+    CLC
+    ADC #80
+    STA rup_start_lo
+    TXA
+    ADC #0
+    CMP #&10
+    BCC rup_in_ring
+    SBC #8                          \ C = 1
+.rup_in_ring
+    STA rup_start_hi
+    RTS
+.rupture        EQUB 0              \ bit 7: the rupture is on (rupture_on, rupture_off)
+.rup_phase      EQUB 0              \ T1's events this field
+.rup_r4         EQUB 0, RUP_R4_M
+.rup_start_hi   EQUB 0, HI(HUD_ROW DIV 8)   \ M's start (rup_set_m_start), then H's
+.rup_start_lo   EQUB 0, LO(HUD_ROW DIV 8)
+ENDIF
+
 .moved_0a20_end
 ENDSECTION
 MOVED_0A20_SIZE = moved_0a20_end - MOVED_ORG
 IF GAMEPLAY_SHIELD
+IF HUD_RUPTURE
+hud_buffer = HUD_ROW                \ decision 67: the HUD drawn into the row the CRTC shows, the vars in main RAM
+ASSERT moved_0a20_end <= HUD_ROW, "moved_0a20 overruns the HUD row by ", moved_0a20_end - HUD_ROW
+game_completed = hud_vars
+ELSE
 hud_buffer = &0C00                  \ decision 44: the lives digit, the bar, the timer (src/shield.6502), not in the file;
 ASSERT moved_0a20_end <= hud_buffer \ a page of its own after moved_0a20 (decision 59), so the renderer's index never crosses one
 game_completed = hud_buffer + HUD_BYTES   \ decision 46: non-zero once the headquarters is reached (options_high_score)
+ENDIF
 run_meter = game_completed + 1      \ decision 52 (src/run.6502): the meter, 8.8 (0-RUN_FULL.0), and what a pass
 run_drain = run_meter + 2           \ running takes from it and one not running gives back (shield_new_game)
 run_charge = run_drain + 2
@@ -5962,14 +6170,25 @@ last_hi = changed + 4
 last_lo = changed + 5
 n_lo = changed + 6
 n_hi = changed + 7
+IF HUD_RUPTURE = 0
 ASSERT n_hi < &0D00
+ENDIF
 IF GAMEPLAY_ARMOUR
+IF HUD_RUPTURE
+vehicle_hits = HUD_ROW - 10          \ decision 67: the 10 bytes under the HUD row
+ASSERT moved_0a20_end <= vehicle_hits, "moved_0a20 overruns vehicle_hits by ", moved_0a20_end - vehicle_hits
+ELSE
 vehicle_hits = n_hi + 1             \ decision 62: hits each player vehicle has taken, by slot &18-&21
+ENDIF
+IF HUD_RUPTURE = 0
 ASSERT vehicle_hits + 9 < &0D00     \ (start_game zeroes them)
 ENDIF
+ENDIF
+IF HUD_RUPTURE = 0
 ASSERT timer_limit + 1 < &0D00, "the run meter and the timer's limit overrun &0CFF"
 ASSERT game_completed < &0D00, "hud_buffer overruns &0CFF by ", game_completed + 1 - &0D00
 ASSERT HI(hud_buffer) = HI(hud_buffer + HUD_BYTES - 1)
+ENDIF
 ENDIF
 ASSERT moved_0a20_end <= &D00, "moved_0a20 overruns &0CFF by ", moved_0a20_end - &D00   \ decision 40: to &0CFF
 
@@ -6081,6 +6300,20 @@ SECTION hazel_b, org = hazel_a_end, cmos = TRUE
 \ placed so that no read crosses a page: player_helicopter_types_vertical_speed (read from 5 below
 \ it) .. player_helicopters_initial_x_high (read from 24 below) in one page from LO = 5, then the
 \ mover type tables with the page boundary at the start of the tenth.
+IF HUD_RUPTURE
+.hazel_rup_gap
+    INCLUDE "level_triggers.6502"   \ decision 67: in the padding before the page these tables need
+.new_helicopter_types
+    EQUB &85    \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_MISSILE
+    EQUB &86    \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER
+    EQUB &96    \ MOVER_TYPE_ENEMY | MOVER_TYPE_GREEN_WHITE_HELICOPTER
+    EQUB &87    \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_SOLDIER
+    EQUB &97    \ MOVER_TYPE_ENEMY | MOVER_TYPE_GREEN_WHITE_CRAFT_ONE
+    EQUB &9A    \ MOVER_TYPE_ENEMY | MOVER_TYPE_GREEN_WHITE_HELICOPTER_WITH_MISSILE
+    EQUB &99    \ MOVER_TYPE_ENEMY | MOVER_TYPE_FLYING_SCOOTER
+    EQUB &98    \ MOVER_TYPE_ENEMY | MOVER_TYPE_GREEN_WHITE_CRAFT_TWO
+    ASSERT * - hazel_rup_gap <= ((&105 - LO(hazel_rup_gap)) AND &FF), "the trigger tables overrun hazel_b's padding"
+ENDIF
     SKIP (&105 - LO(*)) AND &FF
 \ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 .player_helicopter_types_vertical_speed
@@ -6338,6 +6571,15 @@ MOVER_WIDEST = &0B                  \ step 2 (layer 3): the largest entry below 
     INCLUDE "scroll_hazel.6502"     \ layer 4: the scroll column's code (decisions 38, 39)
 IF SKY_MODE
     INCLUDE "sky_hazel.6502"        \ the enemy helicopters over the sky: the geometry
+ENDIF
+IF HUD_RUPTURE
+    INCLUDE "level_movers_x_low.6502"   \ decision 67: out of moved_0a20
+  IF HI(*) <> HI(* + 30)            \ (the texture must not cross a page)
+    SKIP (&100 - LO(*)) AND &FF
+  ENDIF
+    INCLUDE "ground_columns.6502"
+.rup_k_lo       EQUB LO(RUP_K_EB), LO(RUP_K_PAL), LO(RUP_K_B)   \ decision 67: rupture_t1's T1 counts (HAZEL: paged in through play)
+.rup_k_hi       EQUB HI(RUP_K_EB), HI(RUP_K_PAL), HI(RUP_K_B)
 ENDIF
 .hazel_b_end
     ASSERT hazel_b_end <= &E000, "HAZEL overruns by ", hazel_b_end - &E000

@@ -1,0 +1,15 @@
+\ ground_columns.6502 - moved out of src/game.6502's moved_0a20 so that HUD_RUPTURE builds can put
+\ it in HAZEL (decision 67: moved_0a20's room is the HUD row's); other builds keep it where it was.
+
+\ Layer 5 (BUGS #1 fixed, decision 13): the ground's texture, fixed. The original took row Y of a
+\ type t column as ground_pixel_values[ZP[t * t + Y] AND 7], so its ground changed with what was in
+\ zero page &0000-&001E (the screen start, two counters, the sprite unpacker's code and its last
+\ sprite's address). This is ground_pixel_values[b AND 7] for each of those bytes b as a scroll
+\ leaves them in step 2: &00-&03 = &00, &40 (the screen's start: its low byte always a multiple of
+\ 8, its high byte fixed here at &40), &00 (count), &22 (mover_to_update); &04-&06 = &B9, &B5, &34
+\ (LDA dummy_sprite,Y); &07-&1E the dead unpacker's bytes (moved_0004). Type t's rows 0-21, bottom
+\ up, are ground_columns + t * t to + t * t + 21, as the original's were in zero page.
+.ground_columns
+    EQUB &03, &03, &03, &03, &29, &03, &03, &03, &03, &03, &03, &29, &03, &03, &03, &03    \ &00-&0F
+    EQUB &29, &03, &03, &16, &03, &03, &03, &29, &03, &03, &29, &03, &03, &03, &03         \ &10-&1E
+ASSERT HI(ground_columns) = HI(* - 1), "the ground's columns cross a page"

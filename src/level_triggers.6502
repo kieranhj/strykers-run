@@ -1,0 +1,13 @@
+\ level_triggers.6502 - moved out of src/game.6502's moved_0a20 so that HUD_RUPTURE builds can put it in HAZEL
+\ (its room below &3000 is the HUD row's and the rupture's interrupt code: decision 67); other builds
+\ keep it where it was. Read only in play, where HAZEL is paged in.
+
+.trigger_points_x_low_table
+    EQUB &FF, &44, &08, &90, &1C, &AE, &30, &C2, &80, &28, &D7, &58, &B5, &DD, &48, &C7
+    EQUB &CB, &52, &D0, &8E, &80, &FA, &B1, &64, &F0, &0C, &82, &78, &16, &20, &FA, &AC
+    EQUB &66, &3E, &CD, &7A, &02
+
+.trigger_points_x_high_table
+    EQUB &FE, &01, &02, &02, &03, &03, &04, &04, &05, &07, &07, &08, &08, &09, &0A, &0A
+    EQUB &0B, &0C, &0C, &0D, &0E, &0E, &0F, &10, &10, &12, &12, &13, &14, &15, &15, &16
+    EQUB &17, &18, &18, &19, &1A, &63

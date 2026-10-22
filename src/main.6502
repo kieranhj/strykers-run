@@ -62,6 +62,19 @@ DEBUG_ANY = DEBUG_LIVES OR DEBUG_FULLREDRAW   \ the OR of every DEBUG_ flag (GAM
 \ control for costing). Never in the oracle: DEBUG_FULLREDRAW builds draw them as SKY_HELI=0 does.
 ASSERT SKY_HELI <= 2, "SKY_HELI is 0, 1 or 2"
 SKY_MODE = SKY_HELI * (1 - DEBUG_FULLREDRAW)
+\ HUD_RUPTURE (decision 67, with GAMEPLAY_SHIELD): the HUD's character row a CRTC frame of its own,
+\ read from HUD_ROW, drawn there once and only when it changes; no copy at every scroll
+ASSERT GAMEPLAY_SHIELD >= HUD_RUPTURE, "HUD_RUPTURE needs GAMEPLAY_SHIELD (its HUD)"
+HUD_ROW   = &0B80                  \ 640 bytes to &0DFF, below &3000 (one copy for both screens)
+RUP_ROW0  = &2900 - 111 * 64       \ T1 from the vsync to the HUD's row (row 111 at &2900), us
+RUP_E1    = RUP_ROW0 + 128         \ early: R4 0 well before its last line (the 6845 latches at C0 = 1),
+                                    \ and its handler done (it re-arms T1 for RUP_EB) well before RUP_EB
+RUP_EB    = RUP_ROW0 + 330         \ near its end: about 45 us of wait, for an interrupt held off (up to 34 cycles seen)
+RUP_B     = RUP_ROW0 + 512 - 24    \ the horizontal blank after its last line: D set (calibrated, tools/rupture.mjs)
+RUP_K_EB  = RUP_EB + 1             \ T1's counts from T2's at each re-arm (the + 1 as decision 65 measured)
+RUP_K_B   = RUP_B + 1
+RUP_K_PAL = &2900 + 1 - 11            \ row 111's write within the cycles it had without the rupture (tools/split.mjs)
+RUP_R4_M  = &25                    \ M's vertical total: 38 rows, with H's 1 the original's 39
 \ Look flag, off by default: DITHER_HILLS, the hills band's far, mid and fore ranges dithered (blue
 \ 4/16, red 6/16, red 2/16) in the mountain sprites themselves (tools/ditherhills.py; an experiment,
 \ branch dither-hills, KC 2026-10-22: "Cool far, warm near")
@@ -171,6 +184,10 @@ IF GAMEPLAY_SHIELD
     EQUB 0, 0, 0, 0, 0, 0, 0, 0     \ not a ROM header: the MOS looks for one in sideways RAM on BREAK
     INCLUDE "front_gameplay.6502"   \ shield_new_game and the game rules screen (start_game and the
     INCLUDE "scroll_pixel.6502"     \ the title's pixel scroller (from before the music: the scroll text's room)
+IF HUD_RUPTURE
+.rom_ws_save
+    SKIP 16                         \ decision 67: &0DF0-&0DFF kept over a game (rupture_on/off: bank 5 paged)
+ENDIF
     ASSERT * <= &8400, "bank 5's gameplay front end overruns &83FF by ", * - &8400   \ front end run with bank 5 paged)
     PRINT "bank 5 &8000-&83FF: ", &8400 - *, " bytes free"
     SKIP &8400 - *

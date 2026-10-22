@@ -61,7 +61,7 @@ COMPARE  = 0
 # each is passed on every build, 0 unless DEFINES names it (decision 9), but SKY_HELI, 1
 # unless DEFINES=SKY_HELI=0 (decision 61).
 # A new flag goes here and in build.ps1's $flags.
-FLAGS = DEBUG_LIVES DEBUG_FULLREDRAW GAMEPLAY_SHIELD GAMEPLAY_LIVES GAMEPLAY_TIMER GAMEPLAY_OPTIONS GAMEPLAY_RUN GAMEPLAY_JUMP GAMEPLAY_FIRE GAMEPLAY_ARMOUR SKY_HELI DITHER_HILLS
+FLAGS = DEBUG_LIVES DEBUG_FULLREDRAW GAMEPLAY_SHIELD GAMEPLAY_LIVES GAMEPLAY_TIMER GAMEPLAY_OPTIONS GAMEPLAY_RUN GAMEPLAY_JUMP GAMEPLAY_FIRE GAMEPLAY_ARMOUR SKY_HELI DITHER_HILLS HUD_RUPTURE
 
 # NOT overridable: main.6502 INCLUDEs "../build/build_time.6502", bank5.6502 "../build/scrolltext.6502".
 BUILD = build
@@ -69,7 +69,7 @@ BUILD = build
 # Set by `all` through a recursive make, from SHIFT, SHIFTEND and DEFINES;
 # these defaults are the plain build, for `make build/strykers.ssd`.
 STEM = strykers
-DEFS = -D DEBUG_LIVES=0 -D DEBUG_FULLREDRAW=0 -D GAMEPLAY_SHIELD=0 -D GAMEPLAY_LIVES=0 -D GAMEPLAY_TIMER=0 -D GAMEPLAY_OPTIONS=0 -D GAMEPLAY_RUN=0 -D GAMEPLAY_JUMP=0 -D GAMEPLAY_FIRE=0 -D GAMEPLAY_ARMOUR=0 -D SKY_HELI=1 -D DITHER_HILLS=0
+DEFS = -D DEBUG_LIVES=0 -D DEBUG_FULLREDRAW=0 -D GAMEPLAY_SHIELD=0 -D GAMEPLAY_LIVES=0 -D GAMEPLAY_TIMER=0 -D GAMEPLAY_OPTIONS=0 -D GAMEPLAY_RUN=0 -D GAMEPLAY_JUMP=0 -D GAMEPLAY_FIRE=0 -D GAMEPLAY_ARMOUR=0 -D SKY_HELI=1 -D DITHER_HILLS=0 -D HUD_RUPTURE=0
 
 SSD    = $(BUILD)/$(STEM).ssd
 LST    = $(BUILD)/$(STEM).lst
@@ -100,7 +100,7 @@ SRC = \
   src/sfx_data.6502 src/title.6502 src/title_data.6502 src/loader.6502 \
   src/lib/boot_stamp.6502 src/lib/keydown.6502 src/lib/sfx50.6502 src/scroll_hazel.6502 \
   src/sky.6502 src/sky_main.6502 src/sky_off.6502 src/sky_edges.6502 src/sky_hazel.6502 src/sky_hazel_c.6502 \
-  src/hills_dither_two.6502 src/mountains_one.6502 src/scroll_pixel.6502 $(BUILD)/scrolltext.6502
+  src/hills_dither_two.6502 src/mountains_one.6502 src/scroll_pixel.6502 src/level_triggers.6502 src/level_movers_x_low.6502 src/ground_columns.6502 $(BUILD)/scrolltext.6502
 
 # The baron to run, as build.ps1's Find-Tool finds it. A shell fragment, so
 # that it costs nothing on a build that does not assemble; `[ -f bin/baron ]`
@@ -182,13 +182,13 @@ release:
 # Every GAMEPLAY_ flag (decisions 43-54): the gameplay disc, build/strykers-gameplay.ssd
 # (make gameplay RELEASE=1 for testers), as build.ps1 -Gameplay. NAME= names any build's files
 gameplay:
-	@$(MAKE) DEFINES=GAMEPLAY_SHIELD,GAMEPLAY_LIVES,GAMEPLAY_TIMER,GAMEPLAY_OPTIONS,GAMEPLAY_RUN,GAMEPLAY_JUMP,GAMEPLAY_FIRE,GAMEPLAY_ARMOUR,DITHER_HILLS NAME=strykers-gameplay all
+	@$(MAKE) DEFINES=GAMEPLAY_SHIELD,GAMEPLAY_LIVES,GAMEPLAY_TIMER,GAMEPLAY_OPTIONS,GAMEPLAY_RUN,GAMEPLAY_JUMP,GAMEPLAY_FIRE,GAMEPLAY_ARMOUR,DITHER_HILLS,HUD_RUPTURE NAME=strykers-gameplay all
 
 # Only reached when the .config is missing and the image was asked for by
 # name (`make build/strykers.ssd`); `all` always stamps first.
 $(CONFIG):
 	$(PYTHON) tools/build_stamp.py $(BUILD) $(STEM).config RELEASE=$(RELEASE) \
-	    SHIFT=$(SHIFT) SHIFT_END=$(SHIFTEND) DEBUG_LIVES=0 DEBUG_FULLREDRAW=0 GAMEPLAY_SHIELD=0 GAMEPLAY_LIVES=0 GAMEPLAY_TIMER=0 GAMEPLAY_OPTIONS=0 GAMEPLAY_RUN=0 GAMEPLAY_JUMP=0 GAMEPLAY_FIRE=0 GAMEPLAY_ARMOUR=0 SKY_HELI=1 DITHER_HILLS=0
+	    SHIFT=$(SHIFT) SHIFT_END=$(SHIFTEND) DEBUG_LIVES=0 DEBUG_FULLREDRAW=0 GAMEPLAY_SHIELD=0 GAMEPLAY_LIVES=0 GAMEPLAY_TIMER=0 GAMEPLAY_OPTIONS=0 GAMEPLAY_RUN=0 GAMEPLAY_JUMP=0 GAMEPLAY_FIRE=0 GAMEPLAY_ARMOUR=0 SKY_HELI=1 DITHER_HILLS=0 HUD_RUPTURE=0
 
 # Baron writes the image, the symbol dump and (on stdout) the listing. A
 # failed assembly removes the image and the dump, so a half-written image

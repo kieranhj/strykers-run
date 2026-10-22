@@ -368,3 +368,22 @@ the 1986 original and on the shipping build (the original's rules with this fix)
 quick repeats (172 deaths within 10 passes of the one before, against 57). The original's 9 lives
 were worth about 5 hits.
 
+## 15. The HUD row flickered with garbage on alternate fields (step 2, decision 67's rupture; FIXED)
+
+KC, 2026-10-23, on the gameplay disc: "the HUD doesn't work correctly - it flickers between the correct
+line and garbage. setting ACCCON still affects what RAM is displayed even below &3000"; and "when
+SHADOW display is set, CRTC addresses below &3000 will point into either ANDY or HAZEL". The HUD's
+CRTC frame read `HUD_ROW` (`&0B80`) with ACCCON's D as the flip left it, so on every field that showed
+the shadow screen it read ANDY's `&8B80-&8DFF` (the renderer's sprites).
+
+- **Not a jsbeeb bug**: jsbeeb has it right (`6502.js` `videoRead`: the address ORed with `&8000` when D
+  is set, and its map has ANDY at `&8000-&8FFF`, HAZEL at `&9000-&AFFF`). Decision 67's checks missed it:
+  `tools/rupture.mjs` measured when the writes landed, not what the video read, and the screenshots
+  happened to be of main-screen fields.
+- **Fixed**: D is 0 from the vsync through the HUD's frame and set to the shown screen in the
+  horizontal blank after its last scanline (decision 67: `rupture_t1`, `RUP_EB`, `RUP_B`); the flip
+  only records `shown_screen`. `render_to_main` sets M's start, not R12/R13 and D, with the rupture on.
+  `tools/rupture.mjs` now checks what the video reads: at every instruction while it displays, its
+  address and D (the HUD's addresses with D 0, the screen's with the shown screen's), and each write's
+  beam position. Found on the way: the 6845 latches a frame's end at its last scanline's C0 = 1 (jsbeeb
+  models the Hitachi part), so R4 0 must be in before the HUD row's scanline 7.
