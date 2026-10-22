@@ -1,0 +1,690 @@
+\ sky_main.6502 - SKY_HELI (a prototype, for costing): the enemy helicopters (slots 10, 11) over the
+\ sky as self-erasing sprites.
+\
+\ Measured (2026-10-21, the whole world): 94.6% of their draws cover nothing but sky (byte 0),
+\ nothing a mover drew is ever under them, and between two drawings on the same screen the body is
+\ the same sprite, facing the same way, at the same height, at most a column along, 98% of the
+\ time (the rotor changes on two thirds). Over byte 0, (0 AND mask) EOR pixel is the pixel, so an
+\ unmasked write leaves the screen the masked draw would.
+\
+\ A drawing is a hull a column: the body's run of bytes and the rotor's above it (each sprite column
+\ is one run: transparent ends trimmed, none inside), the rows between them written as sky. Per
+\ screen and helicopter, each column's hull (its lowest row in the world, its height and its
+\ lowest byte's address) is kept, in two banks, the new drawing's in the other. take_off leaves a
+\ helicopter in sky mode where it is (src/sky.6502), and put_on redraws over it: a world column
+\ keeps its screen address while it is in view (the scroll is the CRTC's), so in each column only
+\ the rows the old hull did not cover are read first (they must be 0: anything else and the old
+\ hulls are zeroed and it goes the masked way, with a save block), the rows only the old one
+\ covered are zeroed, and the new hull is written over in one walk up the column. A column the
+\ view has left is dropped, not zeroed: the scroll has written there since.
+\
+\ The runs live at the end of each screen's save arena (main and shadow RAM, the same addresses:
+\ the renderer draws with ACCCON's X bit set for the shadow screen), where the kind cache's slot 0
+\ was. This half is main RAM, where the kind cache's builder was (&3000 on: render_reset copies it
+\ to shadow, so it runs whichever screen is drawn); its take_off half is in bank 4 (src/sky.6502).
+\ This build has no kind cache.
+
+SK_J = 12                           \ columns a part may have
+SKY_SIZE = 320
+SKY_WS = save_arena_end - SKY_SIZE
+sk_n    = SKY_WS + 0                \ the hulls: index 24s + 12 bank + j; height (0: none)
+sk_lo   = SKY_WS + 48               \ lowest row (movers_y's sense)
+sk_alo  = SKY_WS + 96               \ lowest byte's address
+sk_ahi  = SKY_WS + 144
+sk_has  = SKY_WS + 192              \ per helicopter: non-zero, drawn in sky mode on this screen
+sk_bank = SKY_WS + 194              \ its hulls' bank: 0, 1
+sk_xlo  = SKY_WS + 196              \ the world column of its column 0
+sk_xhi  = SKY_WS + 198
+n_bl    = SKY_WS + 200              \ the drawing to come, by column j: the body's lowest row,
+n_bc    = SKY_WS + 212              \ count (0: none)
+n_rl    = SKY_WS + 224              \ the rotor's
+n_rc    = SKY_WS + 236
+n_dbl   = SKY_WS + 248              \ the body's column in the straight data
+n_dbh   = SKY_WS + 260
+n_drl   = SKY_WS + 272              \ the rotor's
+n_drh   = SKY_WS + 284
+n_lo    = SKY_WS + 296              \ the hull: lowest row, height (0: none)
+n_n     = SKY_WS + 308
+ASSERT n_n + SK_J = save_arena_end
+
+\ scratch in zero page no game code touches (BUGS #12's watch: &D2-&E6, &A8-&AF)
+sk_s    = &D2                       \ the helicopter: 0, 1
+sk_oo   = &D3                       \ its old hulls' first index: 24s + 12 bank
+sk_on   = &D4                       \ the new ones'
+sk_e    = &D5                       \ the new column 0's world column - the old's (&80: no old)
+sk_raise = &D6
+sk_c    = &D7
+sk_j    = &D8
+sk_t    = &DA
+sk_t2   = &DB
+sk_ct   = &DC
+sk_part = &DE
+sk_acc  = &DF
+sk_n_   = &E0                       \ rows left (seg_both)
+sk_y    = &E1                       \ the mover's y
+sk_nlo  = &E2                       \ a column's new hull: lowest row, top (exclusive)
+sk_nhi  = &E3
+sk_olo  = &E4                       \ its old hull
+sk_ohi  = &E5
+sk_tmp  = &E6
+d2_ptr  = &A8                       \ (2) the rotor's data, while both are drawn
+sk_slot = &AA
+sk_idx  = &AB
+sk_ovl  = &AC                       \ non-zero: the old hull is walked into from below or over
+sk_al   = &AD                       \ the new hull's lowest byte
+sk_ah   = &AE
+
+\ ---- put_on's: X = slot (kept). C set: drawn here in sky mode; clear: to be drawn masked.
+.sky_put_on
+{
+IF SKY_HELI = 2
+    CLC                             \ the control: no kind cache, no sky mode
+    RTS
+ENDIF
+    CPX #10
+    BCC no
+    CPX #12
+    BCC sky
+.no
+    CLC
+    RTS
+.sky
+    STX sk_slot
+    STX dm_slot
+    TXA
+    SEC
+    SBC #10
+    STA sk_s
+    JSR sk_bases
+    LDX sk_slot
+    LDA movers_type_and_colour,X
+    AND #&7F
+    TAY
+    LDA mover_types_parts,Y
+    BNE parts_ok
+.to_fall
+    JMP fall                        \ three parts
+.parts_ok
+    LDA movers_y,X
+    STA sk_y
+    LDX #SK_J - 1
+.clear
+    STZ n_bc,X                      \ 65C02 opcode
+    STZ n_rc,X                      \ 65C02 opcode
+    DEX
+    BPL clear
+    JSR draw_mover.dm_setup         \ draw_mover's clip, type, frame, flip, address and tables
+    BCS to_fall                     \ right of the view
+    LDA draw_column.pix_operand
+    STA seg_draw.pix1
+    STA seg_draw.pix2
+    STA seg_both.pixb
+    STA seg_both.pixr
+    LDA draw_column.pix_operand + 1
+    STA seg_draw.pix1 + 1
+    STA seg_draw.pix2 + 1
+    STA seg_both.pixb + 1
+    STA seg_both.pixr + 1
+    LDA draw_column.mask_operand
+    STA seg_both.mask
+    LDA draw_column.mask_operand + 1
+    STA seg_both.mask + 1
+    LDX dm_type                     \ part one, as draw_mover
+    LDA dm_frame
+    CLC
+    ADC mover_types_first_sprite_animation_offsets,X
+    TAY
+    LDA animation_table,Y
+    LDX #0
+    LDY #0
+    JSR sk_geom
+    BCS to_fall
+    LDX dm_type
+    LDA mover_types_parts,X
+    CMP #&02
+    BCS hulls                       \ one part
+    LDA dm_frame                    \ part two, raised by sprites_y_offset
+    CLC
+    ADC mover_types_second_sprite_offset,X
+    TAY
+    LDA sprites_y_offset,Y
+    STA dm_raise
+    LDA dm_frame
+    CLC
+    ADC mover_types_first_sprite_animation_offsets + &1C,X
+    TAX
+    LDA animation_table,X
+    LDX #1
+    LDY dm_raise
+    JSR sk_geom
+    BCS to_fall
+.hulls                              \ each column's hull: body, then the rotor no lower
+    LDX #SK_J - 1
+    BRA hull                        \ 65C02 opcode
+.fall_near
+    JMP fall
+.hull
+    LDA n_bc,X
+    BEQ rotor_only
+    LDA n_rc,X
+    BEQ body_only
+    LDA n_rl,X
+    CMP n_bl,X
+    BCC fall_near                   \ a rotor below the body
+    CLC
+    ADC n_rc,X
+    STA sk_t                        \ the rotor's top
+    LDA n_bl,X
+    CLC
+    ADC n_bc,X                      \ the body's top
+    CMP sk_t
+    BEQ both_ok
+    BCS fall_near                   \ a body past the rotor
+.both_ok
+    LDA n_bl,X
+    STA n_lo,X
+    LDA sk_t
+    SEC
+    SBC n_bl,X
+    STA n_n,X
+    BRA hull_next                   \ 65C02 opcode
+.body_only
+    LDA n_bl,X
+    STA n_lo,X
+    LDA n_bc,X
+    STA n_n,X
+    BRA hull_next                   \ 65C02 opcode
+.rotor_only
+    LDA n_rl,X
+    STA n_lo,X
+    LDA n_rc,X
+    STA n_n,X
+.hull_next
+    DEX
+    BPL hull
+    \ the world column of column 0 (from the address it is drawn at, as the records'), and e
+    LDA dm_scr_lo
+    LDX dm_scr_hi
+    JSR world_of_address
+    LDA #&80
+    STA sk_e
+    LDX sk_s
+    LDA sk_has,X
+    BEQ check
+    LDA wa_x_lo
+    SEC
+    SBC sk_xlo,X
+    STA sk_t
+    LDA wa_x_hi
+    SBC sk_xhi,X
+    BEQ ahead
+    INC A                           \ 65C02 opcode: &FF, behind
+    BNE check
+    LDA sk_t
+    CMP #256 - (SK_J - 1)
+    BCC check
+    BCS shift                       \ always
+.ahead
+    LDA sk_t
+    CMP #SK_J
+    BCS check
+.shift
+    LDA sk_t
+    STA sk_e
+.check                              \ the rows of each new hull its old one did not cover: all 0
+    LDX #SK_J - 1
+.ck_each
+    STX sk_j
+    LDA n_n,X
+    BEQ ck_next
+    JSR new_hull
+    JSR old_of
+    BCS ck_old
+    LDA sk_nhi                      \ no old hull: all of it
+    SEC
+    SBC sk_nlo
+    JSR check_rows
+    BNE fall
+    BRA ck_next                     \ 65C02 opcode
+.ck_old
+    LDA sk_nhi                      \ below: [nlo, min(nhi, olo))
+    CMP sk_olo
+    BCC below_min
+    LDA sk_olo
+.below_min
+    SEC
+    SBC sk_nlo
+    BEQ above
+    BCC above
+    JSR check_rows
+    BNE fall
+.above                              \ above: [max(nlo, ohi), nhi)
+    LDA sk_ohi
+    CMP sk_nlo
+    BCS above_max
+    LDA sk_nlo
+.above_max
+    STA sk_nlo
+    LDA sk_nhi
+    SEC
+    SBC sk_nlo
+    BEQ ck_next
+    BCC ck_next
+    JSR check_rows
+    BNE fall
+.ck_next
+    LDX sk_j
+    DEX
+    BPL ck_each
+    JMP old_only
+.fall                               \ the masked way: the old hulls in view zeroed first
+    LDX sk_s
+    LDA sk_has,X
+    BEQ fall_out
+    LDX #SK_J - 1
+.fall_each
+    STX sk_j
+    JSR old_in_view
+    BCC fall_next
+    LDA sk_n,Y
+    PHA
+    JSR old_state
+    PLA
+    JSR seg_zero
+.fall_next
+    LDX sk_j
+    DEX
+    BPL fall_each
+    LDX sk_s
+    STZ sk_has,X                    \ 65C02 opcode
+.fall_out
+    LDX sk_slot
+    CLC
+    RTS
+}
+
+\ (sky_put_on goes on) the old hulls in view with no new hull in their world column: zeroed
+.old_only
+{
+    LDX sk_s
+    LDA sk_has,X
+    BEQ write
+    LDX #SK_J - 1
+.each
+    STX sk_j
+    JSR old_in_view
+    BCC next
+    LDA sk_e                        \ a new hull there? j = jo - e
+    CMP #&80
+    BEQ zero
+    TXA
+    SEC
+    SBC sk_e
+    CMP #SK_J
+    BCS zero
+    TAX
+    LDA n_n,X
+    BNE next                        \ the write walk deals with it
+.zero
+    LDX sk_j
+    JSR old_in_view                 \ Y = its index again
+    LDA sk_n,Y
+    PHA
+    JSR old_state
+    PLA
+    JSR seg_zero
+.next
+    LDX sk_j
+    DEX
+    BPL each
+}
+    \ falls through
+\ each new hull written, over its old one if it had one (the rows only the old covered zeroed)
+.write
+{
+    LDX #SK_J - 1
+.each
+    STX sk_j
+    TXA
+    CLC
+    ADC sk_on
+    TAY
+    LDA n_n,X
+    STA sk_n,Y
+    BNE go
+    JMP next
+.go
+    LDA n_lo,X
+    STA sk_lo,Y
+    JSR new_hull
+    STZ sk_ovl                      \ 65C02 opcode
+    JSR old_of
+    BCC fresh
+    LDA sk_nhi                      \ the hulls overlap or touch: olo <= nhi and nlo <= ohi
+    CMP sk_olo
+    BCC apart
+    LDA sk_ohi
+    CMP sk_nlo
+    BCC apart
+    DEC sk_ovl                      \ one walk from the lower of the two
+    LDA sk_olo
+    CMP sk_nlo
+    BCS from_new
+    JSR old_state                   \ from the old hull's bottom: zero up to the new one's
+    LDA sk_nlo
+    SEC
+    SBC sk_olo
+    JSR seg_zero
+    BRA drawn_from                  \ 65C02 opcode
+.apart
+    JSR old_state                   \ apart: the old one zeroed on its own
+    LDA sk_ohi
+    SEC
+    SBC sk_olo
+    JSR seg_zero
+.fresh
+.from_new
+    LDX sk_j
+    LDA sk_nlo
+    JSR sk_addr
+.drawn_from
+    TYA                             \ the new hull's lowest byte
+    ORA s_ptr
+    STA sk_al
+    LDA s_ptr + 1
+    STA sk_ah
+    JSR composite
+    BIT sk_ovl                      \ 65C02 opcode (BIT zp)
+    BPL stored
+    LDA sk_ohi                      \ the old one above the new: zeroed on
+    SEC
+    SBC sk_nhi
+    BEQ stored
+    BCC stored
+    JSR seg_zero
+.stored
+    LDA sk_j
+    CLC
+    ADC sk_on
+    TAY
+    LDA sk_al
+    STA sk_alo,Y
+    LDA sk_ah
+    STA sk_ahi,Y
+.next
+    LDX sk_j
+    DEX
+    BMI done
+    JMP each
+.done
+    LDX sk_s                        \ the new bank is this screen's now
+    LDA sk_bank,X
+    EOR #1
+    STA sk_bank,X
+    LDA wa_x_lo
+    STA sk_xlo,X
+    LDA wa_x_hi
+    STA sk_xhi,X
+    LDA #1
+    STA sk_has,X
+    LDX sk_slot
+    SEC
+    RTS
+}
+
+
+\ ---- the walks up a column: s_ptr = the cell, Y = the line of the next row; A = rows (1 or more).
+\ Each leaves s_ptr, Y at the row after its last (a cell up from line 0: line 7 of the next).
+
+.sk_up                              \ s_ptr a character row up, round the 16K screen; Y = 7
+{
+    LDA s_ptr
+    SEC
+    SBC #&80
+    STA s_ptr
+    LDA s_ptr + 1
+    SBC #&02
+    CMP #&40
+    BCS in_ring
+    ADC #&40
+.in_ring
+    STA s_ptr + 1
+    LDY #7
+    RTS
+}
+
+.seg_zero                           \ the rows zeroed
+{
+    DEC A                           \ 65C02 opcode
+    STA rows_m1
+.cell
+    TYA
+    SEC
+    SBC rows_m1
+    BCS last_cell
+    EOR #&FF
+    STA rows_m1
+    LDA #0
+.byte
+    STA (s_ptr),Y
+    DEY
+    BPL byte
+    JSR sk_up
+    BRA cell                        \ 65C02 opcode
+.last_cell
+    DEC A                           \ 65C02 opcode
+    STA stop_y
+    LDA #0
+.part_byte
+    STA (s_ptr),Y
+    DEY
+    CPY stop_y
+    BNE part_byte
+    TYA
+    BPL out
+    JMP sk_up
+.out
+    RTS
+}
+
+.seg_check                          \ the rows read: Z set if all 0
+{
+    DEC A                           \ 65C02 opcode
+    STA rows_m1
+    STZ sk_acc                      \ 65C02 opcode
+.cell
+    TYA
+    SEC
+    SBC rows_m1
+    BCS last_cell
+    EOR #&FF
+    STA rows_m1
+    LDA sk_acc
+.byte
+    ORA (s_ptr),Y
+    DEY
+    BPL byte
+    STA sk_acc
+    JSR sk_up
+    BRA cell                        \ 65C02 opcode
+.last_cell
+    DEC A                           \ 65C02 opcode
+    STA stop_y
+    LDA sk_acc
+.part_byte
+    ORA (s_ptr),Y
+    DEY
+    CPY stop_y
+    BNE part_byte
+    CMP #0
+    RTS
+}
+
+.seg_draw                           \ the rows written unmasked from d_ptr (set_d)
+{
+    DEC A                           \ 65C02 opcode
+    STA rows_m1
+.cell
+    TYA
+    SEC
+    SBC rows_m1
+    BCS last_cell
+    EOR #&FF
+    STA rows_m1
+.byte
+    LDA (d_ptr),Y
+    TAX
+pix1 = * + 1
+    LDA &FFFF,X                     \ self-modified: the pixel table
+    STA (s_ptr),Y
+    DEY
+    BPL byte
+    JSR d_up
+    BRA cell                        \ 65C02 opcode
+.last_cell
+    DEC A                           \ 65C02 opcode
+    STA stop_y
+.part_byte
+    LDA (d_ptr),Y
+    TAX
+pix2 = * + 1
+    LDA &FFFF,X                     \ self-modified: the pixel table
+    STA (s_ptr),Y
+    DEY
+    CPY stop_y
+    BNE part_byte
+    TYA
+    BPL out
+    JMP d_up
+.out
+    RTS
+}
+
+.d_up                               \ the data 8 back, the screen a character row up; Y = 7
+{
+    LDA d_ptr
+    SEC
+    SBC #8
+    STA d_ptr
+    BCS same
+    DEC d_ptr + 1
+.same
+    JMP sk_up
+}
+
+.seg_both                           \ the rows where the rotor (d2_ptr) is over the body (d_ptr)
+{
+    STA sk_n_
+.row
+    LDA (d_ptr),Y
+    TAX
+pixb = * + 1
+    LDA &FFFF,X                     \ self-modified: the pixel table
+    STA sk_acc
+    LDA (d2_ptr),Y
+    TAX
+    LDA sk_acc
+mask = * + 1
+    AND &FFFF,X                     \ self-modified: the mask table
+pixr = * + 1
+    EOR &FFFF,X                     \ self-modified: the pixel table
+    STA (s_ptr),Y
+    DEY
+    BPL same
+    LDA d2_ptr
+    SEC
+    SBC #8
+    STA d2_ptr
+    BCS d2_same
+    DEC d2_ptr + 1
+.d2_same
+    JSR d_up
+.same
+    DEC sk_n_
+    BNE row
+    RTS
+}
+
+\ sk_geom: A = sprite, X = part (0 the body, 1 the rotor), Y = rows raised: its visible columns'
+\ runs into n_*. C set if it has more than SK_J columns.
+.sk_geom
+{
+    STX sk_part
+    STY sk_raise
+    TAX
+    LDA straight_sprite_hi,X
+    BNE known
+    CLC                             \ an unused entry: nothing
+    RTS
+.known
+    STA col_ptr + 1
+    LDA straight_sprite_lo,X
+    STA col_ptr
+    LDA sprite_column_count,X
+    CMP #SK_J + 1
+    BCC fits
+    RTS                             \ C set
+.fits
+    STA ds_n
+    STZ sk_c                        \ 65C02 opcode
+    LDA sk_y
+    CLC
+    ADC sk_raise
+    STA sk_raise                    \ the part's bottom row
+.col
+    LDA sk_c                        \ j: c, or n - 1 - c flipped
+    BIT dm_flip
+    BPL unflipped
+    LDA ds_n
+    CLC
+    SBC sk_c
+.unflipped
+    TAX
+    LDY #1
+    LDA (col_ptr),Y                 \ the count
+    STA sk_ct
+    BEQ advance
+    CPX dm_jmin
+    BCC advance                     \ left of the view
+    CPX dm_jmax
+    BEQ visible
+    BCS advance                     \ right of it
+.visible
+    LDA (col_ptr)                   \ 65C02 opcode: the first row drawn
+    CLC
+    ADC sk_raise
+    LDY sk_part
+    BNE rotor
+    STA n_bl,X
+    LDA sk_ct
+    STA n_bc,X
+    LDA col_ptr
+    STA n_dbl,X
+    LDA col_ptr + 1
+    STA n_dbh,X
+    BRA advance                     \ 65C02 opcode
+.rotor
+    STA n_rl,X
+    LDA sk_ct
+    STA n_rc,X
+    LDA col_ptr
+    STA n_drl,X
+    LDA col_ptr + 1
+    STA n_drh,X
+.advance
+    LDA sk_ct                       \ the next column: 2 + count on
+    SEC
+    ADC #1
+    CLC
+    ADC col_ptr
+    STA col_ptr
+    BCC same_page
+    INC col_ptr + 1
+.same_page
+    INC sk_c
+    LDA sk_c
+    CMP ds_n
+    BNE col
+    CLC
+    RTS
+}

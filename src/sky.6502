@@ -1,0 +1,377 @@
+\ sky.6502 - SKY_HELI: the enemy helicopters in sky mode, its take_off half (bank 4). The design
+\ and the rest are in src/sky_main.6502 (main RAM).
+
+KC_SLOTS = 2                        \ src/render_bss.6502's kind cache variables (unused here)
+KC_GROUPS = 5
+
+\ ---- take_off's: X = slot, Y = slot + boff (shown here). C set if it was drawn in sky mode: left
+\ where it is for put_on to redraw over (it goes back on, and no mover below it changes over it),
+\ or its runs zeroed (the sky it covered), as a save block would be put back. X and Y kept.
+.sky_take_off
+{
+    CPX #10
+    BCC no
+    CPX #12
+    BCS no
+    STX sk_slot
+    STY sk_idx
+    TXA
+    SEC
+    SBC #10
+    STA sk_s
+    TAX
+    LDA sk_has,X
+    BEQ masked                      \ drawn masked: its save block
+    LDX sk_slot
+    BIT need,X                      \ 65C02 opcode
+    BVC erase                       \ not going back on
+    JSR sk_below
+    BCC done                        \ left for put_on
+.erase
+    JSR sk_zero_all
+.done
+    LDX sk_slot
+    LDY sk_idx
+    SEC
+    RTS
+.masked
+    LDX sk_slot
+.no
+    CLC
+    RTS
+}
+
+\ sk_below: C set if a mover drawn before slot sk_slot (below it) is coming off or going on,
+\ its list rectangle overlapping the helicopter's
+.sk_below
+{
+    LDX #0
+.find
+    CPX list_n
+    BEQ none
+    LDA list_slot,X
+    CMP sk_slot
+    BEQ found
+    INX
+    BRA find                        \ 65C02 opcode
+.found
+    LDY #0
+.each
+    CPY list_n
+    BEQ none
+    LDA list_slot,Y
+    BEQ next                        \ the player: drawn last, over it
+    CMP sk_slot
+    BCS next                        \ drawn after it
+    STY sk_t
+    TAY
+    LDA need,Y
+    LDY sk_t
+    CMP #0
+    BEQ next                        \ staying
+    JSR list_overlap                \ X, Y entries (keeps them): C set if they overlap
+    BCS hit
+.next
+    INY
+    BRA each                        \ 65C02 opcode
+.none
+    CLC
+.hit
+    RTS
+}
+
+\ sk_zero_all: every run helicopter sk_s has on this screen zeroed (before the scroll: all are
+\ where it drew them); it is no longer in sky mode here
+.sk_zero_all
+{
+    JSR sk_bases
+    LDX #SK_J - 1
+.each
+    STX sk_j
+    TXA
+    CLC
+    ADC sk_oo
+    TAY
+    LDA sk_n,Y
+    BEQ next
+    PHA
+    JSR old_state
+    PLA
+    JSR seg_zero
+.next
+    LDX sk_j
+    DEX
+    BPL each
+    LDX sk_s
+    STZ sk_has,X                    \ 65C02 opcode
+    RTS
+}
+
+\ ---- the helpers and the walks up a column (src/sky_main.6502's put_on and this take_off) ----
+
+\ composite: column sk_j's hull from its lowest row (s_ptr, Y): the body unmasked, sky between,
+\ the rotor unmasked (masked over the body where they share rows)
+.composite
+{
+    LDX sk_j
+    LDA n_bc,X
+    BNE body
+    JMP rotor_only
+.body
+    LDA n_dbl,X
+    STA sk_t
+    LDA n_dbh,X
+    STA sk_t2
+    LDA n_bc,X
+    LDX #0
+    JSR set_d
+    LDX sk_j
+    LDA n_rc,X
+    BNE with_rotor
+    LDA n_bc,X
+    JMP seg_draw
+.with_rotor
+    LDA n_bl,X
+    CLC
+    ADC n_bc,X
+    STA sk_ct                       \ the body's top
+    LDA n_rl,X
+    CMP sk_ct
+    BCS gap                         \ the rotor from the body's top or above
+    SEC                             \ they share rows: the body's own, both, the rotor's own
+    SBC n_bl,X
+    BEQ shared
+    JSR seg_draw
+.shared
+    LDX sk_j
+    LDA n_drl,X
+    STA sk_t
+    LDA n_drh,X
+    STA sk_t2
+    LDA n_rc,X
+    LDX #LO(d2_ptr - d_ptr)
+    JSR set_d
+    LDX sk_j
+    LDA sk_ct
+    SEC
+    SBC n_rl,X
+    JSR seg_both
+    LDX sk_j
+    LDA n_rl,X
+    CLC
+    ADC n_rc,X
+    SEC
+    SBC sk_ct
+    BEQ out
+    TAX
+    LDA d2_ptr
+    STA d_ptr
+    LDA d2_ptr + 1
+    STA d_ptr + 1
+    TXA
+    JMP seg_draw
+.gap
+    LDA n_bc,X
+    JSR seg_draw
+    LDX sk_j
+    LDA n_rl,X
+    SEC
+    SBC sk_ct
+    BEQ rotor
+    JSR seg_zero
+.rotor
+    LDX sk_j
+.rotor_only
+    LDA n_drl,X
+    STA sk_t
+    LDA n_drh,X
+    STA sk_t2
+    LDA n_rc,X
+    LDX #0
+    JSR set_d
+    LDX sk_j
+    LDA n_rc,X
+    JMP seg_draw
+.out
+    RTS
+}
+
+\ set_d: A = a run's count, (sk_t, sk_t2) its column in the straight data, Y the line of its
+\ lowest row: the pointer at zero page d_ptr + X = the column + 1 + count - Y, so that (it),Y is
+\ that row's index (keeps Y)
+.set_d
+{
+    SEC
+    ADC sk_t
+    STA d_ptr,X
+    LDA sk_t2
+    ADC #0
+    STA d_ptr + 1,X
+    STY sk_tmp
+    LDA d_ptr,X
+    SEC
+    SBC sk_tmp
+    STA d_ptr,X
+    BCS ok
+    DEC d_ptr + 1,X
+.ok
+    RTS
+}
+
+\ sk_bases: helicopter sk_s's old and new banks' first indexes
+.sk_bases
+{
+    LDX sk_s
+    LDA #0
+    CPX #0
+    BEQ h0
+    LDA #2 * SK_J
+.h0
+    STA sk_oo                       \ 24s
+    CLC
+    ADC #SK_J
+    STA sk_on                       \ 24s + 12
+    LDA sk_bank,X
+    BEQ out                         \ bank 0 old, 1 new
+    LDA sk_oo                       \ bank 1 old: swap
+    LDY sk_on
+    STY sk_oo
+    STA sk_on
+.out
+    RTS
+}
+
+\ new_hull: column sk_j's new hull into sk_nlo, sk_nhi (X = sk_j, kept)
+.new_hull
+{
+    LDA n_lo,X
+    STA sk_nlo
+    CLC
+    ADC n_n,X
+    STA sk_nhi
+    RTS
+}
+
+\ old_of: X = a new column j: C set, Y its old hull's index and sk_olo, sk_ohi, if the old drawing
+\ had a hull in the same world column (in view: the new column is)
+.old_of
+{
+    LDA sk_e
+    CMP #&80
+    BEQ none
+    TXA
+    CLC
+    ADC sk_e
+    CMP #SK_J
+    BCS none
+    ADC sk_oo                       \ C clear
+    TAY
+    LDA sk_n,Y
+    BEQ none
+    CLC
+    ADC sk_lo,Y
+    STA sk_ohi
+    LDA sk_lo,Y
+    STA sk_olo
+    SEC
+    RTS
+.none
+    CLC
+    RTS
+}
+
+\ old_in_view: X = an old column jo: C set and Y its index if it has a hull and its world column
+\ (the old column 0's + jo) is in the view now
+.old_in_view
+{
+    TXA
+    CLC
+    ADC sk_oo
+    TAY
+    LDA sk_n,Y
+    BEQ no
+    PHY                             \ 65C02 opcode
+    LDY sk_s
+    TXA
+    CLC
+    ADC sk_xlo,Y
+    STA sk_t
+    LDA sk_xhi,Y
+    ADC #0
+    STA sk_t2
+    PLY                             \ 65C02 opcode
+    LDA sk_t                        \ viewport_left <= it
+    CMP viewport_left_low
+    LDA sk_t2
+    SBC viewport_left_high
+    BCC no
+    LDA viewport_right_low          \ it <= viewport_right
+    CMP sk_t
+    LDA viewport_right_high
+    SBC sk_t2
+    RTS                             \ C as it stands
+.no
+    CLC
+    RTS
+}
+
+\ old_state: Y = an old hull's index: s_ptr, Y = its lowest byte's cell and line
+.old_state
+{
+    LDA sk_ahi,Y
+    STA s_ptr + 1
+    LDA sk_alo,Y
+    TAY
+    AND #&F8
+    STA s_ptr
+    TYA
+    AND #&07
+    TAY
+    RTS
+}
+
+\ sk_addr: X = a column j, A = a row (movers_y's sense, sk_y or above): s_ptr, Y = that byte's
+\ cell and line (the mover's bottom 8 * j on, round the 16K screen, raised)
+.sk_addr
+{
+    SEC
+    SBC sk_y
+    STA sk_tmp
+    TXA
+    ASL A
+    ASL A
+    ASL A
+    CLC
+    ADC dm_scr_lo
+    STA sk_t
+    LDA dm_scr_hi
+    ADC #0
+    BPL in_ring
+    EOR #&C0                        \ &80 -> &40
+.in_ring
+    TAX
+    LDA sk_t
+    LDY sk_tmp
+    JSR raise_address
+    STX s_ptr + 1
+    TAY
+    AND #&F8
+    STA s_ptr
+    TYA
+    AND #&07
+    TAY
+    RTS
+}
+
+\ check_rows: A rows from sk_nlo up in column sk_j: Z set if all 0
+.check_rows
+{
+    PHA
+    LDX sk_j
+    LDA sk_nlo
+    JSR sk_addr
+    PLA
+    JMP seg_check
+}
+
+

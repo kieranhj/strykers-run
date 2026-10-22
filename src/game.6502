@@ -5319,7 +5319,11 @@ compiled_back = * + 1               \ self-modified: the ROMSEL to come back to
     STA os_ram_copy_of_currently_selected_rom
     STA romsel
     RTS
+IF SKY_HELI
+    INCLUDE "sky_main.6502"         \ the enemy helicopters over the sky (src/sky.6502 its take_off half)
+ELSE
     INCLUDE "kindcache_build.6502"  \ step 2 layer 4 (decision 36): the kind cache's builder
+ENDIF
 
 IF GAMEPLAY_ANY
     unused_3400_original = &340D - GAME_DOWN    \ decision 43: over the dead fragment below; the font stays put
