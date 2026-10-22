@@ -1,0 +1,188 @@
+\ sky_hazel.6502 - SKY_HELI (src/sky.6502): the rectangle's geometry and its column checks, in HAZEL
+\ after the scroll column's code (hazel_b: carried in the file, copied in at start-up; paged in
+\ through play), where the kind cache's slot 1 was.
+
+\ sky_geom: A, X = its bottom left byte (low, high), sky_H its rows, sky_d1 to sky_d2 its columns
+\ drawn (as the image numbers them): sky_L, sky_ytop (8 * the last drawn, from the first), and by character row q (0 the
+\ bottom: lines L to 0; then whole rows; then the top's t lines, 7 down) its first drawn cell
+\ (round the 16K), top line, lines and block; the top shares block 0 if L + 1 + t <= 8; and each
+\ entry's columns, from the first drawn: 8 * the first (sky_rc) and the last (sky_ry). C clear.
+.sky_geom
+{
+    TAY
+    AND #&07
+    STA sky_L
+    STA sky_rt
+    TYA
+    AND #&F8
+    STA sky_t
+    LDA sky_d1                      \ + 8 * the first column drawn - 8 (the image's column 0 is the
+    ASL A                           \ rectangle's -1)
+    ASL A
+    ASL A
+    CLC
+    ADC sky_t
+    STA sky_rl
+    TXA
+    ADC #0
+    TAX
+    LDA sky_rl
+    SEC
+    SBC #8
+    STA sky_rl
+    TXA
+    SBC #0
+    AND #&3F                        \ round the 16K
+    ORA #&40
+    STA sky_rh
+    LDA sky_d2
+    SEC
+    SBC sky_d1
+    ASL A
+    ASL A
+    ASL A
+    STA sky_ytop
+    STZ sky_rb                      \ 65C02 opcode
+    LDA sky_L
+    INC A                           \ 65C02 opcode
+    STA sky_rn                      \ the bottom row's lines: H > 8, so all L + 1
+    STA sky_t
+    LDA sky_H
+    SEC
+    SBC sky_t
+    STA sky_n                       \ rows left
+    LDX #0
+.more
+    LDA sky_rl,X                    \ the character row above
+    SEC
+    SBC #&80
+    STA sky_rl + 1,X
+    LDA sky_rh,X
+    SBC #&02
+    ORA #&40                        \ &3D-&3F (below the ring) -> &7D-&7F
+    STA sky_rh + 1,X
+    INX
+    LDA #7
+    STA sky_rt,X
+    TXA
+    STA sky_rb,X
+    LDA sky_n
+    CMP #9
+    BCC top
+    SBC #8                          \ (C set)
+    STA sky_n
+    LDA #8
+    STA sky_rn,X
+    BRA more                        \ 65C02 opcode
+.top
+    STA sky_rn,X                    \ 1 to 8
+    CMP #8
+    BEQ rows
+    ADC sky_t                       \ (C clear)
+    CMP #9
+    BCS rows
+    STZ sky_rb,X                    \ 65C02 opcode: block 0, by the bottom row's lines
+.rows
+    INX
+    STX sky_nq
+    STX sky_t                       \ the character rows (the builder's: one entry each)
+    LDX #0
+.split                              \ each runs ytop + 8 bytes from its first drawn cell: one past
+    LDA sky_ytop                    \ &7FFF is two entries, the part past it from &4000 (at most
+    STA sky_ry,X                    \ one: rows are &280 apart)
+    STZ sky_rc,X                    \ 65C02 opcode
+    LDA sky_rh,X
+    CMP #&7F
+    BNE whole
+    LDA sky_rl,X
+    CLC
+    ADC sky_ytop
+    BCS cross
+    ADC #7
+    BCC whole
+.cross
+    LDY sky_nq
+    LDA #0                          \ the part from &8000: 8k on from the first drawn cell
+    SEC
+    SBC sky_rl,X
+    STA sky_rc,Y
+    SEC                             \ the part before it ends 8 before
+    SBC #8
+    STA sky_ry,X
+    LDA sky_ytop
+    SEC
+    SBC sky_rc,Y
+    STA sky_ry,Y
+    LDA #&00
+    STA sky_rl,Y
+    LDA #&40
+    STA sky_rh,Y
+    LDA sky_rt,X
+    STA sky_rt,Y
+    LDA sky_rn,X
+    STA sky_rn,Y
+    LDA sky_rb,X
+    STA sky_rb,Y
+    INC sky_nq
+.whole
+    INX
+    CPX sky_t
+    BNE split
+    CLC
+    RTS
+}
+
+\ sky_col_row: X = an entry, sky_j8 8 * a column (from the first drawn): C set if not in it; else
+\ s_ptr, Y the column's top byte there, sky_stop below its lowest
+.sky_col_row
+{
+    LDA sky_j8
+    SEC
+    SBC sky_rc,X
+    BCC no                          \ before it
+    STA sky_stop
+    LDA sky_ry,X
+    CMP sky_stop
+    BCC no                          \ after it
+    LDA sky_rl,X
+    STA s_ptr
+    LDA sky_rh,X
+    STA s_ptr + 1
+    LDA sky_rt,X
+    ORA sky_stop
+    TAY
+    SEC
+    SBC sky_rn,X
+    STA sky_stop
+    CLC
+    RTS
+.no
+    SEC
+    RTS
+}
+
+\ sky_col_check: A = 8 * a column (from the first drawn): C set if that column of the rectangle
+\ holds anything but sky
+.sky_col_check
+{
+    STA sky_j8
+    LDX #0
+.row
+    JSR sky_col_row
+    BCS next
+.byte
+    LDA (s_ptr),Y
+    BNE dirty
+    DEY
+    CPY sky_stop
+    BNE byte
+.next
+    INX
+    CPX sky_nq
+    BNE row
+    CLC
+    RTS
+.dirty
+    SEC
+    RTS
+}

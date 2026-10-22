@@ -1,0 +1,173 @@
+\ sky_edges.6502 - SKY_HELI (src/sky.6502): take_off's zeroing of the columns the scroll or the
+\ lives digit take (src/sky_off.6502 the rest). Bank 4, read with ROMSEL &04 only: below &9000 with
+\ sky_off in the plain build, at bank 4's end in gameplay builds (the shield has the room below).
+
+\ sky_edges: helicopter sky_s's columns drawn here that the scroll writes or leaves, or the lives
+\ digit covers, zeroed now, before the scroll (the scroll reuses a leaving column's memory for the
+\ one arriving, which was never drawn: it is past the view the rectangle was drawn in). Those are
+\ at the view's edges, so at the ends of its columns drawn, which shrink by them; none left, it is
+\ no longer in sky mode here. The geometry only if one is zeroed.
+.sky_edges
+{
+    LDY sky_idx                     \ the image's column 0's world column: the mover's x - 1
+    LDA rec_wxl,Y
+    SEC
+    SBC #1
+    STA sky_wx
+    LDA rec_wxh,Y
+    SBC #0
+    STA sky_wx + 1
+    LDX sky_s
+    LDA sky_ojl,X
+    STA sky_e1
+    LDA sky_ojh,X
+    STA sky_e2
+    CLC                             \ none if its columns are clear of both edges of the view the
+    ADC sky_wx                      \ logic has now: the scroll's and the lives digit's columns are
+    TAX                             \ all within vl - 2 to vl + 4 and vr - 1 to vr + 2
+    LDA sky_wx + 1                  \ (vr - its last >= 2)
+    ADC #0
+    STA sky_cx + 1
+    STX sky_cx
+    LDA viewport_right_low
+    SEC
+    SBC sky_cx
+    TAX
+    LDA viewport_right_high
+    SBC sky_cx + 1
+    BMI near
+    BNE right_ok
+    CPX #2
+    BCC near
+.right_ok
+    LDA sky_e1                      \ (its first - vl >= 5)
+    CLC
+    ADC sky_wx
+    TAX
+    LDA sky_wx + 1
+    ADC #0
+    STA sky_cx + 1
+    TXA
+    SEC
+    SBC viewport_left_low
+    TAX
+    LDA sky_cx + 1
+    SBC viewport_left_high
+    BMI near
+    BNE clear
+    CPX #5
+    BCS clear
+.near
+    STZ sky_c0                      \ 65C02 opcode: no geometry yet
+.left
+    LDA sky_e1
+    JSR in_zone
+    BCC right
+    LDA sky_e1
+    JSR zero
+    LDA sky_e1
+    CMP sky_e2
+    BEQ gone
+    INC sky_e1
+    BRA left                        \ 65C02 opcode
+.right
+    LDA sky_e2
+    JSR in_zone
+    BCC kept
+    LDA sky_e2
+    JSR zero
+    DEC sky_e2                      \ (e2 > e1: the left one is not in the zone)
+    BRA right                       \ 65C02 opcode
+.kept
+    LDX sky_s
+    LDA sky_e1
+    STA sky_ojl,X
+    LDA sky_e2
+    STA sky_ojh,X
+    RTS
+.gone
+    LDX sky_s
+    STZ sky_on,X                    \ 65C02 opcode
+.clear
+    RTS
+.zero                               \ A = a column: zeroed (the old geometry, made the first time)
+    PHA
+    LDA sky_c0
+    BNE made
+    JSR sky_old_geom
+    LDA sky_d1
+    STA sky_c0                      \ (1 or more)
+.made
+    PLA
+    SEC
+    SBC sky_c0
+    ASL A
+    ASL A
+    ASL A
+    JMP sky_col_zero
+.in_zone                            \ A = a column: C set if its world column is a zone column or
+    CLC                             \ under the lives digit
+    ADC sky_wx
+    STA sky_cx
+    LDA sky_wx + 1
+    ADC #0
+    STA sky_cx + 1
+    LDX zone_n
+    BEQ lives
+.each
+    DEX
+    LDA zone_lo,X
+    CMP sky_cx
+    BNE next
+    LDA zone_hi,X
+    CMP sky_cx + 1
+    BEQ hit
+.next
+    TXA
+    BNE each
+.lives
+    LDX lz_n                        \ each range: the last column and LIVES_ZONE_COLUMNS - 1 before
+    BEQ none
+.lz_each
+    DEX
+    LDA lz_lo,X
+    SEC
+    SBC sky_cx
+    STA sky_t
+    LDA lz_hi,X
+    SBC sky_cx + 1
+    BNE lz_next                     \ before it, or too far after
+    LDA sky_t
+    CMP #LIVES_ZONE_COLUMNS
+    BCC hit
+.lz_next
+    TXA
+    BNE lz_each
+.none
+    CLC
+    RTS
+.hit
+    SEC
+    RTS
+}
+
+\ sky_col_zero: A = 8 * a column (from the first drawn): that column of the rectangle zeroed
+.sky_col_zero
+{
+    STA sky_j8
+    LDX #0
+.row
+    JSR sky_col_row
+    BCS next
+    LDA #0
+.byte
+    STA (s_ptr),Y
+    DEY
+    CPY sky_stop
+    BNE byte
+.next
+    INX
+    CPX sky_nq
+    BNE row
+    RTS
+}

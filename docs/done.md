@@ -135,6 +135,10 @@ MOS's sound, skipping transparent bytes, building the column on the pass before.
   a projectile run into hit twice). Explosions and skeletons are walked through, a projectile run into
   is spent; the whole world's hits 655 -> 318, no repeat in one pass or from an explosion
   (`tools/hitwatch.mjs`); a skeleton soft-lock found and fixed on the way.
+- **The enemy helicopters drawn over the sky as self-erasing rectangles** (decision 61, `SKY_HELI`,
+  2026-10-22, all builds; supersedes the kind cache): over the whole world the helicopters' cycles a
+  pass 9.0k -> 6.25k (two on screen 26.0k -> 19.2k), late frames 336 -> 176; state and every frame
+  identical to the full-redraw oracle.
 
 ### The front end (2026-10-21, all builds)
 

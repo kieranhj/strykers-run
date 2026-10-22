@@ -36,8 +36,9 @@ before its music / at its end, after decisions 57 and 60; 2026-10-21),
 
 ## Speed, if it is wanted again
 
-Layer 4's leftovers, costed in `docs/step2-layer4-costing.md` "Closed": a third kind cache slot,
-the generic column path's overhead, the logic in the bursts, compiled bodies, the scroll column's
+Layer 4's leftovers, costed in `docs/step2-layer4-costing.md` "Closed" (its kind cache since
+replaced by decision 61's sky mode, whose own leftovers are a rotor byte cache, ~0.8k a draw, and a
+cheaper leading check, ~0.15k: both want room): the generic column path's overhead, the logic in the bursts, compiled bodies, the scroll column's
 rest, a grind round 3. Most want room the renderer can read while it draws.
 
 ## Ideas - gameplay variations (not agreed)

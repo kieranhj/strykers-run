@@ -1,0 +1,362 @@
+\ sky.6502 - SKY_HELI (decision 61, on by default): the enemy helicopters (slots 10, 11) drawn over
+\ the sky as self-erasing rectangles (bank 4: put_on's and the drawing; the cold half and the
+\ per-screen state in src/sky_main.6502 (main RAM), take_off's in src/sky_off.6502 and
+\ src/sky_edges.6502 (bank 4), the geometry and column checks in src/sky_hazel.6502 and the image
+\ builder in src/sky_hazel_c.6502 (HAZEL)). It replaces decision 36's kind cache (SKY_HELI=0).
+\
+\ Measured (2026-10-21, the whole world): 94.6% of their draws cover nothing but sky (byte 0), and
+\ between two drawings on the same screen a helicopter is at the same height, at most a column
+\ along, 98% of the time. Over byte 0, (0 AND mask) EOR pixel is the pixel.
+\
+\ A helicopter is drawn as its rectangle: 12 columns by H rows (sky_heights: 23 to 28; at most 32
+\ rows fill at most 4 blocks), its columns in view: the body's pixels from an image built once for
+\ its kind (sprite, line in the character cell, colour and flip) with sky (0) in every other byte,
+\ then the rotor masked over it. The image is in the screen's own layout, a block of 112 bytes for
+\ each character row, so a character row of the rectangle is one run of (s_ptr),Y, and it has a
+\ column of sky each side. Moved a column, the new rectangle covers the old one but for a trailing
+\ column, which the copy covers too, from the margin: the self-erasing edge. Only a leading column
+\ is new ground, read first: it must be sky. So take_off leaves it on the screen for put_on to draw
+\ over, unless it does not go back on or a mover below it changes over it (the overlap rule's
+\ rectangles, y - 2 to y + height + 2, hold the whole rectangle): then it is zeroed. Its columns
+\ the scroll or the lives digit take are zeroed then (they are at the view's edges). A world
+\ column keeps its screen address while it is in view (the scroll is the CRTC's). Anything else -
+\ three parts, another height or row, moved more than a column, a row that would pass &7FFF, not
+\ sky - and it is drawn masked, with a save block.
+
+SKY_COLS = 12
+SKY_ROWS = 6                        \ entries: the character rows a rectangle can reach (32 + 7
+                                    \ rows), one split at the 16K's end
+SKY_BLOCK = 8 * (SKY_COLS + 2)      \ a character row of the image: the rectangle, a sky column each side
+SKY_IMG_SIZE = 4 * SKY_BLOCK
+SKY_IMG1 = save_arena_end - SKY_IMG_SIZE  \ helicopter 1's image: the end of each screen's save arena
+
+\ scratch in zero page no game code touches (BUGS #12's watch: &D2-&E6, &A8-&AF)
+sky_s     = &D2                     \ the helicopter: 0, 1
+sky_slot  = &D3
+sky_idx   = &D4                     \ take_off's Y
+sky_body  = &D5                     \ the image's kind (sky_image): the body sprite,
+sky_L     = &D6                     \ the bottom row's line in the cell,
+sky_plo   = &D7                     \ the pixel table (colour and flip),
+sky_phi   = &D8
+sky_H     = &D9                     \ the rectangle's rows
+sky_nq    = &DA                     \ its character rows
+sky_t     = &DB
+sky_rot   = &DC                     \ the rotor (&FF: none), its raise
+sky_raise = &DD
+sky_n     = &DE                     \ a character row's lines
+sky_skip  = &DF                     \ 8 - those
+sky_q     = &E0
+sky_j8    = &E1                     \ 8 * a column, from the first drawn
+sky_stop  = &E2
+sky_a1    = &E3                     \ the old columns drawn, as the new image numbers them
+sky_a2    = &E4
+sky_c     = &E5
+sky_line  = &E6
+w_ptr     = &A8                     \ (2) the image (sky_build)
+p_ptr     = &AA                     \ (2) a sprite's straight data
+sky_bq    = &AC
+sky_tmp   = &AD
+sky_jl    = &AE                     \ the rectangle's columns in view, as the image numbers them
+sky_jh    = &AF
+
+\ ---- put_on's: dm_slot, dm_index set, the room above arena_top free. C set: drawn in sky mode;
+\ clear: to be drawn masked (its old rectangle, if any, zeroed first).
+.sky_put_on
+{
+IF SKY_MODE = 2
+    CLC                             \ the control: no kind cache, no sky mode
+    RTS
+ENDIF
+    LDX dm_slot
+    CPX #10
+    BCC no
+    CPX #12
+    BCC yes
+.no
+    CLC
+    RTS
+.yes
+    STX sky_slot
+    TXA
+    SEC
+    SBC #10
+    STA sky_s
+    JSR draw_mover.dm_setup         \ draw_mover's clip, type, frame, flip, address and tables
+    BCS to_fall                     \ right of the view
+    LDA dm_jmin                     \ the columns in view, as the image numbers them (1-12; 0 and
+    CMP #SKY_COLS                   \ 13 its sky margins): jmin + 1 to jmax + 1 (12 at most)
+    BCS to_fall                     \ none (&FF: far left)
+    INC A                           \ 65C02 opcode
+    STA sky_jl
+    LDA dm_jmax
+    CMP #SKY_COLS - 1
+    BCC jh
+    LDA #SKY_COLS - 1
+.jh
+    INC A                           \ 65C02 opcode
+    STA sky_jh
+    LDX dm_type                     \ a helicopter type, with its rectangle's rows
+    CPX #&05
+    BCC to_fall
+    CPX #&1B
+    BCS to_fall
+    LDA sky_heights - 5,X
+    BNE type_ok
+.to_fall
+    JMP fall
+.type_ok
+    STA sky_H
+    LDA dm_frame                    \ part one, as draw_mover
+    CLC
+    ADC mover_types_first_sprite_animation_offsets,X
+    TAY
+    LDA animation_table,Y
+    STA sky_body
+    TAY
+    LDA sprite_column_count,Y
+    CMP #SKY_COLS
+    BNE to_fall
+    LDA #&FF
+    STA sky_rot
+    LDA mover_types_parts,X
+    BEQ to_fall                     \ three parts
+    CMP #&02
+    BCS one_part
+    LDA dm_frame                    \ part two, raised by sprites_y_offset (C clear)
+    ADC mover_types_second_sprite_offset,X
+    TAY
+    LDA sprites_y_offset,Y
+    STA sky_raise
+    LDA dm_frame
+    CLC
+    ADC mover_types_first_sprite_animation_offsets + &1C,X
+    TAX
+    LDA animation_table,X
+    STA sky_rot
+.one_part
+    LDX sky_s
+    LDA sky_on,X
+    BNE old_on
+    JMP fresh
+.old_on
+    LDA sky_h,X                     \ the old one is still there: the same rows and height, at most
+    CMP sky_H                       \ a column along?
+    BNE to_moved
+    LDA dm_scr_lo
+    SEC
+    SBC sky_adr_lo,X
+    STA sky_t
+    LDA dm_scr_hi
+    SBC sky_adr_hi,X
+    AND #&3F                        \ round the 16K
+    BEQ right
+    CMP #&3F
+    BNE to_moved
+    LDA sky_t
+    CMP #&F8
+    BNE to_moved
+    LDA #0                          \ a column left: dx + 1
+    BEQ dx                          \ (always)
+.to_moved
+    JMP moved
+.right
+    LDA sky_t
+    BEQ none
+    CMP #8
+    BNE to_moved
+    LDA #2                          \ a column right
+    BNE dx                          \ (always)
+.none
+    LDA #1                          \ where it was
+.dx
+    STA sky_t
+    LDA sky_ojl,X                   \ the old columns drawn, A = [a1, a2], as the new image numbers
+    SEC                             \ them: less dx (0-13)
+    SBC sky_t
+    INC A                           \ 65C02 opcode
+    STA sky_a1
+    LDA sky_ojh,X
+    SEC
+    SBC sky_t
+    INC A                           \ 65C02 opcode
+    STA sky_a2
+    LDA sky_jh                      \ A and the new, B = [jl, jh], meet or touch?
+    INC A                           \ 65C02 opcode
+    CMP sky_a1
+    BCC moved
+    LDA sky_a2
+    INC A                           \ 65C02 opcode
+    CMP sky_jl
+    BCC moved
+    LDA sky_jl                      \ drawn: both, A's columns not in B as the image's sky (they
+    CMP sky_a1                      \ are B's neighbours, or its margins)
+    BCC d1
+    LDA sky_a1
+.d1
+    STA sky_d1
+    LDA sky_jh
+    CMP sky_a2
+    BCS d2
+    LDA sky_a2
+.d2
+    STA sky_d2
+    JSR geom
+    BCS to_fall2
+    LDA sky_jl                      \ B's columns left of A, then right of it: new ground, read
+.lead_l                             \ first
+    STA sky_c
+    CMP sky_a1
+    BCS lead_r0
+    LDA sky_jh
+    CMP sky_c
+    BCC lead_r0
+    LDA sky_c
+    JSR lead_col
+    BCS fall
+    LDA sky_c
+    INC A                           \ 65C02 opcode
+    BRA lead_l                      \ 65C02 opcode
+.to_fall2
+    JMP fall
+.lead_r0
+    LDA sky_jh
+.lead_r
+    STA sky_c
+    CMP sky_a2
+    BEQ draw
+    BCC draw
+    CMP sky_jl
+    BCC draw
+    JSR lead_col
+    BCS fall
+    LDA sky_c
+    DEC A                           \ 65C02 opcode
+    BRA lead_r                      \ 65C02 opcode
+.moved
+    JSR sky_erase_old
+.fresh
+    LDA sky_jl                      \ drawn: B
+    STA sky_d1
+    LDA sky_jh
+    STA sky_d2
+    JSR geom
+    BCS fall
+    JSR sky_check                   \ all of it sky?
+    BCS fall
+.draw
+    JSR sky_image
+    JSR sky_draw
+    LDA sky_rot
+    BMI kept
+    LDX back                        \ the rotor masked over it, its saves into the room above
+    LDA arena_top_lo,X              \ arena_top (not kept)
+    SEC
+    SBC #4
+    STA v_ptr
+    LDA arena_top_hi,X
+    SBC #0
+    STA v_ptr + 1
+    LDA sky_rot
+    LDY sky_raise
+    JSR ren_draw_sprite
+.kept
+    LDX sky_s
+    LDA dm_scr_lo
+    STA sky_adr_lo,X
+    LDA dm_scr_hi
+    STA sky_adr_hi,X
+    LDA sky_H
+    STA sky_h,X
+    LDA sky_jl
+    STA sky_ojl,X
+    LDA sky_jh
+    STA sky_ojh,X
+    LDA #1
+    STA sky_on,X
+    SEC
+    RTS
+.fall
+    LDX sky_s
+    LDA sky_on,X
+    BEQ out
+    JSR sky_erase_old
+.out
+    CLC
+    RTS
+.geom                               \ the new rectangle, columns sky_d1 to sky_d2 drawn
+    LDA dm_scr_lo
+    LDX dm_scr_hi
+    JMP sky_geom                    \ (C set: a row would run past &7FFF)
+.lead_col                           \ A = a column of the image: C set if not sky there
+    SEC
+    SBC sky_d1
+    ASL A
+    ASL A
+    ASL A
+    JMP sky_col_check
+}
+
+\ the rows of each helicopter type's rectangle, from type 5 (0: not one): its body's and rotor's
+\ top over every frame (measured), within the overlap rule's height (mover_types_height_table)
+.sky_heights
+    EQUB 26, 26, 28                 \ 5-7
+    EQUB 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    EQUB 26, 23, 23, 23, 26         \ &16-&1A
+
+\ sky_check: C set if the rectangle holds anything but sky
+.sky_check
+{
+    LDX #0
+.row
+    STX sky_q
+    JSR sky_row
+    BNE cell
+    LDA #0
+.full
+    ORA (s_ptr),Y
+    DEY
+    BPL full
+    TAX
+    BNE dirty
+    BRA next_row                    \ 65C02 opcode
+.cell
+    LDX sky_n
+.line
+    LDA (s_ptr),Y
+    BNE dirty
+    DEY
+    DEX
+    BNE line
+    TYA
+    SEC
+    SBC sky_skip
+    TAY
+    BPL cell
+.next_row
+    LDX sky_q
+    INX
+    CPX sky_nq
+    BNE row
+    CLC
+    RTS
+.dirty
+    SEC
+    RTS
+}
+
+\ each helicopter's image's blocks: per screen, at the same addresses (helicopter 0's in main RAM,
+\ src/sky_main.6502; 1's after the save arena)
+.sky_blk_lo
+FOR b = 0..3
+    EQUB LO(sky_img0 + b * SKY_BLOCK)
+NEXT
+FOR b = 0..3
+    EQUB LO(SKY_IMG1 + b * SKY_BLOCK)
+NEXT
+.sky_blk_hi
+FOR b = 0..3
+    EQUB HI(sky_img0 + b * SKY_BLOCK)
+NEXT
+FOR b = 0..3
+    EQUB HI(SKY_IMG1 + b * SKY_BLOCK)
+NEXT

@@ -36,12 +36,12 @@ $relDef = if ($Release) { 'RELEASE=1' } else { 'RELEASE=0' }
 $endDef = if ($ShiftEnd) { 'SHIFT_END=1' } else { 'SHIFT_END=0' }
 $stem = 'strykers' + $(if ($Shift) { "-shift$Shift" + $(if ($ShiftEnd) { 'end' } else { '' }) } else { '' })
 # -Define DEBUG_LIVES=1 (repeatable): extra -D symbols, which also mark the build's name
-$flags = [ordered]@{ DEBUG_LIVES = '0'; DEBUG_FULLREDRAW = '0' }
+$flags = [ordered]@{ DEBUG_LIVES = '0'; DEBUG_FULLREDRAW = '0'; SKY_HELI = '1' }   # SKY_HELI on unless -Define SKY_HELI=0 (decision 61)
 foreach ($d in $Define) {
     $k, $v = $d -split '=', 2
     if (-not $flags.Contains($k)) { throw "unknown flag $k (known: $($flags.Keys -join ', '))" }
     $flags[$k] = $(if ($v) { $v } else { '1' })
-    $stem += '-' + $k.ToLower()
+    $stem += '-' + $k.ToLower() + $(if ($flags[$k] -ne '1') { $flags[$k] } else { '' })   # a value other than 1 named too (SKY_HELI=0)
 }
 $extra = @(); $stampFlags = @()
 foreach ($k in $flags.Keys) { $extra += @('-D', "$k=$($flags[$k])"); $stampFlags += "$k=$($flags[$k])" }

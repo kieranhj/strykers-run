@@ -1,0 +1,86 @@
+\ sky_off.6502 - SKY_HELI (src/sky.6502): take_off's half, in bank 4 below &9000 (seen with
+\ ROMSEL &04 only, as take_off and render_reset run: not put_on, which has ANDY over it); its
+\ zeroing of the scroll's and the lives digit's columns is src/sky_edges.6502.
+
+\ ---- render_reset's: nothing in sky mode, no image held (main RAM; it copies it to shadow) ----
+.sky_reset
+    LDA #&FF
+    STA sky_k
+    STA sky_k + 1
+    STZ sky_on                      \ 65C02 opcode
+    STZ sky_on + 1                  \ 65C02 opcode
+    RTS
+
+\ ---- take_off's: X = slot, Y = slot + boff (shown here). C set if it was drawn in sky mode: left
+\ for put_on to draw over (but for columns the scroll or the lives digit take), or zeroed. Y kept.
+.sky_take_off
+{
+    CPX #10
+    BCC no
+    CPX #12
+    BCS no
+    STX sky_slot
+    STY sky_idx
+    TXA
+    SEC
+    SBC #10
+    STA sky_s
+    TAX
+    LDA sky_on,X
+    BEQ no                          \ drawn masked: its save block
+    LDX sky_slot
+    BIT need,X                      \ 65C02 opcode: V = bit 6, going back on
+    BVC erase
+    JSR sky_below
+    BCS erase
+    JSR sky_edges                   \ the rest left for put_on
+    BRA done                        \ 65C02 opcode
+.erase
+    JSR sky_erase_old
+.done
+    LDY sky_idx
+    SEC
+    RTS
+.no
+    CLC
+    RTS
+}
+
+\ sky_below: C set if a mover drawn before slot sky_slot (below it) comes off or goes on with its
+\ list rectangle over the helicopter's (or the helicopter is not listed)
+.sky_below
+{
+    LDX #0
+.find
+    CPX list_n
+    BEQ hit                         \ (C set: CPX found them equal)
+    LDA list_slot,X
+    CMP sky_slot
+    BEQ found
+    INX
+    BRA find                        \ 65C02 opcode
+.found
+    LDY #0
+.each
+    CPY list_n
+    BEQ none
+    LDA list_slot,Y
+    BEQ next                        \ the player: drawn last, over it
+    CMP sky_slot
+    BCS next                        \ itself, or drawn after it
+    STY sky_t
+    TAY
+    LDA need,Y
+    LDY sky_t
+    CMP #0
+    BEQ next                        \ staying
+    JSR list_overlap                \ X, Y entries (keeps them): C set if they overlap
+    BCS hit
+.next
+    INY
+    BRA each                        \ 65C02 opcode
+.none
+    CLC
+.hit
+    RTS
+}
