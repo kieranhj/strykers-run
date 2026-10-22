@@ -349,7 +349,7 @@
 
 \ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 .scenery_sprite_banks
-    EQUB &04, &04, &04, &04, &04, &04, &04, &04, &04, &04, &04, &04, &04, &04, &04, &04    \ &00
+    EQUB &04, &04, &04, &04, &04 + 3 * DITHER_HILLS, &04, &04, &04, &04, &04, &04, &04, &04, &04, &04, &04    \ &00 (DITHER_HILLS: MOUNTAINS_ONE in bank 7)
     EQUB &04, &04, &04, &04, &04, &04, &04, &06, &06, &06, &06, &06, &06, &06, &06, &06    \ &10
     EQUB &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06    \ &20
     EQUB &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07    \ &30
@@ -361,8 +361,8 @@
     EQUB LO(scenery_sprite_01 + 147)                \ &01
     EQUB LO(scenery_sprite_02 + 160)                \ &02
     EQUB LO(scenery_sprite_03 + 170)                  \ &03
-    EQUB LO(scenery_sprite_04 + 223)                \ &04
-    EQUB LO(scenery_sprite_05 + 237)                \ &05
+    EQUB LO(scenery_sprite_04_last)                 \ &04 (DITHER_HILLS: the sprite's own, src/bank4.6502)
+    EQUB LO(scenery_sprite_05_last)                 \ &05
     EQUB LO(scenery_sprite_06 + 216)                \ &06
     EQUB LO(scenery_sprite_07 + 72)                 \ &07
     EQUB LO(scenery_sprite_08 + 55)                 \ &08
@@ -430,8 +430,8 @@
     EQUB HI(scenery_sprite_01 + 147)                \ &01
     EQUB HI(scenery_sprite_02 + 160)                \ &02
     EQUB HI(scenery_sprite_03 + 170)                  \ &03
-    EQUB HI(scenery_sprite_04 + 223)                \ &04
-    EQUB HI(scenery_sprite_05 + 237)                \ &05
+    EQUB HI(scenery_sprite_04_last)                 \ &04
+    EQUB HI(scenery_sprite_05_last)                 \ &05
     EQUB HI(scenery_sprite_06 + 216)                \ &06
     EQUB HI(scenery_sprite_07 + 72)                 \ &07
     EQUB HI(scenery_sprite_08 + 55)                 \ &08

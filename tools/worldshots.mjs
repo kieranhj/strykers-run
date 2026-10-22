@@ -3,7 +3,7 @@
 // observer mode (the C+H+R+I+S cheat: `observer_mode` non-zero) on the title, starts a game and
 // holds the cursor RIGHT key, which in observer mode scrolls the world a column a loop with no
 // player and no logic (so the run never stalls, as play holding RIGHT does at column 3,319).
-// At each COLUMN (the viewport's left edge, ascending) it lets go, waits for the screens to
+// At each COLUMN (the viewport's left edge, in the order given: LEFT held for one below the view) it lets go, waits for the screens to
 // settle and writes OUTDIR/shot-<left>.png (screenshotActive, scale 1) and OUTDIR/shot-<left>.json
 // (the viewport, the CRTC start, the movers' slots). The movers in observer mode are the ones the
 // triggers made, drawn where they started: nothing moves them.
@@ -16,7 +16,7 @@ if (!disc || !outdir || !cols.length) {
     console.error("usage: node tools/worldshots.mjs DISC OUTDIR COLUMN [COLUMN ...]");
     process.exit(2);
 }
-const targets = cols.map(Number).sort((a, b) => a - b);
+const targets = cols.map(Number);
 mkdirSync(outdir, { recursive: true });
 const syms = {};
 for (const sec of JSON.parse(readFileSync(disc.replace(/\.ssd$/, ".symbols.json"), "utf8")).assemblies[0].sections)
@@ -61,6 +61,10 @@ for (const t of targets) {
         s.keyDownRaw(KEY.RIGHT);
         while (view() < t) await frames(1);
         s.keyUpRaw(KEY.RIGHT);
+    } else if (view() > t) {
+        s.keyDownRaw(KEY.LEFT);
+        while (view() > t) await frames(1);
+        s.keyUpRaw(KEY.LEFT);
     }
     await frames(12);                       // both screens drawn at the last column, the flip done
     const left = view();

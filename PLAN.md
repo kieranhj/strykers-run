@@ -66,6 +66,9 @@ Built (2026-10-20/21), each with its harness:
   with one update's shooting pose, as a grenade's throw.
 - **Vehicles take hits** (`GAMEPLAY_ARMOUR`, decision 62): the player's helicopters and tank take 3
   hits (a bullet's impact sound) before the one that wrecks them; the count stays with a parked vehicle.
+- **Dithered hills** (`DITHER_HILLS`, decision 64, branch `dither-hills`): the hills band's far, mid and
+  fore ranges dithered (blue 4/16, red 6/16, red 2/16) in `MOUNTAINS_TWO`'s data; `MOUNTAINS_ONE`, which
+  only a real Master shows, is not (no room: 708 bytes). The sky tints tried with it were dropped (65, 66).
 - Speed: the HUD copied a byte column a turn; every flag on, 6 late frames of 1,998 against 5 with
   every flag off (passbench, seed 1, unshifted `DEBUG_LIVES` builds, 2026-10-21).
 

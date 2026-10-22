@@ -48,6 +48,7 @@
     EQUB &8E, &8C, &BC, &4C, &BC, &8C, &FC, &8C, &BC, &4C, &AC, &CC, &8D, &8F, &7C, &8E
     EQUB &4C, &BC, &4C, &BC, &00, &A5
 
+IF DITHER_HILLS = 0                 \ DITHER_HILLS: dropped, its room MOUNTAINS_TWO's dither's
 .scenery_sprite_03    \ (SCENERY_HELICOPTER) # Not used as scenery
     EQUB &00, &0E, &00, &A8, &BC, &6C, &BC, &EC, &BC, &A8, &00, &0B, &BC, &0F, &00, &BC
     EQUB &8C, &BC, &8C, &9C, &A8, &00, &0B, &BC, &A8, &94, &04, &00, &04, &14, &BC, &04
@@ -61,24 +62,14 @@
     EQUB &4C, &BC, &B0, &B4, &A8, &00, &0E, &BC, &05, &00, &BC, &8C, &BC, &8C, &9C, &68
     EQUB &00, &0B, &A8, &94, &05, &00, &A8, &BC, &9C, &A8, &00, &8A, &BE, &68, &BE, &BC
     EQUB &BE, &A8, &04, &00, &A8, &BE, &A8, &00, &8E
+ELSE
+scenery_sprite_03 = scenery_sprite_05   \ the tables want an address; nothing reads it: no layer places
+ENDIF                               \ sprite 3 (tools/worldmap.py's runs over the whole world)
 
-.scenery_sprite_04    \ (SCENERY_MOUNTAINS_ONE)
-    EQUB &00, &0F, &00, &68, &54, &19, &00, &54, &68, &80, &94, &BD, &0F, &3F, &7D, &54
-    EQUB &00, &11, &13, &00, &A8, &94, &13, &00, &54, &68, &06, &00, &7C, &7D, &0F, &3F
-    EQUB &BE, &A8, &00, &12, &15, &00, &A8, &54, &0E, &00, &94, &A8, &08, &00, &94, &BD
-    EQUB &0B, &3F, &BE, &05, &3F, &BE, &BC, &00, &15, &18, &00, &68, &54, &08, &00, &94
-    EQUB &A8, &0A, &00, &A8, &7E, &0A, &3F, &BD, &BE, &7F, &BE, &BD, &7F, &BD, &94, &00
-    EQUB &18, &1C, &00, &A8, &54, &40, &94, &68, &0E, &00, &A8, &FE, &08, &3F, &BD, &BE
-    EQUB &BD, &06, &3F, &BC, &00, &15, &1F, &00, &A8, &94, &A8, &11, &00, &54, &95, &BD
-    EQUB &08, &3F, &BD, &BE, &05, &3F, &BE, &A8, &00, &14, &E8, &D4, &0E, &00, &94, &A8
-    EQUB &0A, &00, &A8, &94, &0F, &00, &94, &BD, &0E, &3F, &BD, &7E, &BF, &BE, &A8, &00
-    EQUB &17, &06, &00, &68, &94, &08, &00, &54, &A8, &0D, &00, &A8, &0E, &00, &A8, &7E
-    EQUB &11, &3F, &7D, &94, &00, &15, &08, &00, &A8, &94, &04, &00, &94, &68, &20, &00
-    EQUB &A8, &BE, &14, &3F, &BC, &00, &11, &0A, &00, &68, &94, &A8, &1D, &00, &A8, &94
-    EQUB &05, &00, &94, &7D, &05, &3F, &7E, &FD, &07, &3F, &BE, &A8, &00, &17, &0D, &00
-    EQUB &A8, &94, &1E, &00, &BC, &C0, &BC, &07, &3F, &BD, &09, &3F, &7E, &A8, &00, &12
-    EQUB &0F, &00, &BC, &1E, &00, &A8, &94, &40, &BC, &0E, &3F, &BE, &A8, &00, &8F
-
+IF DITHER_HILLS = 0
+    INCLUDE "mountains_one.6502"    \ MOUNTAINS_ONE (DITHER_HILLS: in bank 7, src/main.6502)
+ENDIF
+IF DITHER_HILLS = 0
 .scenery_sprite_05    \ (SCENERY_MOUNTAINS_TWO)
     EQUB &00, &0E, &00, &94, &A8, &13, &00, &94, &0B, &00, &BC, &80, &54, &BD, &0D, &3F
     EQUB &BC, &00, &12, &0C, &00, &94, &A8, &15, &00, &A8, &94, &09, &00, &94, &68, &BE
@@ -96,6 +87,10 @@
     EQUB &04, &00, &A8, &BE, &0D, &3F, &BE, &A8, &00, &16, &12, &00, &94, &A8, &17, &00
     EQUB &94, &A8, &06, &00, &BC, &0A, &3F, &7E, &BD, &BF, &BD, &94, &00, &14, &0F, &00
     EQUB &94, &68, &1A, &00, &68, &54, &40, &BC, &0A, &3F, &BD, &FF, &BE, &A8, &00, &92
+scenery_sprite_05_last = scenery_sprite_05 + 237
+ELSE
+    INCLUDE "hills_dither_two.6502" \ DITHER_HILLS: dithered (tools/ditherhills.py), in sprite 3's and MOUNTAINS_ONE's room
+ENDIF
 
 .scenery_sprite_06    \ (SCENERY_TREES_ONE)
     EQUB &00, &1B, &00, &D4, &BC, &68, &40, &54, &06, &00, &94, &06, &00, &94, &A8, &94

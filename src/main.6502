@@ -62,6 +62,9 @@ DEBUG_ANY = DEBUG_LIVES OR DEBUG_FULLREDRAW   \ the OR of every DEBUG_ flag (GAM
 \ control for costing). Never in the oracle: DEBUG_FULLREDRAW builds draw them as SKY_HELI=0 does.
 ASSERT SKY_HELI <= 2, "SKY_HELI is 0, 1 or 2"
 SKY_MODE = SKY_HELI * (1 - DEBUG_FULLREDRAW)
+\ Look flag, off by default: DITHER_HILLS, the hills band's far, mid and fore ranges dithered (blue
+\ 4/16, red 6/16, red 2/16) in the mountain sprites themselves (tools/ditherhills.py; an experiment,
+\ branch dither-hills, KC 2026-10-22: "Cool far, warm near")
 VERSION_LINE = "v0.1"
 INCLUDE "../build/build_time.6502"   \ BUILD_TIME, written by tools/build_stamp.py
 
@@ -207,6 +210,9 @@ SECTION DATA4, org = &8000, load = &FFFF1900, exec = &FFFF1D00, filename = "DATA
     SKIP PAD_START
     INCLUDE "bank7.6502"
     INCLUDE "compiled_bank7.6502"   \ step 2 layer 4: compiled kinds of the player's parts
+IF DITHER_HILLS
+    INCLUDE "mountains_one.6502"    \ decision 64: out of bank 4, for MOUNTAINS_TWO's dither
+ENDIF
 IF GAMEPLAY_RUN
     INCLUDE "run.6502"              \ decision 52: the run meter (timer_tick_call pages bank 7 for it)
 ENDIF
