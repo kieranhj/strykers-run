@@ -68,9 +68,7 @@ SKY_MODE = SKY_HELI * (1 - DEBUG_FULLREDRAW)
 TINT_T = &2900 - 91 * 64            \ row 20: row 111's &2900 less 91 rows of 64 us
 TINT_K = &2901                      \ T1's count for row 111 from T2's: &2900 + 1 + the us from T2's
                                     \ start to T1's at the vsync, less those from T2's read to T1's write
-ASSERT SKY_TINT <= 2, "SKY_TINT is 0, 1 (the band) or 2 (the gradient)"
-TINT_COLOUR = 7 - 3 * (SKY_TINT DIV 2)  \ 1: the band's, white (KC, 2026-10-22: blue was "quite strong"); 2: blue
-TINT_ROWS = 12                       \ 2: the gradient's rows, above the enemy helicopters' highest rectangle
+TINT_COLOUR = 7                     \ the band's colour: white (KC, 2026-10-22: blue, 4, "quite strong")
 TINT_PALETTE = TINT_COLOUR EOR 7    \ logical 0 -> that physical colour (the ULA takes it EOR 7)
 TINT_LEFT = (TINT_COLOUR AND 4) * 8 OR (TINT_COLOUR AND 2) * 4 OR (TINT_COLOUR AND 1) * 2   \ the seam's
 TINT_RIGHT = TINT_LEFT DIV 2        \ pixels in that colour, left and right (MODE 2: bits 5, 3, 1 and 4, 2, 0)
