@@ -608,9 +608,9 @@ ENDIF
     BNE skip_page_88a4
     INX
 .skip_page_88a4
-    CPX #HI(scrolltext_text + 669)  \ &925e = end_of_scrolltext
+    CPX #HI(scrolltext_end)         \ the original's &925e, scrolltext_text + 669 (src/scrolltext.txt's length)
     BNE not_end_of_scrolltext
-    CMP #LO(scrolltext_text + 669)
+    CMP #LO(scrolltext_end)
     BNE not_end_of_scrolltext
     LDX #HI(scrolltext_text)        \ &8fc1 = scrolltext_text
     LDA #LO(scrolltext_text)
@@ -1135,49 +1135,7 @@ ENDIF
     EQUB &1B
     EQUB &FF    \ end of text
 
-.scrolltext_text
-    EQUB &10, &0A, &16, &0E, &25, &0D, &0E, &1C, &12, &10, &17, &25, &0A, &17, &0D, &25    \ "GAME DESIGN AND "
-    EQUB &18, &1B, &12, &10, &12, &17, &0A, &15, &25, &12, &0D, &0E, &0A, &1C, &25, &0B    \ "ORIGINAL IDEAS B"
-    EQUB &22, &25, &0C, &27, &1B, &18, &0B, &0E, &1B, &1D, &1C, &25, &0A, &17, &0D, &25    \ "Y C.ROBERTS AND "
-    EQUB &19, &27, &16, &0E, &15, &15, &0E, &1B, &27, &25, &0C, &18, &0D, &12, &17, &10    \ "P.MELLER. CODING"
-    EQUB &25, &0B, &22, &25, &0C, &27, &1B, &18, &0B, &0E, &1B, &1D, &1C, &27, &25, &10    \ " BY C.ROBERTS. G"
-    EQUB &1B, &0A, &19, &11, &12, &0C, &1C, &25, &0D, &0E, &1C, &12, &10, &17, &0E, &0D    \ "RAPHICS DESIGNED"
-    EQUB &25, &0B, &22, &25, &19, &27, &16, &0E, &15, &15, &0E, &1B, &31, &25, &0C, &27    \ " BY P.MELLER, C."
-    EQUB &1B, &18, &0B, &0E, &1B, &1D, &1C, &25, &0A, &17, &0D, &25, &17, &27, &0E, &15    \ "ROBERTS AND N.EL"
-    EQUB &16, &1C, &27, &25, &1C, &18, &1E, &17, &0D, &25, &0E, &0F, &0F, &0E, &0C, &1D    \ "MS. SOUND EFFECT"
-    EQUB &1C, &25, &0A, &17, &0D, &25, &16, &1E, &1C, &12, &0C, &25, &0B, &22, &25, &16    \ "S AND MUSIC BY M"
-    EQUB &1B, &25, &16, &22, &1C, &1D, &0E, &1B, &22, &27, &25, &10, &0E, &17, &0E, &1B    \ "R MYSTERY. GENER"
-    EQUB &0A, &15, &25, &0D, &18, &10, &1C, &0B, &18, &0D, &22, &25, &1C, &27, &0E, &15    \ "AL DOGSBODY S.EL"
-    EQUB &16, &1C, &31, &25, &0A, &1C, &1C, &12, &1C, &1D, &0A, &17, &1D, &25, &0D, &18    \ "MS, ASSISTANT DO"
-    EQUB &10, &1C, &0B, &18, &0D, &22, &25, &1D, &27, &0B, &18, &1E, &0C, &11, &0E, &1B    \ "GSBODY T.BOUCHER"
-    EQUB &27, &25, &10, &0E, &17, &0E, &1B, &0A, &15, &25, &12, &17, &1C, &19, &12, &1B    \ ". GENERAL INSPIR"
-    EQUB &0A, &1D, &12, &18, &17, &25, &0E, &27, &1B, &18, &0B, &0E, &1B, &1D, &1C, &27    \ "ATION E.ROBERTS."
-    EQUB &25, &1D, &11, &12, &1C, &25, &10, &0A, &16, &0E, &25, &1D, &18, &18, &14, &25    \ " THIS GAME TOOK "
-    EQUB &1D, &0E, &17, &25, &16, &18, &17, &1D, &11, &1C, &25, &1D, &18, &25, &20, &1B    \ "TEN MONTHS TO WR"
-    EQUB &12, &1D, &0E, &25, &0A, &17, &0D, &25, &20, &0A, &1C, &25, &0C, &1B, &0E, &0A    \ "ITE AND WAS CREA"
-    EQUB &1D, &0E, &0D, &25, &1D, &18, &25, &0F, &1E, &15, &0F, &12, &15, &25, &0A, &17    \ "TED TO FULFIL AN"
-    EQUB &25, &1E, &17, &1B, &0E, &16, &12, &1D, &1D, &12, &17, &10, &25, &1E, &1B, &10    \ " UNREMITTING URG"
-    EQUB &0E, &25, &1D, &18, &25, &16, &0A, &12, &16, &25, &0A, &17, &0D, &25, &14, &12    \ "E TO MAIM AND KI"
-    EQUB &15, &15, &25, &1D, &11, &12, &17, &10, &1C, &25, &18, &17, &25, &0A, &25, &0C    \ "LL THINGS ON A C"
-    EQUB &18, &16, &19, &1E, &1D, &0E, &1B, &25, &1C, &0C, &1B, &0E, &0E, &17, &27, &25    \ "OMPUTER SCREEN. "
-    EQUB &0D, &1E, &1B, &12, &17, &10, &25, &1D, &11, &0E, &25, &0D, &0E, &1F, &0E, &15    \ "DURING THE DEVEL"
-    EQUB &18, &19, &16, &0E, &17, &1D, &25, &18, &0F, &25, &1D, &11, &12, &1C, &25, &10    \ "OPMENT OF THIS G"
-    EQUB &0A, &16, &0E, &25, &06, &00, &25, &0D, &12, &1C, &14, &1C, &31, &25, &01, &02    \ "AME 60 DISKS, 12"
-    EQUB &05, &04, &25, &1C, &11, &0E, &0E, &1D, &1C, &25, &18, &0F, &25, &19, &0A, &19    \ "54 SHEETS OF PAP"
-    EQUB &0E, &1B, &31, &25, &01, &02, &04, &25, &19, &0E, &17, &1C, &31, &25, &02, &03    \ "ER, 124 PENS, 23"
-    EQUB &25, &1B, &1E, &0B, &0B, &0E, &1B, &1C, &31, &25, &02, &01, &03, &25, &19, &12    \ " RUBBERS, 213 PI"
-    EQUB &23, &23, &0A, &1C, &31, &25, &02, &03, &04, &09, &25, &0C, &0A, &17, &1C, &25    \ "ZZAS, 2349 CANS "
-    EQUB &18, &0F, &25, &0C, &18, &14, &0E, &31, &25, &08, &09, &01, &25, &0B, &12, &10    \ "OF COKE, 891 BIG"
-    EQUB &25, &16, &0A, &0C, &1C, &31, &25, &08, &06, &25, &19, &0A, &0C, &14, &0E, &1D    \ " MACS, 86 PACKET"
-    EQUB &1C, &25, &18, &0F, &25, &0A, &17, &0A, &0D, &12, &17, &31, &25, &03, &07, &02    \ "S OF ANADIN, 372"
-    EQUB &01, &25, &19, &12, &17, &1D, &1C, &25, &18, &0F, &25, &15, &0A, &10, &0E, &1B    \ "1 PINTS OF LAGER"
-    EQUB &31, &25, &02, &25, &0C, &18, &16, &19, &1E, &1D, &0E, &1B, &1C, &31, &25, &03    \ ", 2 COMPUTERS, 3"
-    EQUB &25, &16, &18, &17, &12, &1D, &18, &1B, &1C, &31, &25, &08, &06, &02, &25, &14    \ " MONITORS, 862 K"
-    EQUB &0E, &0B, &0A, &0B, &1C, &31, &25, &03, &04, &09, &01, &25, &19, &18, &1B, &1D    \ "EBABS, 3491 PORT"
-    EQUB &12, &18, &17, &1C, &25, &18, &0F, &25, &0C, &11, &12, &19, &1C, &25, &0A, &17    \ "IONS OF CHIPS AN"
-    EQUB &0D, &25, &02, &05, &06, &09, &25, &19, &0A, &0C, &14, &0E, &1D, &1C, &25, &18    \ "D 2569 PACKETS O"
-    EQUB &0F, &25, &0C, &1B, &12, &1C, &19, &1C, &25, &20, &0E, &1B, &0E, &25, &0D, &0E    \ "F CRISPS WERE DE"
-    EQUB &16, &18, &15, &12, &1C, &11, &0E, &0D, &27, &25, &25, &25, &25, &FF    \ "MOLISHED.    "
+    INCLUDE "../build/scrolltext.6502"   \ .scrolltext_text .. .scrolltext_end, &FF: from src/scrolltext.txt (tools/scrolltext.py)
 
 \ Step 2 (decision 57, KC: the scroll text "moving 1 pixel ... resulting in the same scrolling speed but
 \ smoother"): the original moved the row a byte column (2 pixels) every 4 fields; scroll_pixel moves it

@@ -56,6 +56,8 @@ try {
     # every flag, so the .config changes whenever the image would (the Makefile writes the same)
     & python tools\build_stamp.py build "$stem.config" $relDef "SHIFT=$Shift" $endDef @stampFlags
     if ($LASTEXITCODE -ne 0) { throw "build_stamp.py failed ($LASTEXITCODE)" }
+    & python tools\scrolltext.py src\scrolltext.txt build\scrolltext.6502   # the title's scroll text (bank5.6502 INCLUDEs it)
+    if ($LASTEXITCODE -ne 0) { throw "scrolltext.py failed ($LASTEXITCODE)" }
 
     & $baron --warn 2 -o "build\$stem.ssd" --title 'STRYKERS RUN' --opt 2 -D $relDef -D "SHIFT=$Shift" -D $endDef @extra `
         --symbols "build\$stem.symbols.json" -v src/main.6502 | Out-File -FilePath "build\$stem.lst" -Encoding utf8

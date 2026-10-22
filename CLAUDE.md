@@ -155,6 +155,7 @@ disassembly's `actually`/`also` notes say what an operand really is.
 - `tools/drawprof.mjs`, `tools/whatif.py`, `tools/colfast.py` - each draw by label and byte kind; costing renderer changes on measured passes
 - `tools/grind.py windows|add|queue|apply|revert|gate|run|report`, `tools/grind_config.py` - the micro-optimisation grind (the beeb-micro-grind skill): annotated windows weighted by cycles, the ledger (`docs/grind/`), the proof gate, the serial apply-and-prove run
 - `tools/pipesim.py PERPASS.json`, `tools/unlocksim.py PERPASS.json` - measured passes replayed under other loop orders: the logic ahead; the flip at the next vsync
+- `tools/scrolltext.py` - the title's scroll text from `src/scrolltext.txt` (editable: one sentence a line, `#` comments; the title font's A-Z, 0-9, space, `. , / : =` and `(C)`) into `build/scrolltext.6502`, at every build (build.ps1, the Makefile); bank 5 INCLUDEs it. Its room is the gap before the page-aligned music at `&9300`: 28 bytes more on the plain disc, 16 on the gameplay disc (2026-10-22)
 - `tools/packmusic.py` - the front end's tunes packed (ZX02) into `src/music_packed.6502`, checked by unpacking
 - `tools/hazelwatch.mjs DISC`, `tools/hazelreach.mjs DISC` - who touches HAZEL after the start; how far the mountain layer reads over the whole world
 - `tools/hang.mjs DISC PASS`, `tools/screendiff.mjs A B PASS` - where a stalled build goes; two builds' screens byte by byte

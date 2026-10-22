@@ -63,7 +63,7 @@ COMPARE  = 0
 # A new flag goes here and in build.ps1's $flags.
 FLAGS = DEBUG_LIVES DEBUG_FULLREDRAW GAMEPLAY_SHIELD GAMEPLAY_LIVES GAMEPLAY_TIMER GAMEPLAY_OPTIONS GAMEPLAY_RUN GAMEPLAY_JUMP GAMEPLAY_FIRE GAMEPLAY_ARMOUR SKY_HELI DITHER_HILLS
 
-# NOT overridable: main.6502 INCLUDEs "../build/build_time.6502".
+# NOT overridable: main.6502 INCLUDEs "../build/build_time.6502", bank5.6502 "../build/scrolltext.6502".
 BUILD = build
 
 # Set by `all` through a recursive make, from SHIFT, SHIFTEND and DEFINES;
@@ -99,7 +99,8 @@ SRC = \
   src/sprite_andy.6502 src/sprite_columns.6502 src/sprite_straight.6502 src/compiled_table.6502 src/compiled_bank5.6502 src/compiled_bank6.6502 src/compiled_bank7.6502 src/compiled_hazel_a.6502 src/compiled_hazel_b.6502 src/music_packed.6502 src/lib/zx02depack.6502 \
   src/sfx_data.6502 src/title.6502 src/title_data.6502 src/loader.6502 \
   src/lib/boot_stamp.6502 src/lib/keydown.6502 src/lib/sfx50.6502 src/scroll_hazel.6502 \
-  src/sky.6502 src/sky_main.6502 src/sky_off.6502 src/sky_edges.6502 src/sky_hazel.6502 src/sky_hazel_c.6502
+  src/sky.6502 src/sky_main.6502 src/sky_off.6502 src/sky_edges.6502 src/sky_hazel.6502 src/sky_hazel_c.6502 \
+  src/hills_dither_two.6502 src/mountains_one.6502 $(BUILD)/scrolltext.6502
 
 # The baron to run, as build.ps1's Find-Tool finds it. A shell fragment, so
 # that it costs nothing on a build that does not assemble; `[ -f bin/baron ]`
@@ -193,6 +194,10 @@ $(CONFIG):
 # failed assembly removes the image and the dump, so a half-written image
 # never looks current. --warn 2 adds Baron's opt-in audits; warnings go to
 # stderr and never change the exit code.
+# The title's scroll text, from the editable src/scrolltext.txt (written only when it changes).
+$(BUILD)/scrolltext.6502: src/scrolltext.txt tools/scrolltext.py
+	$(PYTHON) tools/scrolltext.py src/scrolltext.txt $@
+
 $(SSD): $(SRC) $(CONFIG)
 	@$(FINDBARON); \
 	echo "  $$baron $(SSD)"; \
