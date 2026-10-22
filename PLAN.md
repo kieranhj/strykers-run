@@ -81,7 +81,7 @@ Left:
   enough for a person wants a playtest, or a count of the hits nobody could avoid (a floor).
 - **KC's review** of play: the rewind's speed and distance, the timer's bonus (10 points a second).
 - **The HUD's cost: built** (`HUD_RUPTURE`, decision 67): the HUD's row a CRTC frame of its own from
-  `HUD_ROW` (`&0B80`, 80 columns), 3.2% of a pass saved. Wants b2 or real hardware before a release.
+  `HUD_ROW` (`&0B80`, 80 columns), 3.2% of a pass saved. KC checked it on b2 (2026-10-23); real hardware still to see.
   Next on it (KC): the progress percentage and the score.
 - **Merging into `main`**, when KC says: then one disc with both builds and a boot menu, for a
   release (the brief, "Discs").
