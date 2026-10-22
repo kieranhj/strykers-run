@@ -63,7 +63,7 @@ DEBUG_ANY = DEBUG_LIVES OR DEBUG_FULLREDRAW   \ the OR of every DEBUG_ flag (GAM
 ASSERT SKY_HELI <= 2, "SKY_HELI is 0, 1 or 2"
 SKY_MODE = SKY_HELI * (1 - DEBUG_FULLREDRAW)
 \ Look flag, off by default: DITHER_HILLS, the hills band's far, mid and fore ranges dithered (blue
-\ 4/16, red 2/16, blue 6/16) in the mountain sprites themselves (tools/ditherhills.py; an experiment,
+\ 6/16, red 2/16, blue 4/16) in the mountain sprites themselves (tools/ditherhills.py; an experiment,
 \ branch dither-hills, KC 2026-10-22: "Cool far, warm near")
 VERSION_LINE = "v0.1"
 INCLUDE "../build/build_time.6502"   \ BUILD_TIME, written by tools/build_stamp.py
