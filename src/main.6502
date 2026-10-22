@@ -62,13 +62,6 @@ DEBUG_ANY = DEBUG_LIVES OR DEBUG_FULLREDRAW   \ the OR of every DEBUG_ flag (GAM
 \ control for costing). Never in the oracle: DEBUG_FULLREDRAW builds draw them as SKY_HELI=0 does.
 ASSERT SKY_HELI <= 2, "SKY_HELI is 0, 1 or 2"
 SKY_MODE = SKY_HELI * (1 - DEBUG_FULLREDRAW)
-\ Look flag, off by default: SKY_TINT, the top 20 rows of sky blue (logical 0 blue from the vsync,
-\ cyan from row 20 by a second User VIA T1 split, magenta from row 111 as before) and a 6-row
-\ dithered seam under it in the column buffer (an experiment, branch dither-hills, KC 2026-10-22)
-TINT_T = &2900 - 91 * 64            \ row 20: row 111's &2900 less 91 rows of 64 us
-TINT_K = &2901                      \ T1's count for row 111 from T2's: &2900 + 1 + the us from T2's
-                                    \ start to T1's at the vsync, less those from T2's read to T1's write
-TINT_PALETTE = &03                  \ logical 0 -> blue (physical 4, EOR 7)
 \ Look flag, off by default: DITHER_HILLS, the hills band's far, mid and fore ranges dithered (blue
 \ 4/16, red 6/16, red 2/16) in the mountain sprites themselves (tools/ditherhills.py; an experiment,
 \ branch dither-hills, KC 2026-10-22: "Cool far, warm near")
