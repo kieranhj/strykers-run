@@ -368,3 +368,30 @@ the 1986 original and on the shipping build (the original's rules with this fix)
 quick repeats (172 deaths within 10 passes of the one before, against 57). The original's 9 lives
 were worth about 5 hits.
 
+
+## 14. A vehicle's fuel low byte is never initialised: it carries over from the last vehicle (original behaviour; KEPT, nothing changed)
+
+Reported 2026-10-22 from the original (scarybeasts, who found it in the standard version too): fuel
+is two zero-page bytes, a new vehicle starts at `$02 $00`, but the `$00` is never set, so leaving or
+losing a vehicle hands its low byte to the next. Read from this source the same day (not yet run in
+the emulator):
+
+- `helicopter_fuel_high` (`&97`) is the only half that is per vehicle. `initialise_player_helicopters_loop`
+  stores `#&02` into `movers_helicopter_fuel_high,X` (and there is no low array); `leave_helicopter`
+  saves `helicopter_fuel_high` into `movers_helicopter_fuel_high,Y`; boarding loads it back.
+- `helicopter_fuel_low` (`&98`) is only ever read-modify-written, by `DEC helicopter_fuel_low` in
+  `is_descending_helicopter`. Nothing in `src/` initialises it, so boarding any vehicle continues
+  from whatever the last one left (the first time, whatever zero page held).
+- The carry: `DEC low`, then `DEC high` only if low is still nonzero **before** the branch falls
+  through, i.e. when the DEC reaches 0. From a low byte L the high byte first drops after L steps
+  (256 for L = 0), then every 256; out of fuel is high going negative (`BPL`/`BMI` on it). So a
+  `$02` tank lasts L + 512 steps for L = 1..255 and 768 for L = 0.
+
+So by this reading the carried byte can only **shorten** the first stretch (1 to 255 steps), never
+extend it: `$02 $FF` is 767 steps against a clean `$02 $00`'s 768. If the report means more range
+than a fresh vehicle, the emulator should show it before anyone believes it: board, fly to empty,
+count, leave, board again.
+
+Kept: the original is the specification (CLAUDE.md), and no decision asks for it to change. If
+KC wants the low byte reset on boarding (a `GAMEPLAY_*` rule, decision first), it is one `STZ`
+in the boarding path.
