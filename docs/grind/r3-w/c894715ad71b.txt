@@ -1,0 +1,45 @@
+window c894715ad71b: src/game.6502 lines 3926-3968, 32 instructions, 104.9 cycles a pass measured (wait excluded)
+
+ 3926      2.9     BPL cnp_next_slot_f3edc                                                                ;| A=128..255 X=? Y=? C=? Z=? N=? V=? | in:XYNCV out:XYCV
+ 3927      0.3     LDA #&0C                        \ MOVER_FIRST_PROJECTILE: leave with mover_to_update as the;| A=128..255 X=? Y=128..255 C=? Z=? N=1 V=? | in:XYCV out:AXYNZCV
+ 3928      0.5     STA mover_to_update             \ original's last STY left it (A, Y and flags are dead: update_movers);| A=$0C X=? Y=128..255 C=? Z=0 N=0 V=? | $03=? | in:AXYNZCV out:AXYNZCV
+ 3929          .leave_2a8c
+ 3930      1.8     RTS                                                                                    ;| A=? X=? Y=128..255 C=? Z=? N=? V=? | in:AXYNZCV out:AXYNZCV
+ 3931          .cnp_found_f3edc
+ 3932      0.1     TYA                             \ C=1 from the SBC (no borrow: Y >= 0 there), so + &0C ;| A=0..127 X=? Y=0..127 C=? Z=? N=0 V=? | in:YC out:AC
+ 3933      0.1     ADC #&0B                                                                               ;| A=0..127 X=? Y=0..127 C=? Z=? N=0 V=? | in:AC out:AV
+ 3934      0.1     TAY                                                                                    ;| A=11..139 X=? Y=0..127 C=0 Z=0 N=? V=? | in:AV out:YV
+ 3935      0.1     STY mover_to_update                                                                    ;| A=11..139 X=? Y=11..139 C=0 Z=0 N=? V=? | $03=? | in:YV out:YV
+ 3936      0.1     JMP update_projectiles_loop + 7 \ grind: past its STY (2 bytes), LDA movers_x_high,Y (3) and BMI (2);| A=11..139 X=? Y=11..139 C=0 Z=0 N=? V=? | in:YV out:YV
+ 3937          
+ 3938          .calculate_mover_x_max_from_offset_getting_frame_and_flip
+ 3939              JSR get_mover_frame_and_flip                                                           ;| A=? X=? Y=? C=1 Z=? N=? V=? | in:- out:-
+ 3940          .calculate_mover_x_max_from_offset
+ 3941      8.6     LDX &C5                                                                                ;| A=? X=? Y=? C=? Z=? N=? V=? | $C5=? | in:- out:X
+ 3942      8.6     LDA mover_x_low                                                                        ;| A=? X=?≡$C5 Y=? C=? Z=? N=? V=? | $F8=? | in:X out:AX
+ 3943      8.6     LDY frame_and_flip                                                                     ;| A=?≡$F8 X=?≡$C5 Y=? C=? Z=? N=? V=? | $B7=? | in:AX out:AXN
+ 3944      7.2     BMI is_flipped_2aa5                                                                    ;| A=?≡$F8 X=?≡$C5 Y=?≡$B7 C=? Z=? N=? V=? | in:AXN out:AX
+ 3945          .not_flipped_2a9a
+ 3946      2.9     CLC                                                                                    ;| A=?≡$F8 X=?≡$C5 Y=0..127≡$B7 C=? Z=? N=0 V=? | in:AX out:AXC
+ 3947      4.3     ADC mover_x_offset                                                                     ;| A=?≡$F8 X=?≡$C5 Y=0..127≡$B7 C=0 Z=? N=0 V=? | $81=? | in:AXC out:AXC
+ 3948      4.3     STA mover_x_max_low             \ Leave with mover_x_max = mover_x + x_offset,         ;| A=? X=?≡$C5 Y=0..127≡$B7 C=? Z=? N=? V=? | $C7=? | in:AXC out:XC
+ 3949      4.3     STX mover_x_max_high            \ mover_x = mover_x if unflipped                       ;| A=? X=?≡$C5 Y=0..127≡$B7 C=? Z=? N=? V=? | $C6=? | in:XC out:C
+ 3950      2.9     BCS skip_overflow_2aa0          \ grind: the carry (never measured) taken, not the common case;| A=? X=?≡$C5 Y=0..127≡$B7 C=? Z=? N=? V=? | in:C out:-
+ 3951      8.4     RTS                                                                                    ;| A=? X=?≡$C5 Y=0..127≡$B7 C=0 Z=? N=? V=? | in:- out:-
+ 3952          .skip_overflow_2aa0
+ 3953      0.2     INC mover_x_max_high                                                                   ;| A=? X=?≡$C5 Y=0..127≡$B7 C=1 Z=? N=? V=? | $C6=? | in:- out:-
+ 3954      0.2     RTS                                                                                    ;| A=? X=?≡$C5 Y=0..127≡$B7 C=1 Z=? N=? V=? | in:- out:-
+ 3955          .is_flipped_2aa5
+ 3956      4.3     STA mover_x_max_low             \ Leave with mover_x_max = mover_x,                    ;| A=?≡$F8 X=?≡$C5 Y=128..255≡$B7 C=? Z=? N=1 V=? | $C7=? | in:AX out:AX
+ 3957      4.3     STX mover_x_max_high            \ grind: stored here, not before the BMI (the unflipped path stores its own);| A=?≡$F8 X=?≡$C5 Y=128..255≡$B7 C=? Z=? N=1 V=? | $C6=? | in:AX out:A
+ 3958      2.9     SEC                             \ mover_x = mover_x - x_offset if flipped              ;| A=?≡$F8 X=?≡$C5 Y=128..255≡$B7 C=? Z=? N=1 V=? | in:A out:AC
+ 3959      4.3     SBC mover_x_offset                                                                     ;| A=?≡$F8 X=?≡$C5 Y=128..255≡$B7 C=1 Z=? N=1 V=? | $81=? | in:AC out:AC
+ 3960      4.3     STA mover_x_low                                                                        ;| A=? X=?≡$C5 Y=128..255≡$B7 C=? Z=? N=? V=? | $F8=? | in:AC out:C
+ 3961      4.0     BCS set_mover_x                                                                        ;| A=? X=?≡$C5 Y=128..255≡$B7 C=? Z=? N=? V=? | in:C out:-
+ 3962      1.8     DEC &C5                         \ grind: was DEX/STX &C5 (X is dead after: every caller reloads it);| A=? X=?≡$C5 Y=128..255≡$B7 C=0 Z=? N=? V=? | $C5=? | in:- out:-
+ 3963          .set_mover_x
+ 3964      8.7     RTS                                                                                    ;| A=? X=?≡$C5 Y=128..255≡$B7 C=? Z=? N=? V=? | in:- out:-
+ 3965          
+ 3966          .check_for_collision_with_friends
+ 3967      2.7     JSR set_cm_left                                                                        ;| A=? X=? Y=? C=? Z=? N=? V=? | in:Y out:YV
+ 3968      0.9     LDX #&0B                        \ MOVER_LAST_ENEMY_HELICOPTER                          ;| A=? X=? Y=? C=? Z=? N=? V=? | in:YV out:XYV

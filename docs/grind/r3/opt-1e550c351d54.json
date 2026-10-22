@@ -1,0 +1,38 @@
+{
+ "candidates": [
+  {
+   "window": "1e550c351d54",
+   "file": "src/game.6502",
+   "line": 2114,
+   "old": ".check_mover_x_against_viewport_left\n    LDA &C5\n    CMP viewport_left_high\n    BNE leave_1f60\n    LDA mover_x_low\n    CMP viewport_left_low\n.leave_1f60\n    RTS                             \\ Leave with carry set if mover_x >= viewport_left\n",
+   "relies_on": "Only caller is JSR check_mover_x_against_viewport_left at game.6502:2086, followed by BCS set_sprite_address; carry is the only output used (A, N, Z, V dead: the unflipped path inline at 2072-2075 uses the same CMP/SBC pair and the same BCS). X and Y untouched. leave_1f60 was only the BNE's target (grep: no other reference in src/ or tools/). D flag clear (the unflipped inline path already relies on SBC). No JSR name+N entries.",
+   "equivalence": "Original: C = (C5 > vl_high) or (C5 == vl_high and x_low >= vl_low) = 16-bit mover_x >= viewport_left. New: CMP sets C = x_low >= vl_low, then SBC C5 - vl_high - !C gives C = 1 iff 16-bit x >= vl (standard multi-byte compare). Same X, Y; A, N, Z, V differ but are dead at the only caller.",
+   "file_written": "build/grind/r3/opt-1e550c351d54.json",
+   "new": ".check_mover_x_against_viewport_left\n    LDA mover_x_low                 \\ grind: one 16-bit compare, as the unflipped path's inline one:\n    CMP viewport_left_low           \\ C = mover_x >= viewport_left (A, N, Z, V not read after)\n    LDA &C5\n    SBC viewport_left_high\n    RTS                             \\ Leave with carry set if mover_x >= viewport_left\n    SKIP 2                          \\ grind: never run; keeps add_movers_to_column_buffer and all after it in place\n",
+   "summary": "check_mover_x_against_viewport_left as one straight 16-bit CMP/SBC compare (no BNE): equal-high path 14 -> 12 cycles, differing-high path 9 -> 12; hot path is equal-high (1.2 of 1.37 calls a pass). SKIP 2 keeps every later address unchanged, so no page-crossing moves. Alternative to the next candidate (same lines).",
+   "claim": {
+    "cycles_per_execution": 2,
+    "executions_a_pass": 1.2,
+    "cycles_a_pass": 1.9,
+    "bytes": 0
+   }
+  },
+  {
+   "window": "1e550c351d54",
+   "file": "src/game.6502",
+   "line": 2114,
+   "old": ".check_mover_x_against_viewport_left\n    LDA &C5\n    CMP viewport_left_high\n    BNE leave_1f60\n    LDA mover_x_low\n    CMP viewport_left_low\n.leave_1f60\n    RTS                             \\ Leave with carry set if mover_x >= viewport_left\n",
+   "relies_on": "Only caller is JSR check_mover_x_against_viewport_left at game.6502:2086, followed by BCS set_sprite_address; carry is the only output used (A, N, Z, V dead: the unflipped path inline at 2072-2075 uses the same CMP/SBC pair and the same BCS). X and Y untouched. leave_1f60 was only the BNE's target (grep: no other reference in src/ or tools/). D flag clear (the unflipped inline path already relies on SBC). No JSR name+N entries.",
+   "equivalence": "Original: C = (C5 > vl_high) or (C5 == vl_high and x_low >= vl_low) = 16-bit mover_x >= viewport_left. New: CMP sets C = x_low >= vl_low, then SBC C5 - vl_high - !C gives C = 1 iff 16-bit x >= vl (standard multi-byte compare). Same X, Y; A, N, Z, V differ but are dead at the only caller.",
+   "file_written": "build/grind/r3/opt-1e550c351d54.json",
+   "new": ".check_mover_x_against_viewport_left\n    LDA mover_x_low                 \\ grind: one 16-bit compare, as the unflipped path's inline one:\n    CMP viewport_left_low           \\ C = mover_x >= viewport_left (A, N, Z, V not read after)\n    LDA &C5\n    SBC viewport_left_high\n    RTS                             \\ Leave with carry set if mover_x >= viewport_left\n",
+   "summary": "Same rewrite as the previous candidate without the SKIP 2: 2 bytes smaller, every later main-RAM address from here to &3400 moves down 2 (SKIP unused_3400_original absorbs it). Alternative to the previous candidate (same lines); risk is page-crossing changes in later hot branches.",
+   "claim": {
+    "cycles_per_execution": 2,
+    "executions_a_pass": 1.2,
+    "cycles_a_pass": 1.9,
+    "bytes": 2
+   }
+  }
+ ]
+}

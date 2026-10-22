@@ -1,0 +1,22 @@
+window 01a8e6807e46: src/render.6502 lines 1303-1322, 12 instructions, 104.0 cycles a pass measured (wait excluded)
+
+ 1303      9.8     JSR restore_block               \ returns Y = rb_index, A = 0                          ;| A=$00 X=? Y=? C=0 Z=1 N=0 V=? | in:Y out:AY
+ 1304          .sky_off
+ 1305      4.1     DEC A                           \ 65C02 opcode: &FF                                    ;| A=$00 X=? Y=? C=? Z=1 N=0 V=? | in:AY out:AY
+ 1306     10.2     STA rec_xh,Y                                                                           ;| A=$FF X=? Y=? C=? Z=0 N=1 V=? | [rec_xh,y]=? | in:AY out:-
+ 1307          .out
+ 1308     43.7     RTS                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:- out:-
+ 1309          }
+ 1310          
+ 1311          \ put_on: X = slot. If it goes on, draw it masked, saving what it covers, and record it.
+ 1312          .put_on
+ 1313          {
+ 1314      4.0     BIT need,X                      \ 65C02 opcode: V = bit 6, going on                    ;| A=? X=$00 Y=? C=1 Z=1 N=0 V=? | [$1F,x]=? | in:AX out:XV
+ 1315      2.8     BVS going_on                                                                           ;| A=? X=$00 Y=? C=1 Z=? N=? V=? | in:XV out:XV
+ 1316      1.0     RTS                                                                                    ;| A=? X=$00 Y=? C=1 Z=? N=? V=0 | in:V out:V
+ 1317          .going_on
+ 1318      6.1     STX dm_slot                                                                            ;| A=? X=? Y=? C=? Z=? N=? V=1 | $58=? | in:X out:X
+ 1319      4.1     TXA                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=1 | in:X out:A
+ 1320      6.1     ORA boff                        \ slot + boff: slot < &40, boff 0 or 64                ;| A=? X=? Y=? C=? Z=? N=? V=1 | $52=? | in:A out:A
+ 1321      6.1     STA dm_index                                                                           ;| A=? X=? Y=? C=? Z=? N=? V=1 | $67=? | in:A out:-
+ 1322      6.1     LDX back                        \ room for its block, or make some: arena_top + MAX_BLOCK;| A=? X=? Y=? C=? Z=? N=? V=1 | $56=? | in:- out:-

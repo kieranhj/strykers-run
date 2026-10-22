@@ -1,0 +1,38 @@
+window a0907a593f70: src/sky.6502 lines 309-344, 30 instructions, 198.7 cycles a pass measured (wait excluded)
+
+  309      0.4     LDX #0                                                                                 ;| A=? X=? Y=? C=0 Z=1 N=0 V=? | in:- out:X
+  310          .row
+  311      1.2     STX sky_q                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | $E0=? | in:X out:X
+  312      2.4     JSR sky_row                                                                            ;| A=? X=? Y=? C=? Z=? N=? V=? | in:X out:YZV
+  313      1.0     BNE cell                                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | in:YZV out:YV
+  314      0.4     LDA #0                                                                                 ;| A=$00 X=? Y=? C=? Z=1 N=0 V=? | in:YV out:AYV
+  315          .full
+  316     54.2     ORA (s_ptr),Y                                                                          ;| A=? X=? Y=? C=? Z=? N=0 V=? | [($C2),y]=? | in:AYV out:AYV
+  317     21.1     DEY                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AYV out:AYNV
+  318     31.4     BPL full                                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AYNV out:AYV
+  319      0.4     TAX                                                                                    ;| A=? X=? Y=128..255 C=? Z=? N=1 V=? | in:AV out:ZV
+  320      0.4     BNE dirty                                                                              ;| A=? X=? Y=128..255 C=? Z=? N=? V=? | in:ZV out:V
+  321      0.5     BRA next_row                    \ 65C02 opcode                                         ;| A=? X=$00 Y=128..255 C=? Z=1 N=0 V=? | in:V out:V
+  322          .cell
+  323      3.2     LDX sky_n                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | $DE=? | in:YV out:XYV
+  324          .line
+  325     24.6     LDA (s_ptr),Y                                                                          ;| A=? X=? Y=? C=? Z=? N=? V=? | [($C2),y]=? | in:XYV out:XYZV
+  326      9.7     BNE dirty                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XYZV out:XYV
+  327      9.4     DEY                                                                                    ;| A=$00 X=? Y=? C=? Z=1 N=0 V=? | in:XYV out:XYV
+  328      9.4     DEX                                                                                    ;| A=$00 X=? Y=? C=? Z=? N=? V=? | in:XYV out:XYZV
+  329     13.1     BNE line                                                                               ;| A=$00 X=? Y=? C=? Z=? N=? V=? | in:XYZV out:XYV
+  330      2.0     TYA                                                                                    ;| A=$00 X=$00 Y=? C=? Z=1 N=0 V=? | in:Y out:A
+  331      2.0     SEC                                                                                    ;| A=? X=$00 Y=? C=? Z=? N=? V=? | in:A out:AC
+  332      3.0     SBC sky_skip                                                                           ;| A=? X=$00 Y=? C=1 Z=? N=? V=? | $DF=? | in:AC out:AV
+  333      2.0     TAY                                                                                    ;| A=? X=$00 Y=? C=? Z=? N=? V=? | in:AV out:YNV
+  334      2.8     BPL cell                                                                               ;| A=? X=$00 Y=? C=? Z=? N=? V=? | in:YNV out:YV
+  335          .next_row
+  336      0.8     LDX sky_q                                                                              ;| A=? X=$00 Y=128..255 C=? Z=? N=? V=? | $E0=? | in:V out:XV
+  337      0.5     INX                                                                                    ;| A=? X=?≡$E0 Y=128..255 C=? Z=? N=? V=? | in:XV out:XV
+  338      0.8     CPX sky_nq                                                                             ;| A=? X=? Y=128..255 C=? Z=? N=? V=? | $DA=? | in:XV out:XZV
+  339      0.7     BNE row                                                                                ;| A=? X=? Y=128..255 C=? Z=? N=? V=? | in:XZV out:XV
+  340      0.1     CLC                                                                                    ;| A=? X=? Y=128..255 C=1 Z=1 N=0 V=? | in:V out:CV
+  341      0.3     RTS                                                                                    ;| A=? X=? Y=128..255 C=0 Z=1 N=0 V=? | in:CV out:CV
+  342          .dirty
+  343      0.3     SEC                                                                                    ;| A=? X=? Y=? C=? Z=0 N=? V=? | in:V out:CV
+  344      0.8     RTS                                                                                    ;| A=? X=? Y=? C=1 Z=0 N=? V=? | in:CV out:CV

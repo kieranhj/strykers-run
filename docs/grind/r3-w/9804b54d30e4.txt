@@ -1,0 +1,41 @@
+window 9804b54d30e4: src/game.6502 lines 2033-2071, 32 instructions, 255.3 cycles a pass measured (wait excluded)
+
+ 2033      7.4     BEQ walked                      \ no column steps: nothing more changed                ;| A=? X=? Y=?≡$79 C=? Z=? N=? V=? | in:AXYZCV out:AXYCV
+ 2034      7.4     ASL A                           \ 8 * steps (at most 13 columns)                       ;| A=1..255 X=? Y=?≡$79 C=? Z=0 N=? V=? | in:AXY out:AXY
+ 2035      7.4     ASL A                                                                                  ;| A=0..254 %xxxxxxx0 X=? Y=?≡$79 C=? Z=? N=? V=? | in:AXY out:AXY
+ 2036      7.4     ASL A                                                                                  ;| A=0..252 %xxxxxx00 X=? Y=?≡$79 C=? Z=? N=? V=? | in:AXY out:AXY
+ 2037      7.4     CLC                                                                                    ;| A=0..248 %xxxxx000 X=? Y=?≡$79 C=? Z=? N=? V=? | in:AXY out:AXYC
+ 2038     11.1     ADC screen_address_low                                                                 ;| A=0..248 %xxxxx000 X=? Y=?≡$79 C=0 Z=? N=? V=? | $CE=? | in:AXYC out:AXYCV
+ 2039     11.0     STA screen_address_low                                                                 ;| A=? X=? Y=?≡$79 C=? Z=? N=? V=? | $CE=? | in:AXYCV out:XYCV
+ 2040     10.4     BCC c1_walk_high_kept       \ grind: no carry, the high byte stands (always &40-&7F: no wrap to do);| A=? X=? Y=?≡$79 C=? Z=? N=? V=? | in:XYCV out:XYCV
+ 2041      2.0     LDA screen_address_high                                                                ;| A=? X=? Y=?≡$79 C=1 Z=? N=? V=? | $CF=? | in:XYC out:AXYC
+ 2042      1.3     ADC #&00                                                                               ;| A=?≡$CF X=? Y=?≡$79 C=1 Z=? N=? V=? | in:AXYC out:AXYNCV
+ 2043      2.0     BPL screen_in_range                                                                    ;| A=? X=? Y=?≡$79 C=? Z=? N=? V=? | in:AXYNCV out:AXYCV
+ 2044      0.0     SEC                             \ round the 16K screen, as add_delta_to_screen_address_in_AX;| A=128..255 X=? Y=?≡$79 C=? Z=? N=1 V=? | in:AXY out:AXYC
+ 2045      0.0     SBC #&40                                                                               ;| A=128..255 X=? Y=?≡$79 C=1 Z=? N=1 V=? | in:AXYC out:AXYCV
+ 2046          .screen_in_range
+ 2047      2.0     STA screen_address_high                                                                ;| A=0..191 X=? Y=?≡$79 C=? Z=? N=? V=? | $CF=? | in:AXYCV out:XYCV
+ 2048          .c1_walk_high_kept
+ 2049      7.4     LDA #&08                        \ the column step's delta (deltas_*_table[0])          ;| A=? X=? Y=?≡$79 C=? Z=? N=? V=? | in:XYCV out:AXYCV
+ 2050     11.0     STA delta_low                                                                          ;| A=$08 X=? Y=?≡$79 C=? Z=0 N=0 V=? | $B6=? | in:AXYCV out:XYCV
+ 2051     11.0     STZ delta_high                  \ 65C02 opcode                                         ;| A=$08 X=? Y=?≡$79 C=? Z=0 N=0 V=? | $B7=? | in:XYCV out:XYCV
+ 2052          .walked
+ 2053     22.1     RTS                                                                                    ;| A={0,8} X=? Y=?≡$79 C=? Z=? N=0 V=? | in:XYCV out:XYCV
+ 2054          
+ 2055          .get_mover_sprite_and_screen_addresses    \ # Called with X = mover type
+ 2056      9.0     STZ columns_to_clip_from_left   \ 65C02 opcode                                         ;| A=? X=? Y=? C=? Z=? N=? V=? | $CD=? | in:XC out:XC
+ 2057      9.0     LDY mover                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | $79=? | in:XC out:XYC
+ 2058     12.0     LDA movers_frame_and_flip,Y     \ grind: get_mover_Y_sprite in line, without its CLC: C = 0 from;| A=? X=? Y=?≡$79 C=? Z=? N=? V=? | [$1322,y]=? | in:XYC out:AXYC
+ 2059      6.0     AND #&3F                        \ both callers (BCS not taken; ADC #&1C on a type under &80);| A=? X=? Y=?≡$79 C=? Z=? N=? V=? | in:AXYC out:AXYC
+ 2060     12.0     ADC mover_types_first_sprite_animation_offsets,X                                       ;| A=0..63 X=? Y=?≡$79 C=? Z=? N=0 V=? | [$DA1D,x]=? | in:AXYC out:AYV
+ 2061      6.0     TAX                                                                                    ;| A=? X=? Y=?≡$79 C=? Z=? N=? V=? | in:AYV out:XYV
+ 2062     12.0     LDA animation_table,X                                                                  ;| A=? X=? Y=?≡$79 C=? Z=? N=? V=? | [$D91B,x]=? | in:XYV out:AYV
+ 2063      6.0     TAX                                                                                    ;| A=? X=? Y=?≡$79 C=? Z=? N=? V=? | in:AYV out:XYV
+ 2064     12.0     LDA movers_frame_and_flip,Y     \ X = sprite, A = frame and flip, N and Z from it      ;| A=? X=? Y=?≡$79 C=? Z=? N=? V=? | [$1322,y]=? | in:XYV out:XNV
+ 2065          .get_sprite_and_screen_addresses_for_frame_A
+ 2066     11.1     STX plot_sprite                 \ Step 2 (layer 3): the sprite, for walk_column (flags kept);| A=? X=? Y=? C=? Z=? N=? V=? | $9E=? | in:XNV out:XNV
+ 2067      8.8     BMI is_flipped_1f25                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XNV out:XV
+ 2068          .is_unflipped_1f14
+ 2069      9.2     LDY unflipped_mover_sprite_addresses_low_table,X                                       ;| A=0..127 X=? Y=? C=? Z=? N=0 V=? | [$1261,x]=? | in:X out:XY
+ 2070      9.2     LDA unflipped_mover_sprite_addresses_high_table,X                                      ;| A=0..127 X=? Y=? C=? Z=? N=? V=? | [$12AD,x]=? | in:XY out:AY
+ 2071      4.6     TAX                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AY out:XY

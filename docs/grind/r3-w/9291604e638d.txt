@@ -1,0 +1,35 @@
+window 9291604e638d: src/sky_hazel.6502 lines 44-76, 32 instructions, 141.8 cycles a pass measured (wait excluded)
+
+   44      2.6     STA sky_ytop                                                                           ;| A=0..248 %xxxxx000 X=? Y=? C=? Z=? N=? V=? | sky_ytop=? | in:AY out:Y
+   45      2.6     STZ sky_rb                      \ 65C02 opcode                                         ;| A=0..248 %xxxxx000 X=? Y=? C=? Z=? N=? V=? | sky_rb=? | in:Y out:Y
+   46      1.9     LDA sky_L                                                                              ;| A=0..248 %xxxxx000 X=? Y=? C=? Z=? N=? V=? | $D6=? | in:Y out:AY
+   47      1.3     INC A                           \ 65C02 opcode                                         ;| A=?≡$D6 X=? Y=? C=? Z=? N=? V=? | in:AY out:AY
+   48      2.6     STA sky_rn                      \ the bottom row's lines: H > 8, so all L + 1          ;| A=? X=? Y=? C=? Z=? N=? V=? | sky_rn=? | in:AY out:AY
+   49      2.0     STA sky_t                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | $DB=? | in:AY out:Y
+   50      1.9     LDA sky_H                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | $D9=? | in:Y out:AY
+   51      1.3     SEC                                                                                    ;| A=?≡$D9 X=? Y=? C=? Z=? N=? V=? | in:AY out:AYC
+   52      1.9     SBC sky_t                                                                              ;| A=?≡$D9 X=? Y=? C=1 Z=? N=? V=? | $DB=? | in:AYC out:AY
+   53      1.9     STA sky_n                       \ rows left                                            ;| A=? X=? Y=? C=? Z=? N=? V=? | $DE=? | in:AY out:Y
+   54      1.3     LDX #0                                                                                 ;| A=? X=? Y=? C=? Z=? N=? V=? | in:Y out:XY
+   55          .more
+   56      8.1     LDA sky_rl,X                    \ the character row above                              ;| A=? X=? Y=? C=? Z=? N=0 V=? | [sky_rl,x]=? | in:XY out:AXY
+   57      4.0     SEC                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXY out:AXYC
+   58      4.0     SBC #&80                                                                               ;| A=? X=? Y=? C=1 Z=? N=? V=? | in:AXYC out:AXYC
+   59     10.1     STA sky_rl + 1,X                                                                       ;| A=? X=? Y=? C=? Z=? N=? V=? | [sky_rl+1,x]=? | in:AXYC out:XYC
+   60      8.1     LDA sky_rh,X                                                                           ;| A=? X=? Y=? C=? Z=? N=? V=? | [sky_rh,x]=? | in:XYC out:AXYC
+   61      4.0     SBC #&02                                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXYC out:AXYV
+   62      4.0     ORA #&40                        \ &3D-&3F (below the ring) -> &7D-&7F                  ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXYV out:AXYV
+   63     10.1     STA sky_rh + 1,X                                                                       ;| A=64..255 %x1xxxxxx X=? Y=? C=? Z=0 N=? V=? | [sky_rh+1,x]=? | in:AXYV out:XYV
+   64      4.0     INX                                                                                    ;| A=64..255 %x1xxxxxx X=? Y=? C=? Z=0 N=? V=? | in:XYV out:XYV
+   65      4.0     LDA #7                                                                                 ;| A=64..255 %x1xxxxxx X=? Y=? C=? Z=? N=? V=? | in:XYV out:AXYV
+   66     10.1     STA sky_rt,X                                                                           ;| A=$07 X=? Y=? C=? Z=0 N=0 V=? | [sky_rt,x]=? | in:AXYV out:XYV
+   67      4.0     TXA                                                                                    ;| A=$07 X=? Y=? C=? Z=0 N=0 V=? | in:XYV out:AXYV
+   68     10.1     STA sky_rb,X                                                                           ;| A=? X=? Y=? C=? Z=? N=? V=? | [sky_rb,x]=? | in:AXYV out:XYV
+   69      6.1     LDA sky_n                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | $DE=? | in:XYV out:AXYV
+   70      4.0     CMP #9                                                                                 ;| A=?≡$DE X=? Y=? C=? Z=? N=? V=? | in:AXYV out:AXYCV
+   71      4.7     BCC top                                                                                ;| A=?≡$DE X=? Y=? C=? Z=? N=? V=? | in:AXYCV out:AXYCV
+   72      2.7     SBC #8                          \ (C set)                                              ;| A=9..255≡$DE X=? Y=? C=1 Z=? N=? V=? | in:AXYC out:AXY
+   73      4.1     STA sky_n                                                                              ;| A=1..247 X=? Y=? C=1 Z=0 N=? V=? | $DE=? | in:AXY out:XY
+   74      2.7     LDA #8                                                                                 ;| A=1..247 X=? Y=? C=1 Z=0 N=? V=? | in:XY out:AXY
+   75      6.9     STA sky_rn,X                                                                           ;| A=$08 X=? Y=? C=1 Z=0 N=0 V=? | [sky_rn,x]=? | in:AXY out:XY
+   76      4.1     BRA more                        \ 65C02 opcode                                         ;| A=$08 X=? Y=? C=1 Z=0 N=0 V=? | in:XY out:XY

@@ -1,0 +1,38 @@
+window 3969407a582c: src/render.6502 lines 1965-2000, 32 instructions, 230.6 cycles a pass measured (wait excluded)
+
+ 1965      8.4     AND #&07                        \ the line in the cell                                 ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AX out:AX
+ 1966          rows_imm = * + 1
+ 1967      8.4     CMP #&00                        \ self-modified: rows                                  ;| A=0..7 X=? Y=? C=? Z=? N=0 V=? | in:AX out:AXC
+ 1968     11.0     BCC up                                                                                 ;| A=0..7 X=? Y=? C=? Z=? N=? V=? | in:AXC out:AXC
+ 1969          lo_imm = * + 1
+ 1970      3.3     LDA #&00                        \ self-modified: lo. It stays in the cell (C = 1)      ;| A=0..7 X=? Y=? C=1 Z=? N=? V=? | in:XC out:AXC
+ 1971      6.5     SBC rows_imm                                                                           ;| A=? X=? Y=? C=1 Z=? N=? V=? | raise_address.rows_imm=? | in:AXC out:AXV
+ 1972      9.8     RTS                             \ X is still hi                                        ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXV out:AXV
+ 1973          .up                                 \ d = rows - line - 1: 0 is the cell above's bottom line
+ 1974      7.7     STX ra_hi                                                                              ;| A=0..7 X=? Y=? C=0 Z=? N=? V=? | $6B=? | in:AXC out:AC
+ 1975      5.1     EOR #&FF                        \ C = 0 from the BCC                                   ;| A=0..7 X=? Y=? C=0 Z=? N=? V=? | in:AC out:AC
+ 1976     10.3     ADC rows_imm                                                                           ;| A=248..255 X=? Y=? C=0 Z=0 N=1 V=? | raise_address.rows_imm=? | in:AC out:A
+ 1977      5.1     TAY                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:A out:AY
+ 1978     10.3     EOR lo_imm                      \ lo AND &F8, OR the line it ends on: 7 - (d AND 7)    ;| A=? X=? Y=? C=? Z=? N=? V=? | raise_address.lo_imm=? | in:AY out:AY
+ 1979      5.1     AND #&07                                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AY out:AY
+ 1980      5.1     EOR #&07                                                                               ;| A=0..7 X=? Y=? C=? Z=? N=0 V=? | in:AY out:AY
+ 1981     10.3     EOR lo_imm                                                                             ;| A=0..7 X=? Y=? C=? Z=? N=0 V=? | raise_address.lo_imm=? | in:AY out:AY
+ 1982      7.7     STA ra_lo                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | $59=? | in:AY out:Y
+ 1983      5.1     TYA                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:Y out:A
+ 1984      5.1     LSR A                                                                                  ;| A=? X=? Y=? C=? Z=? N=? V=? | in:A out:A
+ 1985      5.1     LSR A                                                                                  ;| A=0..127 X=? Y=? C=? Z=? N=0 V=? | in:A out:A
+ 1986      5.2     LSR A                                                                                  ;| A=0..63 X=? Y=? C=? Z=? N=0 V=? | in:A out:A
+ 1987      5.2     TAY                             \ cells up, less 1                                     ;| A=0..31 X=? Y=? C=? Z=? N=0 V=? | in:A out:Y
+ 1988      7.7     LDA ra_lo                                                                              ;| A=0..31 X=? Y=0..31 C=? Z=? N=0 V=? | $59=? | in:Y out:AY
+ 1989      5.1     SEC                                                                                    ;| A=?≡$59 X=? Y=0..31 C=? Z=? N=? V=? | in:AY out:AYC
+ 1990     10.3     SBC raise_cells_lo,Y                                                                   ;| A=?≡$59 X=? Y=0..31 C=1 Z=? N=? V=? | [$9D8B,y]=? | in:AYC out:AYC
+ 1991      7.7     STA ra_lo                                                                              ;| A=? X=? Y=0..31 C=? Z=? N=? V=? | $59=? | in:AYC out:YC
+ 1992      7.7     LDA ra_hi                                                                              ;| A=? X=? Y=0..31 C=? Z=? N=? V=? | $6B=? | in:YC out:AYC
+ 1993     10.3     SBC raise_cells_hi,Y                                                                   ;| A=?≡$6B X=? Y=0..31 C=? Z=? N=? V=? | [$9D93,y]=? | in:AYC out:AV
+ 1994      5.1     CMP #&40                        \ round the 16K screen                                 ;| A=? X=? Y=0..31 C=? Z=? N=? V=? | in:AV out:ACV
+ 1995      7.1     BCS in_ring                                                                            ;| A=? X=? Y=0..31 C=? Z=? N=? V=? | in:ACV out:ACV
+ 1996      1.2     ADC #&40                                                                               ;| A=0..63 X=? Y=0..31 C=0 Z=? N=? V=? | in:AC out:AV
+ 1997          .in_ring
+ 1998      5.1     TAX                                                                                    ;| A=64..255 X=? Y=0..31 C=? Z=? N=? V=? | in:AV out:XV
+ 1999      7.7     LDA ra_lo                                                                              ;| A=64..255 X=64..255 Y=0..31 C=? Z=0 N=? V=? | $59=? | in:XV out:AXV
+ 2000     15.4     RTS                                                                                    ;| A=?≡$59 X=64..255 Y=0..31 C=? Z=? N=? V=? | in:AXV out:AXV

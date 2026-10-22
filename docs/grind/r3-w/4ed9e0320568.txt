@@ -1,0 +1,53 @@
+window 4ed9e0320568: src/render.6502 lines 1631-1681, 32 instructions, 152.2 cycles a pass measured (wait excluded)
+
+ 1631     13.4     RTS                                                                                    ;| A=? X=? Y=? C=0 Z=? N=? V=? | in:- out:-
+ 1632          .generic
+ 1633      5.9     BIT dm_flip                                                                            ;| A=? X=? Y=? C=? Z=? N=? V=? | $50=? | in:A out:N
+ 1634      4.8     BPL draw_column.each                                                                   ;| A=? X=? Y=? C=? Z=? N=? V=? | in:N out:-
+ 1635      3.3     LDA ds_c                        \ flipped: the bottom 8 * (n - 1) on                   ;| A=? X=? Y=? C=? Z=? N=1 V=? | $CC=? | in:- out:A
+ 1636      2.2     DEC A                           \ 65C02 opcode                                         ;| A=?≡$CC X=? Y=? C=? Z=? N=? V=? | in:A out:A
+ 1637      2.2     ASL A                                                                                  ;| A=? X=? Y=? C=? Z=? N=? V=? | in:A out:A
+ 1638      2.2     ASL A                                                                                  ;| A=0..254 %xxxxxxx0 X=? Y=? C=? Z=? N=? V=? | in:A out:A
+ 1639      2.2     ASL A                                                                                  ;| A=0..252 %xxxxxx00 X=? Y=? C=? Z=? N=? V=? | in:A out:A
+ 1640      2.2     CLC                                                                                    ;| A=0..248 %xxxxx000 X=? Y=? C=? Z=? N=? V=? | in:A out:AC
+ 1641      3.3     ADC b_ptr                                                                              ;| A=0..248 %xxxxx000 X=? Y=? C=0 Z=? N=? V=? | $C9=? | in:AC out:AC
+ 1642      3.3     STA b_ptr                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | $C9=? | in:AC out:C
+ 1643      3.1     BCC draw_column.each            \ the same page                                        ;| A=? X=? Y=? C=? Z=? N=? V=? | in:C out:-
+ 1644      0.6     LDA b_ptr + 1                                                                          ;| A=? X=? Y=? C=1 Z=? N=? V=? | $CA=? | in:- out:A
+ 1645      0.4     INC A                           \ 65C02 opcode                                         ;| A=?≡$CA X=? Y=? C=1 Z=? N=? V=? | in:A out:AN
+ 1646      0.6     BPL flipped_in_ring                                                                    ;| A=? X=? Y=? C=1 Z=? N=? V=? | in:AN out:A
+ 1647              LDA #&40                        \ &80: round the 16K screen                            ;| A=128..255 X=? Y=? C=1 Z=? N=1 V=? | in:- out:A
+ 1648          .flipped_in_ring
+ 1649      0.6     STA b_ptr + 1                                                                          ;| A=0..127 X=? Y=? C=1 Z=? N=0 V=? | $CA=? | in:A out:-
+ 1650          }
+ 1651              \ falls through
+ 1652          \ draw_column: the part's columns from col_ptr, ds_c of them, each from its bottom's cell
+ 1653          \ b_ptr raised by its first row. Y = the line in the character cell indexes the screen (s_ptr =
+ 1654          \ the cell), the data and the save block together; each cell has 8 bytes of the save block (the
+ 1655          \ lines it does not draw are left unused), so moving up a cell is the data 8 back, the save
+ 1656          \ block 8 on and the screen a character row (&280) up. Saves each screen byte, then writes
+ 1657          \ (byte AND mask) EOR pixel, as the plotter does with the player. Each column's record (count
+ 1658          \ - 1, the lowest byte's address) goes 8 bytes after the last cell before it (v_ptr + 8: v_ptr
+ 1659          \ is that cell's base), its cells after the record; restore_block walks them the same way.
+ 1660          .draw_column
+ 1661          {
+ 1662      0.6     BRA each                        \ 65C02 opcode                                         ;| A=0..127 X=? Y=? C=1 Z=? N=0 V=? | in:- out:-
+ 1663          .empty
+ 1664     13.1     LDA col_ptr                     \ an empty column: 2 bytes                             ;| A=$00 X=? Y=$01 C=? Z=1 N=0 V=? | $C7=? | in:- out:A
+ 1665      8.8     CLC                                                                                    ;| A=?≡$C7 X=? Y=$01 C=? Z=? N=? V=? | in:A out:AC
+ 1666      8.7     ADC #2                                                                                 ;| A=?≡$C7 X=? Y=$01 C=0 Z=? N=? V=? | in:AC out:AC
+ 1667     13.1     STA col_ptr                                                                            ;| A=? X=? Y=$01 C=? Z=? N=? V=? | $C7=? | in:AC out:AC
+ 1668      8.7     BCS empty_hi                    \ the page crossed (rare)                              ;| A=? X=? Y=$01 C=? Z=? N=? V=? | in:AC out:A
+ 1669          .to_next
+ 1670     14.8     JMP next                                                                               ;| A=? X=? Y={1,8} C=? Z=? N=? V=? | in:A out:A
+ 1671          .empty_hi
+ 1672              INC col_ptr + 1                                                                        ;| A=? X=? Y=$01 C=1 Z=? N=? V=? | $C8=? | in:A out:A
+ 1673              BRA to_next                     \ 65C02 opcode                                         ;| A=? X=? Y=$01 C=1 Z=? N=? V=? | in:A out:A
+ 1674          .unflipped_j                        \ (after JMP next: reached only from clip_test)
+ 1675      4.7     LDA ds_n                                                                               ;| A=? X=? Y=$08 C=? Z=? N=0 V=? | $68=? | in:X out:AX
+ 1676      3.1     SEC                                                                                    ;| A=?≡$68 X=? Y=$08 C=? Z=? N=? V=? | in:AX out:AXC
+ 1677      4.7     SBC ds_c                                                                               ;| A=?≡$68 X=? Y=$08 C=1 Z=? N=? V=? | $CC=? | in:AXC out:AX
+ 1678      4.7     BRA have_j                      \ 65C02 opcode                                         ;| A=? X=? Y=$08 C=? Z=? N=? V=? | in:AX out:AX
+ 1679          .clip_test                          \ j = n - c unflipped, c - 1 flipped (c = columns left)
+ 1680      9.0     BIT dm_flip                                                                            ;| A=? X=? Y=$08 C=? Z=? N=1 V=? | $50=? | in:AX out:XN
+ 1681      7.6     BPL unflipped_j                                                                        ;| A=? X=? Y=$08 C=? Z=? N=? V=? | in:XN out:X

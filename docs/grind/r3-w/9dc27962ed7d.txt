@@ -1,0 +1,38 @@
+window 9dc27962ed7d: src/game.6502 lines 1895-1930, 32 instructions, 275.1 cycles a pass measured (wait excluded)
+
+ 1895      0.9     LDY #&00                        \ MOVER_PLAYER                                         ;| A=? X=? Y=? C=? Z=? N=? V=? | in:V out:YV
+ 1896          .plot_mover
+ 1897      7.3     LDA #&04                        \ ***                                                  ;| A=? X=? Y=? C=? Z=? N=? V=? | in:YV out:AYV
+ 1898     11.0     STA os_ram_copy_of_currently_selected_rom\ ***                                         ;| A=$04 X=? Y=? C=? Z=0 N=0 V=? | $F4=? | in:AYV out:AYV
+ 1899     14.6     STA romsel                      \ Paged ROM latch                      ***             ;| A=$04 X=? Y=? C=? Z=0 N=0 V=? | romsel=? | in:AYV out:AYV
+ 1900              ASSERT HI(unflipped_green_pixel_table) = &04
+ 1901     11.0     STA pixel_table_address_high    \ &0440 = unflipped_green_pixel_table                  ;| A=$04 X=? Y=? C=? Z=0 N=0 V=? | $B9=? | in:AYV out:YV
+ 1902     11.0     LDA viewport_left_low                                                                  ;| A=$04 X=? Y=? C=? Z=0 N=0 V=? | $B2=? | in:YV out:AYV
+ 1903     11.0     STA edge_x_low                                                                         ;| A=?≡$B2 X=? Y=? C=? Z=? N=? V=? | $B5=? | in:AYV out:YV
+ 1904     11.0     STY mover                                                                              ;| A=?≡$B2 X=? Y=? C=? Z=? N=? V=? | $79=? | in:YV out:YV
+ 1905     14.6     LDA movers_x_low,Y              \ get_mover_Y_x, inline                                ;| A=?≡$B2 X=? Y=? C=? Z=? N=? V=? | [$1344,y]=? | in:YV out:AYV
+ 1906     11.0     STA mover_x_low                                                                        ;| A=? X=? Y=? C=? Z=? N=? V=? | $F8=? | in:AYV out:YV
+ 1907     14.6     LDA movers_x_high,Y                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | [$1366,y]=? | in:YV out:AYV
+ 1908     11.0     STA &C5                                                                                ;| A=? X=? Y=? C=? Z=? N=? V=? | $C5=? | in:AYV out:YV
+ 1909              ASSERT LO(unflipped_green_pixel_table) <> 0   \ the low byte doubles as the "not flipped" flag
+ 1910      7.3     LDA #LO(unflipped_green_pixel_table)                                                   ;| A=? X=? Y=? C=? Z=? N=? V=? | in:YV out:AYV
+ 1911     11.0     STA pixel_table_address_low     \ Non-zero to indicate not flipped by default          ;| A=$40 X=? Y=? C=? Z=0 N=0 V=? | $B8=? | in:AYV out:YV
+ 1912     14.6     LDA movers_type_and_colour,Y    \ Positive if ally, negative if enemy                  ;| A=$40 X=? Y=? C=? Z=0 N=0 V=? | [$1300,y]=? | in:YV out:ANV
+ 1913      9.2     BPL pm_not_white_g0b1b                                                                 ;| A=? X=? Y=? C=? Z=? N=? V=? | in:ANV out:AV
+ 1914      3.5     CMP #&95                        \ MOVER_TYPE_ENEMY | MOVER_TYPE_HEAVY_GUN *** (first: the commonest);| A=128..255 X=? Y=? C=? Z=? N=1 V=? | in:AV out:ACV
+ 1915      5.1     BCS pm_not_white_g0b1b          \ ***                                                  ;| A=128..255 X=? Y=? C=? Z=? N=? V=? | in:ACV out:AV
+ 1916      0.2     CMP #&85                        \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_MISSILE;| A=128..148 X=? Y=? C=0 Z=? N=? V=? | in:AV out:AZV
+ 1917      0.2     BEQ pm_not_white_g0b1b                                                                 ;| A=128..148 X=? Y=? C=? Z=? N=? V=? | in:AZV out:AV
+ 1918      0.2     CMP #&87                        \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_SOLDIER;| A={$80,$81,$82,$83,$84,$86,$87,$88,$89,$8A,$8B,$8C,$8D,$8E,$8F,$90,$91,$92,$93,$94} X=? Y=? C=? Z=0 N=? V=? | in:AV out:AZV
+ 1919      0.2     BEQ pm_not_white_g0b1b                                                                 ;| A={$80,$81,$82,$83,$84,$86,$87,$88,$89,$8A,$8B,$8C,$8D,$8E,$8F,$90,$91,$92,$93,$94} X=? Y=? C=? Z=? N=? V=? | in:AZV out:AV
+ 1920      0.5     INC pixel_table_address_high    \ Use white pixel table for most enemies               ;| A={$80,$81,$82,$83,$84,$86,$88,$89,$8A,$8B,$8C,$8D,$8E,$8F,$90,$91,$92,$93,$94} X=? Y=? C=? Z=0 N=? V=? | $B9=? | in:AV out:AV
+ 1921          .pm_not_white_g0b1b
+ 1922      7.3     AND #&7F                        \ A = mover type                                       ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AV out:AV
+ 1923     11.0     STA &7A                                                                                ;| A=0..127 X=? Y=? C=? Z=? N=0 V=? | $7A=? | in:AV out:AV
+ 1924      7.3     TAX                                                                                    ;| A=0..127 X=? Y=? C=? Z=? N=0 V=? | in:AV out:AXV
+ 1925     22.0     JSR check_if_mover_is_on_screen \ Returns carry set if mover not on screen             ;| A=0..127 X=0..127 Y=? C=? Z=? N=0 V=? | in:AXV out:AXYNZCV
+ 1926      9.0     BCS not_white + 4                                                                      ;| A=? X=0..127 Y=? C=? Z=? N=? V=? | in:AXYNZCV out:AXYNZCV
+ 1927     11.8     JSR get_mover_sprite_and_screen_addresses                                              ;| A=? X=0..127 Y=? C=0 Z=? N=? V=? | in:XC out:AX
+ 1928     11.8     JSR plot_mover_sprite           \ Plot first part of mover (e.g. player's legs)        ;| A=? X=? Y={0,8} C=? Z=? N=0 V=? | in:AX out:V
+ 1929      5.9     LDY mover                                                                              ;| A=$40 X=? Y=? C=? Z=0 N=0 V=? | $79=? | in:V out:YV
+ 1930      7.9     LDA movers_x_low,Y              \ get_mover_Y_x without &C5: still movers_x_high,Y from the first;| A=$40 X=? Y=?≡$79 C=? Z=? N=? V=? | [$1344,y]=? | in:YV out:AYV

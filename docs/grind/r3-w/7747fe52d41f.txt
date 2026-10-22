@@ -1,0 +1,42 @@
+window 7747fe52d41f: src/game.6502 lines 4784-4823, 32 instructions, 136.5 cycles a pass measured (wait excluded)
+
+ 4784      9.0     LDA movers_frame_and_flip,Y                                                            ;| A=? X=? Y=?≡$03 C=? Z=? N=? V=? | [$1322,y]=? | in:XYCV out:AXYNZCV
+ 4785      6.8     STA frame_and_flip                                                                     ;| A=? X=? Y=?≡$03 C=? Z=? N=? V=? | $B7=? | in:AXYNZCV out:AXYNZCV
+ 4786          .leave_3168
+ 4787     15.0     RTS                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXYNZCV out:AXYNZCV
+ 4788          
+ 4789          .animate_stationery_mover
+ 4790      2.0     JSR random                      \ Step 2 (decision 17): was User VIA timer 2 MSB       ;| A=$80 X=? Y=? C=1 Z=1 N=0 V=? | in:XYV out:AXYCV
+ 4791      0.7     AND #&20                                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXYCV out:AXYNZCV
+ 4792      0.8     BNE leave_3168                                                                         ;| A=0..32 %xxx00000 X=? Y=? C=? Z=? N=0 V=? | in:AXYNZCV out:AXYNZCV
+ 4793      0.3     LDA #&08                        \ FRAME_GUN_DOWN                                       ;| A=$00 X=? Y=? C=? Z=1 N=0 V=? | in:YV out:AYZV
+ 4794      0.5     BNE replot_mover                \ Always branches                                      ;| A=$08 X=? Y=? C=? Z=0 N=0 V=? | always | in:AYZV out:AYV
+ 4795          
+ 4796          .update_mover    \ grind: check_if_mover_can_be_updated inlined; the paths that do not update leave by RTS (C is dead in update_mover's caller)
+ 4797     18.0     JSR get_mover_Y_x_and_y         \ the mover's x (mover_x_low, &C5) for the test below, as the overlap test got it;| A=$FF X=0..2 Y=? C=? Z=? N=? V=? | in:Y out:-
+ 4798      6.0     CLC                             \ layer 5 (BUGS #13): the overlap test is below, past the skeletons;| A=? X=0..2 Y=? C=? Z=? N=? V=? | in:- out:C
+ 4799      9.0     LDX viewport_right_high         \ and explosions (the player walks through them now, and one under;| A=? X=0..2 Y=? C=0 Z=? N=? V=? | $BB=? | in:C out:XC
+ 4800      9.0     LDA viewport_right_low          \ the player stood frozen: KC, 2026-10-21); C = 0 for the ADC;| A=? X=?≡$BB Y=? C=0 Z=? N=? V=? | $B3=? | in:XC out:AXC
+ 4801      6.0     ADC #&0A                                                                               ;| A=?≡$B3 X=?≡$BB Y=? C=0 Z=? N=? V=? | in:AXC out:AXCV
+ 4802      8.9     BCC um0db5_skip_overflow                                                               ;| A=? X=?≡$BB Y=? C=? Z=? N=? V=? | in:AXCV out:AXV
+ 4803      0.2     INX                                                                                    ;| A=? X=?≡$BB Y=? C=1 Z=? N=? V=? | in:AXV out:AXV
+ 4804          .um0db5_skip_overflow
+ 4805      9.0     CPX &C5                                                                                ;| A=? X=? Y=? C=? Z=? N=? V=? | $C5=? | in:AXV out:AZCV
+ 4806      7.6     BCC leave_3160                                                                         ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AZCV out:AZCV
+ 4807      2.9     BNE um0db5_is_on_screen                                                                ;| A=? X=? Y=? C=1 Z=? N=? V=? | in:AZV out:AV
+ 4808      3.5     CMP mover_x_low                 \ If the mover is beyond the right edge of the screen, ;| A=? X=? Y=? C=1 Z=1 N=0 V=? | $F8=? | in:AV out:CV
+ 4809      3.0     BCC leave_3160                  \ leave: no update required                            ;| A=? X=? Y=? C=? Z=? N=? V=? | in:CV out:CV
+ 4810          .um0db5_is_on_screen
+ 4811      2.0     LDY mover_to_update                                                                    ;| A=? X=? Y=? C=1 Z=? N=? V=? | $03=? | in:V out:YV
+ 4812      2.6     LDA movers_type_and_colour,Y                                                           ;| A=? X=? Y=?≡$03 C=1 Z=? N=? V=? | [$1300,y]=? | in:YV out:AYV
+ 4813      1.3     AND #&7F                                                                               ;| A=? X=? Y=?≡$03 C=1 Z=? N=? V=? | in:AYV out:AYV
+ 4814      1.3     CMP #&0D                        \ MOVER_TYPE_SKELETON: below it, update                ;| A=0..127 X=? Y=?≡$03 C=1 Z=? N=0 V=? | in:AYV out:AYCV
+ 4815      1.9     BCC um0db5_update                                                                      ;| A=0..127 X=? Y=?≡$03 C=? Z=? N=? V=? | in:AYCV out:AYV
+ 4816      0.2     CMP #&13                        \ MOVER_TYPE_MINE: mines are updated too               ;| A=13..127 X=? Y=?≡$03 C=1 Z=? N=? V=? | in:AYV out:YCV
+ 4817      0.3     BCS um0db5_update                                                                      ;| A=13..127 X=? Y=?≡$03 C=? Z=? N=? V=? | in:YCV out:YV
+ 4818      0.1     JMP animate_explosion_or_skeleton\ Explosion or skeleton: animate it and leave (its RTS returns from update_mover);| A=13..18 X=? Y=?≡$03 C=0 Z=? N=? V=? | in:YV out:YV
+ 4819          .um0db5_update
+ 4820      1.9     LDX mover_to_update                                                                    ;| A=0..127 X=? Y=?≡$03 C=? Z=? N=? V=? | $03=? | in:Y out:XY
+ 4821      3.7     JSR check_for_player_collision_with_mover_Y\ Returns carry set if collision            ;| A=0..127 X=?≡$03 Y=?≡$03 C=? Z=? N=? V=? | in:XY out:CV
+ 4822      1.3     BCS leave_3160                  \ Leave if mover overlaps player (C = 0 on: consider_mover_firing_bullet);| A=? X=$00 Y=? C=? Z=? N=? V=? | in:CV out:CV
+ 4823      1.8     LDY mover_to_update                                                                    ;| A=? X=$00 Y=? C=0 Z=? N=? V=? | $03=? | in:V out:V

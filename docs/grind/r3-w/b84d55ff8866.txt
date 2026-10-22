@@ -1,0 +1,39 @@
+window b84d55ff8866: src/render.6502 lines 486-522, 32 instructions, 152.7 cycles a pass measured (wait excluded)
+
+  486     37.7     JSR take_off                                                                           ;| A=? X=1..255 Y=0..254 C=? Z=0 N=? V=? | in:X out:-
+  487     18.8     LDY ren_k                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | $4E=? | in:- out:YZ
+  488     18.8     BNE taking_off                                                                         ;| A=? X=? Y=?≡$4E C=? Z=? N=? V=? | in:YZ out:Y
+  489          .taken_off
+  490          
+  491              \ ---- 5. the scroll, oldest column first, each with its view and the lives digit ----
+  492      3.0     LDA pending_n                                                                          ;| A=? X=? Y=0..254 C=? Z=1 N=0 V=? | $6A=? | in:- out:AZ
+  493      2.5     BEQ scrolled                                                                           ;| A=?≡$6A X=? Y=0..254 C=? Z=? N=? V=? | in:AZ out:A
+  494      1.5     LDY #0                                                                                 ;| A=1..255≡$6A X=? Y=0..254 C=? Z=0 N=? V=? | in:A out:AY
+  495      1.5     CMP #2                                                                                 ;| A=1..255≡$6A X=? Y=$00 C=? Z=1 N=0 V=? | in:AY out:YZ
+  496      1.5     BEQ apply_entries                                                                      ;| A=1..255≡$6A X=? Y=$00 C=? Z=? N=? V=? | in:YZ out:Y
+  497      1.5     INY                                                                                    ;| A=1..255≡$6A X=? Y=$00 C=? Z=0 N=? V=? | in:Y out:Y
+  498          .apply_entries
+  499      2.3     STY ren_k                                                                              ;| A=? X=? Y=0..1 C=? Z=? N=0 V=? | $4E=? | in:Y out:Y
+  500      3.0     LDX pending_slot,Y                                                                     ;| A=? X=? Y=0..1 C=? Z=? N=0 V=? | [pending_slot,y]=? | in:Y out:X
+  501      4.6     JSR history_to_view             \ (keeps X, Y; changes only A): the view after this scroll;| A=? X=? Y=0..1 C=? Z=? N=? V=? | in:X out:X
+  502      3.0     LDA hist_seqs,X                                                                        ;| A=? X=? Y=0..1 C=? Z=? N=? V=? | [hist_seqs,x]=? | in:X out:AX
+  503      2.3     LDY back                                                                               ;| A=? X=? Y=0..1 C=? Z=? N=? V=? | $56=? | in:AX out:AXY
+  504      3.8     STA buf_seq,Y                                                                          ;| A=? X=? Y=?≡$56 C=? Z=? N=? V=? | [buf_seq,y]=? | in:AXY out:XY
+  505      2.3     LDA HUD_KEY                                                                            ;| A=? X=? Y=?≡$56 C=? Z=? N=? V=? | $95=? | in:XY out:AXY
+  506      3.8     STA buf_lives,Y                                                                        ;| A=?≡$95 X=? Y=?≡$56 C=? Z=? N=? V=? | [buf_lives,y]=? | in:AXY out:X
+  507      4.6     JSR write_column                \ X = the slot still                                   ;| A=?≡$95 X=? Y=?≡$56 C=? Z=? N=? V=? | in:X out:-
+  508      4.6     JSR ren_plot_lives                                                                     ;| A=$00 X=8..200 %xxxxx000 Y=$07 C=1 Z=1 N=0 V=? | in:- out:-
+  509      2.3     LDY ren_k                                                                              ;| A=? X=0..224 %xxx00000 Y=$FF C=? Z=? N=? V=? | $4E=? | in:- out:YZ
+  510      2.3     BNE scrolled                    \ entry 1 (pending_slot + 1) is always the last        ;| A=? X=0..224 %xxx00000 Y=?≡$4E C=? Z=? N=? V=? | in:YZ out:Y
+  511              INY                                                                                    ;| A=? X=0..224 %xxx00000 Y=$00≡$4E C=? Z=1 N=0 V=? | in:Y out:Y
+  512              BRA apply_entries               \ 65C02 opcode                                         ;| A=? X=0..224 %xxx00000 Y=$01 C=? Z=0 N=0 V=? | in:Y out:Y
+  513          .scrolled
+  514      2.0     LDX #2                          \ the logic's view again; it is this screen's now      ;| A=? X=? Y=? C=? Z=? N=? V=? | in:- out:X
+  515      6.0     JSR buffer_to_view                                                                     ;| A=? X=$02 Y=? C=? Z=0 N=0 V=? | in:X out:-
+  516      3.0     LDX back                                                                               ;| A=? X=$02 Y=? C=? Z=? N=? V=? | $56=? | in:- out:X
+  517      6.0     JSR view_to_buffer                                                                     ;| A=? X=?≡$56 Y=? C=? Z=? N=? V=? | in:X out:X
+  518      4.0     LDA buf_lives,X                                                                        ;| A=? X=? Y=? C=? Z=? N=? V=? | [buf_lives,x]=? | in:X out:A
+  519      3.0     CMP HUD_KEY                                                                            ;| A=? X=? Y=? C=? Z=? N=? V=? | $95=? | in:A out:Z
+  520      3.0     BEQ lives_drawn                                                                        ;| A=? X=? Y=? C=? Z=? N=? V=? | in:Z out:-
+  521              JSR ren_plot_lives                                                                     ;| A=? X=? Y=? C=? Z=0 N=? V=? | in:- out:-
+  522              LDX back                                                                               ;| A=? X=0..224 %xxx00000 Y=$FF C=? Z=? N=? V=? | $56=? | in:- out:X

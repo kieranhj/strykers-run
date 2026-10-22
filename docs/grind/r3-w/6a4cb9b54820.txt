@@ -1,0 +1,41 @@
+window 6a4cb9b54820: src/render.6502 lines 1083-1121, 32 instructions, 149.3 cycles a pass measured (wait excluded)
+
+ 1083     11.8     JSR widen_by_live               \ ...and where it goes                                 ;| A=? X=?≡$4D Y=? C=? Z=? N=? V=1 | in:- out:-
+ 1084          .listed
+ 1085     13.0     INC list_n                                                                             ;| A=? X=? Y=? C=? Z=? N=? V=? | $53=? | in:- out:-
+ 1086          .not_listed
+ 1087      7.8     LDY ren_k                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | $4E=? | in:- out:Y
+ 1088      5.2     INY                                                                                    ;| A=? X=? Y=?≡$4E C=? Z=? N=? V=? | in:Y out:Y
+ 1089     10.4     BRA gather                      \ 65C02 opcode                                         ;| A=? X=? Y=? C=? Z=? N=? V=? | in:Y out:Y
+ 1090          .gathered
+ 1091          .again
+ 1092      3.0     STZ list_changed                                                                       ;| A=? X=? Y=? C=1 Z=? N=? V=? | $74=? | in:- out:-
+ 1093      2.0     LDX #0                                                                                 ;| A=? X=? Y=? C=1 Z=? N=? V=? | in:- out:X
+ 1094          .each_a
+ 1095     10.9     CPX list_n                                                                             ;| A=? X=? Y=? C=? Z=? N=? V=? | $53=? | in:X out:XZ
+ 1096      8.3     BEQ swept                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XZ out:X
+ 1097     10.6     LDY list_slot,X                                                                        ;| A=? X=? Y=? C=? Z=0 N=? V=? | [list_slot,x]=? | in:X out:XY
+ 1098     10.6     LDA need,Y                                                                             ;| A=? X=? Y=? C=? Z=? N=? V=? | [$1F,y]=? | in:XY out:XZ
+ 1099      7.4     BNE next_a                      \ already coming off or going on                       ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XZ out:X
+ 1100      1.0     LDY #0                                                                                 ;| A=$00 X=? Y=? C=? Z=1 N=0 V=? | in:X out:XY
+ 1101          .each_b
+ 1102      6.2     CPY list_n                                                                             ;| A=? X=? Y=? C=? Z=? N=? V=? | $53=? | in:XY out:XYZ
+ 1103      4.6     BEQ next_a                                                                             ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XYZ out:XY
+ 1104      4.7     STY list_b                                                                             ;| A=? X=? Y=? C=? Z=0 N=? V=? | $6E=? | in:XY out:XY
+ 1105      6.2     LDA list_slot,Y                                                                        ;| A=? X=? Y=? C=? Z=0 N=? V=? | [list_slot,y]=? | in:XY out:AX
+ 1106      3.1     TAY                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AX out:XY
+ 1107      6.2     LDA need,Y                                                                             ;| A=? X=? Y=? C=? Z=? N=? V=? | [$1F,y]=? | in:XY out:XYZ
+ 1108      3.9     BEQ next_b                      \ staying too: no reason                               ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XYZ out:XY
+ 1109      1.6     TYA                             \ decision 37: only if b is drawn before a (below it). Over a,;| A=1..255 X=? Y=? C=? Z=0 N=? V=? | in:XY out:AXZ
+ 1110      2.0     BEQ next_b                      \ b's save holds a's bytes, so b comes off and on alone. The;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXZ out:AX
+ 1111      1.9     CMP list_slot,X                 \ player (slot 0) is drawn last, over everything; the movers;| A=1..255 X=? Y=? C=? Z=0 N=? V=? | [list_slot,x]=? | in:AX out:XC
+ 1112      1.0     BCC below                       \ in slot order (C clear: b's slot below a's)          ;| A=1..255 X=? Y=? C=? Z=? N=? V=? | in:XC out:X
+ 1113      1.7     LDY list_slot,X                                                                        ;| A=1..255 X=? Y=? C=1 Z=? N=? V=? | [list_slot,x]=? | in:X out:XZ
+ 1114      1.1     BNE next_b                      \ (a the player: b is below it)                        ;| A=1..255 X=? Y=? C=1 Z=? N=? V=? | in:XZ out:X
+ 1115          .below
+ 1116      0.7     LDY list_b                                                                             ;| A=1..255 X=? Y=? C=? Z=? N=? V=? | $6E=? | in:X out:XY
+ 1117      1.3     JSR list_overlap                \ X, Y list entries: C set if they overlap             ;| A=1..255 X=? Y=?≡$6E C=? Z=? N=? V=? | in:XY out:XC
+ 1118      0.7     BCC next_b                                                                             ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XC out:X
+ 1119      0.0     LDY list_slot,X                 \ a overlaps b: a comes off and goes back on           ;| A=? X=? Y=? C=1 Z=? N=? V=? | [list_slot,x]=? | in:X out:XY
+ 1120      0.0     LDA #&C0                                                                               ;| A=? X=? Y=? C=1 Z=? N=? V=? | in:XY out:AXY
+ 1121      0.0     STA need,Y                                                                             ;| A=$C0 X=? Y=? C=1 Z=0 N=1 V=? | [$1F,y]=? | in:AXY out:AX

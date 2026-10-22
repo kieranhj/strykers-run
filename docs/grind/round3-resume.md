@@ -5,7 +5,13 @@ died at about 18:48 when the API connection dropped (the laptop was closed): 551
 failed with `SSL certificate verification failed`. Nothing was applied; `src/` is untouched, so
 every candidate's `old` text still matches. Delete this file when the round is recorded.
 
-## State on disk (`build/grind/`, gitignored: do not clean it until `grind.py add` has run)
+## State on disk (`build/grind/`, gitignored; a copy is committed in `docs/grind/r3/` and `r3-w/`)
+
+If `build/grind/r3/` or `build/grind/w/` is gone, restore them first:
+`mkdir -p build/grind/r3 build/grind/w && cp docs/grind/r3/*.json build/grind/r3/ && cp docs/grind/r3-w/*.txt build/grind/w/`
+(the copy is as of the commit that added it; later skeptic files go in `build/grind/r3/` only, so
+copy them back into `docs/grind/r3/` when committing the ledger, or delete the copy once `add` has run).
+The 103 files are 84 `opt-*.json` and 19 `skeptic-*.json`.
 
 | What | Where | Count |
 |---|---|---|

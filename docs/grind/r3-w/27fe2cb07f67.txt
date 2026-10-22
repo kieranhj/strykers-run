@@ -1,0 +1,35 @@
+window 27fe2cb07f67: src/render.6502 lines 1884-1916, 32 instructions, 217.4 cycles a pass measured (wait excluded)
+
+ 1884      5.0     CMP #CK_SPRITES * 2                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AV out:ACV
+ 1885      5.1     BCS compiled_none                                                                      ;| A=? X=? Y=? C=? Z=? N=? V=? | in:ACV out:AV
+ 1886      4.8     ASL A                           \ C = 0 from here                                      ;| A=0..19 X=? Y=? C=0 Z=? N=? V=? | in:AV out:AV
+ 1887      4.9     ASL A                                                                                  ;| A={0,2,4,6,8,$0A,$0C,$0E,$10,$12,$14,$16,$18,$1A,$1C,$1E,$20,$22,$24,$26} X=? Y=? C=0 Z=? N=0 V=? | in:AV out:AV
+ 1888      4.8     ASL A                                                                                  ;| A={0,4,8,$0C,$10,$14,$18,$1C,$20,$24,$28,$2C,$30,$34,$38,$3C,$40,$44,$48,$4C} X=? Y=? C=0 Z=? N=0 V=? | in:AV out:ACV
+ 1889      7.3     ORA ds_line                                                                            ;| A={0,8,$10,$18,$20,$28,$30,$38,$40,$48,$50,$58,$60,$68,$70,$78,$80,$88,$90,$98} X=? Y=? C=0 Z=? N=? V=? | $CD=? | in:ACV out:ACV
+ 1890      4.8     TAY                                                                                    ;| A=? X=? Y=? C=0 Z=? N=? V=? | in:ACV out:AYCV
+ 1891     11.3     LDX ck_index,Y                                                                         ;| A=? X=? Y=? C=0 Z=? N=? V=? | [$A3B2,y]=? | in:AYCV out:AXYNCV
+ 1892      5.0     BMI compiled_none               \ &FF: not a kind                                      ;| A=? X=? Y=? C=0 Z=? N=? V=? | in:AXYNCV out:AXYCV
+ 1893      6.7     STX ck_kind                                                                            ;| A=? X=0..127 Y=? C=0 Z=? N=0 V=? | $6C=? | in:XYCV out:XYCV
+ 1894      6.7     LDA b_ptr                                                                              ;| A=? X=0..127 Y=? C=0 Z=? N=0 V=? | $C9=? | in:XYCV out:AXYCV
+ 1895      6.7     STA &C0                                                                                ;| A=?≡$C9 X=0..127 Y=? C=0 Z=? N=? V=? | $C0=? | in:AXYCV out:XYCV
+ 1896      6.7     LDA b_ptr + 1                                                                          ;| A=?≡$C9 X=0..127 Y=? C=0 Z=? N=? V=? | $CA=? | in:XYCV out:AXYCV
+ 1897      6.7     STA &C1                                                                                ;| A=?≡$CA X=0..127 Y=? C=0 Z=? N=? V=? | $C1=? | in:AXYCV out:XYCV
+ 1898      9.0     LDA ck_draw_lo,X                                                                       ;| A=?≡$CA X=0..127 Y=? C=0 Z=? N=? V=? | [$A460,x]=? | in:XYCV out:AXYCV
+ 1899      9.0     STA compiled_vec                                                                       ;| A=? X=0..127 Y=? C=0 Z=? N=? V=? | compiled_vec=? | in:AXYCV out:XYCV
+ 1900      9.0     LDA ck_draw_hi,X                                                                       ;| A=? X=0..127 Y=? C=0 Z=? N=? V=? | [$A46E,x]=? | in:XYCV out:AXYCV
+ 1901      9.0     STA compiled_vec + 1                                                                   ;| A=? X=0..127 Y=? C=0 Z=? N=? V=? | compiled_vec+1=? | in:AXYCV out:XYCV
+ 1902      9.0     LDA ck_bank,X                                                                          ;| A=? X=0..127 Y=? C=0 Z=? N=? V=? | [$A452,x]=? | in:XYCV out:AXYNZCV
+ 1903      6.0     BEQ in_hazel                    \ bank 0: HAZEL, paged in through play                 ;| A=? X=0..127 Y=? C=0 Z=? N=? V=? | in:AXYNZCV out:AXYNZCV
+ 1904      3.0     LDX #&84                        \ ANDY and bank 4 again after                          ;| A=1..255 X=0..127 Y=? C=0 Z=0 N=? V=? | in:AYCV out:AXYNZCV
+ 1905      9.0     JSR compiled_call                                                                      ;| A=1..255 X=$84 Y=? C=0 Z=0 N=1 V=? | in:AXYNZCV out:C
+ 1906      3.0     BCS unsafe                      \ the banked kinds (the commoner) fall through         ;| A=? X=? Y=? C=? Z=? N=? V=? | in:C out:C
+ 1907          .called                             \ carry clear here from either path
+ 1908      4.5     LDY #8                          \ its entry                                            ;| A=? X=? Y=? C=0 Z=? N=? V=? | in:C out:YC
+ 1909      4.5     LDA #&FF                                                                               ;| A=? X=? Y=$08 C=0 Z=0 N=0 V=? | in:YC out:AYC
+ 1910     13.4     STA (v_ptr),Y                                                                          ;| A=$FF X=? Y=$08 C=0 Z=0 N=1 V=? | [($C4),y]=? | in:AYC out:YC
+ 1911      4.5     INY                                                                                    ;| A=$FF X=? Y=$08 C=0 Z=0 N=1 V=? | in:YC out:YC
+ 1912      6.7     LDA ck_kind                                                                            ;| A=$FF X=? Y=$09 C=0 Z=0 N=0 V=? | $6C=? | in:YC out:AYC
+ 1913     13.4     STA (v_ptr),Y                                                                          ;| A=?≡$6C X=? Y=$09 C=0 Z=? N=? V=? | [($C4),y]=? | in:AYC out:C
+ 1914      6.7     LDA v_ptr                       \ carry still clear                                    ;| A=?≡$6C X=? Y=$09 C=0 Z=? N=? V=? | $C4=? | in:C out:AC
+ 1915      4.5     ADC #11                                                                                ;| A=?≡$C4 X=? Y=$09 C=0 Z=? N=? V=? | in:AC out:AC
+ 1916      6.7     STA v_ptr                                                                              ;| A=? X=? Y=$09 C=? Z=? N=? V=? | $C4=? | in:AC out:C

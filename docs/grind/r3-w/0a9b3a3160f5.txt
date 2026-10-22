@@ -1,0 +1,36 @@
+window 0a9b3a3160f5: src/render.6502 lines 2118-2151, 31 instructions, 1,498.5 cycles a pass measured (wait excluded)
+
+ 2118     28.6     SEC                                                                                    ;| A=0..7 X=? Y=0..7 C=? Z=? N=0 V=? | in:AY out:AYC
+ 2119     43.0     SBC rows_m1                                                                            ;| A=0..7 X=? Y=0..7 C=1 Z=? N=0 V=? | $CB=? | in:AYC out:AYCV
+ 2120     35.9     BCS last_cell                                                                          ;| A=? X=? Y=0..7 C=? Z=? N=? V=? | in:AYCV out:AYCV
+ 2121     14.1     EOR #&FF                                                                               ;| A=? X=? Y=0..7 C=0 Z=? N=? V=? | in:AYC out:AYC
+ 2122     21.1     STA rows_m1                                                                            ;| A=? X=? Y=0..7 C=0 Z=? N=? V=? | $CB=? | in:AYC out:YC
+ 2123          .byte
+ 2124    194.8     LDA (v_ptr),Y                                                                          ;| A=? X=? Y=0..7 C=0 Z=? N=? V=? | [($C4),y]=? | in:YC out:AYC
+ 2125    233.2     STA (s_ptr),Y                                                                          ;| A=? X=? Y=0..7 C=0 Z=? N=? V=? | [($C2),y]=? | in:AYC out:YC
+ 2126     77.7     DEY                                                                                    ;| A=? X=? Y=0..7 C=0 Z=? N=? V=? | in:YC out:YNC
+ 2127    109.6     BPL byte                                                                               ;| A=? X=? Y={0,1,2,3,4,5,6,$FF} C=0 Z=? N=? V=? | in:YNC out:YC
+ 2128     21.1     LDA s_ptr                       \ the next cell: the screen a character row up (C = 0 from;| A=? X=? Y=$FF C=0 Z=? N=1 V=? | $C2=? | in:C out:AC
+ 2129     14.1     SBC #&7F                        \ cell's SBC: this takes &80)...                       ;| A=?≡$C2 X=? Y=$FF C=0 Z=? N=? V=? | in:AC out:AC
+ 2130     21.1     STA s_ptr                                                                              ;| A=? X=? Y=$FF C=? Z=? N=? V=? | $C2=? | in:AC out:C
+ 2131     21.1     LDA s_ptr + 1                                                                          ;| A=? X=? Y=$FF C=? Z=? N=? V=? | $C3=? | in:C out:AC
+ 2132     14.1     SBC #&02                        \ (high &40-&7F: no borrow, C = 1 after)               ;| A=?≡$C3 X=? Y=$FF C=? Z=? N=? V=? | in:AC out:AC
+ 2133     14.1     AND #&3F                        \ ...round the 16K (&3D-&7D to &40-&7F)                ;| A=? X=? Y=$FF C=? Z=? N=? V=? | in:AC out:AC
+ 2134     14.1     ORA #&40                                                                               ;| A=0..63 X=? Y=$FF C=? Z=? N=0 V=? | in:AC out:AC
+ 2135     21.1     STA s_ptr + 1                                                                          ;| A=64..127 X=? Y=$FF C=? Z=0 N=0 V=? | $C3=? | in:AC out:C
+ 2136     21.1     LDA v_ptr                       \ ...the save block 8 on (C = 1: ADC #7 adds 8)        ;| A=64..127 X=? Y=$FF C=? Z=0 N=0 V=? | $C4=? | in:C out:AC
+ 2137     14.1     ADC #7                                                                                 ;| A=?≡$C4 X=? Y=$FF C=? Z=? N=? V=? | in:AC out:AC
+ 2138     21.1     STA v_ptr                                                                              ;| A=? X=? Y=$FF C=? Z=? N=? V=? | $C4=? | in:AC out:C
+ 2139     14.1     LDY #7                                                                                 ;| A=? X=? Y=$FF C=? Z=? N=? V=? | in:C out:YC
+ 2140     20.8     BCC cell                                                                               ;| A=? X=? Y=$07 C=? Z=0 N=0 V=? | in:YC out:Y
+ 2141      1.2     INC v_ptr + 1                                                                          ;| A=? X=? Y=$07 C=1 Z=0 N=0 V=? | $C5=? | in:Y out:Y
+ 2142      0.7     BRA cell                        \ 65C02 opcode                                         ;| A=? X=? Y=$07 C=1 Z=? N=? V=? | in:Y out:Y
+ 2143          .last_cell                          \ rows_m1 = Y - the last line: rows_m1 + 1 bytes to put back
+ 2144     21.9     LDX rows_m1                     \ (X is free in columns: .more reloads it)             ;| A=? X=? Y=0..7 C=1 Z=? N=? V=? | $CB=? | in:YV out:XYV
+ 2145          .part_byte
+ 2146    131.0     LDA (v_ptr),Y                                                                          ;| A=? X=? Y=? C=1 Z=? N=? V=? | [($C4),y]=? | in:XYV out:AXYV
+ 2147    156.7     STA (s_ptr),Y                                                                          ;| A=? X=? Y=? C=1 Z=? N=? V=? | [($C2),y]=? | in:AXYV out:XYV
+ 2148     52.2     DEY                                                                                    ;| A=? X=? Y=? C=1 Z=? N=? V=? | in:XYV out:XYV
+ 2149     52.2     DEX                                                                                    ;| A=? X=? Y=? C=1 Z=? N=? V=? | in:XYV out:XYNV
+ 2150     71.0     BPL part_byte                                                                          ;| A=? X=? Y=? C=1 Z=? N=? V=? | in:XYNV out:XYV
+ 2151     21.9     JMP columns                                                                            ;| A=? X=128..255 Y=? C=1 Z=? N=1 V=? | in:XYV out:XYV

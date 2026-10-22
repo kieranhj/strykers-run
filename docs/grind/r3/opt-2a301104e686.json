@@ -1,0 +1,38 @@
+{
+ "candidates": [
+  {
+   "window": "2a301104e686",
+   "file": "src/render.6502",
+   "line": 2349,
+   "old": "    LDA rec_type,Y\n    CMP movers_type_and_colour,X\n    BNE out\n    LDA rec_frame,Y\n    CMP movers_frame_and_flip,X\n    BNE out\n    LDA rec_xl,Y\n    CMP movers_x_low,X\n    BNE out\n    LDA rec_xh,Y\n    CMP movers_x_high,X\n    BNE out\n    LDA rec_y,Y\n    CMP movers_y,X\n    BNE out\n    LDA rec_sl,Y\n    CMP movers_screen_address_low,X\n    BNE out\n    LDA rec_sh,Y\n    CMP movers_screen_address_high,X",
+   "new": "    LDA rec_sl,Y                    \\ the most likely to differ first (a moved or scrolled mover), then the animation frame\n    CMP movers_screen_address_low,X\n    BNE out\n    LDA rec_frame,Y\n    CMP movers_frame_and_flip,X\n    BNE out\n    LDA rec_xh,Y\n    CMP movers_x_high,X\n    BNE out\n    LDA rec_type,Y\n    CMP movers_type_and_colour,X\n    BNE out\n    LDA rec_xl,Y\n    CMP movers_x_low,X\n    BNE out\n    LDA rec_y,Y\n    CMP movers_y,X\n    BNE out\n    LDA rec_sh,Y\n    CMP movers_screen_address_high,X",
+   "summary": "record_differs tests the pairs in the order they most often differ: screen address low first (differs for ~2/3 of calls: every mover that moved or scrolled, and always when x low does), then frame, then x high, type, x low, y, screen address high. The old order tested type (never differs in the mix), then frame, then x low, so a moved mover paid 3 pairs (28 cycles + BNE) before leaving and now pays 1 (11). Same bytes, same result in Z.",
+   "claim": {
+    "cycles_per_execution": 8.5,
+    "executions_a_pass": 2.5,
+    "cycles_a_pass": 21,
+    "bytes": 0
+   },
+   "equivalence": "record_differs's one caller (JSR record_differs / BNE stale, render.6502 ~446) uses only Z; after BNE stale the next instructions load A afresh and C comes from span_in_zone. Z is set on exit iff the last CMP's operands are equal and every earlier BNE fell through, so Z clear <=> some field pair differs, independent of the order the pairs are tested in: the same 7 pairs are compared, the same 7 LDA/CMP and 6 BNE instructions (54 bytes) in a different order, X and Y untouched, `out` and RTS unchanged. A, C, N, V on exit differ from before (they already differed by path) and nothing reads them.",
+   "relies_on": "Same 54 bytes, so no following code moves; record_differs stays at &9FF8 (bench, ship, release) and every BNE out ends at or after &A000 with out at &A02E, so no taken BNE crosses a page before or after (the first BNE ends exactly at &A000). rec_* + Y (Y<&62) and movers_* + X (X<&22) never cross a page. Measured by a hook at record_differs over the bench build: seed 1 (1500 passes from 500): 3776 calls, 'screen address low differs' in ~2510 (66%, always with x low), frame differs in ~1990, type in ~190, xh ~190, y ~380, sh ~400, same 838; holding RIGHT (600 passes): 1539 calls, sl differs in ~1090 (71%), same 392. sl differs whenever xl does in these runs, so sl discriminates first and xl is then rarely the deciding field. Computed from those tallies: 85.8 -> 64.5 cycles a pass per pass-mix (cost per call 33.6 -> ~25.8 on seed 1).",
+   "file_written": "build/grind/r3/opt-2a301104e686.json"
+  },
+  {
+   "window": "2a301104e686",
+   "file": "src/render.6502",
+   "line": 2349,
+   "old": "    LDA rec_type,Y\n    CMP movers_type_and_colour,X\n    BNE out\n    LDA rec_frame,Y\n    CMP movers_frame_and_flip,X\n    BNE out\n    LDA rec_xl,Y\n    CMP movers_x_low,X\n    BNE out\n    LDA rec_xh,Y\n    CMP movers_x_high,X\n    BNE out\n    LDA rec_y,Y\n    CMP movers_y,X\n    BNE out\n    LDA rec_sl,Y\n    CMP movers_screen_address_low,X\n    BNE out\n    LDA rec_sh,Y\n    CMP movers_screen_address_high,X",
+   "new": "    LDA rec_sl,Y                    \\ the most likely to differ first (a moved or scrolled mover), then the animation frame\n    CMP movers_screen_address_low,X\n    BNE out\n    LDA rec_frame,Y\n    CMP movers_frame_and_flip,X\n    BNE out\n    LDA rec_type,Y\n    CMP movers_type_and_colour,X\n    BNE out\n    LDA rec_xl,Y\n    CMP movers_x_low,X\n    BNE out\n    LDA rec_xh,Y\n    CMP movers_x_high,X\n    BNE out\n    LDA rec_y,Y\n    CMP movers_y,X\n    BNE out\n    LDA rec_sh,Y\n    CMP movers_screen_address_high,X",
+   "summary": "Alternative to the first (overlaps it): sl first, frame second as there, but the rare-failure tail kept in the original relative order (type, x low, x high, y, screen high). Cost within ~0.1 cycle a pass of the first; chosen if a skeptic prefers the smaller textual change.",
+   "claim": {
+    "cycles_per_execution": 8.5,
+    "executions_a_pass": 2.5,
+    "cycles_a_pass": 21,
+    "bytes": 0
+   },
+   "equivalence": "record_differs's one caller (JSR record_differs / BNE stale, render.6502 ~446) uses only Z; after BNE stale the next instructions load A afresh and C comes from span_in_zone. Z is set on exit iff the last CMP's operands are equal and every earlier BNE fell through, so Z clear <=> some field pair differs, independent of the order the pairs are tested in: the same 7 pairs are compared, the same 7 LDA/CMP and 6 BNE instructions (54 bytes) in a different order, X and Y untouched, `out` and RTS unchanged. A, C, N, V on exit differ from before (they already differed by path) and nothing reads them.",
+   "relies_on": "Same 54 bytes, so no following code moves; record_differs stays at &9FF8 (bench, ship, release) and every BNE out ends at or after &A000 with out at &A02E, so no taken BNE crosses a page before or after (the first BNE ends exactly at &A000). rec_* + Y (Y<&62) and movers_* + X (X<&22) never cross a page. Measured by a hook at record_differs over the bench build: seed 1 (1500 passes from 500): 3776 calls, 'screen address low differs' in ~2510 (66%, always with x low), frame differs in ~1990, type in ~190, xh ~190, y ~380, sh ~400, same 838; holding RIGHT (600 passes): 1539 calls, sl differs in ~1090 (71%), same 392. sl differs whenever xl does in these runs, so sl discriminates first and xl is then rarely the deciding field. Computed from those tallies: 85.8 -> 64.5 cycles a pass per pass-mix (cost per call 33.6 -> ~25.8 on seed 1).",
+   "file_written": "build/grind/r3/opt-2a301104e686.json"
+  }
+ ]
+}

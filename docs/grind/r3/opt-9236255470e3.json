@@ -1,0 +1,55 @@
+{
+ "candidates": [
+  {
+   "window": "9236255470e3",
+   "file": "src/sky_main.6502",
+   "line": 188,
+   "old": ".next_row\n    LDX sky_q\n    INX\n    CPX sky_nq\n    BEQ done\n    JMP row\n.done\n    RTS\n}\n\n\\ sky_zero: the rectangle's columns drawn zeroed\n.sky_zero\n{\n    LDX #0\n.row\n    STX sky_q\n    JSR sky_row\n    BNE cell\n    LDA #0\n.whole\n    STA (s_ptr),Y\n    DEY\n    BPL whole\n    BMI next_row                    \\ (always)\n",
+   "new": ".next_row\n    INX                             \\ X is still the row (sky_row and the cells leave it)\n    CPX sky_nq\n    BEQ done\n    JMP row\n.done\n    RTS\n    EQUB 0                       \\ pad: keeps what follows (sky_img0) where it was\n}\n\n\\ sky_zero: the rectangle's columns drawn zeroed\n.sky_zero\n{\n    LDX #0\n.row\n    STX sky_q\n    JSR sky_row\n    BNE cell\n.whole                              \\ A = 0 (sky_row left sky_skip, and Z is set)\n    STA (s_ptr),Y\n    DEY\n    STA (s_ptr),Y\n    DEY\n    BPL whole\n    BMI next_row                    \\ (always)\n",
+   "summary": "sky_draw.next_row: INX straight on X (still the row; LDX sky_q reloaded it), 3 cycles and 2 bytes less. sky_zero: drop the redundant LDA #0 (A is sky_skip = 0 when BNE cell falls through) and unroll the whole-row zeroing by 2. One EQUB pad keeps the code after (and so sky_img0, &317F) where it was. Alternative to the other candidates (overlaps them).",
+   "claim": {
+    "cycles_per_execution": 4.5,
+    "executions_a_pass": 1.7,
+    "cycles_a_pass": 7.6,
+    "bytes": 0
+   },
+   "equivalence": "sky_draw.next_row is reached only from the tail, from `BMI next_row` after the whole-row loop, and by fall-through; on all X is the row index: sky_row (LDA/STA/EOR/SEC/ADC/ORA/TAY/LDA, RTS) never writes X, and neither the h0/rc_ok code, `part`, the cell JMP or the eight LDA/STA/DEY lines. Nothing else enters the label (grep next_row: sky_draw's scope only). sky_q is still stored by `STX sky_q` at row, so its value at exit is the same as before (the last row, which the old reload did not change). At the exit (BEQ done) X = nq, C=1, Z=1, A and Y unchanged: as before. The row loop `JMP row` re-enters with X = row + 1 exactly as the old LDX/INX gave. sky_zero's whole path: BNE cell not taken means Z=1 from the LDA sky_skip at the end of sky_row, so A = 0 and LDA #0 only repeated it; STA (s_ptr),Y/DEY twice per BPL writes the same bytes in the same order as the one-per-loop code provided Y+1 is even at entry, and a whole row (skip = 0, n = 8, rt = 7, ry = 8 * a column) has Y = 8 * columns - 1 + ... i.e. Y+1 a multiple of 8, the same fact sky_draw's own 4x unrolled whole loop already relies on. Loop exit is the same (Y goes negative after an even count, BPL not taken, BMI next_row always). Registers live out of sky_zero whole path: A=0, X=row, Y negative - unchanged.",
+   "relies_on": "Net size 0: -2 (LDX sky_q) -2 (LDA #0) +3 (extra STA/DEY) +1 pad, so no code or data after the window moves (sky_img0 stays at its address: the (d_ptr),Y page crossings of the image reads are untouched; hot BPL cell/JMP cell and line8 are before the edit). Inside the window sky_zero's labels shift by 0 to -1 byte but stay inside one page (page &31 in the shipping build); the only branches there (BPL whole, BMI next_row, BPL cell, BNE row) are short and cannot newly cross. The hot tail (TYA..BPL cell) and `cell`/line8 are above the edit and do not move. Relies on: X preserved by sky_row and the cell code in sky_draw; A=0 from sky_row when Z set; whole rows have Y+1 a multiple of 2 (in fact 8).",
+   "file_written": "build/grind/r3/opt-9236255470e3.json"
+  },
+  {
+   "window": "9236255470e3",
+   "file": "src/sky_main.6502",
+   "line": 188,
+   "old": ".next_row\n    LDX sky_q\n    INX\n    CPX sky_nq\n    BEQ done\n    JMP row\n.done\n    RTS\n",
+   "new": ".next_row\n    INX                             \\ X is still the row (sky_row and the cells leave it)\n    CPX sky_nq\n    BEQ done\n    JMP row\n.done\n    RTS\n    EQUB 0, 0                       \\ pad: keeps what follows (sky_img0) where it was\n",
+   "summary": "sky_draw.next_row only: INX straight on X (still the row index) instead of reloading it with LDX sky_q; 2 bytes of EQUB pad keep everything after in place. Alternative to the first candidate (a subset of it, for if the sky_zero part fails).",
+   "claim": {
+    "cycles_per_execution": 3,
+    "executions_a_pass": 1.7,
+    "cycles_a_pass": 5.1,
+    "bytes": 0
+   },
+   "equivalence": "sky_draw.next_row is reached only from the tail, from `BMI next_row` after the whole-row loop, and by fall-through; on all X is the row index: sky_row (LDA/STA/EOR/SEC/ADC/ORA/TAY/LDA, RTS) never writes X, and neither the h0/rc_ok code, `part`, the cell JMP or the eight LDA/STA/DEY lines. Nothing else enters the label (grep next_row: sky_draw's scope only). sky_q is still stored at row. Exit state (X = nq, C=1, Z=1, A, Y) is unchanged, and `JMP row` gets X = row + 1 as before.",
+   "relies_on": "Net size 0 (-2 +2 pad): nothing after the edit moves, so no page crossing is created or removed; the edit is after the hot tail, `cell` (JMP &FFFF) and line8, which stay at their addresses. Relies on X being preserved from `row` to next_row on every path (see equivalence).",
+   "file_written": "build/grind/r3/opt-9236255470e3.json"
+  },
+  {
+   "window": "9236255470e3",
+   "file": "src/sky_main.6502",
+   "line": 188,
+   "old": ".next_row\n    LDX sky_q\n    INX\n    CPX sky_nq\n    BEQ done\n    JMP row\n.done\n    RTS\n}\n\n\\ sky_zero: the rectangle's columns drawn zeroed\n.sky_zero\n{\n    LDX #0\n.row\n    STX sky_q\n    JSR sky_row\n    BNE cell\n    LDA #0\n.whole\n    STA (s_ptr),Y\n    DEY\n    BPL whole\n    BMI next_row                    \\ (always)\n",
+   "new": ".next_row\n    INX                             \\ X is still the row (sky_row and the cells leave it)\n    CPX sky_nq\n    BEQ done\n    JMP row\n.done\n    RTS\n}\n\n\\ sky_zero: the rectangle's columns drawn zeroed\n.sky_zero\n{\n    LDX #0\n.row\n    STX sky_q\n    JSR sky_row\n    BNE cell\n.whole                              \\ A = 0 (sky_row left sky_skip, and Z is set)\n    STA (s_ptr),Y\n    DEY\n    STA (s_ptr),Y\n    DEY\n    STA (s_ptr),Y\n    DEY\n    STA (s_ptr),Y\n    DEY\n    BPL whole\n    BMI next_row                    \\ (always)\n",
+   "summary": "As the first candidate but the whole-row zeroing unrolled by 4 (like sky_draw's own whole loop) and no pad: 3 more cycles a pass, but the code after the window moves up 5 bytes (so sky_img0 and the per-screen data too). Alternative to the others; only worth it if the gate shows that shift costs nothing.",
+   "claim": {
+    "cycles_per_execution": 5.2,
+    "executions_a_pass": 1.7,
+    "cycles_a_pass": 8.9,
+    "bytes": -5
+   },
+   "equivalence": "sky_draw.next_row is reached only from the tail, from `BMI next_row` after the whole-row loop, and by fall-through; on all X is the row index: sky_row (LDA/STA/EOR/SEC/ADC/ORA/TAY/LDA, RTS) never writes X, and neither the h0/rc_ok code, `part`, the cell JMP or the eight LDA/STA/DEY lines. Nothing else enters the label (grep next_row: sky_draw's scope only). As the first candidate, with four STA/DEY per BPL: needs Y+1 a multiple of 4 at entry, which a whole row has (Y+1 is a multiple of 8; sky_draw's whole loop unrolled by 4 depends on the same). A = 0 from sky_row as before.",
+   "relies_on": "Net size +5 (-2 LDX, -2 LDA #0, +9 for three more STA/DEY): everything after sky_zero moves up 5 bytes, including the per-screen tables (sky_on... 2-byte arrays, sky_k) and sky_img0, whose base low byte changes (&7F to &84 in the shipping build): the image reads LDA (d_ptr),Y in sky_draw change which loads cross a page, an unknown +/- cost; the gate must measure. The hot tail, cell and line8 do not move. If the shift is a loss, take the first candidate.",
+   "file_written": "build/grind/r3/opt-9236255470e3.json"
+  }
+ ]
+}

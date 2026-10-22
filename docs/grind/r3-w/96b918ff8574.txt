@@ -1,0 +1,37 @@
+window 96b918ff8574: src/game.6502 lines 1998-2032, 32 instructions, 210.3 cycles a pass measured (wait excluded)
+
+ 1998     11.1     LDY mover                                                                              ;| A=128..255 X=? Y=? C=? Z=0 N=1 V=? | $79=? | in:- out:Y
+ 1999     11.1     LDX plot_sprite                                                                        ;| A=128..255 X=? Y=?≡$79 C=? Z=? N=? V=? | $9E=? | in:Y out:XY
+ 2000     14.8     LDA sprite_column_count,X       \ (bank 4, which plot_mover pages in)                  ;| A=128..255 X=?≡$9E Y=?≡$79 C=? Z=? N=? V=? | [$A366,x]=? | in:XY out:AY
+ 2001      7.4     CLC                                                                                    ;| A=? X=?≡$9E Y=?≡$79 C=? Z=? N=? V=? | in:AY out:AYC
+ 2002     14.7     ADC movers_x_low,Y              \ less the columns clipped at the left:                ;| A=? X=?≡$9E Y=?≡$79 C=0 Z=? N=? V=? | [$1344,y]=? | in:AYC out:AY
+ 2003      7.4     CLC                             \ (C = 0: one more taken off)                          ;| A=? X=?≡$9E Y=?≡$79 C=? Z=? N=? V=? | in:AY out:AYC
+ 2004     11.1     SBC mover_x_low                 \ count - (mover_x_low - movers_x_low) - 1             ;| A=? X=?≡$9E Y=?≡$79 C=0 Z=? N=? V=? | $F8=? | in:AYC out:AY
+ 2005      7.4     TAX                             \ n - 1 (n: columns from here)                         ;| A=? X=?≡$9E Y=?≡$79 C=? Z=? N=? V=? | in:AY out:XY
+ 2006     11.1     LDA viewport_right_low                                                                 ;| A=? X=? Y=?≡$79 C=? Z=? N=? V=? | $B3=? | in:XY out:AXY
+ 2007      7.4     SEC                                                                                    ;| A=?≡$B3 X=? Y=?≡$79 C=? Z=? N=? V=? | in:AXY out:AXYC
+ 2008     11.1     SBC mover_x_low                                                                        ;| A=?≡$B3 X=? Y=?≡$79 C=1 Z=? N=? V=? | $F8=? | in:AXYC out:AXYV
+ 2009     11.1     STA walk_d                      \ d (low bytes, as the plotter compares them)          ;| A=? X=? Y=?≡$79 C=? Z=? N=? V=? | $9D=? | in:AXYV out:XYV
+ 2010     11.1     CPX walk_d                                                                             ;| A=? X=? Y=?≡$79 C=? Z=? N=? V=? | $9D=? | in:XYV out:XYZCV
+ 2011     10.8     BCC moved_on                    \ n - 1 < d: the common case                           ;| A=? X=? Y=?≡$79 C=? Z=? N=? V=? | in:XYZCV out:XYZCV
+ 2012      0.5     CLC                             \ (Z kept)                                             ;| A=? X=? Y=?≡$79 C=1 Z=? N=? V=? | in:XYZV out:XYZCV
+ 2013      0.5     BEQ moved_on                    \ n - 1 = d: the same sums                             ;| A=? X=? Y=?≡$79 C=0 Z=? N=? V=? | never | in:XYZCV out:XYCV
+ 2014      0.7     LDA viewport_right_low          \ n - 1 > d: mover_x_low + d...                        ;| A=? X=? Y=?≡$79 C=0 Z=0 N=? V=? | $B3=? | in:XYCV out:AXYCV
+ 2015      0.7     STA mover_x_low                                                                        ;| A=?≡$B3 X=? Y=?≡$79 C=0 Z=? N=? V=? | $F8=? | in:AXYCV out:XYCV
+ 2016      0.7     LDA pixel_table_address_low     \ ...and d + 1 steps (d < 255 here),                   ;| A=?≡$B3 X=? Y=?≡$79 C=0 Z=? N=? V=? | $B8=? | in:XYCV out:XYZCV
+ 2017      0.6     BNE walk_beyond_steps                                                                  ;| A=?≡$B8 X=? Y=?≡$79 C=0 Z=? N=? V=? | in:XYZCV out:XYCV
+ 2018      0.2     INX                             \ but none if flipped with n = 0                       ;| A=$00≡$B8 X=? Y=?≡$79 C=0 Z=1 N=0 V=? | in:XYCV out:XYZCV
+ 2019      0.2     BEQ walked                                                                             ;| A=$00≡$B8 X=? Y=?≡$79 C=0 Z=? N=? V=? | in:XYZCV out:XYCV
+ 2020          .walk_beyond_steps
+ 2021      0.7     LDX walk_d                                                                             ;| A=?≡$B8 X=? Y=?≡$79 C=0 Z=0 N=? V=? | $9D=? | in:YCV out:XYCV
+ 2022      0.5     INX                                                                                    ;| A=?≡$B8 X=?≡$9D Y=?≡$79 C=0 Z=? N=? V=? | in:XYCV out:XYZCV
+ 2023      0.7     BNE steps_known                 \ always                                               ;| A=?≡$B8 X=? Y=?≡$79 C=0 Z=? N=? V=? | in:XYZCV out:XYCV
+ 2024          .moved_on
+ 2025      6.9     TXA                             \ C = 0                                                ;| A=? X=0..254 Y=?≡$79 C=0 Z=? N=? V=? | in:XYC out:AXYC
+ 2026     10.3     ADC mover_x_low                                                                        ;| A=0..254 X=0..254 Y=?≡$79 C=0 Z=? N=? V=? | $F8=? | in:AXYC out:AXYCV
+ 2027     10.3     STA mover_x_low                 \ + min(n - 1, d)                                      ;| A=? X=0..254 Y=?≡$79 C=? Z=? N=? V=? | $F8=? | in:AXYCV out:XYCV
+ 2028     10.3     LDA pixel_table_address_low     \ the steps: n - 1, or n flipped (within d + 1 here)   ;| A=? X=0..254 Y=?≡$79 C=? Z=? N=? V=? | $B8=? | in:XYCV out:XYZCV
+ 2029      9.1     BNE steps_known                 \ zero if flipped                                      ;| A=?≡$B8 X=0..254 Y=?≡$79 C=? Z=? N=? V=? | in:XYZCV out:XYCV
+ 2030      2.6     INX                                                                                    ;| A=$00≡$B8 X=0..254 Y=?≡$79 C=? Z=1 N=0 V=? | in:XYCV out:XYCV
+ 2031          .steps_known
+ 2032      7.4     TXA                                                                                    ;| A=?≡$B8 X=? Y=?≡$79 C=? Z=0 N=? V=? | in:XYCV out:AXYZCV

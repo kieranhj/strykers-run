@@ -1,0 +1,38 @@
+window 51cac4cd56ed: src/sky_hazel.6502 lines 152-187, 25 instructions, 336.8 cycles a pass measured (wait excluded)
+
+  152     11.3     ORA sky_stop                                                                           ;| A=? X=? Y=? C=1 Z=? N=? V=? | $E2=? | in:AX out:AX
+  153      7.6     TAY                                                                                    ;| A=? X=? Y=? C=1 Z=? N=? V=? | in:AX out:AXY
+  154      7.6     SEC                                                                                    ;| A=? X=? Y=? C=1 Z=? N=? V=? | in:AXY out:AXYC
+  155     15.1     SBC sky_rn,X                                                                           ;| A=? X=? Y=? C=1 Z=? N=? V=? | [sky_rn,x]=? | in:AXYC out:AXYV
+  156     11.3     STA sky_stop                                                                           ;| A=? X=? Y=? C=? Z=? N=? V=? | $E2=? | in:AXYV out:XYV
+  157      7.6     CLC                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XYV out:XYCV
+  158     22.7     RTS                                                                                    ;| A=? X=? Y=? C=0 Z=? N=? V=? | in:XYCV out:XYCV
+  159          .no
+  160              SEC                                                                                    ;| A=? X=? Y=? C=0 Z=? N=? V=? | in:XYV out:XYCV
+  161              RTS                                                                                    ;| A=? X=? Y=? C=1 Z=? N=? V=? | in:XYCV out:XYCV
+  162          }
+  163          
+  164          \ sky_col_check: A = 8 * a column (from the first drawn): C set if that column of the rectangle
+  165          \ holds anything but sky
+  166          .sky_col_check
+  167          {
+  168      1.7     STA sky_j8                                                                             ;| A=0..248 %xxxxx000 X=? Y=? C=? Z=? N=? V=? | $E1=? | in:AY out:Y
+  169      1.1     LDX #0                                                                                 ;| A=0..248 %xxxxx000 X=? Y=? C=? Z=? N=? V=? | in:Y out:XY
+  170          .row
+  171     13.8     JSR sky_col_row                                                                        ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XY out:XYCV
+  172      4.6     BCS next                                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XYCV out:XYV
+  173          .byte
+  174     71.7     LDA (s_ptr),Y                                                                          ;| A=? X=? Y=? C=? Z=? N=? V=? | [($C2),y]=? | in:XYV out:XYZV
+  175     28.2     BNE dirty                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XYZV out:XYV
+  176     28.2     DEY                                                                                    ;| A=$00 X=? Y=? C=? Z=1 N=0 V=? | in:XYV out:XYV
+  177     42.2     CPY sky_stop                                                                           ;| A=$00 X=? Y=? C=? Z=? N=? V=? | $E2=? | in:XYV out:XYZV
+  178     39.9     BNE byte                                                                               ;| A=$00 X=? Y=? C=? Z=? N=? V=? | in:XYZV out:XYV
+  179          .next
+  180      4.6     INX                                                                                    ;| A=? X=? Y=? C=1 Z=? N=? V=? | in:XYV out:XYV
+  181      6.9     CPX sky_nq                                                                             ;| A=? X=? Y=? C=1 Z=? N=? V=? | $DA=? | in:XYV out:XYZV
+  182      6.4     BNE row                                                                                ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XYZV out:XYV
+  183      1.1     CLC                                                                                    ;| A=? X=? Y=? C=1 Z=1 N=0 V=? | in:YV out:YCV
+  184      3.3     RTS                                                                                    ;| A=? X=? Y=? C=0 Z=1 N=0 V=? | in:YCV out:YCV
+  185          .dirty
+  186      0.0     SEC                                                                                    ;| A=1..255 X=? Y=? C=? Z=0 N=? V=? | in:YV out:YCV
+  187      0.0     RTS                                                                                    ;| A=1..255 X=? Y=? C=1 Z=0 N=? V=? | in:YCV out:YCV

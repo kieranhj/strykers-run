@@ -1,0 +1,46 @@
+window 9236255470e3: src/sky_main.6502 lines 183-226, 32 instructions, 133.1 cycles a pass measured (wait excluded)
+
+  183     13.1     TYA                             \ the cell to the left's top (negative: none)          ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XY out:AX
+  184     13.1     SEC                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AX out:AXC
+  185     19.6     SBC sky_skip                                                                           ;| A=? X=? Y=? C=1 Z=? N=? V=? | $DF=? | in:AXC out:AXCV
+  186     13.0     TAY                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXCV out:AXYNZCV
+  187     19.0     BPL cell                                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXYNZCV out:AXYNZCV
+  188          .next_row
+  189      5.1     LDX sky_q                                                                              ;| A=? X=? Y=128..255 C=? Z=? N=1 V=? | $E0=? | in:AYV out:AXYV
+  190      3.4     INX                                                                                    ;| A=? X=?≡$E0 Y=128..255 C=? Z=? N=? V=? | in:AXYV out:AXYV
+  191      5.1     CPX sky_nq                                                                             ;| A=? X=? Y=128..255 C=? Z=? N=? V=? | $DA=? | in:AXYV out:AXYNZCV
+  192      3.8     BEQ done                                                                               ;| A=? X=? Y=128..255 C=? Z=? N=? V=? | in:AXYNZCV out:AXYNZCV
+  193      3.9     JMP row                                                                                ;| A=? X=? Y=128..255 C=? Z=0 N=? V=? | in:X out:X
+  194          .done
+  195      2.4     RTS                                                                                    ;| A=? X=? Y=128..255 C=1 Z=1 N=0 V=? | in:AXYNZCV out:AXYNZCV
+  196          }
+  197          
+  198          \ sky_zero: the rectangle's columns drawn zeroed
+  199          .sky_zero
+  200          {
+  201      0.0     LDX #0                                                                                 ;| A=? X=? Y=? C=0 Z=1 N=0 V=? | in:- out:X
+  202          .row
+  203      0.2     STX sky_q                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | $E0=? | in:X out:X
+  204      0.4     JSR sky_row                                                                            ;| A=? X=? Y=? C=? Z=? N=? V=? | in:X out:YZ
+  205      0.1     BNE cell                                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | in:YZ out:Y
+  206      0.1     LDA #0                                                                                 ;| A=$00 X=? Y=? C=? Z=1 N=0 V=? | in:Y out:AY
+  207          .whole
+  208     10.4     STA (s_ptr),Y                                                                          ;| A=$00 X=? Y=? C=? Z=? N=0 V=? | [($C2),y]=? | in:AY out:AY
+  209      3.5     DEY                                                                                    ;| A=$00 X=? Y=? C=? Z=? N=0 V=? | in:AY out:AYN
+  210      5.1     BPL whole                                                                              ;| A=$00 X=? Y=? C=? Z=? N=? V=? | in:AYN out:AYN
+  211      0.1     BMI next_row                    \ (always)                                             ;| A=$00 X=? Y=128..255 C=? Z=? N=1 V=? | always | in:YN out:Y
+  212          .cell
+  213      0.5     LDX sky_n                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | $DE=? | in:Y out:XY
+  214      0.3     LDA #0                                                                                 ;| A=? X=?≡$DE Y=? C=? Z=? N=? V=? | in:XY out:AXY
+  215          .line
+  216      4.2     STA (s_ptr),Y                                                                          ;| A=$00 X=? Y=? C=? Z=? N=? V=? | [($C2),y]=? | in:AXY out:AXY
+  217      1.4     DEY                                                                                    ;| A=$00 X=? Y=? C=? Z=? N=? V=? | in:AXY out:AXY
+  218      1.4     DEX                                                                                    ;| A=$00 X=? Y=? C=? Z=? N=? V=? | in:AXY out:AXYZ
+  219      2.0     BNE line                                                                               ;| A=$00 X=? Y=? C=? Z=? N=? V=? | in:AXYZ out:AXY
+  220      0.3     TYA                                                                                    ;| A=$00 X=$00 Y=? C=? Z=1 N=0 V=? | in:Y out:A
+  221      0.3     SEC                                                                                    ;| A=? X=$00 Y=? C=? Z=? N=? V=? | in:A out:AC
+  222      0.5     SBC sky_skip                                                                           ;| A=? X=$00 Y=? C=1 Z=? N=? V=? | $DF=? | in:AC out:A
+  223      0.3     TAY                                                                                    ;| A=? X=$00 Y=? C=? Z=? N=? V=? | in:A out:YN
+  224      0.5     BPL cell                                                                               ;| A=? X=$00 Y=? C=? Z=? N=? V=? | in:YN out:Y
+  225          .next_row
+  226      0.2     LDX sky_q                                                                              ;| A=? X=? Y=128..255 C=? Z=? N=1 V=? | $E0=? | in:- out:X

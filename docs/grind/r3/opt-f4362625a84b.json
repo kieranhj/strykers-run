@@ -1,0 +1,55 @@
+{
+ "candidates": [
+  {
+   "window": "f4362625a84b",
+   "file": "src/render.6502",
+   "line": 917,
+   "old": ".add_zone_column                    \\ zone_tmp -> the list; keeps X and Y\n{\n    PHX\n    LDX zone_n\n    LDA zone_tmp_lo\n    STA zone_lo,X\n    LDA zone_tmp_hi\n    STA zone_hi,X\n    INC zone_n\n    PLX\n    RTS\n}\n\n\\ span_in_zone: does [span_x - 1, span_x + A + 1] hold a zone column? C set if so. Keeps Y.\n.span_in_zone\n{\n    CLC\n    ADC #2\n    STA span_w2\n    LDA span_x_lo                   \\ span_x -= 1 once (span_x is the caller's, dead after):\n    BNE no_borrow                   \\ then d = column - span_x\n    DEC span_x_hi\n.no_borrow\n    DEC span_x_lo\n    LDX zone_n\n    BEQ lives\n.each\n    DEX\n    LDA zone_hi,X                   \\ d's high byte less 1 into span_d + 1 ...\n    CLC\n    SBC span_x_hi\n    STA span_d + 1\n    LDA zone_lo,X                   \\ ... its low byte in A, C clear if it borrowed (ADC #0 below\n    SEC                             \\ makes span_d + 1 + C the high byte)\n    SBC span_x_lo\n    STA span_d\n",
+   "new": ".add_zone_column                    \\ zone_tmp_lo, and A = zone_tmp_hi (every caller has just stored it) -> the list; keeps X and Y\n{\n    STX zone_tmp_hi                 \\ X saved in zone_tmp_hi (dead: A holds it): 6 cycles where PHX/PLX is 7\n    LDX zone_n\n    INX\n    STX zone_n\n    STA zone_hi - 1,X\n    LDA zone_tmp_lo\n    STA zone_lo - 1,X\n    LDX zone_tmp_hi\n    RTS\n}\n\n\\ span_in_zone: does [span_x - 1, span_x + A + 1] hold a zone column? C set if so. Keeps Y.\n.span_in_zone\n{\n    CLC\n    ADC #2\n    STA span_w2\n    LDA span_x_lo                   \\ span_x -= 1 once (span_x is the caller's, dead after):\n    BNE no_borrow                   \\ then d = column - span_x\n    DEC span_x_hi\n.no_borrow\n    DEC span_x_lo\n    LDX zone_n\n    BEQ lives\n.each\n    DEX\n    LDA zone_hi,X                   \\ d's high byte less 1 into span_d + 1 ...\n    SBC span_x_hi\n    STA span_d + 1\n    LDA zone_lo,X                   \\ ... its low byte in A, C clear if it borrowed (ADC #0 below\n    SEC                             \\ makes span_d + 1 + C the high byte)\n    SBC span_x_lo\n    STA span_d\n",
+   "summary": "add_zone_column: A already holds zone_tmp_hi at every call, so skip its reload and save X in the dead zone_tmp_hi instead of PHX/PLX (37 -> 33 cycles a call, +1 byte via INX/STX); span_in_zone's loop drops the CLC before SBC span_x_hi (C is 0 at every entry to .each, -1 byte). Net 0 bytes, so nothing after the window moves. Overlaps candidates 2 and 3, which are its halves (alternatives).",
+   "claim": {
+    "cycles_per_execution": 5.0,
+    "executions_a_pass": 1.5,
+    "cycles_a_pass": 7.5,
+    "bytes": 0
+   },
+   "equivalence": "add_zone_column: all four callers (add_scroll_zone: right/arriving JSR, right/leaving JMP, left/arriving JSR, left/leaving JMP) run STA zone_tmp_hi immediately before the JSR/JMP with nothing in between, so A = zone_tmp_hi at entry. The routine stores A at zone_hi + n and zone_tmp_lo at zone_lo + n and leaves zone_n = n + 1 (INX/STX; the stores are indexed from zone_hi - 1 / zone_lo - 1, so X = n + 1 addresses entry n). X is saved in zone_tmp_hi (zero page, renderer-private in ren_zp; its only writers are the four callers' STA just before the call and its only reader was this routine's own LDA, now removed; nothing reads it after the routine) and restored by LDX before RTS; Y is untouched; A is clobbered as before (callers reload A next). Flags at return came from PLX, now from LDX: no caller reads them (JSR sites continue with LDA; JMP sites return to the add_scroll_zone caller, whose next flag use follows INY; CPY #2). Loop: .each is entered with C = 0 on every path. From the prefix: CLC; ADC #2 on A = a width from mover_types_width_table (max &0B = MOVER_WIDEST; span_in_zone's single caller is render.6502:456) gives C = 0, and STA, LDA, BNE, DEC zp, LDX, BEQ keep C. From .next (the only other way to .each, via TXA; BNE each): .next is reached by BNE next after ADC #0, taken only when the result is non-zero, and then the carry out is 0 (a carry out needs A + C = 256, which gives 0), or by falling out of BCS hit not taken, so C = 0; TXA keeps C. With C = 0, SBC span_x_hi is exactly CLC; SBC span_x_hi (zone_hi - span_x_hi - 1), and every later instruction is unchanged, so span_d, span_d + 1 and the final C are identical.",
+   "relies_on": "All four add_zone_column call sites keep STA zone_tmp_hi directly before the call (A = zone_tmp_hi on entry), and zone_tmp_hi is read nowhere else (grep src/ and tools/). mover_types_width_table entries <= 253 (max &0B), single caller of span_in_zone. The block after the window: .next reached only with C = 0 (BNE next after ADC #0; fall through after BCS hit). Page crossings: byte-neutral overall (add_zone_column +1, loop -1), so .lives, width_of_type_A, mark_to_draw and everything after keep their addresses; inside the window every branch stays within page &97 (BEQ lives, BNE each, BNE next, BCS hit; debug_lives build &9719-&978F) and none moves across a page boundary. zone_lo/zone_hi are in page &BC (&BC5C-&BC63): the stores are abs,X (5 cycles whatever the crossing), the loop's loads are unchanged. Alternative to candidates 2 and 3.",
+   "file_written": "build/grind/r3/opt-f4362625a84b.json"
+  },
+  {
+   "window": "f4362625a84b",
+   "file": "src/render.6502",
+   "line": 917,
+   "old": ".add_zone_column                    \\ zone_tmp -> the list; keeps X and Y\n{\n    PHX\n    LDX zone_n\n    LDA zone_tmp_lo\n    STA zone_lo,X\n    LDA zone_tmp_hi\n    STA zone_hi,X\n    INC zone_n\n    PLX\n    RTS\n}\n",
+   "new": ".add_zone_column                    \\ zone_tmp_lo, and A = zone_tmp_hi (every caller has just stored it) -> the list; keeps X and Y\n{\n    STX zone_tmp_hi                 \\ X saved in zone_tmp_hi (dead: A holds it): 6 cycles where PHX/PLX is 7\n    LDX zone_n\n    STA zone_hi,X\n    LDA zone_tmp_lo\n    STA zone_lo,X\n    INC zone_n\n    LDX zone_tmp_hi\n    RTS\n}\n",
+   "summary": "add_zone_column only: A already holds zone_tmp_hi at every call; drop its reload and save X in the dead zone_tmp_hi rather than PHX/PLX. 37 -> 33 cycles a call, same 17 bytes. Alternative to candidate 1 (which includes it); disjoint from candidate 3.",
+   "claim": {
+    "cycles_per_execution": 4.0,
+    "executions_a_pass": 1.5,
+    "cycles_a_pass": 6.0,
+    "bytes": 0
+   },
+   "equivalence": "The four callers in add_scroll_zone each run STA zone_tmp_hi immediately before JSR/JMP, so A = zone_tmp_hi on entry. Stores: zone_hi[n] = A, zone_lo[n] = zone_tmp_lo, zone_n = n + 1, as before. X is saved in zone_tmp_hi (a renderer zero-page byte whose only reader was this routine's removed LDA) and restored before RTS; Y is untouched; A is clobbered as before and the callers reload it. Flags at return differ (LDX vs PLX) but no caller reads them: the next instructions are LDA hist_*,X or, after the JMP sites, the add_scroll_zone caller's INY; CPY #2.",
+   "relies_on": "All four call sites keep STA zone_tmp_hi directly before the call; zone_tmp_hi read nowhere else. Same size (17 bytes both), so no layout moves and no page crossing changes; stores are abs,X (5 cycles regardless).",
+   "file_written": "build/grind/r3/opt-f4362625a84b.json"
+  },
+  {
+   "window": "f4362625a84b",
+   "file": "src/render.6502",
+   "line": 945,
+   "old": "    LDA zone_hi,X                   \\ d's high byte less 1 into span_d + 1 ...\n    CLC\n    SBC span_x_hi\n",
+   "new": "    LDA zone_hi,X                   \\ d's high byte less 1 into span_d + 1 ...\n    SBC span_x_hi\n",
+   "summary": "span_in_zone's loop: drop the CLC before SBC span_x_hi; C is 0 at every entry to .each. 2 cycles an iteration, 1 byte smaller (slides everything after &9741 down one byte: see relies_on). Alternative to candidate 1's loop half, disjoint from candidate 2.",
+   "claim": {
+    "cycles_per_execution": 2.0,
+    "executions_a_pass": 0.75,
+    "cycles_a_pass": 1.5,
+    "bytes": 1
+   },
+   "equivalence": "Loop: .each is entered with C = 0 on every path. From the prefix: CLC; ADC #2 on A = a width from mover_types_width_table (max &0B = MOVER_WIDEST; span_in_zone's single caller is render.6502:456) gives C = 0, and STA, LDA, BNE, DEC zp, LDX, BEQ keep C. From .next (the only other way to .each, via TXA; BNE each): .next is reached by BNE next after ADC #0, taken only when the result is non-zero, and then the carry out is 0 (a carry out needs A + C = 256, which gives 0), or by falling out of BCS hit not taken, so C = 0; TXA keeps C. With C = 0, SBC span_x_hi is exactly CLC; SBC span_x_hi (zone_hi - span_x_hi - 1), and every later instruction is unchanged, so span_d, span_d + 1 and the final C are identical.",
+   "relies_on": "Width table <= 253, single caller; .next only reached with C = 0. Moves every byte after &9741 down by one (rest of span_in_zone, .lives, width_of_type_A, mark_to_draw and on to the end of render.6502's code in bank 4), so a branch or indexed table read elsewhere may start or stop crossing a page; not counted here, which is why candidate 1 pairs the CLC drop with a +1 byte change instead.",
+   "file_written": "build/grind/r3/opt-f4362625a84b.json"
+  }
+ ]
+}

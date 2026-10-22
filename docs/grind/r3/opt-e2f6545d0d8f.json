@@ -1,0 +1,38 @@
+{
+ "candidates": [
+  {
+   "window": "e2f6545d0d8f",
+   "file": "src/sky_hazel.6502",
+   "line": 143,
+   "old": "    STA sky_stop\n    LDA sky_ry,X\n    CMP sky_stop\n    BCC no                          \\ after it\n",
+   "new": "    STA sky_stop\n    CMP sky_ry,X                    \\ stop <= ry: after it if not\n    BCC skyrow_in\n    BNE no                          \\ after it\n.skyrow_in\n",
+   "summary": "Compare the stored stop against sky_ry,X directly instead of reloading ry and comparing with sky_stop; passes on C=0 (stop<ry, branch taken to next-but-one) or Z=1 (equal), else no. Saves the LDA (4) and uses abs,X CMP (4) in place of zp CMP (3): 9 -> 7 cycles when stop<ry, 8 when stop==ry. Alternative to the BEQ-first candidate (overlapping).",
+   "claim": {
+    "cycles_per_execution": 1.5,
+    "executions_a_pass": 3.77,
+    "cycles_a_pass": 5.7,
+    "bytes": 0
+   },
+   "equivalence": "Old: reload A=ry, CMP stop, go to no iff ry < stop (C clear). New: A is still stop (just stored), CMP ry computes stop - ry: stop < ry (C=0) or stop == ry (Z=1) passes, stop > ry (C=1, Z=0) goes to no - the same unsigned condition ry >= stop, no wrap. sky_stop is stored before as before; A differs afterwards (old: ry, new: stop) but the next instruction, LDA sky_rl,X, overwrites A and the flags are dead (ORA follows later); X, Y untouched; on the no path A and flags are not read by callers (they test C, which 'no' sets with SEC). Flag-order: BCC first favours stop<ry, the common case for non-edge columns.",
+   "relies_on": "Same size (9 bytes) as the old four lines, so nothing after them slides: no page-crossing moves. sky_col_row's tables (sky_rl..sky_ry, &BC90-&BCBA) are all in page &BC, so no indexed-read page cost changes. The taken/not-taken branch to the next-but-one instruction cannot cross a page (code at &DF2x). Callers (sky_col_check, sky_col_zero) read only X, C, s_ptr, Y and sky_stop on exit, never A or other flags; on 'no' exits sky_stop is not read. New label is local to sky_col_row's block and unique to this candidate.",
+   "file_written": "build/grind/r3/opt-e2f6545d0d8f.json"
+  },
+  {
+   "window": "e2f6545d0d8f",
+   "file": "src/sky_hazel.6502",
+   "line": 143,
+   "old": "    STA sky_stop\n    LDA sky_ry,X\n    CMP sky_stop\n    BCC no                          \\ after it\n",
+   "new": "    STA sky_stop\n    CMP sky_ry,X                    \\ stop <= ry: after it if not\n    BEQ skyrow_eq\n    BCS no                          \\ after it\n.skyrow_eq\n",
+   "summary": "As the other candidate but BEQ first: 9 -> 8 cycles when stop<ry (BEQ and BCS both not taken), 7 when stop==ry (BEQ taken). Better only if the equal case (the rectangle's last column, as lead_col's right edge checks) dominates. Overlaps the BCC-first candidate; pick one.",
+   "claim": {
+    "cycles_per_execution": 1.0,
+    "executions_a_pass": 3.77,
+    "cycles_a_pass": 3.8,
+    "bytes": 0
+   },
+   "equivalence": "Old: reload A=ry, CMP stop, go to no iff ry < stop (C clear). New: A is still stop (just stored), CMP ry computes stop - ry: stop < ry (C=0) or stop == ry (Z=1) passes, stop > ry (C=1, Z=0) goes to no - the same unsigned condition ry >= stop, no wrap. sky_stop is stored before as before; A differs afterwards (old: ry, new: stop) but the next instruction, LDA sky_rl,X, overwrites A and the flags are dead (ORA follows later); X, Y untouched; on the no path A and flags are not read by callers (they test C, which 'no' sets with SEC). BEQ first favours the equal case (the last column, j8 == ytop).",
+   "relies_on": "Same size (9 bytes) as the old four lines, so nothing after them slides: no page-crossing moves. sky_col_row's tables (sky_rl..sky_ry, &BC90-&BCBA) are all in page &BC, so no indexed-read page cost changes. The taken/not-taken branch to the next-but-one instruction cannot cross a page (code at &DF2x). Callers (sky_col_check, sky_col_zero) read only X, C, s_ptr, Y and sky_stop on exit, never A or other flags; on 'no' exits sky_stop is not read. New label is local to sky_col_row's block and unique to this candidate.",
+   "file_written": "build/grind/r3/opt-e2f6545d0d8f.json"
+  }
+ ]
+}

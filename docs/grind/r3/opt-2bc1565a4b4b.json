@@ -1,0 +1,55 @@
+{
+ "candidates": [
+  {
+   "window": "2bc1565a4b4b",
+   "file": "src/lib/sfx50.6502",
+   "line": 59,
+   "old": "    STA sfx_p_lo,X\n    BCC sfx_pa_c0                   \\ C = 0\n    INC sfx_p_hi,X\n.sfx_pa_clc\n    CLC\n.sfx_pa_c0\n    LDA sfx_dv,X                    \\ the amplitude steps, kept between 0 and 15\n    BMI down\n    ADC sfx_v,X                     \\ (C = 0 on every path here)\n    BCC v_known\n    LDA #&F8\n    BNE v_known                     \\ always\n.down\n    ADC sfx_v,X\n    BCS v_known\n    LDA #0\n.v_known\n    STA sfx_v,X\n    DEC sfx_n,X\n    BNE next\n    JSR sfx_next_ramp\n.next\n    DEX\n    BPL channel\n    RTS\n}",
+   "new": "    STA sfx_p_lo,X\n    BCS c1_pinc                     \\ no carry out of the low byte (most steps): C = 0 already\n.sfx_pa_c0\n    LDA sfx_dv,X                    \\ the amplitude steps, kept between 0 and 15\n    BPL c1_nonneg                   \\ (the data's steps are 0 or negative)\n    ADC sfx_v,X                     \\ negative step (C = 0 on every path here)\n    BCC c1_clamp0\n.v_known\n    STA sfx_v,X\n.c1_same\n    DEC sfx_n,X\n    BEQ c1_ramp_end\n.next\n    DEX\n    BPL channel\n    RTS\n.c1_nonneg\n    BEQ c1_same                     \\ no step: sfx_v stays\n    ADC sfx_v,X\n    BCC v_known\n    LDA #&F8\n    BNE v_known                     \\ always\n.c1_clamp0\n    LDA #0\n    BRA v_known\n.c1_ramp_end\n    JSR sfx_next_ramp\n    BRA next\n.c1_pinc\n    INC sfx_p_hi,X\n.sfx_pa_clc\n    CLC\n    BRA sfx_pa_c0\n}",
+   "summary": "Amplitude step: dv is 0 for about a third of channel steps (the data's steps are only 0 or negative), so test it first: LDA dv / BPL nonneg (the negative step falls through: ADC, BCC clamp0, STA, no taken branch on the hot path) and nonneg: BEQ c1_same skips the ADC and the STA of sfx_v for dv = 0. Also DEC sfx_n / BEQ c1_ramp_end (JSR sfx_next_ramp out of line, BRA back to next) so the usual no-ramp-end step falls into DEX instead of taking BNE, and the period step's usual no-carry case falls through (BCS c1_pinc out of line holding INC / sfx_pa_clc CLC / BRA sfx_pa_c0). Measured on a scratch build of the bench image with pcprof (2026-10-22): interrupts 1587 -> 1573 cycles a pass on seed 1, 1029 -> 1024 on RIGHT; work a pass (render+interrupts+rest) -3 / -1 only because most of the interrupt's time falls in the wait for the flip. Alternatives: candidate 2 (a subset).",
+   "claim": {
+    "cycles_per_execution": 5.3,
+    "executions_a_pass": 2.62,
+    "cycles_a_pass": 14.0,
+    "bytes": -8
+   },
+   "equivalence": "Every path leaves sfx_v, sfx_n, sfx_p_lo/hi, X and the next ramp exactly as before. Period step: BCS c1_pinc taken = the old BCC not taken (INC p_hi, CLC, then c0); not taken = the old BCC taken (C = 0 from the BCC fall). sfx_pa_clc (the negative step's no-borrow entry from line 53, BCS) now does CLC then BRA sfx_pa_c0; the borrow path's BRA sfx_pa_c0 is unchanged and C = 0 there. C = 0 holds on every path into sfx_pa_c0, so both ADCs still add without carry. Amplitude: dv >= 0 (BPL, N from LDA): dv = 0 (Z from the same LDA, BPL leaves flags): old code did A = 0 + sfx_v with C = 0 (no carry, so BCC taken) and stored sfx_v back unchanged: skipping the ADC and STA changes nothing, and it joins at the DEC; dv > 0: ADC, BCC v_known, else LDA #&F8 / BNE (Z = 0 after LDA #&F8) v_known, as before; dv < 0: ADC with C = 0, no carry = underflow (old BCS v_known not taken) -> c1_clamp0 LDA #0, BRA v_known; carry -> v_known with the sum, as before. DEC sfx_n,X: BEQ (new ramp) JSR sfx_next_ramp then BRA next = the old BNE next fall-through; otherwise falls to next (DEX). Exits: DEX/BPL channel/RTS are the one copy. Flags on return are not part of any contract (the only caller, irq1_handler, restores A/flags by PLA/RTI; C/V/Z already differ by path before). The label 'down' is gone (grep: nothing else uses sfx_tick.down); v_known, next, sfx_pa_c0, sfx_pa_clc keep their names; new labels c1_nonneg, c1_same, c1_clamp0, c1_ramp_end, c1_pinc are unique to this candidate.",
+   "relies_on": "Calls: sfx_tick is JSR'd only from irq1_handler (bank 5 paged, interrupts off). Page crossings: all of sfx_tick stays in page &A4 (ends &A4F3 now, < &A500) so BPL channel / BEQ / BPL c1_nonneg / BCS c1_pinc and the BRA back never cross; the tables sfx_p_lo..sfx_noise_written (&A5D7..&A5F2 shifted by 8 -> end &A5F6 + X <= 3 < &A600) cannot cross either; sfx_output moves &A548 -> &A550 (its BEQ noise, wait loops, all inside &A5xx, none near &A600). Everything after sfx50 in bank 5 slides 8 bytes up (measured: render phase unchanged, 23430 -> 23429). dv's sign: this data has no positive non-zero step; the positive path is kept anyway. Measured gate-like numbers: seed 1 interrupts -14.0 (1587->1573) and RIGHT -5 (1029->1024) cycles a pass; work -3 / -1.",
+   "file_written": "/c/Users/khcon/OneDrive/BEEB/Projects/strykers/build/grind/r3/opt-2bc1565a4b4b.json"
+  },
+  {
+   "window": "2bc1565a4b4b",
+   "file": "src/lib/sfx50.6502",
+   "line": 59,
+   "old": "    STA sfx_p_lo,X\n    BCC sfx_pa_c0                   \\ C = 0\n    INC sfx_p_hi,X\n.sfx_pa_clc\n    CLC\n.sfx_pa_c0\n    LDA sfx_dv,X                    \\ the amplitude steps, kept between 0 and 15\n    BMI down\n    ADC sfx_v,X                     \\ (C = 0 on every path here)\n    BCC v_known\n    LDA #&F8\n    BNE v_known                     \\ always\n.down\n    ADC sfx_v,X\n    BCS v_known\n    LDA #0\n.v_known\n    STA sfx_v,X\n    DEC sfx_n,X\n    BNE next\n    JSR sfx_next_ramp\n.next\n    DEX\n    BPL channel\n    RTS\n}",
+   "new": "    STA sfx_p_lo,X\n    BCC sfx_pa_c0                   \\ C = 0\n    INC sfx_p_hi,X\n.sfx_pa_clc\n    CLC\n.sfx_pa_c0\n    LDA sfx_dv,X                    \\ the amplitude steps, kept between 0 and 15\n    BPL c1_nonneg                   \\ (the data's steps are 0 or negative)\n    ADC sfx_v,X                     \\ negative step (C = 0 on every path here)\n    BCC c1_clamp0\n.v_known\n    STA sfx_v,X\n.c1_same\n    DEC sfx_n,X\n    BNE next\n    JSR sfx_next_ramp\n.next\n    DEX\n    BPL channel\n    RTS\n.c1_nonneg\n    BEQ c1_same                     \\ no step: sfx_v stays\n    ADC sfx_v,X\n    BCC v_known\n    LDA #&F8\n    BNE v_known                     \\ always\n.c1_clamp0\n    LDA #0\n    BRA v_known\n}",
+   "summary": "Amplitude step only (a subset of candidate 1, 4 bytes bigger instead of 8): LDA dv / BPL c1_nonneg with the negative step falling through (ADC, BCC c1_clamp0, STA, DEC) and nonneg: BEQ c1_same skipping the ADC and STA for dv = 0. Same lines as candidate 1: an alternative. Measured: interrupts 1587 -> 1576 (seed 1), 1029 -> 1025 (RIGHT) cycles a pass.",
+   "claim": {
+    "cycles_per_execution": 4.2,
+    "executions_a_pass": 2.62,
+    "cycles_a_pass": 11.0,
+    "bytes": -4
+   },
+   "equivalence": "As candidate 1's amplitude part: dv < 0 -> ADC with C = 0 (C = 0 on every path to sfx_pa_c0, unchanged here), carry = no underflow -> v_known STA; no carry -> c1_clamp0 LDA #0, BRA v_known (the old BCS v_known / LDA #0). dv = 0 -> the old ADC of 0 with C = 0 stored sfx_v unchanged; now neither is executed. dv > 0 -> ADC, BCC v_known, LDA #&F8, BNE v_known (always: Z = 0). The tail (DEC sfx_n,X / BNE next / JSR sfx_next_ramp / next: DEX / BPL channel / RTS) is the old code; the period step is untouched. 'down' is removed (nothing else refers to it); new labels c1_nonneg, c1_same, c1_clamp0 are unique to candidates 1 and 2 (alternatives, never both applied).",
+   "relies_on": "sfx_tick is called only from irq1_handler; page &A4 holds all of the changed code (ends &A4EB < &A500), so no branch in it crosses a page; later bank 5 code slides 4 bytes (render phase measured 23430 -> 23429, no page-crossing loss); sfx tables stay below &A5F6. Flags on return from sfx_tick are not used by its caller.",
+   "file_written": "/c/Users/khcon/OneDrive/BEEB/Projects/strykers/build/grind/r3/opt-2bc1565a4b4b.json"
+  },
+  {
+   "window": "2bc1565a4b4b",
+   "file": "src/lib/sfx50.6502",
+   "line": 89,
+   "old": "    LDA sfx_ptr_lo,X\n    STA ramp + 1\n    LDA sfx_ptr_hi,X\n    STA ramp + 2\n    LDY #0\n    JSR ramp\n    BEQ ended\n    STA sfx_n,X\n    LDA sfx_ptr_hi,X                \\ the other five bytes inline: each load's operand is the ramp's\n    STA nr_c1_b1 + 2                \\ page and the byte's offset, Y the ramp's low byte (a page is\n    STA nr_c1_b2 + 2                \\ crossed exactly where ramp's LDA &FFFF,Y would cross one)\n    STA nr_c1_b3 + 2",
+   "new": "    LDA sfx_ptr_hi,X                \\ the ramp's first byte inline too (not by JSR ramp): Y = its low byte\n    STA nr_c1_b0 + 2\n    LDY sfx_ptr_lo,X\n.nr_c1_b0\n    LDA &FF00,Y                     \\ self-modified: the ramp's page\n    BEQ ended\n    STA sfx_n,X\n    LDA sfx_ptr_hi,X                \\ the other five bytes inline: each load's operand is the ramp's\n    STA nr_c1_b1 + 2                \\ page and the byte's offset, Y the ramp's low byte (a page is\n    STA nr_c1_b2 + 2                \\ crossed exactly where ramp's LDA &FFFF,Y would cross one)\n    STA nr_c1_b3 + 2",
+   "summary": "sfx_next_ramp reads the ramp's first byte (the field count N) inline like the other five (a seventh self-modified load, nr_c1_b0, with Y = sfx_ptr_lo) instead of storing ramp+1/ramp+2, LDY #0 and JSR ramp / RTS: 5 bytes smaller, 20 cycles a call (about 0.22 calls a pass). Independent of candidates 1 and 2 (different lines; with candidate 1 together measured interrupts 1587 -> 1567 on seed 1, 1029 -> 1023 on RIGHT). The now-unused .ramp (lines 132-134, outside the window) stays as 4 dead bytes.",
+   "claim": {
+    "cycles_per_execution": 20.0,
+    "executions_a_pass": 0.22,
+    "cycles_a_pass": 4.4,
+    "bytes": 5
+   },
+   "equivalence": "Before: ramp+1/+2 := ptr, Y = 0, LDA (ptr),Y gives N with Z from the LDA; BEQ ended. Now: nr_c1_b0+2 := sfx_ptr_hi,X, Y := sfx_ptr_lo,X, LDA &FF00,Y reads the same address (hi*256 + lo), Z from that LDA, BEQ ended: the same branch. The ended path (also entered by JSR sfx_next_ramp.ended from sfx_silence) does not use Y or A. STA sfx_n,X then LDA sfx_ptr_hi,X restores A = page for the unchanged lines 101-103 (STA nr_c1_b4+2, nr_c1_b5+2, LDY sfx_ptr_lo,X) so everything after is identical. X preserved; Y was dead on return before (set to ptr_lo) and is now too. Lines 97-100 and their comments are kept verbatim. Nothing else refers to ramp (grep).",
+   "relies_on": "The self-modified operand is written by STA nr_c1_b0 + 2 at its own label, right before use, with interrupts off (sfx_tick runs in the interrupt; sfx_silence does SEI) - the same discipline as nr_c1_b1..5. sfx_next_ramp moves nothing in page &A4/&A5 hot code except by the 5 bytes shrink: sfx_output &A548 -> &A543, its branches and wait loops are inside &A5xx (none near &A600), sfx tables below &A5F0 + X <= 3. Measured alone: interrupts 1581 (seed 1), 1027 (RIGHT), render unchanged.",
+   "file_written": "/c/Users/khcon/OneDrive/BEEB/Projects/strykers/build/grind/r3/opt-2bc1565a4b4b.json"
+  }
+ ]
+}

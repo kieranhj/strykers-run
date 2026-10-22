@@ -1,0 +1,72 @@
+{
+ "candidates": [
+  {
+   "window": "6d11e13368b7",
+   "file": "src/render.6502",
+   "line": 1138,
+   "old": ".list_recorded\n{\n    TXA                             \\ X = ren_i on entry (the one caller)\n    LDX list_n\n    STA list_slot,X\n    LDA rec_type,Y\n    AND #&7F\n    STA list_type\n    LDA rec_wxl,Y                   \\ where it was drawn (BUGS #7)\n    STA list_x_lo\n    LDA rec_wxh,Y\n    STA list_x_hi\n    LDA rec_wy,Y\n    JMP list_finish\n}\n",
+   "new": ".list_recorded\n{\n    TXA                             \\ X = ren_i on entry (the one caller)\n    LDX list_n\n    STA list_slot,X\n    LDA rec_wxl,Y                   \\ where it was drawn (BUGS #7)\n    STA list_x_lo                   \\ (x2's, once the type has taken Y)\n    SEC                             \\ x1 = x - 1\n    SBC #1\n    STA list_x1_lo,X\n    LDA rec_wxh,Y\n    STA list_x_hi\n    SBC #0\n    STA list_x1_hi,X\n    LDA rec_type,Y\n    AND #&7F\n    TAX                             \\ X = type: list_finish's work, here, with n in Y\n    LDA rec_wy,Y\n    LDY list_n\n    SEC                             \\ y1 = y - 2 (or 0)\n    SBC #2\n    BCC lrec_low\n    STA list_y1,Y\n    ADC mover_types_height_table,X  \\ C set: y - 2 + height + 1\n    BCS lrec_top\n    ADC #3                          \\ y2 = y + height + 2 (or &FF)\n    BCS lrec_top\n.lrec_y2\n    STA list_y2,Y\n    LDA list_x_lo                   \\ x2 = x + width + 1\n    SEC\n    ADC mover_types_width_table,X\n    STA list_x2_lo,Y\n    LDA list_x_hi\n    ADC #0\n    STA list_x2_hi,Y\n    RTS\n.lrec_top\n    LDA #&FF\n    BRA lrec_y2                     \\ 65C02 opcode\n.lrec_low                           \\ y < 2 (A = y - 2 + 256, C clear): list_finish's, from the top\n    ADC #2                          \\ A = y\n    STX list_type\n    LDX list_n\n    JMP list_finish\n}\n",
+   "summary": "list_recorded does list_finish's work itself with the registers swapped (X = type, Y = list_n): x1 is computed from the loaded x with no trip through list_x_lo/hi, the type goes TAX instead of a store and a reload, and the JMP list_finish goes. y<2 (never in the profile) re-enters list_finish from the top. Measured on a scratch bench build (1500 passes seed 1, pcprof): list_finish -200, list_recorded +178 a pass, whole work -31 a pass; passlock seed 1 3000 passes and seed 3 4000 passes identical (state and screen), helilock 5 identical.",
+   "claim": {
+    "cycles_per_execution": 9,
+    "executions_a_pass": 2.53,
+    "cycles_a_pass": 22.8,
+    "bytes": -59
+   },
+   "equivalence": "Outputs identical: list_slot[n] = ren_i; x1 = x - 1 and x2 = x + width + 1 (16-bit, same SEC/SBC#1/SBC#0 and SEC/ADC width/ADC#0 chains); y1 = max(y - 2, 0) and y2 = min(y + height + 2, 255) by the same ADC chain (carry out of y - 2 + h + 1 or of + 3 gives &FF at lrec_top, which stores A=&FF through the common store). y < 2 (BCC): ADC #2 restores A = y (C was clear, so y + 254 + 2 sets C) and list_type, X = list_n are set for a JMP list_finish that redoes every store identically. Checked with an instruction-level model of old and new over 300,000 random cases (y in 0,1,2,3,254,255 and random, heights 0-255, x_lo 0/1/255, x_hi 0/1/255, type bit 7 set or clear, any n, any slot): the seven arrays equal in all. list_type, list_x_lo, list_x_hi are read only by list_finish (grep across src/, tools/): list_recorded no longer leaves list_type, and leaves list_x_lo/hi = x (as before); both are rewritten by list_live before any other read. The one caller does LDX ren_i; BIT need,X after, so A, X, Y, flags on return are free. Interrupt: ren_zp bytes are not touched by it.",
+   "relies_on": "Page crossings: grows the code after it by 59 bytes (list_finish &98A5 -> &98E0, widen_by_live &98EE -> &9929, list_overlap &9948 -> &9983); list_finish and widen_by_live both straddle &9900 in this build (no hot branch in list_finish crosses: its BCC y2_ok is no longer on the hot path here, the new code falls through). Downstream layout noise measured at +/-5 cycles a pass in the profile (draw_column -3), the direct saving was -22 (list_finish -200, list_recorded +178 over 1500 passes). Relies on list_finish keeping its contract (A = y, X = list_n, list_type/list_x_lo/hi) for the lrec_low re-entry, and on list_recorded's single caller (close_over_overlaps) having ren_i in zero page and Y = ren_i + boff. Uses abs,Y stores (STA list_y1,Y, list_y2,Y, list_x2_lo,Y, list_x2_hi,Y: all absolute, no zero-page,Y form needed) and abs,X reads of the two type tables (same page-crossing penalty as ,Y: same index value). Needs list_n < 255 (it is < &22).",
+   "file_written": "C:/Users/khcon/OneDrive/BEEB/Projects/strykers/build/grind/r3/opt-6d11e13368b7.json"
+  },
+  {
+   "window": "6d11e13368b7",
+   "file": "src/render.6502",
+   "line": 1128,
+   "old": ".next_a\n    INX\n    BRA each_a                      \\ 65C02 opcode\n",
+   "new": ".next_a\n    INX                             \\ each_a, here: the loop's tail without its BRA\n    CPX list_n\n    BEQ swept\n    LDY list_slot,X\n    LDA need,Y\n    BNE next_a                      \\ already coming off or going on\n    LDY #0\n    BRA each_b                      \\ 65C02 opcode\n",
+   "summary": "next_a (hit 2.6 times a pass, 2.1 of them straight round again because the slot's need is already set) carries each_a's head inline, so the loop tail has no BRA each_a; the one path that goes on to each_b (0.5 a pass) takes a BRA each_b instead of falling through. Measured alone on a scratch bench build: render -11 a pass (of which about 6.4 is this, the rest layout).",
+   "claim": {
+    "cycles_per_execution": 3,
+    "executions_a_pass": 2.63,
+    "cycles_a_pass": 6.4,
+    "bytes": -14
+   },
+   "equivalence": "Instruction-for-instruction the same as INX; BRA each_a; each_a: CPX list_n; BEQ swept; LDY list_slot,X; LDA need,Y; BNE next_a; LDY #0; fall into each_b. The copy ends BRA each_b with A, X, Y, flags the same as the fall-through. each_a stays for the 'again' entry. No other label moves meaning; next_a keeps its address as the first byte of the copy.",
+   "relies_on": "Page crossings: grows close_over_overlaps by 14 bytes (list_recorded &9862 -> &9870, everything downstream +14); all of next_a, swept and the loop's branches stay within page &98 (BNE next_a from each_a, BEQ swept, BEQ next_a from each_b). Measured: render -11 a pass alone, -1 a pass on top of candidate A (layout noise of about +/-5 on the downstream draw code, which the gate decides). Does not touch what any other label points at.",
+   "file_written": "C:/Users/khcon/OneDrive/BEEB/Projects/strykers/build/grind/r3/opt-6d11e13368b7.json"
+  },
+  {
+   "window": "6d11e13368b7",
+   "file": "src/render.6502",
+   "line": 1124,
+   "old": ".next_b\n    LDY list_b\n    INY\n    BRA each_b                      \\ 65C02 opcode\n",
+   "new": ".next_b\n    LDY list_b                      \\ each_b, here: the loop's tail without its BRA\n    INY\n    CPY list_n\n    BEQ next_a\n    STY list_b\n    LDA list_slot,Y\n    TAY\n    LDA need,Y\n    BEQ next_b                      \\ staying too: no reason\n    TYA\n    BEQ next_b\n    CMP list_slot,X\n    BCC below\n    LDY list_slot,X\n    BNE next_b\n    BRA below                       \\ 65C02 opcode\n",
+   "summary": "next_b (1.6 a pass) carries each_b's head and the rest of its body inline (the final BRA below instead of falling into .below), so the b loop's tail has no BRA each_b. Measured alone: render -16 a pass (4.7 is this).",
+   "claim": {
+    "cycles_per_execution": 3,
+    "executions_a_pass": 1.57,
+    "cycles_a_pass": 4.7,
+    "bytes": -28
+   },
+   "equivalence": "A copy of each_b's body from CPY list_n through BNE next_b, entered with Y = list_b + 1 exactly as each_b is (INY then CPY). Paths: CPY=list_n -> BEQ next_a (same); need,Y = 0 -> next_b (the copy, the same loop); b = player (TYA/BEQ) -> next_b; CMP/BCC -> below; LDY list_slot,X / BNE next_b; else BRA below (the original falls into .below). Registers and flags at .below, next_a and next_b are as in the original on each path. each_b stays for the first entry (LDY #0 from each_a and from next_a's copy).",
+   "relies_on": "Page crossings: grows by 28 bytes (+14 with B1). All branches in the copy are within page &98; the BRA below is a backward branch of about 50 bytes inside close_over_overlaps. Alternative to nothing; independent of A, B1, L but their sizes add to the downstream shift (A+B1+B2+L: list_finish &98A5 -> &9909, measured render -27 a pass in all, against -31 for A alone: layout of draw_column +11). Refers to .below, .next_a, .next_b, list_b, list_slot, need as they are.",
+   "file_written": "C:/Users/khcon/OneDrive/BEEB/Projects/strykers/build/grind/r3/opt-6d11e13368b7.json"
+  },
+  {
+   "window": "6d11e13368b7",
+   "file": "src/render.6502",
+   "line": 1155,
+   "old": ".list_live\n{\n    LDX list_n\n    LDY ren_i\n    TYA\n    STA list_slot,X\n    STY dm_slot                     \\ world_of_address's slot (BUGS #10); put_on sets its own\n",
+   "new": ".list_live\n{\n    TXA                             \\ X = ren_i on entry (both callers)\n    TAY\n    LDX list_n\n    STA list_slot,X\n    STY dm_slot                     \\ world_of_address's slot (BUGS #10); put_on sets its own\n",
+   "summary": "list_live: both callers (going_on, widen_by_live) have X = ren_i, so TXA; TAY replaces LDY ren_i; TYA, one cycle and one byte fewer (the store of dm_slot still takes Y).",
+   "claim": {
+    "cycles_per_execution": 1,
+    "executions_a_pass": 2.04,
+    "cycles_a_pass": 2.0,
+    "bytes": 1
+   },
+   "equivalence": "Same values: A = Y = ren_i, X = list_n at the STA list_slot,X, dm_slot = ren_i, then unchanged. The old code read ren_i from zero page; at both call sites X = ren_i: close_over_overlaps' going_on follows LDX act,Y; STX ren_i ... LDA need,X (X untouched) ; widen_by_live follows LDX ren_i, BIT need,X, and its LDA/PHA/LDA/STA do not touch X.",
+   "relies_on": "Relies on every caller of list_live having X = ren_i (grep: only the JSR at going_on and the JSR in widen_by_live; no entry past the label). Moves everything after by -1 byte (list_finish &98A5 -> &98A4); measured render -2 a pass alone.",
+   "file_written": "C:/Users/khcon/OneDrive/BEEB/Projects/strykers/build/grind/r3/opt-6d11e13368b7.json"
+  }
+ ]
+}

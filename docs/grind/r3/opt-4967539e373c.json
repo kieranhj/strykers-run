@@ -1,0 +1,55 @@
+{
+ "candidates": [
+  {
+   "window": "4967539e373c",
+   "file": "src/render.6502",
+   "line": 1485,
+   "old": ".not_right_of_view\n    BEQ jmax_done\n    LDA #&FF\n    STA dm_jmax\n.jmax_done\n    \\ the tables: pixels by colour and flip, masks by flip (plot_mover and\n    \\ get_mover_type_and_colour's rules: most enemies white)\n    LDY #HI(unflipped_green_pixel_table)\n    LDA dm_typecol\n    BPL green\n    CMP #&85                        \\ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_MISSILE\n    BEQ green\n    CMP #&95                        \\ MOVER_TYPE_ENEMY | MOVER_TYPE_HEAVY_GUN and above\n    BCS green\n    CMP #&87                        \\ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_SOLDIER\n    BEQ green\n    INY                             \\ white: the next page",
+   "new": ".jmax_big_a1\n    LDA #&FF\n    STA dm_jmax\n    BRA jmax_done                   \\ 65C02 opcode\n.not_right_of_view\n    BNE jmax_big_a1                 \\ high > 0: jmax 255 (never in the profiles: the hot path falls through)\n.jmax_done\n    \\ the tables: pixels by colour and flip, masks by flip (plot_mover and\n    \\ get_mover_type_and_colour's rules: most enemies white)\n    LDY #HI(unflipped_green_pixel_table)\n    LDA dm_typecol\n    BPL green\n    CMP #&95                        \\ MOVER_TYPE_ENEMY | MOVER_TYPE_HEAVY_GUN and above\n    BCS green\n    AND #&FD                        \\ &85 (MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_MISSILE) and &87\n    CMP #&85                        \\ (... _WITH_SOLDIER) differ only in bit 1\n    BEQ green\n    INY                             \\ white: the next page",
+   "summary": "Two changes in one region (alternatives: the two single-change candidates below overlap it). (1) not_right_of_view: the common case (high byte of viewport_right - x is 0: every draw in the profiles, 2.2 a pass) now falls through (BNE not taken, 2) instead of BEQ taken (3); the rare high>0 block (LDA #&FF / STA dm_jmax) moves above the label and returns by BRA jmax_done. (2) the type-colour test: after BPL, test >= &95 first (the hot non-bit-7-clear case: ~0.7 a pass, 9 cycles -> 5), then &85 and &87 together as (A AND &FD) == &85 (they differ only in bit 1); the white path is 2 cycles shorter, the &85 hit (never in the profiles) 6 longer. Net bytes 0 (+2 for the BRA, -2 for the chain), so nothing after the window moves.",
+   "claim": {
+    "cycles_per_execution": 2.3,
+    "executions_a_pass": 2.2,
+    "cycles_a_pass": 5.0,
+    "bytes": 0
+   },
+   "equivalence": "(1) Entry .not_right_of_view only from BCS (C=1) with Z = (high difference == 0). Old: Z -> jmax_done leaving dm_jmax = low difference (stored earlier by STA dm_jmax); else dm_jmax = &FF then jmax_done. New: BNE (Z=0) -> LDA #&FF/STA dm_jmax/BRA jmax_done; Z=1 falls through to the same jmax_done. A, C, Z, N are dead at jmax_done (the next instruction is LDY then LDA dm_typecol; X is not read before reload; annotations: in:- at jmax_done). The new block is only reachable by the BNE (the instruction before it is an unconditional BRA jmin_done). (2) After BPL not taken, bit 7 of A is set. Old: green iff A == &85, A >= &95 or A == &87, else INY. New: green iff A >= &95; else, with A in &80-&94, (A AND &FD) == &85 iff A in {&85, &87} (bit 1 is the only difference); else INY. The same partition of values. A is dead after the chain (green: STY, STY, BIT dm_flip, BMI; both successors start with LDA #), carry/Z/N are dead (BIT sets N, BMI reads it). Y is as before on every path. No data or other code changes.",
+   "relies_on": "Bytes net zero, so every address from .green on is unchanged (checked by assembling: ren_draw_sprite stays at &9B31, .green &9AAA, .flipped &9ACE; the bench build with the change assembles). Page crossings: BCS not_right_of_view (&9A7E -> &9A97, same page), BNE back to &9A91 same page, BPL green &9A9D->&9AAA same page, BCS green same page; no hot branch or indexed read changes page. Relies on typecol bit-7-set values being green iff ==&85, ==&87 or >=&95 (unchanged) and on the profile showing the high-byte-nonzero path and the &85 case as ~0 executions (BEQ at 1496 is never taken in the profile, 1.5 cycles for 0.75 executions at 2 cycles).",
+   "file_written": "build/grind/r3/opt-4967539e373c.json"
+  },
+  {
+   "window": "4967539e373c",
+   "file": "src/render.6502",
+   "line": 1494,
+   "old": "    BPL green\n    CMP #&85                        \\ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_MISSILE\n    BEQ green\n    CMP #&95                        \\ MOVER_TYPE_ENEMY | MOVER_TYPE_HEAVY_GUN and above\n    BCS green\n    CMP #&87                        \\ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_SOLDIER\n    BEQ green\n    INY                             \\ white: the next page",
+   "new": "    BPL green\n    CMP #&95                        \\ MOVER_TYPE_ENEMY | MOVER_TYPE_HEAVY_GUN and above\n    BCS green\n    AND #&FD                        \\ &85 (MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_MISSILE) and &87\n    CMP #&85                        \\ (... _WITH_SOLDIER) differ only in bit 1\n    BEQ green\n    INY                             \\ white: the next page",
+   "summary": "Alternative to (and overlapping) candidate 1, chain only: BPL, then CMP #&95/BCS green first, then &85 and &87 tested together as (A AND &FD) == &85. The common bit-7-set case (types >= &95, ~0.7 draws a pass) leaves after CMP/BCS (5 cycles) instead of CMP/BEQ/CMP/BCS (9); white saves 2 cycles; the &85 hit (never in the profiles) loses 6. Saves 2 bytes, which slides all code after the window down by 2.",
+   "claim": {
+    "cycles_per_execution": 4,
+    "executions_a_pass": 0.72,
+    "cycles_a_pass": 2.9,
+    "bytes": 2
+   },
+   "equivalence": "After BPL not taken A has bit 7 set. Old: green iff A==&85, A>=&95 or A==&87; else INY. New: green iff A>=&95, or (A AND &FD)==&85 (only &85 and &87 in &80-&94); else INY. Same partition. A, C, Z, N dead after the chain (the successors STY, STY, BIT dm_flip, BMI and then LDA # overwrite A; BIT sets N for BMI; C not used). Y unchanged on every path (INY only on the white path).",
+   "relies_on": "Moves the code from .green on down by 2 bytes: .green &9AAA -> &9AA8, ren_draw_sprite &9B31 -> &9B2F, BCS nothing (&9B00 -> &9AFE, target &9B22 stays in page &9B relative to the next instruction at &9B00: no penalty). Page crossings of hot branches/tables after the window were not individually recounted; candidate 1 avoids any move by keeping the size equal.",
+   "file_written": "build/grind/r3/opt-4967539e373c.json"
+  },
+  {
+   "window": "4967539e373c",
+   "file": "src/render.6502",
+   "line": 1485,
+   "old": ".not_right_of_view\n    BEQ jmax_done\n    LDA #&FF\n    STA dm_jmax",
+   "new": ".jmax_big_a1\n    LDA #&FF\n    STA dm_jmax\n    BRA jmax_done                   \\ 65C02 opcode\n.not_right_of_view\n    BNE jmax_big_a1                 \\ high > 0: jmax 255 (never in the profiles: the hot path falls through)",
+   "summary": "Alternative to (and overlapping) candidate 1, not_right_of_view only: make the common case (high byte difference 0, taken 100% in the profiles, 2.2 a pass) the fall-through: BNE to a relocated LDA #&FF/STA dm_jmax/BRA jmax_done block above the label. 3 -> 2 cycles on the hot path; +2 bytes (BRA), which slides code after the window up by 2.",
+   "claim": {
+    "cycles_per_execution": 1,
+    "executions_a_pass": 2.2,
+    "cycles_a_pass": 2.2,
+    "bytes": -2
+   },
+   "equivalence": ".not_right_of_view is entered only by BCS (C=1) with Z = (high diff == 0). Old BEQ jmax_done: Z=1 skip; else dm_jmax=&FF. New BNE: Z=0 -> same store, BRA jmax_done; Z=1 falls through to .jmax_done (the label follows the BNE directly). A/flags dead at jmax_done. The relocated block is preceded by an unconditional BRA, so it is reachable only by the BNE.",
+   "relies_on": "+2 bytes slides .jmax_done and everything after it up 2 bytes in the window region (page &9A): BPL green, BMI flipped and BRA parts stay in-page in the bench listing (&9A99.. to &9AEC), but code after .parts moves too; not recounted beyond that. Candidate 1 is the same change at equal size.",
+   "file_written": "build/grind/r3/opt-4967539e373c.json"
+  }
+ ]
+}

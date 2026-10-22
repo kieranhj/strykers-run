@@ -1,0 +1,19 @@
+window 9034ef7d9246: src/game.6502 lines 4357-4373, 14 instructions, 111.9 cycles a pass measured (wait excluded)
+
+ 4357      4.0     LDA #&05                                                                               ;| A=?≡$F4 X=? Y=? C=? Z=? N=? V=? | in:CV out:ACV
+ 4358      8.0     STA romsel                                                                             ;| A=$05 X=? Y=? C=? Z=0 N=0 V=? | romsel=? | in:ACV out:CV
+ 4359     12.0     JSR sfx_tick                                                                           ;| A=$05 X=? Y=? C=? Z=0 N=0 V=? | in:CV out:CV
+ 4360      8.0     PLA                                                                                    ;| A=? X=$FF Y=? C=? Z=0 N=1 V=? | in:CV out:ACV
+ 4361      8.0     STA romsel                                                                             ;| A=? X=$FF Y=? C=? Z=? N=? V=? | romsel=? | in:ACV out:CV
+ 4362          .leave_irq1_handler_owned           \ serviced here: back to the interrupted code, not the MOS
+ 4363     16.0     PLA                             \ irq_accumulator still holds this byte: nothing in the handler writes &FC;| A=? X=? Y=? C=? Z=? N=? V=? | in:CV out:ACV
+ 4364     16.0     PLY                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:ACV out:AYCV
+ 4365     16.0     PLX                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AYCV out:AXYNZCV
+ 4366     24.0     RTI                             \ A is still the interrupted A (PLY/PLX leave it)      ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXYNZCV out:AXYNZCV
+ 4367          .leave_irq1_handler                 \ anything else (in play, nothing: the MOS's tick is off)
+ 4368              PLA                             \ ***                                                  ;| A=? X=? Y=? C=? Z=? N=? V=? | in:CV out:ACV
+ 4369              STA irq_accumulator             \ ***                                                  ;| A=? X=? Y=? C=? Z=? N=? V=? | $FC=? | in:ACV out:ACV
+ 4370              PLY                             \ *** 65C02 opcode                                     ;| A=? X=? Y=? C=? Z=? N=? V=? | in:ACV out:AYCV
+ 4371              PLX                             \ *** 65C02 opcode                                     ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AYCV out:AXYNZCV
+ 4372          previous_irq1_vector_low = * + 1
+ 4373              JMP &FFFF                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXYNZCV out:AXYNZCV

@@ -1,0 +1,50 @@
+window 1e550c351d54: src/game.6502 lines 2108-2155, 32 instructions, 407.1 cycles a pass measured (wait excluded)
+
+ 2108      0.7     STY delta_high                  \ and the delta add_delta_to_screen_address_in_AX left, &0008;| A=? X=? Y=$00 C=? Z=1 N=0 V=? | $B7=? | in:AXYCV out:AXCV
+ 2109      0.5     LDY #&08                                                                               ;| A=? X=? Y=$00 C=? Z=1 N=0 V=? | in:AXCV out:AXYCV
+ 2110      0.7     STY delta_low                                                                          ;| A=? X=? Y=$08 C=? Z=0 N=0 V=? | $B6=? | in:AXYCV out:AXCV
+ 2111          .leave_1f55
+ 2112     22.1     RTS                             \ Leave with AX = mover_screen_address                 ;| A=? X=? Y={0,8} C=? Z=? N=0 V=? | in:AXCV out:AXCV
+ 2113          
+ 2114          .check_mover_x_against_viewport_left
+ 2115      4.1     LDA &C5                                                                                ;| A=? X=? Y=? C=? Z=? N=? V=? | $C5=? | in:XYV out:AXYV
+ 2116      4.1     CMP viewport_left_high                                                                 ;| A=?≡$C5 X=? Y=? C=? Z=? N=? V=? | $BA=? | in:AXYV out:XYZCV
+ 2117      2.9     BNE leave_1f60                                                                         ;| A=?≡$C5 X=? Y=? C=? Z=? N=? V=? | in:XYZCV out:XYCV
+ 2118      3.6     LDA mover_x_low                                                                        ;| A=?≡$C5 X=? Y=? C=1 Z=1 N=0 V=? | $F8=? | in:XYV out:AXYV
+ 2119      3.6     CMP viewport_left_low                                                                  ;| A=?≡$F8 X=? Y=? C=1 Z=? N=? V=? | $B2=? | in:AXYV out:XYCV
+ 2120          .leave_1f60
+ 2121      8.3     RTS                             \ Leave with carry set if mover_x >= viewport_left     ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XYCV out:XYCV
+ 2122          
+ 2123          .add_movers_to_column_buffer
+ 2124              \ Step 2 (layer 2): the edge column is scenery only; the renderer draws the movers that
+ 2125              \ overlap it. What the original's loop left behind is set as it left it (the bank, the
+ 2126              \ column plotter's mask opcode, the unflipped pixel table, mover_to_update past the last).
+ 2127              \ Layer 4 (decision 39): the column plotter is src/scroll_hazel.6502's, with no opcode to set.
+ 2128      0.8     LDA #&04                                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | in:V out:AV
+ 2129      1.2     STA os_ram_copy_of_currently_selected_rom                                              ;| A=$04 X=? Y=? C=? Z=0 N=0 V=? | $F4=? | in:AV out:AV
+ 2130      1.5     STA romsel                      \ Paged ROM latch                                      ;| A=$04 X=? Y=? C=? Z=0 N=0 V=? | romsel=? | in:AV out:V
+ 2131      0.8     LDA #&40                                                                               ;| A=$04 X=? Y=? C=? Z=0 N=0 V=? | in:V out:AV
+ 2132      1.1     STA pixel_table_address_low                                                            ;| A=$40 X=? Y=? C=? Z=0 N=0 V=? | $B8=? | in:AV out:V
+ 2133      0.8     LDA #&22                        \ MOVER_LAST + 1                                       ;| A=$40 X=? Y=? C=? Z=0 N=0 V=? | in:V out:AV
+ 2134      1.1     STA mover_to_update                                                                    ;| A=$22 X=? Y=? C=? Z=0 N=0 V=? | $03=? | in:AV out:V
+ 2135      2.3     RTS                                                                                    ;| A=$22 X=? Y=? C=? Z=0 N=0 V=? | in:V out:V
+ 2136          
+ 2137          .get_mover_x_and_y
+ 2138     17.3     LDY mover_to_update                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | $03=? | in:XCV out:XYCV
+ 2139          .get_mover_Y_x_and_y
+ 2140     41.8     LDA movers_y,Y                                                                         ;| A=? X=? Y=? C=? Z=? N=? V=? | [$1388,y]=? | in:XYCV out:AXYCV
+ 2141     31.3     STA mover_y                                                                            ;| A=? X=? Y=? C=? Z=? N=? V=? | $F9=? | in:AXYCV out:XYCV
+ 2142          .get_mover_Y_x
+ 2143     51.2     LDA movers_x_low,Y                                                                     ;| A=? X=? Y=? C=? Z=? N=? V=? | [$1344,y]=? | in:XYCV out:AXYCV
+ 2144     38.4     STA mover_x_low                                                                        ;| A=? X=? Y=? C=? Z=? N=? V=? | $F8=? | in:AXYCV out:XYCV
+ 2145     51.3     LDA movers_x_high,Y                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | [$1366,y]=? | in:XYCV out:AXYCV
+ 2146     38.4     STA &C5                                                                                ;| A=? X=? Y=? C=? Z=? N=? V=? | $C5=? | in:AXYCV out:AXYCV
+ 2147     76.9     RTS                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXYCV out:AXYCV
+ 2148          
+ 2149          .check_if_mover_is_on_edge
+ 2150              JSR get_mover_x_and_y                                                                  ;| A=? X=? Y=? C=? Z=? N=? V=? | in:V out:AV
+ 2151              LDX &7A                                                                                ;| A=? X=? Y=? C=? Z=? N=? V=? | $7A=? | in:AV out:AXV
+ 2152              LDY &C5                                                                                ;| A=? X=?≡$7A Y=? C=? Z=? N=? V=? | $C5=? | in:AXV out:AXYV
+ 2153              CPY edge_x_high                                                                        ;| A=? X=?≡$7A Y=?≡$C5 C=? Z=? N=? V=? | $B4=? | in:AXYV out:AXYNZCV
+ 2154              BCC check_x_max                                                                        ;| A=? X=?≡$7A Y=?≡$C5 C=? Z=? N=? V=? | in:AXYNZCV out:AXYNZV
+ 2155              BEQ check_x_low_1ffb                                                                   ;| A=? X=?≡$7A Y=?≡$C5 C=1 Z=? N=? V=? | in:AXYNZV out:AXYNZV

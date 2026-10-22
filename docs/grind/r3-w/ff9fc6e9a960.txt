@@ -1,0 +1,39 @@
+window ff9fc6e9a960: src/render.6502 lines 2081-2117, 32 instructions, 680.1 cycles a pass measured (wait excluded)
+
+ 2081      4.9     JMP blocks_done                                                                        ;| A=? X=? Y=?≡$5E C=1 Z=? N=? V=? | in:Y out:Y
+ 2082          .columns                            \ the columns from v_ptr + 8 to rb_end + 8
+ 2083     40.1     LDA v_ptr                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | $C4=? | in:XYV out:AXYV
+ 2084     40.1     CMP rb_end                                                                             ;| A=?≡$C4 X=? Y=? C=? Z=? N=? V=? | $45=? | in:AXYV out:XYZV
+ 2085     36.3     BNE more                                                                               ;| A=?≡$C4 X=? Y=? C=? Z=? N=? V=? | in:XYZV out:XYV
+ 2086     11.5     LDA v_ptr + 1                                                                          ;| A=?≡$C4 X=? Y=? C=1 Z=1 N=0 V=? | $C5=? | in:XYV out:AXYV
+ 2087     11.5     CMP rb_end + 1                                                                         ;| A=?≡$C5 X=? Y=? C=1 Z=? N=? V=? | $46=? | in:AXYV out:AXYNZCV
+ 2088      7.7     BNE more                                                                               ;| A=?≡$C5 X=? Y=? C=? Z=? N=? V=? | in:AXYNZCV out:AXYNZCV
+ 2089     23.1     RTS                                                                                    ;| A=?≡$C5 X=? Y=? C=1 Z=1 N=0 V=? | in:AXYNZCV out:AXYNZCV
+ 2090          .cells_next_page                    \ v_ptr + 11 crossed a page (rare): off the hot path
+ 2091      1.3     INC v_ptr + 1                                                                          ;| A=? X=? Y=$08 C=1 Z=? N=? V=? | $C5=? | in:X out:X
+ 2092      0.8     BRA cells_on_page               \ 65C02 opcode                                         ;| A=? X=? Y=$08 C=1 Z=? N=? V=? | in:X out:X
+ 2093          .more
+ 2094     19.0     LDY #10                         \ the record                                           ;| A=? X=? Y=? C=? Z=0 N=? V=? | in:- out:Y
+ 2095     47.9     LDA (v_ptr),Y                                                                          ;| A=? X=? Y=$0A C=? Z=0 N=0 V=? | [($C4),y]=? | in:Y out:AY
+ 2096     28.6     STA s_ptr + 1                                                                          ;| A=? X=? Y=$0A C=? Z=? N=? V=? | $C3=? | in:AY out:Y
+ 2097     19.0     DEY                                                                                    ;| A=? X=? Y=$0A C=? Z=? N=? V=? | in:Y out:Y
+ 2098     47.9     LDA (v_ptr),Y                                                                          ;| A=? X=? Y=$09 C=? Z=0 N=0 V=? | [($C4),y]=? | in:Y out:AY
+ 2099     19.0     TAX                             \ the address's low byte                               ;| A=? X=? Y=$09 C=? Z=? N=? V=? | in:AY out:XY
+ 2100     19.0     DEY                                                                                    ;| A=? X=? Y=$09 C=? Z=? N=? V=? | in:XY out:XY
+ 2101     47.9     LDA (v_ptr),Y                                                                          ;| A=? X=? Y=$08 C=? Z=0 N=0 V=? | [($C4),y]=? | in:XY out:AXN
+ 2102     21.3     BMI compiled                    \ &FF: a compiled part (ren_draw_sprite), X = its kind ;| A=? X=? Y=$08 C=? Z=? N=? V=? | in:AXN out:AX
+ 2103     21.9     STA rows_m1                     \ count - 1                                            ;| A=0..127 X=? Y=$08 C=? Z=? N=0 V=? | $CB=? | in:AX out:X
+ 2104     21.9     LDA v_ptr                       \ the cells after it                                   ;| A=0..127 X=? Y=$08 C=? Z=? N=0 V=? | $C4=? | in:X out:AX
+ 2105     14.6     CLC                                                                                    ;| A=?≡$C4 X=? Y=$08 C=? Z=? N=? V=? | in:AX out:AXC
+ 2106     14.6     ADC #11                                                                                ;| A=?≡$C4 X=? Y=$08 C=0 Z=? N=? V=? | in:AXC out:AXC
+ 2107     21.9     STA v_ptr                                                                              ;| A=? X=? Y=$08 C=? Z=? N=? V=? | $C4=? | in:AXC out:XC
+ 2108     14.9     BCS cells_next_page             \ the hot path falls through                           ;| A=? X=? Y=$08 C=? Z=? N=? V=? | in:XC out:X
+ 2109          .cells_on_page
+ 2110     14.6     TXA                                                                                    ;| A=? X=? Y=$08 C=? Z=? N=? V=? | in:X out:AX
+ 2111     14.6     AND #&F8                                                                               ;| A=? X=? Y=$08 C=? Z=? N=? V=? | in:AX out:AX
+ 2112     21.9     STA s_ptr                                                                              ;| A=0..248 %xxxxx000 X=? Y=$08 C=? Z=? N=? V=? | $C2=? | in:AX out:X
+ 2113     14.6     TXA                                                                                    ;| A=0..248 %xxxxx000 X=? Y=$08 C=? Z=? N=? V=? | in:X out:A
+ 2114     14.6     AND #&07                                                                               ;| A=? X=? Y=$08 C=? Z=? N=? V=? | in:A out:A
+ 2115     14.6     TAY                                                                                    ;| A=0..7 X=? Y=$08 C=? Z=? N=0 V=? | in:A out:Y
+ 2116          .cell                               \ as draw_column: does the column end in this cell?
+ 2117     28.6     TYA                                                                                    ;| A=? X=? Y=0..7 C=? Z=? N=? V=? | in:Y out:AY

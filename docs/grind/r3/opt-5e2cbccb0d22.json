@@ -1,0 +1,38 @@
+{
+ "candidates": [
+  {
+   "window": "5e2cbccb0d22",
+   "file": "src/render.6502",
+   "line": 1917,
+   "old": "    BCC on_page\n    INC v_ptr + 1\n    CLC                             \\ carry clear to return\n.on_page\n    LDA &C0\n    STA (v_ptr)                     \\ 65C02 opcode\n    LDY #1\n    LDA &C1\n    STA (v_ptr),Y\n    RTS                             \\ carry clear: drawn\n.in_hazel\n    JSR compiled_direct\n    BCC called\n.unsafe                             \\ the code's row pointers used b_ptr and ds_c\n    LDA &C0\n    STA b_ptr\n    LDA &C1\n    STA b_ptr + 1\n    LDA ds_n\n    STA ds_c\n    SEC\n    RTS\n}\n\n\\ up_a_cell: AX = a character cell's top line; returns AX = the bottom line of the cell above\n\\ (&279 lower, round the 16K screen), as the plotter moves up a group.\n.up_a_cell\n{\n    SEC\n    SBC #&79\n    PHA\n    TXA\n    SBC #&02\n    CMP #&40\n    BCS in_ring\n    ADC #&40\n.in_ring\n    TAX\n    PLA\n    RTS\n}",
+   "new": "    BCS cp2_page_cross              \\ the rare carry: off the hot path, which falls through\n.on_page\n    LDA &C0\n    STA (v_ptr)                     \\ 65C02 opcode\n    LDY #1\n    LDA &C1\n    STA (v_ptr),Y\n    RTS                             \\ carry clear: drawn\n.cp2_page_cross                     \\ v_ptr + 11 crossed a page (rare)\n    INC v_ptr + 1\n    CLC                             \\ carry clear to return\n    BRA on_page                     \\ 65C02 opcode\n.in_hazel\n    JSR compiled_direct\n    BCC called\n.unsafe                             \\ the code's row pointers used b_ptr and ds_c\n    LDA &C0                         \\ (C = 1 here from either path: BCS unsafe, BCC called not taken)\n    STA b_ptr\n    LDA &C1\n    STA b_ptr + 1\n    LDA ds_n\n    STA ds_c\n    RTS\n}",
+   "summary": "compiled_part's tail: the rare page carry (v_ptr + 11) goes out of line (BCS to a stub that does INC/CLC/BRA back) so the hot path falls through 1 cycle cheaper (2.2 a pass); drops the SEC before unsafe's RTS (C is already 1 on both entries); deletes the unreferenced up_a_cell (16 bytes). Alternative to the other candidate (same lines).",
+   "claim": {
+    "cycles_per_execution": 1,
+    "executions_a_pass": 2.2,
+    "cycles_a_pass": 2.2,
+    "bytes": 15
+   },
+   "equivalence": "Hot path: after ADC #11 the carry is the page carry; the old BCC on_page taken (3 cycles) becomes BCS not taken (2) falling into on_page with C=0, same A/Y/flags (nothing between reads A). Rare path: BCS taken to the stub, INC v_ptr + 1, CLC, BRA on_page: the old INC;CLC;fallthrough with the same registers (INC and CLC only touch v_ptr+1 and C). on_page's tail is unchanged and is reached only from these two places (local label, grep). unsafe: the SEC is redundant because every entry has C=1 (BCS unsafe taken; BCC called not taken after compiled_direct; LDA/STA leave C); the dataflow annotation shows C=1 at the LDA &C0. up_a_cell has no caller or reference anywhere in src/ (grep), no entry past it (no up_a_cell + n), and it sits between compiled_part's closing brace and raise_address, whose own in_ring label is inside its own scope.",
+   "relies_on": "Measured 2026-10-22 on the bench build: render+logic+interrupts a pass 3 cycles lower than HEAD on seed 1 (1500 passes) and 3 lower holding RIGHT (600 passes from 50), render 23430 -> 23427 and 28406 -> 28403. Net -15 bytes: raise_address moves from &9D49 to &9D3A and everything after in bank 4 by -15; the page crossings it moves were measured as part of that figure (raise_cells_lo/hi stay in one page, restore_block &9D8C). Measured 2026-10-22 on a scratch copy of HEAD (bench build, DEBUG_LIVES, tools/pcprof.mjs --unclobber --detail): work a pass render+logic+interrupts. No other label refers to the removed up_a_cell (grep src/ tools/ docs/: only name lists filtered by symbol existence in passcost.mjs and pccats.py). unsafe is entered only by BCS unsafe (C=1) and BCC called not taken (C=1), and compiled_unsafe_N / the kinds' SEC;RTS return with C=1 through compiled_call's carry-neutral LDA/STA.",
+   "file_written": "build/grind/r3/opt-5e2cbccb0d22.json"
+  },
+  {
+   "window": "5e2cbccb0d22",
+   "file": "src/render.6502",
+   "line": 1917,
+   "old": "    BCC on_page\n    INC v_ptr + 1\n    CLC                             \\ carry clear to return\n.on_page\n    LDA &C0\n    STA (v_ptr)                     \\ 65C02 opcode\n    LDY #1\n    LDA &C1\n    STA (v_ptr),Y\n    RTS                             \\ carry clear: drawn\n.in_hazel\n    JSR compiled_direct\n    BCC called\n.unsafe                             \\ the code's row pointers used b_ptr and ds_c\n    LDA &C0\n    STA b_ptr\n    LDA &C1\n    STA b_ptr + 1\n    LDA ds_n\n    STA ds_c\n    SEC\n    RTS\n}\n\n\\ up_a_cell: AX = a character cell's top line; returns AX = the bottom line of the cell above\n\\ (&279 lower, round the 16K screen), as the plotter moves up a group.\n.up_a_cell\n{\n    SEC\n    SBC #&79\n    PHA\n    TXA\n    SBC #&02\n    CMP #&40\n    BCS in_ring\n    ADC #&40\n.in_ring\n    TAX\n    PLA\n    RTS\n}",
+   "new": "    BCS cp1_page_cross              \\ the rare carry: off the hot path, which falls through\n.on_page\n    LDA &C0\n    STA (v_ptr)                     \\ 65C02 opcode\n    LDY #1\n    LDA &C1\n    STA (v_ptr),Y\n    RTS                             \\ carry clear: drawn\n.cp1_page_cross                     \\ v_ptr + 11 crossed a page (rare)\n    INC v_ptr + 1\n    CLC                             \\ carry clear to return\n    BRA on_page                     \\ 65C02 opcode\n.in_hazel\n    JSR compiled_direct\n    BCC called\n.unsafe                             \\ the code's row pointers used b_ptr and ds_c\n    LDA &C0                         \\ (C = 1 here from either path: BCS unsafe, BCC called not taken)\n    STA b_ptr\n    LDA &C1\n    STA b_ptr + 1\n    LDA ds_n\n    STA ds_c\n    RTS\n}\n\n    SKIP 15                         \\ was up_a_cell (unused); keeps raise_address and all after it where they were",
+   "summary": "Same change as the other candidate but layout-neutral: up_a_cell is replaced by SKIP 15 so raise_address and everything after stay at the same addresses (no page crossing moves). Alternative to the other candidate (same lines); defines cp1_page_cross, not cp2_page_cross.",
+   "claim": {
+    "cycles_per_execution": 1,
+    "executions_a_pass": 2.2,
+    "cycles_a_pass": 2.2,
+    "bytes": 0
+   },
+   "equivalence": "As the other candidate for the tail and unsafe (BCS stub not taken on the hot path falls into on_page with C=0; stub does INC v_ptr + 1, CLC, BRA on_page; SEC dropped as C=1 on every entry to unsafe). up_a_cell is unreferenced and removed; SKIP 15 pads exactly the bytes freed (+2 BRA, -1 SEC, -16 up_a_cell, +15) so raise_address stays at &9D49 (checked in the listing; only 53 bytes of the disc differ).",
+   "relies_on": "Measured 2026-10-22 on the bench build: 1 cycle a pass lower on seed 1 and 3 lower holding RIGHT (render 23430 -> 23429, 28406 -> 28403). Moves no code after the window (listing addresses from raise_address on identical); the change inside is within page &9D (on_page &9D18, in_hazel &9D28). Needs SKIP inside DATA1 (assembled fine). Measured 2026-10-22 on a scratch copy of HEAD (bench build, DEBUG_LIVES, tools/pcprof.mjs --unclobber --detail): work a pass render+logic+interrupts. No other label refers to the removed up_a_cell (grep src/ tools/ docs/: only name lists filtered by symbol existence in passcost.mjs and pccats.py). unsafe is entered only by BCS unsafe (C=1) and BCC called not taken (C=1), and compiled_unsafe_N / the kinds' SEC;RTS return with C=1 through compiled_call's carry-neutral LDA/STA.",
+   "file_written": "build/grind/r3/opt-5e2cbccb0d22.json"
+  }
+ ]
+}

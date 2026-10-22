@@ -1,0 +1,41 @@
+window 93eddeba195c: src/sky_main.6502 lines 103-141, 32 instructions, 158.1 cycles a pass measured (wait excluded)
+
+  103      8.6     LDA sky_rh,X                                                                           ;| A=? X=? Y=? C=? Z=? N=? V=? | [sky_rh,x]=? | in:X out:AX
+  104      6.4     STA s_ptr + 1                                                                          ;| A=? X=? Y=? C=? Z=? N=? V=? | $C3=? | in:AX out:X
+  105      8.6     LDA sky_rn,X                                                                           ;| A=? X=? Y=? C=? Z=? N=? V=? | [sky_rn,x]=? | in:X out:AX
+  106      6.4     STA sky_n                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | $DE=? | in:AX out:AX
+  107      4.3     EOR #&FF                                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AX out:AX
+  108      4.3     SEC                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AX out:AXC
+  109      4.3     ADC #8                                                                                 ;| A=? X=? Y=? C=1 Z=? N=? V=? | in:AXC out:AXV
+  110      6.4     STA sky_skip                                                                           ;| A=? X=? Y=? C=? Z=? N=? V=? | $DF=? | in:AXV out:XV
+  111      8.6     LDA sky_rt,X                                                                           ;| A=? X=? Y=? C=? Z=? N=? V=? | [sky_rt,x]=? | in:XV out:AXV
+  112      8.6     ORA sky_ry,X                                                                           ;| A=? X=? Y=? C=? Z=? N=? V=? | [sky_ry,x]=? | in:AXV out:AXV
+  113      4.3     TAY                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXV out:XYV
+  114      6.4     LDA sky_skip                                                                           ;| A=? X=? Y=? C=? Z=? N=? V=? | $DF=? | in:XYV out:AXYZV
+  115     12.9     RTS                                                                                    ;| A=?≡$DF X=? Y=? C=? Z=? N=? V=? | in:AXYZV out:AXYZV
+  116          
+  117          \ sky_draw: helicopter sky_s's image over the rectangle's columns drawn: a whole character row four
+  118          \ bytes a loop, a part row's cells from an entry into eight lines unrolled
+  119          .sky_draw
+  120          {
+  121      1.6     LDA sky_d1                                                                             ;| A=? X=? Y=? C=1 Z=? N=? V=? | sky_d1=? | in:- out:A
+  122      0.8     ASL A                                                                                  ;| A=?≡sky_d1 X=? Y=? C=1 Z=? N=? V=? | in:A out:A
+  123      0.8     ASL A                                                                                  ;| A=0..254 %xxxxxxx0 X=? Y=? C=? Z=? N=? V=? | in:A out:A
+  124      0.8     ASL A                                                                                  ;| A=0..252 %xxxxxx00 X=? Y=? C=? Z=? N=? V=? | in:A out:A
+  125      1.2     STA sky_j8                                                                             ;| A=0..248 %xxxxx000 X=? Y=? C=? Z=? N=? V=? | $E1=? | in:A out:-
+  126      0.8     LDX #0                                                                                 ;| A=0..248 %xxxxx000 X=? Y=? C=? Z=? N=? V=? | in:- out:X
+  127          .row
+  128      5.1     STX sky_q                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | $E0=? | in:X out:X
+  129      6.8     LDA sky_rb,X                    \ the image: its block, + 8 * the first column drawn   ;| A=? X=? Y=? C=? Z=? N=? V=? | [sky_rb,x]=? | in:X out:AX
+  130      5.1     LDY sky_s                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | $D2=? | in:AX out:AXZ
+  131      4.3     BEQ h0                                                                                 ;| A=? X=? Y=?≡$D2 C=? Z=? N=? V=? | in:AXZ out:AX
+  132      1.5     ORA #4                                                                                 ;| A=? X=? Y=1..255≡$D2 C=? Z=0 N=? V=? | in:AX out:AX
+  133          .h0
+  134      3.4     TAY                                                                                    ;| A=? X=? Y=?≡$D2 C=? Z=? N=? V=? | in:AX out:XY
+  135      6.8     LDA sky_blk_lo,Y                                                                       ;| A=? X=? Y=? C=? Z=? N=? V=? | [$A356,y]=? | in:XY out:AXY
+  136      3.4     CLC                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXY out:AXYC
+  137      5.1     ADC sky_j8                                                                             ;| A=? X=? Y=? C=0 Z=? N=? V=? | $E1=? | in:AXYC out:AXYC
+  138      5.1     STA d_ptr                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | $C0=? | in:AXYC out:XYC
+  139      6.8     LDA sky_blk_hi,Y                                                                       ;| A=? X=? Y=? C=? Z=? N=? V=? | [$A35E,y]=? | in:XYC out:AXC
+  140      3.4     ADC #0                                                                                 ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXC out:AX
+  141      5.1     STA d_ptr + 1                                                                          ;| A=? X=? Y=? C=? Z=? N=? V=? | $C1=? | in:AX out:X

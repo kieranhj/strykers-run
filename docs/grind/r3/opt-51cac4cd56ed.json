@@ -1,0 +1,38 @@
+{
+ "candidates": [
+  {
+   "window": "51cac4cd56ed",
+   "file": "src/sky_hazel.6502",
+   "line": 168,
+   "old": "    STA sky_j8\n    LDX #0\n.row\n    JSR sky_col_row\n    BCS next\n.byte\n    LDA (s_ptr),Y\n    BNE dirty\n    DEY\n    CPY sky_stop\n    BNE byte\n.next\n    INX\n    CPX sky_nq\n    BNE row\n    CLC\n    RTS\n.dirty\n    SEC\n    RTS",
+   "new": "    STA sky_j8\n    LDX #0\n.row\n    LDA sky_j8                      \\ sky_col_row's tests, inline (its caller here only): sk = this column from the entry's first\n    SEC\n    SBC sky_rc,X\n    BCC next                        \\ before it\n    STA sky_stop\n    CMP sky_ry,X\n    BCC chk1_in                     \\ sk < the last\n    BNE next                        \\ after it\n.chk1_in\n    LDA sky_rt,X                    \\ the cells' bytes lie at rl + (rt | sk) - (rn - 1) .. rl + (rt | sk): s_ptr = the lowest\n    ORA sky_stop                    \\ (rn <= rt + 1, so 0 or more)\n    SEC\n    SBC sky_rn,X\n    INC A                           \\ 65C02 opcode\n    CLC\n    ADC sky_rl,X\n    STA s_ptr\n    LDA sky_rh,X\n    ADC #0\n    STA s_ptr + 1\n    LDY sky_rn,X\n    DEY                             \\ rn - 1 down to 0 (rn is 1 to 8)\n    LDA (s_ptr),Y\n    DEY\n    BMI chk1_done\n.byte\n    ORA (s_ptr),Y                   \\ all the bytes ORed: nothing exits early, as nothing is ever found\n    DEY\n    BPL byte\n.chk1_done\n    TAY\n    BNE dirty\n.next\n    INX\n    CPX sky_nq\n    BNE row\n    CLC\n    RTS\n.dirty\n    SEC\n    RTS",
+   "summary": "sky_col_check does its own row setup (a copy of sky_col_row's tests, no JSR/RTS) and points s_ptr at the row's lowest byte (rl + (rt|sk) - rn + 1, 16-bit), so the byte loop counts Y from rn-1 to 0 with DEY/BPL (no CPY sky_stop) and ORs the bytes together, testing once per row (TAY/BNE dirty). Byte loop 15 -> 10 cycles a byte, row setup 71 -> 60. sky_col_row and its other callers untouched. Alternative to the second candidate (overlaps it).",
+   "claim": {
+    "cycles_per_execution": 40.0,
+    "executions_a_pass": 2.3,
+    "cycles_a_pass": 92.0,
+    "bytes": -43
+   },
+   "equivalence": "Same answer: C set iff some byte of some entry's column is non-zero. The entry tests are sky_col_row's (BCC no when j8 < rc; no when ry < sk: here CMP ry vs sk, BCC = sk < ry, BNE = sk > ry, equal passes). The bytes read are the same set of addresses: the original reads rl + Ystart - k for k = 0..rn-1 with Ystart = rt|sk (Y counting down from it to stop+1, stop = Ystart - rn); the new s_ptr = rl + (Ystart - rn + 1) (mod 256 in A, which is the true value since the builder has rn <= rt + 1: bottom row rn = L + 1, rt = L; whole rows rn = 8, rt = 7; the top row rn = t <= 8, rt = 7; split copies keep both) with the carry into the high byte, and Y = rn-1 .. 0 reads s_ptr + Y = the same addresses (16-bit add by the hardware, same &7FFF/&8000 behaviour as before since the addresses are identical). Dirty: any byte non-zero ORs into A, TAY sets Z, BNE dirty; the original stopped at the first non-zero, this finishes the row first, with no other side effect (reads only). Exits: CLC/RTS after the last entry, SEC/RTS when dirty, as before. Not live after: X, Y, A, Z/N/V (the only caller path is JMP sky_col_check from lead_col, whose callers do BCS fall and reload A, X), s_ptr, sky_stop, sky_j8 (all written before read at every use). Python model of old vs new over 200,000 random tables and memory contents agreed on every one. rn = 1: LDA, DEY gives $FF, BMI taken, TAY tests the one byte.",
+   "relies_on": "No page-crossing moves: sky_col_check is the last code of hazel_b (nothing after it in the section), the new code is 70 bytes against 27 so hazel_b_end goes &DF65 -> &DF90 (test-assembled) (below the &E000 ASSERT; the gameplay builds' hazel_b_end is &DF65 too), the byte loop is at &DF7F-&DF85 and every branch is inside page &DF (BNE row within 127 bytes). The file after hazel_b (hazel_c's load image, the packed tunes) slides 37 bytes in the start-up block, which has 1,500 bytes free (mgame_end &4E36). The sky_r* tables are at &BC90-&BCB5, X is at most 5, no indexed read crosses a page (as before). The (s_ptr),Y reads cross a page only when the address span does: never more often than before (the old base was rl, so any rl + Y >= 256 paid). Uses 65C02 INC A (the file already does). Requires rn between 1 and rt + 1 for every entry, which the builder guarantees (checked above); the original would loop 256 times with rn = 0 and read wrong bytes if rn > rt + 1.",
+   "file_written": "build/grind/r3/opt-51cac4cd56ed.json"
+  },
+  {
+   "window": "51cac4cd56ed",
+   "file": "src/sky_hazel.6502",
+   "line": 171,
+   "old": "    JSR sky_col_row\n    BCS next\n.byte\n    LDA (s_ptr),Y\n    BNE dirty\n    DEY\n    CPY sky_stop\n    BNE byte",
+   "new": "    JSR sky_col_row\n    BCS next\n    LDA (s_ptr),Y                   \\ the bytes ORed, so the loop has no exit but its end\n    DEY\n    CPY sky_stop\n    BEQ chk2_done\n.byte\n    ORA (s_ptr),Y\n    DEY\n    CPY sky_stop\n    BNE byte\n.chk2_done\n    TAY\n    BNE dirty",
+   "summary": "Keeps the JSR sky_col_row contract; the byte loop ORs the bytes (LDA first, then ORA (s_ptr),Y / DEY / CPY sky_stop / BNE) and tests once per row (TAY / BNE dirty): 15 -> 13 cycles a byte, 4 more a row. Smaller change than the first candidate (+8 bytes); alternative to it (overlaps it).",
+   "claim": {
+    "cycles_per_execution": 9.4,
+    "executions_a_pass": 2.3,
+    "cycles_a_pass": 21.6,
+    "bytes": -8
+   },
+   "equivalence": "Same reads at the same addresses: first LDA at Y, then DEY / CPY stop / loop until Y == stop, as the do-while before (rn >= 1 so the first byte is always read; if the first DEY reaches stop the BEQ leaves with that one byte read). ORA accumulates; TAY sets Z from the OR of all the bytes of the row: BNE dirty exits with C set (the SEC/RTS at .dirty) exactly when the original would have, only after finishing the row (reads only, no side effects). X unchanged through the loop; Y is free after. Rows skipped by BCS next take the same path. A, Y, Z not live after the row (next row's JSR sky_col_row loads A, sets Y).",
+   "relies_on": "sky_col_check is the last code in hazel_b: nothing after it moves its alignment (hazel_b_end &DF65 -> &DF6D, below &E000; the start-up block after it slides 8 bytes). The byte loop (LDA at &DF53 before) stays in page &DF, so BNE byte, BEQ and BNE dirty do not cross a page (loop about &DF5B-&DF63). The (s_ptr),Y reads are the same addresses as before, so the same page crossings.",
+   "file_written": "build/grind/r3/opt-51cac4cd56ed.json"
+  }
+ ]
+}

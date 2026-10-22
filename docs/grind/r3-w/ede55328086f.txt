@@ -1,0 +1,40 @@
+window ede55328086f: src/render.6502 lines 1793-1830, 32 instructions, 1,731.0 cycles a pass measured (wait excluded)
+
+ 1793      0.5     CLC                             \ C = 0 on both paths                                  ;| A=? X=? Y=128..255 C=1 Z=? N=? V=? | in:- out:C
+ 1794          .save_same_page
+ 1795     23.1     LDA s_ptr                       \ ...the screen a character row up (C = 0: &7F + 1)... ;| A=? X=? Y=128..255 C=0 Z=? N=? V=? | $C2=? | in:C out:AC
+ 1796     15.4     SBC #&7F                                                                               ;| A=?≡$C2 X=? Y=128..255 C=0 Z=? N=? V=? | in:AC out:AC
+ 1797     23.1     STA s_ptr                                                                              ;| A=? X=? Y=128..255 C=? Z=? N=? V=? | $C2=? | in:AC out:C
+ 1798     23.1     LDA s_ptr + 1                                                                          ;| A=? X=? Y=128..255 C=? Z=? N=? V=? | $C3=? | in:C out:AC
+ 1799     15.4     SBC #&02                                                                               ;| A=?≡$C3 X=? Y=128..255 C=? Z=? N=? V=? | in:AC out:AC
+ 1800     15.4     ORA #&40                        \ ...round the 16K: &3D-&3F (below the ring) -> &7D-&7F;| A=? X=? Y=128..255 C=? Z=? N=? V=? | in:AC out:AC
+ 1801     23.1     STA s_ptr + 1                                                                          ;| A=64..255 %x1xxxxxx X=? Y=128..255 C=? Z=0 N=? V=? | $C3=? | in:AC out:C
+ 1802     15.4     LDY #7                          \ ...from its bottom line: the cell test inline (C = 1, as;| A=64..255 %x1xxxxxx X=? Y=128..255 C=? Z=0 N=? V=? | in:C out:YC
+ 1803     15.4     TYA                             \ the ring's high byte is 3 or more)                   ;| A=64..255 %x1xxxxxx X=? Y=$07 C=? Z=0 N=0 V=? | in:YC out:AYC
+ 1804     23.1     SBC rows_m1                     \ line - (rows left - 1)                               ;| A=$07 X=? Y=$07 C=? Z=0 N=0 V=? | $CB=? | in:AYC out:AYC
+ 1805     22.0     BCS last_cell                   \ 0 or more: it ends here                              ;| A=? X=? Y=$07 C=? Z=? N=? V=? | in:AYC out:AYC
+ 1806      2.4     EOR #&FF                        \ no: rows left after this cell, less 1                ;| A=? X=? Y=$07 C=0 Z=? N=? V=? | in:AYC out:AYC
+ 1807      3.5     STA rows_m1                                                                            ;| A=? X=? Y=$07 C=0 Z=? N=? V=? | $CB=? | in:AYC out:YC
+ 1808      3.5     BRA byte                        \ 65C02 opcode (C = 0, as the byte loop needs)         ;| A=? X=? Y=$07 C=0 Z=? N=? V=? | in:YC out:YC
+ 1809          .last_cell                          \ A = line - rows left + 1: the last line drawn
+ 1810     18.8     DEC A                           \ 65C02 opcode: the line below it                      ;| A=? X=? Y=? C=1 Z=? N=? V=? | in:AY out:AY
+ 1811     28.2     STA stop_y                                                                             ;| A=? X=? Y=? C=1 Z=? N=? V=? | $C6=? | in:AY out:Y
+ 1812          .part_byte
+ 1813    158.5     LDA (d_ptr),Y                                                                          ;| A=? X=? Y=? C=? Z=? N=? V=? | [($C0),y]=? | in:Y out:AY
+ 1814     63.3     TAX                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AY out:XY
+ 1815    158.2     LDA (s_ptr),Y                                                                          ;| A=? X=? Y=? C=? Z=? N=? V=? | [($C2),y]=? | in:XY out:AXY
+ 1816    189.8     STA (v_ptr),Y                                                                          ;| A=? X=? Y=? C=? Z=? N=? V=? | [($C4),y]=? | in:AXY out:AXY
+ 1817          mask_operand_2 = * + 1
+ 1818    126.5     AND &FFFF,X                     \ self-modified, as mask_operand                       ;| A=? X=? Y=? C=? Z=? N=? V=? | [$FFFF,x]=? | in:AXY out:AXY
+ 1819          pix_operand_2 = * + 1
+ 1820    126.5     EOR &FFFF,X                     \ self-modified, as pix_operand                        ;| A=? X=? Y=? C=? Z=? N=? V=? | [$FFFF,x]=? | in:AXY out:AY
+ 1821    189.8     STA (s_ptr),Y                                                                          ;| A=? X=? Y=? C=? Z=? N=? V=? | [($C2),y]=? | in:AY out:AY
+ 1822     63.3     DEY                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AY out:AY
+ 1823     94.9     CPY stop_y                                                                             ;| A=? X=? Y=? C=? Z=? N=? V=? | $C6=? | in:AY out:AYZC
+ 1824     85.5     BNE part_byte                                                                          ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AYZC out:AYC
+ 1825          .next_c                             \ C = 1: the loop's CPY found Y = stop_y, or .next set it
+ 1826     75.9     DEC ds_c                                                                               ;| A=? X=? Y=? C=1 Z=? N=? V=? | $CC=? | in:AC out:AZC
+ 1827     32.3     BEQ done                                                                               ;| A=? X=? Y=? C=1 Z=? N=? V=? | in:AZC out:AC
+ 1828     39.6     BIT dm_flip                     \ the next column's bottom                             ;| A=? X=? Y=? C=1 Z=0 N=? V=? | $50=? | in:AC out:NC
+ 1829     31.9     BPL step_forward                                                                       ;| A=? X=? Y=? C=1 Z=? N=? V=? | in:NC out:C
+ 1830     23.3     LDA b_ptr                       \ flipped: back 8 (C = 1)                              ;| A=? X=? Y=? C=1 Z=? N=1 V=? | $C9=? | in:C out:AC

@@ -1,0 +1,34 @@
+window a553031a0407: src/game.6502 lines 3617-3648, 28 instructions, 940.2 cycles a pass measured (wait excluded)
+
+ 3617     14.5     RTS                                                                                    ;| A=? X=0..11 Y=? C=0 Z=1 N=0 V=? | in:AXYNZCV out:AXYNZCV
+ 3618          .check_for_mover_collision_with_mover_X
+ 3619     28.4     CPX mover_to_update                                                                    ;| A=? X=0..11 Y=? C=? Z=? N=? V=? | $03=? | in:AXYV out:AXYNZV
+ 3620     21.4     BEQ cfc_a_leave_clear                                                                  ;| A=? X=0..11 Y=? C=? Z=? N=? V=? | in:AXYNZV out:AXYNZV
+ 3621          .check_for_collision_with_mover
+ 3622     92.3     JSR get_mover_X_type_and_height                                                        ;| A=? X=? Y=? C=? Z=? N=? V=? | in:X out:AXY
+ 3623     46.1     STA &78                                                                                ;| A=? X=? Y=0..127 C=? Z=? N=? V=? | $78=? | in:AXY out:XY
+ 3624     61.5     LDA mover_types_width_table,Y                                                          ;| A=? X=? Y=0..127 C=? Z=? N=? V=? | [$DA55,y]=? | in:XY out:AX
+ 3625     46.2     STA &7A                                                                                ;| A=? X=? Y=0..127 C=? Z=? N=? V=? | $7A=? | in:AX out:AX
+ 3626     30.8     CLC                             \ grind: the right edge first (x + width >= mover_x, 16-bit), the test more movers fail;| A=? X=? Y=0..127 C=? Z=? N=? V=? | in:AX out:AXC
+ 3627     61.5     ADC movers_x_low,X                                                                     ;| A=? X=? Y=0..127 C=0 Z=? N=? V=? | [$1344,x]=? | in:AXC out:AXC
+ 3628     30.8     TAY                                                                                    ;| A=? X=? Y=0..127 C=? Z=? N=? V=? | in:AXC out:XYC
+ 3629     61.5     LDA movers_x_high,X                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | [$1366,x]=? | in:XYC out:AXYC
+ 3630     30.8     ADC #0                          \ (x + width) high, wrapping as the original's INY did ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXYC out:AXY
+ 3631     46.2     CPY mover_x_low                                                                        ;| A=? X=? Y=? C=? Z=? N=? V=? | $F8=? | in:AXY out:AXYC
+ 3632     46.1     SBC &C5                                                                                ;| A=? X=? Y=? C=? Z=? N=? V=? | $C5=? | in:AXYC out:AXYNZCV
+ 3633     37.8     BCC leave_with_carry_as_is      \ C=0: no collision                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXYNZCV out:AXYNZCV
+ 3634     25.0     LDA mover_x_max_low             \ then x <= mover_x_max (16-bit)                       ;| A=? X=? Y=? C=1 Z=? N=? V=? | $C7=? | in:XY out:AXY
+ 3635     33.3     CMP movers_x_low,X                                                                     ;| A=?≡$C7 X=? Y=? C=1 Z=? N=? V=? | [$1344,x]=? | in:AXY out:XYC
+ 3636     25.0     LDA mover_x_max_high                                                                   ;| A=?≡$C7 X=? Y=? C=? Z=? N=? V=? | $C6=? | in:XYC out:AXYC
+ 3637     33.3     SBC movers_x_high,X                                                                    ;| A=?≡$C6 X=? Y=? C=? Z=? N=? V=? | [$1366,x]=? | in:AXYC out:AXYNZCV
+ 3638     21.3     BCC leave_with_carry_as_is      \ C=0: no collision                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXYNZCV out:AXYNZCV
+ 3639     14.7     LDA movers_y,X                                                                         ;| A=? X=? Y=? C=1 Z=? N=? V=? | [$1388,x]=? | in:XYV out:AXYV
+ 3640     11.0     CMP mover_y_max                                                                        ;| A=? X=? Y=? C=1 Z=? N=? V=? | $C9=? | in:AXYV out:AXYNZCV
+ 3641      7.6     BCS leave_with_carry_clear_28c9                                                        ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXYNZCV out:AXYNZCV
+ 3642     10.1     ADC &78                                                                                ;| A=0..254 X=? Y=? C=0 Z=? N=? V=? | $78=? | in:AXYC out:AXYV
+ 3643     10.1     CMP mover_y                     \ grind: C=0 (no collision) or C=1 (collision) is the answer;| A=? X=? Y=? C=? Z=? N=? V=? | $F9=? | in:AXYV out:AXYNZCV
+ 3644          .leave_with_carry_as_is
+ 3645     90.5     RTS                             \ Leave with carry set to indicate collision (clear if not);| A=? X=? Y=? C=? Z=? N=? V=? | in:AXYNZCV out:AXYNZCV
+ 3646          .leave_with_carry_clear_28c9
+ 3647      0.6     CLC                             \ Leave with carry clear to indicate no collision      ;| A=? X=? Y=? C=1 Z=? N=? V=? | in:AXYNZV out:AXYNZCV
+ 3648      1.8     RTS                                                                                    ;| A=? X=? Y=? C=0 Z=? N=? V=? | in:AXYNZCV out:AXYNZCV

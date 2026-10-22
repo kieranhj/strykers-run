@@ -1,0 +1,39 @@
+window b7241327ae78: src/game.6502 lines 1700-1736, 32 instructions, 122.3 cycles a pass measured (wait excluded)
+
+ 1700      6.7     STX delta_high                  \ grind: in-line, delta_high the high byte's temporary ;| A=? X=? Y=0..127 C=? Z=? N=0 V=? | $B7=? | in:AXY out:AY
+ 1701      8.9     LDX deltas_low_table,Y                                                                 ;| A=? X=? Y=0..127 C=? Z=? N=0 V=? | [$191F,y]=? | in:AY out:AXY
+ 1702      6.7     STX delta_low                                                                          ;| A=? X=? Y=0..127 C=? Z=? N=? V=? | $B6=? | in:AXY out:AY
+ 1703      4.4     CLC                                                                                    ;| A=? X=? Y=0..127 C=? Z=? N=? V=? | in:AY out:AYC
+ 1704      6.7     ADC delta_low                                                                          ;| A=? X=? Y=0..127 C=0 Z=? N=? V=? | $B6=? | in:AYC out:AYC
+ 1705      8.9     LDX deltas_high_table,Y                                                                ;| A=? X=? Y=0..127 C=? Z=? N=? V=? | [$1928,y]=? | in:AYC out:AXC
+ 1706      4.4     TAY                                                                                    ;| A=? X=? Y=0..127 C=? Z=? N=? V=? | in:AXC out:XYC
+ 1707      4.4     TXA                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XYC out:AXYC
+ 1708      6.7     ADC delta_high                  \ delta + address high: the same sum, C, V, N and Z    ;| A=? X=? Y=? C=? Z=? N=? V=? | $B7=? | in:AXYC out:AXYNCV
+ 1709      6.7     STX delta_high                                                                         ;| A=? X=? Y=? C=? Z=? N=? V=? | $B7=? | in:AXYNCV out:AYNCV
+ 1710      4.4     BMI wrap_add_delta_g4566        \ grind: the (rare) wrap out of line, so the common case falls through;| A=? X=? Y=? C=? Z=? N=? V=? | in:AYNCV out:AYCV
+ 1711      4.4     TAX                                                                                    ;| A=0..127 X=? Y=? C=? Z=? N=0 V=? | in:AYCV out:XYCV
+ 1712      4.4     TYA                                                                                    ;| A=0..127 X=0..127 Y=? C=? Z=? N=0 V=? | in:XYCV out:AXYNZCV
+ 1713     13.2     RTS                             \ Leave with A = address_low, X = address_high         ;| A=? X=0..127 Y=? C=? Z=? N=? V=? | in:AXYNZCV out:AXYNZCV
+ 1714          .wrap_add_delta_g4566
+ 1715      0.0     SBC #&3F                        \ grind: C = 0 here (a negative sum cannot carry, deltas_high_table <= &3E), so A - &40 with C and V as SEC : SBC #&40;| A=128..255 X=? Y=? C=? Z=? N=1 V=? | in:AYC out:AYCV
+ 1716      0.0     BRA skip_wraparound_1d66        \ 65C02 opcode; TAX : TYA : RTS                        ;| A=64..192 X=? Y=? C=1 Z=0 N=? V=? | in:AYCV out:AYCV
+ 1717          
+ 1718          .subtract_delta_from_screen_address_in_AX    \ # Called with A = address_low, X = address_high
+ 1719      2.1     STX delta_high                  \ grind: in-line, delta_high the high byte's temporary ;| A=? X=? Y=0..127 C=? Z=? N=0 V=? | $B7=? | in:AXY out:AY
+ 1720      2.8     LDX deltas_low_table,Y                                                                 ;| A=? X=? Y=0..127 C=? Z=? N=0 V=? | [$191F,y]=? | in:AY out:AXY
+ 1721      2.1     STX delta_low                                                                          ;| A=? X=? Y=0..127 C=? Z=? N=? V=? | $B6=? | in:AXY out:AY
+ 1722      1.4     SEC                                                                                    ;| A=? X=? Y=0..127 C=? Z=? N=? V=? | in:AY out:AYC
+ 1723      2.1     SBC delta_low                                                                          ;| A=? X=? Y=0..127 C=1 Z=? N=? V=? | $B6=? | in:AYC out:AYC
+ 1724      2.8     LDX deltas_high_table,Y                                                                ;| A=? X=? Y=0..127 C=? Z=? N=? V=? | [$1928,y]=? | in:AYC out:AXC
+ 1725      1.4     TAY                                                                                    ;| A=? X=? Y=0..127 C=? Z=? N=? V=? | in:AXC out:XYC
+ 1726      2.1     LDA delta_high                                                                         ;| A=? X=? Y=? C=? Z=? N=? V=? | $B7=? | in:XYC out:AXYC
+ 1727      2.1     STX delta_high                                                                         ;| A=?≡$B7 X=? Y=? C=? Z=? N=? V=? | $B7=? | in:AXYC out:AYC
+ 1728      2.1     SBC delta_high                                                                         ;| A=?≡$B7 X=? Y=? C=? Z=? N=? V=? | $B7=? | in:AYC out:AYV
+ 1729      1.4     CMP #&40                                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AYV out:AYCV
+ 1730      2.1     BCS skip_wraparound_1d66                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AYCV out:AYCV
+ 1731      0.0     ADC #&40                                                                               ;| A=0..63 X=? Y=? C=0 Z=? N=? V=? | in:AYC out:AYCV
+ 1732          .skip_wraparound_1d66
+ 1733      1.4     TAX                                                                                    ;| A=64..255 X=? Y=? C=? Z=? N=? V=? | in:AYCV out:XYCV
+ 1734      1.4     TYA                                                                                    ;| A=64..255 X=64..255 Y=? C=? Z=0 N=? V=? | in:XYCV out:AXYNZCV
+ 1735          .leave_1d68
+ 1736      4.2     RTS                             \ Leave with A = address_low, X = address_high         ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXYNZCV out:AXYNZCV

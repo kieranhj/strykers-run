@@ -1,0 +1,55 @@
+{
+ "candidates": [
+  {
+   "window": "b46487d8f587",
+   "file": "src/render.6502",
+   "line": 1220,
+   "old": "    LDA list_n\r\n    PHA\r\n    LDA #MOVER_SLOTS                \\ build the live one in the spare entry...\r\n    STA list_n\r\n    JSR list_live\r\n    PLX\r\n    STX list_n                      \\ ...and take the union\r\n",
+   "new": "    LDX list_n\r\n    STX list_b                      \\ list_b is idle until each_b sets it: a stash 1 cycle cheaper than PHA/PLX\r\n    LDA #MOVER_SLOTS                \\ build the live one in the spare entry...\r\n    STA list_n\r\n    JSR list_live\r\n    LDX list_b\r\n    STX list_n                      \\ ...and take the union\r\n",
+   "summary": "widen_by_live: the caller's list_n is stashed in list_b (idle until each_b sets it; gather and everything list_live calls never touch it) instead of on the stack: LDX/STX zp + LDX/STX zp = 17 cycles for LDA/PHA ... PLX/STX = 18. Two bytes bigger.",
+   "claim": {
+    "cycles_per_execution": 1,
+    "executions_a_pass": 1.9,
+    "cycles_a_pass": 1.9,
+    "bytes": -2
+   },
+   "equivalence": "Entry: the one caller (JSR widen_by_live in close_over_overlaps; grep shows no widen_by_live + n). X on exit is the caller's list_n in both versions (original PLX of the pushed list_n; new LDX of the stash), list_n restored by STX, A is reloaded by LDA list_x1_lo,Y next, the stack is no longer touched (original push/pull balanced). list_b is read only at render.6502 lines for each_b (LDY list_b after STY list_b in the same iteration, and .below, reached only after it); close_over_overlaps' gather phase and list_live/world_of_address/list_finish never read or write it (grep list_b: game.6502 definition and those three lines only), the each_b loop sets it before any read, and the byte is renderer-private (ren_zp), not in the logic's zero page, so its changed value after the call is unobservable. Flags dead (next is LDY/LDA).",
+   "relies_on": "list_b (&6E, zero page) dead between gather and each_b; shifts everything after by +2 bytes. Measured on the bench listing with the seed-1/RIGHT profiles: a +2 shift of bank 4's code after widen_by_live removes the page crossing of BEQ in_hazel (&9CFC) and BEQ gathered (&9EFD), about -0.95 (seed 1) / -1.31 (RIGHT) cycles a pass extra, and adds none. Do not combine with the +3 candidate (a +5 shift makes BCS up_in_ring cross: about +1.0/+1.3 a pass); the +6 candidate combined (+8) is neutral to slightly good.",
+   "file_written": "build/grind/r3/opt-b46487d8f587.json"
+  },
+  {
+   "window": "b46487d8f587",
+   "file": "src/render.6502",
+   "line": 1228,
+   "old": "    LDA list_x1_lo,Y\r\n    CMP list_x1_lo,X\r\n    LDA list_x1_hi,Y\r\n    SBC list_x1_hi,X\r\n    BCS x1_kept\r\n    LDA list_x1_lo,Y\r\n    STA list_x1_lo,X\r\n    LDA list_x1_hi,Y\r\n    STA list_x1_hi,X\r\n",
+   "new": "    LDA list_x1_hi,Y                \\ the high bytes are nearly always equal: then only the low\r\n    CMP list_x1_hi,X                \\ bytes are compared, and only the low byte is copied\r\n    BNE wbl_x1_differ\r\n    LDA list_x1_lo,Y\r\n    CMP list_x1_lo,X\r\n    BCS x1_kept\r\n    STA list_x1_lo,X\r\n    BRA x1_kept\r\n.wbl_x1_differ                      \\ C from the high bytes' CMP\r\n    BCS x1_kept                     \\ the live one's high byte is above: kept\r\n    STA list_x1_hi,X                \\ below (A = its high byte): take both bytes\r\n    LDA list_x1_lo,Y\r\n    STA list_x1_lo,X\r\n",
+   "summary": "widen_by_live x1 minimum: compare the high bytes first (CMP, A kept = the live one's high byte). Equal (nearly always, the same mover a pass apart): only the low bytes are compared and only the low byte copied (the high byte is equal already). Hi-equal kept 21 cycles for 19 (+2), hi-equal copy 28 for 36 (-8); measured 29% copy (816 of 2853 calls in 1500 passes). Rare high-byte-differs path out of line after a BRA. 6 bytes bigger. Alternative to the next candidate (same lines).",
+   "claim": {
+    "cycles_per_execution": 0.86,
+    "executions_a_pass": 1.9,
+    "cycles_a_pass": 1.6,
+    "bytes": -6
+   },
+   "equivalence": "Original: old x1 := spare x1 iff spare < old (16-bit unsigned, CMP lo then SBC hi borrow); X = old entry, Y = spare. New: hi_s vs hi_o by CMP (A = hi_s kept). hi_s > hi_o: C=1, Z=0 -> BNE taken, BCS taken: kept (original: spare > old, kept). hi_s < hi_o: C=0 -> BNE taken, BCS not taken: STA hi, LDA lo,Y, STA lo,X = both bytes copied (original: spare < old, copied both). hi equal: lo_s >= lo_o: C=1 -> BCS x1_kept, no store (original: SBC leaves C=1, kept; equal values too); lo_s < lo_o: STA list_x1_lo,X with A = lo_s (CMP does not change A), hi already equal (original also stored the same hi): same memory. X, Y unchanged; A and flags are dead at x1_kept (the x2 section starts LDA list_x2_lo,X; its liveness says in:XY). The path the BRA takes goes to x1_kept, the same label the BCS branches use.",
+   "relies_on": "+6 bytes after widen_by_live's x1 section. Page crossings (bench listing, profiles): a +6 shift removes the crossing of BEQ in_hazel, BEQ gathered and BNE gather and adds one on BEQ no_part (&9DD0, about 1.5/pass on seed 1): net about +0.18 (seed 1) / -0.87 (RIGHT) cycles a pass; the new code's own branches stay inside page &99 (x1 starts &98FD, differ block ends &991D). x1_kept stays the entry the x2 section follows. Needs the high-bytes-equal assumption only for speed, not for correctness.",
+   "file_written": "build/grind/r3/opt-b46487d8f587.json"
+  },
+  {
+   "window": "b46487d8f587",
+   "file": "src/render.6502",
+   "line": 1228,
+   "old": "    LDA list_x1_lo,Y\r\n    CMP list_x1_lo,X\r\n    LDA list_x1_hi,Y\r\n    SBC list_x1_hi,X\r\n    BCS x1_kept\r\n    LDA list_x1_lo,Y\r\n    STA list_x1_lo,X\r\n    LDA list_x1_hi,Y\r\n    STA list_x1_hi,X\r\n",
+   "new": "    LDA list_x1_hi,Y                \\ the high bytes are nearly always equal: then only the low\r\n    CMP list_x1_hi,X                \\ bytes are compared, and only the low byte is copied\r\n    BEQ wbl_x1_same\r\n    BCS x1_kept                     \\ the live one's high byte is above: kept\r\n    STA list_x1_hi,X                \\ below (A = its high byte): take both bytes\r\n    LDA list_x1_lo,Y\r\n    BRA wbl_x1_store\r\n.wbl_x1_same\r\n    LDA list_x1_lo,Y\r\n    CMP list_x1_lo,X\r\n    BCS x1_kept\r\n.wbl_x1_store\r\n    STA list_x1_lo,X\r\n",
+   "summary": "widen_by_live x1 minimum, high bytes first with the equal case as the taken branch: 3 bytes bigger than the original (26 -> 29), hi-equal kept 22 cycles for 19 (+3), hi-equal copy 26 for 36 (-10); 29% copy measured. Alternative to the previous candidate (same lines); smaller but the kept path pays a taken BEQ.",
+   "claim": {
+    "cycles_per_execution": 0.72,
+    "executions_a_pass": 1.9,
+    "cycles_a_pass": 1.4,
+    "bytes": -3
+   },
+   "equivalence": "Same case analysis as the previous candidate: hi_s > hi_o: BEQ not taken, BCS taken (kept). hi_s < hi_o: STA hi,X (A = hi_s), LDA lo,Y, BRA to the shared STA lo,X: both bytes copied. Equal: wbl_x1_same compares lo bytes, BCS kept when lo_s >= lo_o, else falls to the STA lo,X with A = lo_s. Registers X, Y unchanged; A and flags dead at x1_kept. Labels wbl_x1_same and wbl_x1_store are unique to this candidate.",
+   "relies_on": "+3 bytes after the x1 section. Bench listing page-crossing model: a +3 shift removes the crossing of BEQ in_hazel and BEQ gathered but adds one on BEQ no_part (&9DD0): about +0.56 (seed 1) / -0.71 (RIGHT) cycles a pass, i.e. roughly neutral; its own branches all lie inside page &99. Do not combine with the stash candidate (+5 total makes BCS up_in_ring cross: about +1.0/+1.3 a pass).",
+   "file_written": "build/grind/r3/opt-b46487d8f587.json"
+  }
+ ]
+}

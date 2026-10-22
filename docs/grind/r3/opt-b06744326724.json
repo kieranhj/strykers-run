@@ -1,0 +1,55 @@
+{
+ "candidates": [
+  {
+   "window": "b06744326724",
+   "file": "src/render.6502",
+   "line": 2048,
+   "old": "    LDA save_start_hi,Y\n    ADC rb_part2 + 1,X\n    STA rb_p8 + 1\n    LDA v_ptr\n    SEC\n    SBC #8\n    STA v_ptr\n    PHA                             \\ the part's start - 8 kept on the stack, not in rb_p8\n    LDA rb_p8 + 1\n    SBC #0\n    STA v_ptr + 1\n    PHA\n    PHX\n    JSR columns\n    PLX\n    PLA                             \\ the part before ends where this one starts\n    STA rb_end + 1\n    PLA\n    STA rb_end\n",
+   "new": "    LDA save_start_hi,Y\n    ADC rb_part2 + 1,X              \\ C = 0: start + offset is an address, no carry out of 16 bits\n    STA v_ptr + 1                   \\ v_ptr = the part's start - 8, and the same pair kept in rb_p8\n    STA rb_p8 + 1\n    LDA v_ptr\n    SBC #7                          \\ C = 0: minus 8; C = 1 afterwards if no borrow\n    STA v_ptr\n    STA rb_p8\n    BCS rbA_nb\n    DEC v_ptr + 1\n    DEC rb_p8 + 1\n.rbA_nb\n    STX rb_part3                    \\ X kept in rb_part3, dead since both its bytes were read\n    JSR columns\n    LDX rb_part3\n    LDA rb_p8                       \\ the part before ends where this one starts\n    STA rb_end\n    LDA rb_p8 + 1\n    STA rb_end + 1\n",
+   "summary": "restore_block's part loop (2.2 non-empty parts a pass): the part's start - 8 and the hi byte are built with no SEC (C = 0 known, SBC #7) and no reload of rb_p8+1 / SBC #0: the hi byte is stored to v_ptr+1 and rb_p8+1 once, and the borrow (lo < 8, ~3% of parts, 92 of ~3300 parts in 1500 passes) is a BCS over two DECs. The pair is kept in the zero page rb_p8 instead of on the stack (STA/LDA zp 3+3 against PHA/PLA 3+4), and X in rb_part3 (dead: both its bytes were read) instead of PHX/PLX. 56 -> 46.3 cycles a part on the common path (borrow path +9), 5 bytes larger. Side effects measured in a scratch build (bench, pcprof work a pass, seed 1 / RIGHT): -13/-30 alone, -15.9/-32.5 with candidate 3; no_part moves from &9DFD to &9E02 so the BEQ no_part (taken 1.06 times a pass) starts crossing a page (+1 each, already counted in the measurement). Alternative to candidate 2 (same lines); independent of candidate 3.",
+   "claim": {
+    "cycles_per_execution": 9.7,
+    "executions_a_pass": 2.2,
+    "cycles_a_pass": 21.3,
+    "bytes": -5
+   },
+   "equivalence": "Same effect on every path. Entry: A = lo sum (also in v_ptr), C = lo carry c, Y = rb_index, X = 0 or 2. v_ptr = (lo - 8, hi + c - borrow) with hi from save_start_hi,Y + rb_part2+1,X, as before; the same two bytes are kept in rb_p8 (zero page, read nowhere else in src: grepped, no raw &47/&48 either) and copied to rb_end after JSR columns, exactly what the stack held (rb_end = the part's start - 8). The borrow fix-up applies the same -1 to both copies. X is stored in rb_part3 (&43, the part-3 offset's low byte: the ORA at each_part and the two ADCs have read it by then, and pass X=0 never reads it; the header rewrites it at every restore_block) and reloaded after the JSR, so DEX/DEX/BPL see the same X. Exit state: C = 1 (JSR columns' last CMP), X restored, A/Y dead (no_part: out X), stack depth unchanged (the old code popped what it pushed). Memory differences: rb_p8, rb_part3 lo, nothing else; columns and its callees (kind restores, sky) touch neither (grep of src for rb_*, raw &41-&48). Verified in a scratch copy: passlock seeds 1 and 3, 3000 passes, state and screen identical; helilock seeds 5 and 2 identical; the DEC path executed 92 times in 1500 passes (seed 1) and 32 in 600 (RIGHT).",
+   "relies_on": "C = 0 after ADC rb_part2 + 1,X: the hi sum is the high byte of start + offset, an address inside the save block (arena/main RAM, below &10000), so the 16-bit add (lo ADC outside the window, hi ADC inside) has no carry out; the original's SEC/SBC #8 and this SBC #7 with C = 0 both compute lo - 8 and leave C = 1 iff no borrow. Does not touch .no_part's other users (the BEQ outside the window). Moves code after it up 5 bytes: columns &9E1A -> &9E1F, everything stays inside page &9E up to compact; page crossings moved: BEQ no_part (&9DD0 -> now crosses, +1 cycle a taken branch, ~1 a pass), BPL each_part crossed before and still does; columns/cell/byte loops keep their page (&9E1E-&9EF2) so no hot branch changes. Region: bank 4 render.6502, 797 bytes free, +5 B. No self-modifying code, no label named rb_part3/rb_p8 in other sources, interrupt does not use zero page &41-&48 (ren_zp, renderer only).",
+   "file_written": "C:\\Users\\khcon\\OneDrive\\BEEB\\Projects\\strykers\\build\\grind\\r3\\opt-b06744326724.json"
+  },
+  {
+   "window": "b06744326724",
+   "file": "src/render.6502",
+   "line": 2048,
+   "old": "    LDA save_start_hi,Y\n    ADC rb_part2 + 1,X\n    STA rb_p8 + 1\n    LDA v_ptr\n    SEC\n    SBC #8\n    STA v_ptr\n    PHA                             \\ the part's start - 8 kept on the stack, not in rb_p8\n    LDA rb_p8 + 1\n    SBC #0\n    STA v_ptr + 1\n    PHA\n    PHX\n    JSR columns\n    PLX\n    PLA                             \\ the part before ends where this one starts\n    STA rb_end + 1\n    PLA\n    STA rb_end\n",
+   "new": "    LDA save_start_hi,Y\n    ADC rb_part2 + 1,X              \\ C = 0: start + offset is an address, no carry out of 16 bits\n    TAY\n    LDA v_ptr\n    SBC #7                          \\ C = 0: minus 8\n    STA v_ptr\n    PHA                             \\ the part's start - 8 kept on the stack, not in rb_p8\n    TYA\n    SBC #0\n    STA v_ptr + 1\n    PHA\n    PHX\n    JSR columns\n    PLX\n    PLA                             \\ the part before ends where this one starts\n    STA rb_end + 1\n    PLA\n    STA rb_end\n",
+   "summary": "Compact alternative to candidate 1 (same lines): keeps the stack for the pair and PHX/PLX, but removes the SEC (C = 0 known, SBC #7), the rb_p8+1 store and reload: the hi byte goes through Y (TAY/TYA) straight into SBC #0. 38 -> 34 cycles before the JSR (4 a part), 3 bytes smaller (27 vs 30). The smaller body moves .no_part from &9DFD to &9DFA and BPL each_part from &9DFF to &9DFC so its next-PC (&9DFE) is in the target's page &9D: that branch stops crossing a page (1.63 cycles a pass). Measured in a scratch copy with candidate 3: -11.0/-17.1 a pass (bench seed 1 / RIGHT), so about -8.8/-14.5 alone.",
+   "claim": {
+    "cycles_per_execution": 4.0,
+    "executions_a_pass": 2.2,
+    "cycles_a_pass": 8.8,
+    "bytes": 3
+   },
+   "equivalence": "Same registers and memory as the original except Y (dead after the hi load: the next each_part reloads it, part 1 reloads it) and A. v_ptr = (lo - 8, hi + c - borrow) pushed lo first then hi, popped in the same order as before; SBC #7 with C = 0 = SEC; SBC #8 (lo - 8, C = 1 iff no borrow), then TYA; SBC #0 is the hi byte minus the borrow as before (the original reloaded the same hi from rb_p8+1, which nothing else read). No change to flags at exit (JSR columns leaves C = 1). Verified: passlock seed 1, 3000 passes with screen, identical.",
+   "relies_on": "C = 0 after ADC rb_part2 + 1,X: the hi sum is the high byte of start + offset, an address inside the save block (arena/main RAM, below &10000), so the 16-bit add (lo ADC outside the window, hi ADC inside) has no carry out; the original's SEC/SBC #8 and this SBC #7 with C = 0 both compute lo - 8 and leave C = 1 iff no borrow. Code after it moves down 3 bytes: BEQ no_part (&9DD0) and BPL each_part stay within or newly inside page &9D/&9E boundaries as listed; columns &9E1A -> &9E16 and the loops keep their page. Region: bank 4, -3 B.",
+   "file_written": "C:\\Users\\khcon\\OneDrive\\BEEB\\Projects\\strykers\\build\\grind\\r3\\opt-b06744326724.json"
+  },
+  {
+   "window": "b06744326724",
+   "file": "src/render.6502",
+   "line": 2071,
+   "old": "    LDY rb_index                    \\ part 1: after the header, v_ptr = the start + 4 - 8\n    LDA save_start_lo,Y\n    SEC\n    SBC #4\n",
+   "new": "    LDY rb_index                    \\ part 1: after the header, v_ptr = the start + 4 - 8\n    LDA save_start_lo,Y\n    SBC #4                          \\ C = 1 here: the header's SBC #0 carry, or JSR columns' last CMP\n",
+   "summary": "Part 1 (1.63 a pass): drop the SEC before SBC #4. C is 1 on every path into it: the part loop falls out of BPL each_part with C unchanged from either the no_part branch (the header's SBC #0 of save_end_hi leaves C = 1 as save_end_hi >= 1: a live block is in RAM above &0100; LDA/STA/DEY/LDX/LDA/ORA do not touch C) or from JSR columns, whose only RTS follows an equal CMP (C = 1); the part loop's PLX/LDA/STA (or whichever candidate 1/2 is applied) do not change C. Checked in a scratch build: a branch on C = 1 here was never not-taken in 1500 passes (seed 1, 6879 executions) or 600 (RIGHT, 3126). Independent of candidates 1 and 2 (different lines): 2 cycles an execution, 1 byte smaller. Measured alone in the scratch build: -2.7 / -2.4 cycles a pass.",
+   "claim": {
+    "cycles_per_execution": 2.0,
+    "executions_a_pass": 1.63,
+    "cycles_a_pass": 3.3,
+    "bytes": 1
+   },
+   "equivalence": "SEC; SBC #4 with C = 1 known is SBC #4. Everything after (STA v_ptr; LDA save_start_hi,Y; SBC #0, which uses the borrow) is unchanged, C after the SBC is the same, A the same.",
+   "relies_on": "C = 1 at the first instruction of part 1 on all paths (see summary); this holds with the original, candidate 1 and candidate 2 part-loop bodies since all end in JSR columns then C-preserving instructions (PLX, LDX, LDA, STA, PLA). If restore_block were ever entered other than by its first instruction (grep: only JSR restore_block, from take_off), the header's carry argument would not hold. 1 byte smaller: code after moves down 1 byte (columns &9E1A -> &9E19), the hot loops stay in page &9E.",
+   "file_written": "C:\\Users\\khcon\\OneDrive\\BEEB\\Projects\\strykers\\build\\grind\\r3\\opt-b06744326724.json"
+  }
+ ]
+}

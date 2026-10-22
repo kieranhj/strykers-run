@@ -1,0 +1,47 @@
+window 75f719e4c1c5: src/render.6502 lines 990-1034, 32 instructions, 470.1 cycles a pass measured (wait excluded)
+
+  990      3.1     RTS                                                                                    ;| A=? X=? Y=? C=0 Z=1 N=0 V=? | in:C out:C
+  991          .hit
+  992      0.2     SEC                                                                                    ;| A=?≡span_w2 X=? Y=? C=1 Z=? N=? V=? | in:- out:C
+  993      0.6     RTS                                                                                    ;| A=?≡span_w2 X=? Y=? C=1 Z=? N=? V=? | in:C out:C
+  994          }
+  995          
+  996          .width_of_type_A                    \ A = movers_type_and_colour -> A = width; keeps Y
+  997              AND #&7F                                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AYCV out:AYCV
+  998              TAX                                                                                    ;| A=0..127 X=? Y=? C=? Z=? N=0 V=? | in:AYCV out:XYCV
+  999              LDA mover_types_width_table,X                                                          ;| A=0..127 X=0..127 Y=? C=? Z=? N=0 V=? | [$DA55,x]=? | in:XYCV out:AXYNZCV
+ 1000              RTS                                                                                    ;| A=? X=0..127 Y=? C=? Z=? N=? V=? | in:AXYNZCV out:AXYNZCV
+ 1001          
+ 1002          \ ---- what goes on, and what overlaps it --------------------------------------------------
+ 1003          \ mark_to_draw: need bit 6 for every live slot on screen (the logic's view) that this screen
+ 1004          \ does not show, or is taking off.
+ 1005          .mark_to_draw
+ 1006          {
+ 1007      2.0     LDY #0                                                                                 ;| A=? X=$22 Y=? C=1 Z=1 N=0 V=? | in:- out:Y
+ 1008          .each
+ 1009     24.8     CPY act_n                       \ in the body Y < act_n, so C clear                    ;| A=? X=? Y=? C=? Z=? N=? V=? | $4F=? | in:Y out:YZC
+ 1010     17.5     BEQ done                                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | in:YZC out:YC
+ 1011     21.8     STY ren_k                                                                              ;| A=? X=? Y=? C=? Z=0 N=? V=? | $4E=? | in:YC out:YC
+ 1012     29.1     LDX act,Y                                                                              ;| A=? X=? Y=? C=? Z=0 N=? V=? | [act,y]=? | in:YC out:XC
+ 1013     29.1     LDA need,X                                                                             ;| A=? X=? Y=? C=? Z=? N=? V=? | [$1F,x]=? | in:XC out:XNC
+ 1014     16.6     BMI not_shown                   \ coming off: goes back on if still there              ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XNC out:XC
+ 1015     10.5     TXA                                                                                    ;| A=0..127 X=? Y=? C=? Z=? N=0 V=? | in:XC out:AXC
+ 1016     15.7     ADC boff                        \ C clear (CPY act_n with Y < act_n)                   ;| A=? X=? Y=? C=? Z=? N=? V=? | $52=? | in:AXC out:AX
+ 1017     10.5     TAY                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AX out:XY
+ 1018     21.0     LDA rec_xh,Y                                                                           ;| A=? X=? Y=? C=? Z=? N=? V=? | [rec_xh,y]=? | in:XY out:AX
+ 1019     10.5     INC A                           \ 65C02 opcode: &FF (not shown) -> 0                   ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AX out:XZ
+ 1020     11.0     BNE next                        \ shown and staying                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XZ out:X
+ 1021          .not_shown
+ 1022     20.3     STX ren_i                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | $4D=? | in:X out:X
+ 1023          .candidate
+ 1024     27.0     LDA movers_x_high,X             \ X = ren_i on both ways in                            ;| A=? X=? Y=? C=? Z=? N=? V=? | [$1366,x]=? | in:X out:AXN
+ 1025     13.6     BMI next                        \ no mover in the slot                                 ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXN out:AX
+ 1026     20.1     STA &C5                         \ get_mover_Y_x, inline and by X                       ;| A=0..127 X=? Y=? C=? Z=? N=0 V=? | $C5=? | in:AX out:X
+ 1027     26.8     LDA movers_x_low,X                                                                     ;| A=0..127 X=? Y=? C=? Z=? N=0 V=? | [$1344,x]=? | in:X out:AX
+ 1028     20.1     STA mover_x_low                                                                        ;| A=? X=? Y=? C=? Z=? N=? V=? | $F8=? | in:AX out:X
+ 1029     26.8     LDA movers_type_and_colour,X                                                           ;| A=? X=? Y=? C=? Z=? N=? V=? | [$1300,x]=? | in:X out:A
+ 1030     13.4     AND #&7F                                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | in:A out:A
+ 1031     13.4     TAX                                                                                    ;| A=0..127 X=? Y=? C=? Z=? N=0 V=? | in:A out:X
+ 1032     40.3     JSR check_if_mover_is_on_screen \ carry set if not                                     ;| A=0..127 X=0..127 Y=? C=? Z=? N=0 V=? | in:X out:C
+ 1033     18.1     BCS next                                                                               ;| A=? X=0..127 Y=? C=? Z=? N=? V=? | in:C out:-
+ 1034      6.1     LDX ren_i                                                                              ;| A=? X=0..127 Y=? C=0 Z=? N=? V=? | $4D=? | in:- out:X

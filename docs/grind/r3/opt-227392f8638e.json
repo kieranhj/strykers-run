@@ -1,0 +1,72 @@
+{
+ "candidates": [
+  {
+   "window": "227392f8638e",
+   "file": "src/render.6502",
+   "line": 1248,
+   "old": "    LDA list_y1 + MOVER_SLOTS       \\ Y = MOVER_SLOTS: absolute, as ,Y crosses a page\n    CMP list_y1,X\n    BCS y1_kept\n    STA list_y1,X\n.y1_kept\n    LDA list_y2,Y\n    CMP list_y2,X\n    BCC y2_kept\n    STA list_y2,X\n.y2_kept\n    RTS\n}\n\n\\ list_overlap: entries X and Y. C set if each starts no later than the other ends, in x\n\\ (16 bits) and in y.\n.list_overlap\n{\n    LDA list_x2_lo,Y                \\ x1 of X <= x2 of Y\n    CMP list_x1_lo,X\n    LDA list_x2_hi,Y\n    SBC list_x1_hi,X\n    BCC no\n    LDA list_x2_lo,X                \\ x1 of Y <= x2 of X\n    CMP list_x1_lo,Y\n    LDA list_x2_hi,X\n    SBC list_x1_hi,Y\n    BCC no\n    LDA list_y2,Y                   \\ y1 of X <= y2 of Y\n    CMP list_y1,X\n    BCC no\n    LDA list_y2,X                   \\ y1 of Y <= y2 of X\n    CMP list_y1,Y\n    RTS                             \\ C as it stands\n.no\n    CLC\n    RTS\n}\n\n\\ ---- take off and put on -------------------------------------------------------------------\n\\ take_off: X = slot. If it comes off and is shown here, put its save block back.\n.take_off\n{\n    LDA need,X\n    BPL out\n",
+   "new": "    LDA list_y2,Y\n    CMP list_y2,X\n    BCC y2_kept\n    STA list_y2,X\n.y2_kept\n    LDA list_y1 + MOVER_SLOTS       \\ Y = MOVER_SLOTS: absolute, as ,Y crosses a page\n    CMP list_y1,X\n    BCC y1_store_c1              \\ rare (y1 seldom widens): out of line, so the common path falls into RTS\n    RTS\n.y1_store_c1\n    STA list_y1,X\n    RTS\n}\n\n\\ list_overlap: entries X and Y. C set if each starts no later than the other ends, in x\n\\ (16 bits) and in y.\n.list_overlap\n{\n    LDA list_x2_lo,Y                \\ x1 of X <= x2 of Y\n    CMP list_x1_lo,X\n    LDA list_x2_hi,Y\n    SBC list_x1_hi,X\n    BCC no\n    LDA list_x2_lo,X                \\ x1 of Y <= x2 of X\n    CMP list_x1_lo,Y\n    LDA list_x2_hi,X\n    SBC list_x1_hi,Y\n    BCC no\n    LDA list_y2,Y                   \\ y1 of X <= y2 of Y\n    CMP list_y1,X\n    BCC no\n    LDA list_y2,X                   \\ y1 of Y <= y2 of X\n    CMP list_y1,Y\n.no                                 \\ every BCC no arrives with C clear: this RTS serves\n    RTS                             \\ C as it stands\n}\n\n\\ ---- take off and put on -------------------------------------------------------------------\n\\ take_off: X = slot. If it comes off and is shown here, put its save block back.\n.take_off\n{\n    LDA need,X\n    BMI toff_go_c1               \\ not coming off is the common case: no taken branch before its RTS\n    RTS\n.toff_go_c1\n",
+   "summary": "Three changes in one: (1) widen_by_live's tail does y2 then y1, the rare y1 store out of line, so the common path takes no branch before RTS (-1 cycle a call, +1 byte); (2) list_overlap's .no CLC/RTS folded into the final RTS, since every BCC no arrives with C already clear (-2 bytes, -2 cycles on the no path); (3) take_off tests BMI/RTS so the common not-needed case falls into its RTS (-1 cycle a call, +1 byte). Net 0 bytes: take_off+1.. and put_on and everything after stay at their addresses. Alternatives: candidates 2, 3, 4 are subsets or variants (overlap).",
+   "claim": {
+    "cycles_per_execution": 1.0,
+    "executions_a_pass": 5.3,
+    "cycles_a_pass": 5.3,
+    "bytes": 0
+   },
+   "equivalence": "(1) The y1 and y2 updates touch different arrays and only A/flags between them; exit state A,X,Y,C is dead after widen_by_live's RTS (annotation out:-; caller falls to .listed INC list_n then LDY ren_k, no use of A/X/C). y1: original stores when list_y1[MS] < list_y1[X] (BCS skips when >=); new BCC stores exactly then, A still holds the value. y2 block is unchanged text moved first. (2) the three BCC no are taken only with C=0, so CLC was a no-op; the fall-through path still ends with C from the final CMP; callers (render.6502:1117, sky_off.6502:77) read C only. (3) BPL out when need,X bit7 clear becomes RTS directly, bit7 set falls into the unchanged rest; BEQ out later still targets .out (RTS). No entries past labels: grep take_off+/widen_by_live+/list_overlap+ finds none; take_off.out is not referenced elsewhere.",
+   "relies_on": "Code size net 0 after take_off's first line (widen +1, list_overlap -2, take_off +1) so put_on and later branch/page positions are exactly as now; only code between 9931 and 9975 moves, whose branches (x2/y kept, no, out, each within page &99) stay in-page and have no indexed code reads. Page crossings of hot branches elsewhere (9dd0->9dfd at +3, 9ffe at -1/-2) are not moved. Data reads list_y1/list_y2 (BEC6/B8C8 +<=&22) stay in-page. Y=MOVER_SLOTS kept for list_y2,Y. A, X, Y, C dead at widen_by_live exit (analysis out:-).",
+   "file_written": "build/grind/r3/opt-227392f8638e.json"
+  },
+  {
+   "window": "227392f8638e",
+   "file": "src/render.6502",
+   "line": 1248,
+   "old": "    LDA list_y1 + MOVER_SLOTS       \\ Y = MOVER_SLOTS: absolute, as ,Y crosses a page\n    CMP list_y1,X\n    BCS y1_kept\n    STA list_y1,X\n.y1_kept\n    LDA list_y2,Y\n    CMP list_y2,X\n    BCC y2_kept\n    STA list_y2,X\n.y2_kept\n    RTS\n}\n\n\\ list_overlap: entries X and Y. C set if each starts no later than the other ends, in x\n\\ (16 bits) and in y.\n.list_overlap\n{\n    LDA list_x2_lo,Y                \\ x1 of X <= x2 of Y\n    CMP list_x1_lo,X\n    LDA list_x2_hi,Y\n    SBC list_x1_hi,X\n    BCC no\n    LDA list_x2_lo,X                \\ x1 of Y <= x2 of X\n    CMP list_x1_lo,Y\n    LDA list_x2_hi,X\n    SBC list_x1_hi,Y\n    BCC no\n    LDA list_y2,Y                   \\ y1 of X <= y2 of Y\n    CMP list_y1,X\n    BCC no\n    LDA list_y2,X                   \\ y1 of Y <= y2 of X\n    CMP list_y1,Y\n    RTS                             \\ C as it stands\n.no\n    CLC\n    RTS\n}\n\n\\ ---- take off and put on -------------------------------------------------------------------\n\\ take_off: X = slot. If it comes off and is shown here, put its save block back.\n.take_off\n{\n    LDA need,X\n    BPL out\n",
+   "new": "    LDA list_y2,Y\n    CMP list_y2,X\n    BCC y2_kept\n    STA list_y2,X\n.y2_kept\n    LDA list_y1 + MOVER_SLOTS       \\ Y = MOVER_SLOTS: absolute, as ,Y crosses a page\n    CMP list_y1,X\n    BCC y1_store_c2              \\ rare (y1 seldom widens): out of line, so the common path falls into RTS\n    RTS\n.y1_store_c2\n    STA list_y1,X\n    RTS\n}\n\n\\ list_overlap: entries X and Y. C set if each starts no later than the other ends, in x\n\\ (16 bits) and in y.\n.list_overlap\n{\n    LDA list_x2_lo,Y                \\ x1 of X <= x2 of Y\n    CMP list_x1_lo,X\n    LDA list_x2_hi,Y\n    SBC list_x1_hi,X\n    BCC no\n    LDA list_x2_lo,X                \\ x1 of Y <= x2 of X\n    CMP list_x1_lo,Y\n    LDA list_x2_hi,X\n    SBC list_x1_hi,Y\n    BCC no\n    LDA list_y2,Y                   \\ y1 of X <= y2 of Y\n    CMP list_y1,X\n    BCC no\n    LDA list_y2,X                   \\ y1 of Y <= y2 of X\n    CMP list_y1,Y\n    RTS                             \\ C as it stands\n.no\n    CLC\n    RTS\n}\n\n\\ ---- take off and put on -------------------------------------------------------------------\n\\ take_off: X = slot. If it comes off and is shown here, put its save block back.\n.take_off\n{\n    LDA need,X\n    BMI toff_go_c2               \\ not coming off is the common case: no taken branch before its RTS\n    RTS\n.toff_go_c2\n",
+   "summary": "Alternative to candidate 1 (overlaps it): the same widen_by_live tail reorder and take_off BMI/RTS without the list_overlap .no fold. Everything after take_off's first line moves up +2 bytes, which also takes two currently page-crossing taken branches (BEQ in_hazel at &9CFC, BEQ gathered at &9EFD) into one page.",
+   "claim": {
+    "cycles_per_execution": 1.0,
+    "executions_a_pass": 4.6,
+    "cycles_a_pass": 4.6,
+    "bytes": -2
+   },
+   "equivalence": "As candidate 1 parts (1) and (3); list_overlap untouched.",
+   "relies_on": "Shifts put_on and all later code by +2. Computed from build/strykers-debug_lives.lst: no hot branch newly crosses a page at +2 (9dd0 BEQ no_part would at +3, not +2); BEQ in_hazel (&9CFC, ~0.5 taken a pass, 1.0 holding RIGHT) and BEQ gathered (&9EFD, ~0.5) stop crossing (+1 cycle each saved per taken). Tables with abs,X/Y reads after the window (raise_cells, ck_*, sprite_column_count) do not newly span pages at +2 (wa_rows_guess already spans). Extra gain from the page fixes is estimated, not measured.",
+   "file_written": "build/grind/r3/opt-227392f8638e.json"
+  },
+  {
+   "window": "227392f8638e",
+   "file": "src/render.6502",
+   "line": 1290,
+   "old": "    LDA need,X\n    BPL out\n",
+   "new": "    LDA need,X\n    BMI toff_go_c3               \\ not coming off is the common case: no taken branch before its RTS\n    RTS\n.toff_go_c3\n",
+   "summary": "take_off only: BMI/RTS in place of BPL out, so the common not-needed case (about 4.9 of 6.9 calls a pass) falls into an RTS instead of taking a branch. Subset of candidates 1 and 2 (overlaps).",
+   "claim": {
+    "cycles_per_execution": 1.0,
+    "executions_a_pass": 2.9,
+    "cycles_a_pass": 2.9,
+    "bytes": -1
+   },
+   "equivalence": "BPL out (need bit 7 clear) goes to RTS; the new code RTSs directly in the same case and falls into the same TXA.. code otherwise. Flags/A/X/Y at both exits equal the old (A=need,X; N clear).",
+   "relies_on": "+1 byte shifts put_on and later code by +1: by listing analysis no hot branch newly crosses a page at +1; BEQ gathered (&9EFD) stops crossing. Cycles: BPL taken 3 (4.9 a pass) vs BMI not taken 2; the 2.0 a pass that come off pay BMI taken 3 vs 2: net 2.9 a pass.",
+   "file_written": "build/grind/r3/opt-227392f8638e.json"
+  },
+  {
+   "window": "227392f8638e",
+   "file": "src/render.6502",
+   "line": 1248,
+   "old": "    LDA list_y1 + MOVER_SLOTS       \\ Y = MOVER_SLOTS: absolute, as ,Y crosses a page\n    CMP list_y1,X\n    BCS y1_kept\n    STA list_y1,X\n.y1_kept\n    LDA list_y2,Y\n    CMP list_y2,X\n    BCC y2_kept\n    STA list_y2,X\n.y2_kept\n    RTS\n",
+   "new": "    LDA list_y2,Y\n    CMP list_y2,X\n    BCC y2_kept\n    STA list_y2,X\n.y2_kept\n    LDA list_y1 + MOVER_SLOTS       \\ Y = MOVER_SLOTS: absolute, as ,Y crosses a page\n    CMP list_y1,X\n    BCC y1_store_c4              \\ rare (y1 seldom widens): out of line, so the common path falls into RTS\n    RTS\n.y1_store_c4\n    STA list_y1,X\n    RTS\n",
+   "summary": "widen_by_live tail only: y2 then y1 with the rare y1 store out of line, so the common path (y1 kept, about 90% of calls) runs BCC not taken then RTS. Subset of candidates 1 and 2 (overlaps).",
+   "claim": {
+    "cycles_per_execution": 1.0,
+    "executions_a_pass": 1.7,
+    "cycles_a_pass": 1.7,
+    "bytes": -1
+   },
+   "equivalence": "y1 and y2 updates are independent (separate arrays); stores happen under the same conditions (y1: A < list_y1[X]; y2: BCC y2_kept unchanged). Exit A,X,Y,C dead (out:-).",
+   "relies_on": "+1 byte before list_overlap/take_off/put_on; no hot branch newly crosses at +1; Y=MOVER_SLOTS preserved through the block (no instruction here changes Y).",
+   "file_written": "build/grind/r3/opt-227392f8638e.json"
+  }
+ ]
+}

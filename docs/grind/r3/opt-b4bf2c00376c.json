@@ -1,0 +1,55 @@
+{
+ "candidates": [
+  {
+   "window": "b4bf2c00376c",
+   "file": "src/lib/sfx50.6502",
+   "line": 189,
+   "old": "    LDY #&08\n    STY sysvia_orb                  \\ and high again\n    LDY #4\n.wait_high\n    DEY\n    BNE wait_high\n    RTS\n",
+   "new": "    LDA #&08\n    STA sysvia_orb                  \\ and high again (Y is still 0)\n    RTS\n    SKIP 5                          \\ the old recovery delay's bytes, so nothing after moves\n",
+   "summary": "sfx_write: drop the post-write-enable-high delay loop (LDY #4 / DEY / BNE: 21 cycles of 27 in the tail) and write the high with LDA #8 / STA so Y stays 0; 5 bytes padded with SKIP 5 so no later code in bank 5 moves a byte.",
+   "claim": {
+    "cycles_per_execution": 21,
+    "executions_a_pass": 4.55,
+    "cycles_a_pass": 95.6,
+    "bytes": 0
+   },
+   "equivalence": "sfx_write's tail: A is dead on return (every caller reloads A: sfx_output's tone/noise paths start LDA sfx_p_hi / LDA sfx_v, sfx_tick's callers go to DEX or LDA sfx_dp,X; the dataflow out: at the RTS is XYCV), C and X are untouched, Y is still 0 from wait_low's exit (as before: the old wait_high also ended at Y=0, and sfx_next_ramp.ended's comment says so), Z/N are dead. Write enable high is written with A instead of Y (same 2+4 cycles, same VIA write cycle). Only the recovery delay after the rising edge goes: the chip's constraint is write enable low for >=8us (wait_low, 17 cycles from STZ's write to the high write, untouched); after the rise, the data bus is next changed by a STA sysvia_ora_nh no earlier than 31 cycles later on any path (RTS 6 + the caller's amplitude/period arithmetic or sfx_silence's loop, counted per path: tone low->high 44, high->amplitude 31, noise->amplitude 33, silence 44), and by the main program or the MOS only after RTS/RTS/PLA/STA/PLA/PLY/PLX/RTI.",
+   "relies_on": "No label after sfx_write moves (SKIP 5 keeps .noise at &A5A4 and everything after it where it was), so no page crossing changes anywhere in bank 5; sfx_write itself stays inside page &A5 (&A589-&A5A3), branch wait_low is still in-page, BEQ noise unchanged. Relies on the SN76489 needing only the write-enable-low hold (wait_low kept at 17 cycles) and no hold after the rising edge: every path has >=31 cycles between the rise and the next chip write, so a 8us recovery is covered without the loop. wait_high is referenced nowhere else (grep src/ tools/). This is a hardware-timing change the emulator cannot show; MOS 3.20's own writes are not followed by this delay inside its routine on any path that matters.",
+   "file_written": "src/lib/sfx50.6502"
+  },
+  {
+   "window": "b4bf2c00376c",
+   "file": "src/lib/sfx50.6502",
+   "line": 189,
+   "old": "    LDY #&08\n    STY sysvia_orb                  \\ and high again\n    LDY #4\n.wait_high\n    DEY\n    BNE wait_high\n    RTS\n",
+   "new": "    LDA #&08\n    STA sysvia_orb                  \\ and high again (Y is still 0)\n    RTS\n",
+   "summary": "As the first candidate without the padding: 5 bytes smaller, bank 5's code from .noise on slides down 5 bytes (alternative to it, same lines).",
+   "claim": {
+    "cycles_per_execution": 21,
+    "executions_a_pass": 4.55,
+    "cycles_a_pass": 95.6,
+    "bytes": 5
+   },
+   "equivalence": "sfx_write's tail: A is dead on return (every caller reloads A: sfx_output's tone/noise paths start LDA sfx_p_hi / LDA sfx_v, sfx_tick's callers go to DEX or LDA sfx_dp,X; the dataflow out: at the RTS is XYCV), C and X are untouched, Y is still 0 from wait_low's exit (as before: the old wait_high also ended at Y=0, and sfx_next_ramp.ended's comment says so), Z/N are dead. Write enable high is written with A instead of Y (same 2+4 cycles, same VIA write cycle). Only the recovery delay after the rising edge goes: the chip's constraint is write enable low for >=8us (wait_low, 17 cycles from STZ's write to the high write, untouched); after the rise, the data bus is next changed by a STA sysvia_ora_nh no earlier than 31 cycles later on any path (RTS 6 + the caller's amplitude/period arithmetic or sfx_silence's loop, counted per path: tone low->high 44, high->amplitude 31, noise->amplitude 33, silence 44), and by the main program or the MOS only after RTS/RTS/PLA/STA/PLA/PLY/PLX/RTI.",
+   "relies_on": "Same hardware argument as the first candidate. Moves .noise, sfx_silence, sfx_channel_bits, the sfx_* tables (sfx_p_lo at &A5D7 -> &A5D2 .. sfx_noise_written &A5EB -> &A5E6: all 4-byte tables still inside page &A5, no indexed-read crossing), sfx_data and all of compiled_bank5 (from &A68E) and the code after it down by 5; I have not counted the branch crossings that slide changes there, so the gate decides: prefer the first candidate if this one measures worse.",
+   "file_written": "src/lib/sfx50.6502"
+  },
+  {
+   "window": "b4bf2c00376c",
+   "file": "src/lib/sfx50.6502",
+   "line": 190,
+   "old": "    STY sysvia_orb                  \\ and high again\n    LDY #4\n",
+   "new": "    STY sysvia_orb                  \\ and high again\n    LDY #2\n",
+   "summary": "Conservative alternative (overlaps the first two): keep the structure and shorten the post-high delay loop from 4 to 2 passes (19 -> 9 cycles), same bytes, nothing moves.",
+   "claim": {
+    "cycles_per_execution": 10,
+    "executions_a_pass": 4.55,
+    "cycles_a_pass": 45.5,
+    "bytes": 0
+   },
+   "equivalence": "Only the number of iterations of a pure DEY/BNE delay changes; the loop still exits with Y=0, Z=1, N=0 and leaves A, X, C, V alone, so register and flag state at the RTS is identical. The recovery after the write-enable rise falls from 27 to 17 cycles (LDY, loop, RTS: 2+9+6) before any following chip write, and every path then spends >=31 more cycles before the next STA sysvia_ora_nh, so the gap from the rise to the next chip write is >=48 cycles (24us) against the chip's 8us (32 clocks at 4 MHz).",
+   "relies_on": "No byte moves (LDY #4 and LDY #2 are both two bytes), so no page crossing changes; the loop stays inside &A59E-&A5A3 on page &A5. wait_low (the 8us write-enable hold) is untouched. Hardware timing the emulator cannot show; this is the minimal-risk way to take cycles from the delay.",
+   "file_written": "src/lib/sfx50.6502"
+  }
+ ]
+}

@@ -1,0 +1,12 @@
+window 09d7d96f1cf9: src/game.6502 lines 5312-5321, 8 instructions, 95.9 cycles a pass measured (wait excluded)
+
+ 5312     12.0     STX compiled_back                                                                      ;| A=1..255 X={4,$84} Y=? C=? Z=0 N=? V=? | compiled_back=? | in:AXYNZCV out:AXYNZCV
+ 5313      9.0     STA os_ram_copy_of_currently_selected_rom                                              ;| A=1..255 X={4,$84} Y=? C=? Z=0 N=? V=? | $F4=? | in:AXYNZCV out:AXYNZCV
+ 5314     12.0     STA romsel                                                                             ;| A=1..255 X={4,$84} Y=? C=? Z=0 N=? V=? | romsel=? | in:AXYNZCV out:AXYNZCV
+ 5315          compiled_vec = * + 1                \ self-modified: the entry (also compiled_direct's vector)
+ 5316     18.0     JSR &0000                                                                              ;| A=1..255 X={4,$84} Y=? C=? Z=0 N=? V=? | in:AXYNZCV out:XYCV
+ 5317          compiled_back = * + 1               \ self-modified: the ROMSEL to come back to
+ 5318      6.0     LDA #&00                                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XYCV out:AXYCV
+ 5319      9.0     STA os_ram_copy_of_currently_selected_rom                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | $F4=? | in:AXYCV out:AXYCV
+ 5320     12.0     STA romsel                                                                             ;| A=? X=? Y=? C=? Z=? N=? V=? | romsel=? | in:AXYCV out:XYCV
+ 5321     18.0     RTS                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XYCV out:XYCV

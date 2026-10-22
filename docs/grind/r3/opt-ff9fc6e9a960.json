@@ -1,0 +1,21 @@
+{
+ "candidates": [
+  {
+   "window": "ff9fc6e9a960",
+   "file": "src/render.6502",
+   "line": 2081,
+   "old": "    JMP blocks_done\n.columns                            \\ the columns from v_ptr + 8 to rb_end + 8\n    LDA v_ptr\n    CMP rb_end\n    BNE more\n    LDA v_ptr + 1\n    CMP rb_end + 1\n    BNE more\n    RTS\n.cells_next_page                    \\ v_ptr + 11 crossed a page (rare): off the hot path\n    INC v_ptr + 1\n    BRA cells_on_page               \\ 65C02 opcode\n.more\n",
+   "new": "    JMP blocks_done\n.cols_low_eq                        \\ the low bytes are equal (3 of 13 calls reach the end): the high bytes\n    LDA v_ptr + 1                   \\ say whether this is the end (RTS) or a record still (.more)\n    CMP rb_end + 1\n    BNE more\n    RTS\n.cells_next_page                    \\ v_ptr + 11 crossed a page (rare): off the hot path\n    INC v_ptr + 1\n    BRA cells_on_page               \\ 65C02 opcode\n.columns                            \\ the columns from v_ptr + 8 to rb_end + 8\n    LDA v_ptr\n    CMP rb_end\n    BEQ cols_low_eq                 \\ the end is the rarer case (3 of 13 calls): a record falls through\n.more\n",
+   "summary": "restore_block's .columns: the hot case (a record, 9.5 of the 13.35 calls a pass) takes BEQ-not-taken (2 cycles) and falls into .more instead of BNE-taken (3); the end test's second half and RTS (3.85 calls) move to .cols_low_eq before .columns, as does cells_next_page. Same bytes, every later address unchanged.",
+   "claim": {
+    "cycles_per_execution": 0.42,
+    "executions_a_pass": 13.35,
+    "cycles_a_pass": 5.65,
+    "bytes": 0
+   },
+   "equivalence": "Entry .columns (JSR from restore_block twice, JMP from last_cell, compiled_call return, hazel_restore return, and other JMP columns; all by label) runs LDA v_ptr / CMP rb_end as before. Low bytes differ (Z=0): BEQ not taken, falls into .more with A = v_ptr low, which .more does not use (first instruction LDY #10), registers/flags as the old BNE-taken path (flags from CMP, nothing reads them). Low bytes equal: BEQ to .cols_low_eq, which does the old second half unchanged: LDA v_ptr+1 / CMP rb_end+1, BNE more (A = v_ptr+1 on arrival at .more, as in the old code, unused) else RTS with A = v_ptr+1, C=1, Z=1, N=0 exactly as the old RTS (old A was also v_ptr+1, flags from the same CMP). cells_next_page moves intact (INC v_ptr+1 / BRA cells_on_page); its only reference is BCS cells_next_page in .more, a backward branch of 0xDC bytes-offset (-36), in range. .cells_on_page and everything after .more is untouched. No new RAM, no data moved.",
+   "relies_on": "Page crossings: the 17 bytes from the old .columns to .more are the same 17 bytes (13 + 4 in the old order; 7 + 4 + 6 in the new), so .more, .cells_on_page, .cell, .byte, .compiled, .blocks_done and .compact keep their addresses exactly (checked by assembling the bench build, DEBUG_LIVES shift 0, with the change in a scratch copy: .more 9E2B, .compact 9EEE, both before and after, the listing identical but for the moved lines). In that build .cols_low_eq 9E1A, .cells_next_page 9E21, .columns 9E25, BEQ at 9E29 targets 9E1A, BNE more at 9E1E targets 9E2B, BCS at 9E43 targets 9E21 and BRA at 9E23 targets 9E45: all in page 9E, so no branch crosses a page. Other builds put the block at other addresses; the 17-byte block crosses a page boundary only when its start low byte is at or above &EF, which the gate's bench build is not. Measured: the cycle counts are from the window's per-line profile: LDA v_ptr 40.1 (13.35 calls), LDY #10 19.0 (9.5 calls to .more), RTS 23.1 (3.85 exits): more 9.5 x 1 saved, exits 3.85 x 1 lost, net 5.65 a pass. Rejected as net losses from the same profile: moving TYA out of .cell (the plain first entry is 7.2 of the 14.3 TYA executions a pass, the loop re-entries 7.1, so skipping TYA there and paying a BRA on the others loses 21.3 to gain 14.4), and reading the low byte last to drop the TAX/TXA (the compiled branch, 2.3 a pass, then needs a stub to fetch its kind: 12 cycles each, 27.6 against 21.6 saved).",
+   "file_written": "build/grind/r3/opt-ff9fc6e9a960.json"
+  }
+ ]
+}

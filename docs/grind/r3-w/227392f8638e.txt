@@ -1,0 +1,50 @@
+window 227392f8638e: src/render.6502 lines 1244-1291, 32 instructions, 142.1 cycles a pass measured (wait excluded)
+
+ 1244      5.8     STA list_x2_lo,X                                                                       ;| A=? X=? Y=$22 C=0 Z=? N=? V=? | [list_x2_lo,x]=? | in:AXY out:XY
+ 1245      4.6     LDA list_x2_hi,Y                                                                       ;| A=? X=? Y=$22 C=0 Z=? N=? V=? | [list_x2_hi,y]=? | in:XY out:AXY
+ 1246      5.8     STA list_x2_hi,X                                                                       ;| A=? X=? Y=$22 C=0 Z=? N=? V=? | [list_x2_hi,x]=? | in:AXY out:XY
+ 1247          .x2_kept
+ 1248      7.9     LDA list_y1 + MOVER_SLOTS       \ Y = MOVER_SLOTS: absolute, as ,Y crosses a page      ;| A=? X=? Y=$22 C=? Z=? N=? V=? | $BEE8=? | in:XY out:AXY
+ 1249      7.9     CMP list_y1,X                                                                          ;| A=?≡$BEE8 X=? Y=$22 C=? Z=? N=? V=? | [list_y1,x]=? | in:AXY out:AXYC
+ 1250      5.8     BCS y1_kept                                                                            ;| A=?≡$BEE8 X=? Y=$22 C=? Z=? N=? V=? | in:AXYC out:AXY
+ 1251      0.5     STA list_y1,X                                                                          ;| A=0..254≡$BEE8 X=? Y=$22 C=0 Z=? N=? V=? | [list_y1,x]=? | in:AXY out:XY
+ 1252          .y1_kept
+ 1253      7.9     LDA list_y2,Y                                                                          ;| A=? X=? Y=$22 C=? Z=? N=? V=? | [list_y2,y]=? | in:XY out:AX
+ 1254      7.9     CMP list_y2,X                                                                          ;| A=? X=? Y=$22 C=? Z=? N=? V=? | [list_y2,x]=? | in:AX out:AXC
+ 1255      4.0     BCC y2_kept                                                                            ;| A=? X=? Y=$22 C=? Z=? N=? V=? | in:AXC out:AX
+ 1256      9.4     STA list_y2,X                                                                          ;| A=? X=? Y=$22 C=1 Z=? N=? V=? | [list_y2,x]=? | in:AX out:-
+ 1257          .y2_kept
+ 1258     11.8     RTS                                                                                    ;| A=? X=? Y=$22 C=? Z=? N=? V=? | in:- out:-
+ 1259          }
+ 1260          
+ 1261          \ list_overlap: entries X and Y. C set if each starts no later than the other ends, in x
+ 1262          \ (16 bits) and in y.
+ 1263          .list_overlap
+ 1264          {
+ 1265      1.6     LDA list_x2_lo,Y                \ x1 of X <= x2 of Y                                   ;| A=1..255 X=? Y=? C=? Z=? N=? V=? | [list_x2_lo,y]=? | in:XY out:AXY
+ 1266      1.6     CMP list_x1_lo,X                                                                       ;| A=? X=? Y=? C=? Z=? N=? V=? | [list_x1_lo,x]=? | in:AXY out:XYC
+ 1267      1.6     LDA list_x2_hi,Y                                                                       ;| A=? X=? Y=? C=? Z=? N=? V=? | [list_x2_hi,y]=? | in:XYC out:AXYC
+ 1268      1.6     SBC list_x1_hi,X                                                                       ;| A=? X=? Y=? C=? Z=? N=? V=? | [list_x1_hi,x]=? | in:AXYC out:XYC
+ 1269      1.0     BCC no                                                                                 ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XYC out:XY
+ 1270      0.8     LDA list_x2_lo,X                \ x1 of Y <= x2 of X                                   ;| A=? X=? Y=? C=1 Z=? N=? V=? | [list_x2_lo,x]=? | in:XY out:AXY
+ 1271      0.8     CMP list_x1_lo,Y                                                                       ;| A=? X=? Y=? C=1 Z=? N=? V=? | [list_x1_lo,y]=? | in:AXY out:XYC
+ 1272      0.8     LDA list_x2_hi,X                                                                       ;| A=? X=? Y=? C=? Z=? N=? V=? | [list_x2_hi,x]=? | in:XYC out:AXYC
+ 1273      0.8     SBC list_x1_hi,Y                                                                       ;| A=? X=? Y=? C=? Z=? N=? V=? | [list_x1_hi,y]=? | in:AXYC out:XYC
+ 1274      0.5     BCC no                                                                                 ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XYC out:XY
+ 1275      0.1     LDA list_y2,Y                   \ y1 of X <= y2 of Y                                   ;| A=? X=? Y=? C=1 Z=? N=? V=? | [list_y2,y]=? | in:XY out:AXY
+ 1276      0.1     CMP list_y1,X                                                                          ;| A=? X=? Y=? C=1 Z=? N=? V=? | [list_y1,x]=? | in:AXY out:XYC
+ 1277      0.0     BCC no                                                                                 ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XYC out:XY
+ 1278      0.1     LDA list_y2,X                   \ y1 of Y <= y2 of X                                   ;| A=? X=? Y=? C=1 Z=? N=? V=? | [list_y2,x]=? | in:XY out:AXY
+ 1279      0.1     CMP list_y1,Y                                                                          ;| A=? X=? Y=? C=1 Z=? N=? V=? | [list_y1,y]=? | in:AXY out:XYC
+ 1280      0.1     RTS                             \ C as it stands                                       ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XYC out:XYC
+ 1281          .no
+ 1282      0.7     CLC                                                                                    ;| A=? X=? Y=? C=0 Z=? N=? V=? | in:XY out:XYC
+ 1283      2.2     RTS                                                                                    ;| A=? X=? Y=? C=0 Z=? N=? V=? | in:XYC out:XYC
+ 1284          }
+ 1285          
+ 1286          \ ---- take off and put on -------------------------------------------------------------------
+ 1287          \ take_off: X = slot. If it comes off and is shown here, put its save block back.
+ 1288          .take_off
+ 1289          {
+ 1290     29.1     LDA need,X                                                                             ;| A=? X=? Y=? C=? Z=? N=? V=? | [$1F,x]=? | in:X out:XN
+ 1291     19.8     BPL out                                                                                ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XN out:X

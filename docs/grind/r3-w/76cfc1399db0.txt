@@ -1,0 +1,38 @@
+window 76cfc1399db0: src/game.6502 lines 2978-3013, 32 instructions, 126.6 cycles a pass measured (wait excluded)
+
+ 2978      5.2     LDA mover_screen_address_high                                                          ;| A=?≡$C2 X=? Y=?≡$03 C=? Z=? N=? V=? | $C3=? | in:Y out:AY
+ 2979      8.6     STA movers_screen_address_high,Y                                                       ;| A=?≡$C3 X=? Y=?≡$03 C=? Z=? N=? V=? | [$13CC,y]=? | in:AY out:Y
+ 2980      5.2     LDA mover_y                                                                            ;| A=?≡$C3 X=? Y=?≡$03 C=? Z=? N=? V=? | $F9=? | in:Y out:AY
+ 2981      8.6     STA movers_y,Y                                                                         ;| A=?≡$F9 X=? Y=?≡$03 C=? Z=? N=? V=? | [$1388,y]=? | in:AY out:AY
+ 2982      3.4     EOR #&FF                        \ grind: &C7 - mover_y + &18 = &DF - mover_y = (&FF - mover_y) - &20;| A=?≡$F9 X=? Y=?≡$03 C=? Z=? N=? V=? | in:AY out:AY
+ 2983      3.4     SEC                                                                                    ;| A=? X=? Y=?≡$03 C=? Z=? N=? V=? | in:AY out:AYC
+ 2984      3.4     SBC #&20                                                                               ;| A=? X=? Y=?≡$03 C=1 Z=? N=? V=? | in:AYC out:AYV
+ 2985      3.4     TAX                             \ grind: multiply_by_78 inlined (A x &4E from the table), its stores kept; Y stays mover_to_update;| A=? X=? Y=?≡$03 C=? Z=? N=? V=? | in:AYV out:XYV
+ 2986      6.9     LDA times_78_lo,X                                                                      ;| A=? X=? Y=?≡$03 C=? Z=? N=? V=? | [os_rom,x]=? | in:XYV out:AXYV
+ 2987      5.2     STA result_low                                                                         ;| A=? X=? Y=?≡$03 C=? Z=? N=? V=? | $C5=? | in:AXYV out:XYV
+ 2988      6.9     LDA times_78_hi,X                                                                      ;| A=? X=? Y=?≡$03 C=? Z=? N=? V=? | [times_78_hi,x]=? | in:XYV out:AYV
+ 2989      5.2     STA result_high                                                                        ;| A=? X=? Y=?≡$03 C=? Z=? N=? V=? | $C6=? | in:AYV out:AYV
+ 2990      5.2     STZ multiplicand                \ 65C02 opcode                                         ;| A=? X=? Y=?≡$03 C=? Z=? N=? V=? | $C7=? | in:AYV out:AYV
+ 2991      5.2     STZ multiplier_low              \ 65C02 opcode                                         ;| A=? X=? Y=?≡$03 C=? Z=? N=? V=? | $C8=? | in:AYV out:AYV
+ 2992      3.4     LDX #&4E                                                                               ;| A=? X=? Y=?≡$03 C=? Z=? N=? V=? | in:AYV out:AXYV
+ 2993      5.2     STX multiplier_high                                                                    ;| A=? X=$4E Y=?≡$03 C=? Z=0 N=0 V=? | $C9=? | in:AXYV out:AYV
+ 2994      8.6     STA movers_raster_y,Y           \ A = result_high                                      ;| A=? X=$4E Y=?≡$03 C=? Z=0 N=0 V=? | [$13EE,y]=? | in:AYV out:YV
+ 2995     10.3     JSR calculate_screen_addresses_for_mover_on_edge                                       ;| A=? X=$4E Y=?≡$03 C=? Z=0 N=0 V=? | in:YV out:AXYV
+ 2996      3.4     CPY #&00                        \ MOVER_PLAYER                                         ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXYV out:AXYZCV
+ 2997      4.8     BNE to_scroll_screen_right + 3                                                         ;| A=? X=? Y=? C=1 Z=? N=? V=? | in:AXYZCV out:AXYCV
+ 2998      1.2     LDA mover_had_hostile_collision \ Positive if mover had hostile collision              ;| A=? X=? Y=$00 C=1 Z=1 N=0 V=? | $81=? | in:XYCV out:AXYNCV
+ 2999      0.8     BPL to_scroll_screen_right + 3  \ Don't scroll if player had hostile collision         ;| A=?≡$81 X=? Y=$00 C=1 Z=? N=? V=? | in:AXYNCV out:AXYCV
+ 3000      1.2     LDA x_delta                                                                            ;| A=128..255≡$81 X=? Y=$00 C=1 Z=? N=1 V=? | $7C=? | in:XYCV out:AXYZCV
+ 3001      0.8     BEQ to_scroll_screen_right + 3                                                         ;| A=?≡$7C X=? Y=$00 C=1 Z=? N=? V=? | in:AXYZCV out:AXYCV
+ 3002      1.1     LDA flip                                                                               ;| A=1..255≡$7C X=? Y=$00 C=1 Z=0 N=? V=? | $7B=? | in:YCV out:AYNCV
+ 3003      1.1     BPL to_scroll_screen_right                                                             ;| A=?≡$7B X=? Y=$00 C=1 Z=? N=? V=? | in:AYNCV out:AYCV
+ 3004      0.1     JMP scroll_screen_left                                                                 ;| A=128..255≡$7B X=? Y=$00 C=1 Z=? N=1 V=? | in:AYCV out:AYCV
+ 3005          .to_scroll_screen_right
+ 3006      1.1     JMP scroll_screen_right         \ grind: a tail call; the RTS (to_scroll_screen_right + 3) stays;| A=? X=? Y=? C=? Z=? N=? V=? | in:AYCV out:AYCV
+ 3007      8.0     RTS                                                                                    ;| A=? X=? Y=? C=1 Z=? N=? V=? | in:AXCV out:AXCV
+ 3008          
+ 3009          .use_player_position_for_mover_Y
+ 3010              LDX movers_screen_address_high                                                         ;| A=? X=? Y=? C=? Z=? N=? V=? | $13CC=? | in:YV out:XYV
+ 3011              LDA movers_screen_address_low                                                          ;| A=? X=?≡$13CC Y=? C=? Z=? N=? V=? | $13AA=? | in:XYV out:AXYV
+ 3012          .use_player_position_for_mover_Y_with_screen_address_from_AX
+ 3013              STA movers_screen_address_low,Y                                                        ;| A=? X=? Y=? C=? Z=? N=? V=? | [$13AA,y]=? | in:AXYV out:XYV

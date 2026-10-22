@@ -1,0 +1,42 @@
+window 7e3a3e079344: src/game.6502 lines 4010-4049, 32 instructions, 800.5 cycles a pass measured (wait excluded)
+
+ 4010      2.3     LDA mover_y                                                                            ;| A=? X=0..127 Y=? C=0 Z=? N=? V=? | $F9=? | in:C out:AC
+ 4011      1.5     ADC #&40                        \ grind: C=0, BCS above not taken                      ;| A=?≡$F9 X=0..127 Y=? C=0 Z=? N=? V=? | in:AC out:A
+ 4012      2.3     STA mover_y_max                                                                        ;| A=? X=0..127 Y=? C=? Z=? N=? V=? | $C9=? | in:A out:-
+ 4013          .search_for_target
+ 4014     14.6     JSR calculate_mover_x_max_from_offset                                                  ;| A=? X=? Y=? C=? Z=? N=? V=? | in:- out:-
+ 4015      7.3     LDA mover_x_max_high            \ grind: the range's right (high) in the prefilter's LDA;| A=? X=? Y=? C=? Z=? N=? V=? | $C6=? | in:- out:A
+ 4016      9.7     STA stf_x_max_high_operand_s                                                           ;| A=?≡$C6 X=? Y=? C=? Z=? N=? V=? | stf_x_max_high_operand_s=? | in:A out:-
+ 4017      7.3     STZ friendly_targets_found                                                             ;| A=?≡$C6 X=? Y=? C=? Z=? N=? V=? | $89=? | in:- out:-
+ 4018      7.3     STZ unfriendly_targets_found                                                           ;| A=?≡$C6 X=? Y=? C=? Z=? N=? V=? | $8A=? | in:- out:-
+ 4019      4.8     LDX #&FF                                                                               ;| A=?≡$C6 X=? Y=? C=? Z=? N=? V=? | in:- out:X
+ 4020      7.3     STX target                      \ Set to negative to indicate no target found by default;| A=?≡$C6 X=$FF Y=? C=? Z=0 N=1 V=? | $B6=? | in:X out:-
+ 4021     14.6     JSR set_cm_left                 \ (leaves X alone)                                     ;| A=?≡$C6 X=$FF Y=? C=? Z=0 N=1 V=? | in:- out:V
+ 4022      4.8     LDX #&0C                        \ MOVER_LAST_ENEMY_HELICOPTER + 1: the DEX makes it &0B;| A=? X=$FF Y=? C=? Z=? N=? V=? | in:V out:XV
+ 4023          .search_prefilter_next             \ grind: a mover the prefilter passes over (X >= 2) comes back here
+ 4024     46.3     DEX                                                                                    ;| A=? X=2..12 Y=? C=? Z=? N=? V=? | in:XV out:XV
+ 4025          .search_for_target_loop
+ 4026     58.2     CPX #&02                        \ step 2 (layer 3): a mover that cannot be in range is passed;| A=? X=0..11 Y=? C=? Z=? N=0 V=? | in:XV out:XCV
+ 4027     67.9     BCC search_in_full                  \ over, except in the last two checks              ;| A=? X=0..11 Y=? C=? Z=? N=? V=? | in:XCV out:XV
+ 4028          stf_x_max_high_operand_s = * + 1
+ 4029     48.5     LDA #&00                        \ actually LDA #mover_x_max_high, set above: right of the range: x > the range's right (the original's;| A=? X=2..11 Y=? C=1 Z=? N=? V=? | in:XV out:AXV
+ 4030     97.0     CMP movers_x_high,X             \ own first test), the high bytes first                ;| A=? X=2..11 Y=? C=1 Z=? N=? V=? | [$1366,x]=? | in:AXV out:XZCV
+ 4031     61.6     BCC search_prefilter_next      \ X >= 2, so X >= 1 after the DEX                       ;| A=? X=2..11 Y=? C=? Z=? N=? V=? | in:XZCV out:XZV
+ 4032     22.7     BNE stf_left_test_s             \ the range's right is a page or more right of x       ;| A=? X=2..11 Y=? C=1 Z=? N=? V=? | in:XZV out:XV
+ 4033     32.6     LDA mover_x_max_low                                                                    ;| A=? X=2..11 Y=? C=1 Z=1 N=0 V=? | $C7=? | in:XV out:AXV
+ 4034     43.5     CMP movers_x_low,X                                                                     ;| A=?≡$C7 X=2..11 Y=? C=1 Z=? N=? V=? | [$1344,x]=? | in:AXV out:XCV
+ 4035     27.9     BCC search_prefilter_next      \ X >= 2, so X >= 1 after the DEX                       ;| A=?≡$C7 X=2..11 Y=? C=? Z=? N=? V=? | in:XCV out:XV
+ 4036          .stf_left_test_s
+ 4037     20.3     LDA movers_x_low,X              \ left of it even at the widest type: x < its left - &0B;| A=? X=2..11 Y=? C=1 Z=? N=? V=? | [$1344,x]=? | in:X out:AX
+ 4038     20.3     CMP cm_left_low                                                                        ;| A=? X=2..11 Y=? C=1 Z=? N=? V=? | $2F83=? | in:AX out:XC
+ 4039     20.3     LDA movers_x_high,X                                                                    ;| A=? X=2..11 Y=? C=? Z=? N=? V=? | [$1366,x]=? | in:XC out:AXC
+ 4040     20.3     SBC cm_left_high                                                                       ;| A=? X=2..11 Y=? C=? Z=? N=? V=? | $2F84=? | in:AXC out:XCV
+ 4041     13.1     BCC search_prefilter_next      \ X >= 2, so X >= 1 after the DEX                       ;| A=? X=2..11 Y=? C=? Z=? N=? V=? | in:XCV out:XV
+ 4042          .search_in_full
+ 4043     50.5     JSR check_for_mover_collision_with_mover_X\ Returns carry set if collision, i.e. mover in range;| A=? X=0..11 Y=? C=? Z=? N=? V=? | in:XV out:XCV
+ 4044     17.6     BCS search_hit_g493a            \ grind: a miss (most checks) falls through to the DEX ;| A=? X=0..11 Y=? C=? Z=? N=? V=? | in:XCV out:XV
+ 4045          .consider_next_enemy
+ 4046     15.2     DEX                                                                                    ;| A=? X=0..11 Y=? C=0 Z=? N=? V=? | in:XV out:XNV
+ 4047     25.7     BPL search_for_target_loop                                                             ;| A=? X={0,1,2,3,4,5,6,7,8,9,$0A,$FF} Y=? C=0 Z=? N=? V=? | in:XNV out:XV
+ 4048          .search_done
+ 4049      7.3     LDX target                                                                             ;| A=? X=$FF Y=? C=? Z=? N=1 V=? | $B6=? | in:V out:XNV

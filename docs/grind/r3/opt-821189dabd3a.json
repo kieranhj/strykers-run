@@ -1,0 +1,21 @@
+{
+ "candidates": [
+  {
+   "window": "821189dabd3a",
+   "file": "src/render.6502",
+   "line": 2161,
+   "old": "    BCC kind_on_page\n    INC v_ptr + 1\n.kind_on_page\n    LDA (v_ptr)                     \\ 65C02 opcode\n    STA &C0\n    LDY #1\n    LDA (v_ptr),Y\n    STA &C1\n    LDA ck_bank,X\n    BEQ in_hazel                    \\ bank 0: HAZEL\n    LDY ck_restore_lo,X             \\ Y, not A: A is the bank\n    STY compiled_vec\n    LDY ck_restore_hi,X\n    STY compiled_vec + 1\n    LDX #&04                        \\ bank 4 again after\n    JSR compiled_call\n    JMP columns\n.in_hazel                           \\ straight into the kind: no JMP (compiled_vec)\n    LDA ck_restore_lo,X\n    STA hazel_restore + 1\n    LDA ck_restore_hi,X\n    STA hazel_restore + 2\n.hazel_restore\n    JSR hazel_restore               \\ self-modified: the kind's restore\n    JMP columns",
+   "new": "    BCS kop_next_page               \\ the hot path falls through\n.kind_on_page\n    LDA (v_ptr)                     \\ 65C02 opcode\n    STA &C0\n    LDY #1\n    LDA (v_ptr),Y\n    STA &C1\n    LDA ck_bank,X\n    BEQ in_hazel                    \\ bank 0: HAZEL\n    LDY ck_restore_lo,X             \\ Y, not A: A is the bank\n    STY compiled_vec\n    LDY ck_restore_hi,X\n    STY compiled_vec + 1\n    LDX #&04                        \\ bank 4 again after\n    JSR compiled_call\n    JMP columns\n.in_hazel                           \\ straight into the kind: no JMP (compiled_vec)\n    LDA ck_restore_lo,X\n    STA hazel_restore + 1\n    LDA ck_restore_hi,X\n    STA hazel_restore + 2\n.hazel_restore\n    JSR hazel_restore               \\ self-modified: the kind's restore\n    JMP columns\n.kop_next_page                      \\ v_ptr + 11 crossed a page (rare): off the hot path\n    INC v_ptr + 1\n    BRA kind_on_page                \\ 65C02 opcode",
+   "summary": "restore_block's compiled-part entry: the v_ptr + 11 page-cross test becomes BCS to an out-of-line INC stub, so the hot path falls through (not-taken branch 2 cycles, not 3).",
+   "claim": {
+    "cycles_per_execution": 1,
+    "executions_a_pass": 2.2,
+    "cycles_a_pass": 2.0,
+    "bytes": -2
+   },
+   "equivalence": "BCC kind_on_page / INC v_ptr+1 / kind_on_page becomes BCS kop_next_page / kind_on_page ... kop_next_page: INC v_ptr+1 / BRA kind_on_page. Same v_ptr after either path; the next instruction is LDA (v_ptr), which sets N and Z, and C is unused after (annotations: C=? and nothing downstream reads it; the restore kinds and compiled_call set their own). Rare path (measured about 0.06 a pass, INC 0.3 cycles/5) costs 11 cycles instead of 7. kind_on_page and the rest of the window are untouched, in_hazel/JMP columns unchanged; the stub sits after the last JMP columns, before the SKY_MODE=0 .cached, which is only reached by labels, so nothing falls into it (the line before is an unconditional JMP).",
+   "relies_on": "bank 4 code after the window moves +2 bytes (BCS 2, INC 2 and BRA 2 against BCC 2 and INC 2). Checked by assembling a scratch copy of the bench build (-D DEBUG_LIVES=1, SKY_HELI=1) and comparing every label span under 400 bytes and every branch in &9000-&B3FF before and after: the only taken-branch page-crossing change is in compact (BEQ gathered at 9EFD stops crossing, a cold routine), and the only table/label span whose page-crossing changed is geom (code, not a table); ck_bank, ck_restore_lo/hi, ck_index and the straight sprite tables keep their crossing status. Window-internal branches: BEQ in_hazel, BCS kop_next_page (forward about 56 bytes) and BRA kind_on_page are all within one page-crossing-free hop for the hot path (BCS not taken). BRA columns (instead of JMP) is not possible: columns is 157 bytes back. kop_next_page is unique across src/ (grep). In SKY_MODE=0 the same text assembles (.cached follows the stub).",
+   "file_written": "build/grind/r3/opt-821189dabd3a.json"
+  }
+ ]
+}

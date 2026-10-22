@@ -1,0 +1,50 @@
+window 8332177c93db: src/render.6502 lines 1035-1082, 32 instructions, 434.3 cycles a pass measured (wait excluded)
+
+ 1035      8.1     LDA need,X                                                                             ;| A=? X=?≡$4D Y=? C=0 Z=? N=? V=? | [$1F,x]=? | in:X out:AX
+ 1036      4.1     ORA #&40                                                                               ;| A=? X=?≡$4D Y=? C=0 Z=? N=? V=? | in:AX out:AX
+ 1037      8.1     STA need,X                                                                             ;| A=64..255 %x1xxxxxx X=?≡$4D Y=? C=0 Z=0 N=? V=? | [$1F,x]=? | in:AX out:-
+ 1038          .next
+ 1039     21.8     LDY ren_k                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | $4E=? | in:- out:Y
+ 1040     14.5     INY                                                                                    ;| A=? X=? Y=?≡$4E C=? Z=? N=? V=? | in:Y out:Y
+ 1041     21.8     BRA each                        \ 65C02 opcode                                         ;| A=? X=? Y=? C=? Z=? N=? V=? | in:Y out:Y
+ 1042          .done
+ 1043      6.0     RTS                                                                                    ;| A=? X=? Y=? C=1 Z=1 N=0 V=? | in:- out:-
+ 1044          }
+ 1045          
+ 1046          \ close_over_overlaps: a shown mover that overlaps one coming off or going on, drawn before it
+ 1047          \ (decision 37: below it, in the order movers are drawn), comes off and goes back on too, so
+ 1048          \ overlapping movers are always drawn in slot order and taken off in reverse (a mover's save block
+ 1049          \ holds what was under it, earlier movers included; one drawn after it, over it, holds its bytes in
+ 1050          \ its own save, so it can come off and go back on alone). Over a
+ 1051          \ short list of the slots that matter: each one shown or going on, with a rectangle covering
+ 1052          \ where it is shown and where it goes, a column and two rows to spare.
+ 1053          .close_over_overlaps
+ 1054          {
+ 1055      3.0     STZ list_n                                                                             ;| A=? X=? Y=? C=1 Z=1 N=0 V=? | $53=? | in:- out:-
+ 1056      2.0     LDY #0                                                                                 ;| A=? X=? Y=? C=1 Z=1 N=0 V=? | in:- out:Y
+ 1057          .gather
+ 1058     24.8     CPY act_n                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | $4F=? | in:Y out:YZC
+ 1059     18.5     BEQ gathered                                                                           ;| A=? X=? Y=? C=? Z=? N=? V=? | in:YZC out:YC
+ 1060     21.8     STY ren_k                                                                              ;| A=? X=? Y=? C=? Z=0 N=? V=? | $4E=? | in:YC out:YC
+ 1061     29.1     LDX act,Y                                                                              ;| A=? X=? Y=? C=? Z=0 N=? V=? | [act,y]=? | in:YC out:XC
+ 1062     21.8     STX ren_i                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | $4D=? | in:XC out:XC
+ 1063     14.5     TXA                             \ C = 0: CPY act_n found Y < act_n                     ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XC out:AXC
+ 1064     21.8     ADC boff                                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | $52=? | in:AXC out:AX
+ 1065     14.5     TAY                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AX out:XY
+ 1066     29.1     LDA rec_xh,Y                                                                           ;| A=? X=? Y=? C=? Z=? N=? V=? | [rec_xh,y]=? | in:XY out:AXY
+ 1067     14.5     CMP #&FF                                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXY out:XYZ
+ 1068     19.6     BNE shown                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XYZ out:XY
+ 1069     18.9     LDA need,X                                                                             ;| A=$FF X=? Y=? C=1 Z=1 N=0 V=? | [$1F,x]=? | in:X out:A
+ 1070      9.5     AND #&40                                                                               ;| A=? X=? Y=? C=1 Z=? N=? V=? | in:A out:Z
+ 1071      9.5     BNE going_on                                                                           ;| A=0..64 %xx000000 X=? Y=? C=1 Z=? N=0 V=? | in:Z out:-
+ 1072     14.0     LDY ren_k                       \ not listed: the loop's tail, kept in gather's page   ;| A=$00 X=? Y=? C=1 Z=1 N=0 V=? | $4E=? | in:- out:Y
+ 1073      9.3     INY                                                                                    ;| A=$00 X=? Y=?≡$4E C=1 Z=? N=? V=? | in:Y out:Y
+ 1074     14.0     BRA gather                      \ 65C02 opcode                                         ;| A=$00 X=? Y=? C=1 Z=? N=? V=? | in:Y out:Y
+ 1075          .going_on
+ 1076      0.4     JSR list_live                   \ going on, not shown: where it goes                   ;| A=$40 X=? Y=? C=1 Z=0 N=0 V=? | in:- out:-
+ 1077      0.2     BRA listed                      \ 65C02 opcode                                         ;| A=? X=? Y=? C=? Z=? N=? V=? | in:- out:-
+ 1078          .shown
+ 1079     15.2     JSR list_recorded               \ where it is shown...                                 ;| A=0..254 X=? Y=? C=? Z=0 N=? V=? | in:XY out:A
+ 1080      7.6     LDX ren_i                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | $4D=? | in:A out:AX
+ 1081     10.2     BIT need,X                      \ 65C02 opcode: V = need bit 6                         ;| A=? X=?≡$4D Y=? C=? Z=? N=? V=? | [$1F,x]=? | in:AX out:V
+ 1082      5.7     BVC listed                                                                             ;| A=? X=?≡$4D Y=? C=? Z=? N=? V=? | in:V out:-

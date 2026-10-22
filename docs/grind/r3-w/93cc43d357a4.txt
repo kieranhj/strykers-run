@@ -1,0 +1,55 @@
+window 93cc43d357a4: src/render.6502 lines 1831-1883, 32 instructions, 226.5 cycles a pass measured (wait excluded)
+
+ 1831     15.5     SBC #8                                                                                 ;| A=?≡$C9 X=? Y=? C=1 Z=? N=? V=? | in:AC out:AC
+ 1832     23.3     STA b_ptr                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | $C9=? | in:AC out:C
+ 1833     15.8     BCC step_back_hi                                                                       ;| A=? X=? Y=? C=? Z=? N=? V=? | in:C out:-
+ 1834     22.7     JMP each                                                                               ;| A=? X=? Y=? C=1 Z=? N=? V=? | in:- out:-
+ 1835          .next                               \ v_ptr: this column's last cell (the next record 8 on)
+ 1836     11.6     SEC                             \ (from empty and clip_test: carry either way)         ;| A=? X=? Y={1,8} C=? Z=? N=? V=? | in:A out:AC
+ 1837     17.3     BRA next_c                      \ 65C02 opcode                                         ;| A=? X=? Y={1,8} C=1 Z=? N=? V=? | in:AC out:AC
+ 1838          .step_forward
+ 1839     16.3     LDA b_ptr                       \ on 8 (C = 1)                                         ;| A=? X=? Y=? C=1 Z=? N=0 V=? | $C9=? | in:C out:AC
+ 1840     10.9     ADC #7                                                                                 ;| A=?≡$C9 X=? Y=? C=1 Z=? N=? V=? | in:AC out:AC
+ 1841     16.3     STA b_ptr                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | $C9=? | in:AC out:C
+ 1842     11.0     BCS forward_hi                                                                         ;| A=? X=? Y=? C=? Z=? N=? V=? | in:C out:-
+ 1843     15.8     JMP each                                                                               ;| A=? X=? Y=? C=0 Z=? N=? V=? | in:- out:-
+ 1844          .forward_hi
+ 1845      0.5     LDA b_ptr + 1                                                                          ;| A=? X=? Y=? C=1 Z=? N=? V=? | $CA=? | in:- out:A
+ 1846      0.3     INC A                           \ 65C02 opcode                                         ;| A=?≡$CA X=? Y=? C=1 Z=? N=? V=? | in:A out:AN
+ 1847      0.5     BPL forward_in_ring                                                                    ;| A=? X=? Y=? C=1 Z=? N=? V=? | in:AN out:A
+ 1848      0.0     LDA #&40                                                                               ;| A=128..255 X=? Y=? C=1 Z=? N=1 V=? | in:- out:A
+ 1849          .forward_in_ring
+ 1850      0.5     STA b_ptr + 1                                                                          ;| A=0..127 X=? Y=? C=1 Z=? N=0 V=? | $CA=? | in:A out:-
+ 1851      0.5     BRA to_each                     \ 65C02 opcode                                         ;| A=0..127 X=? Y=? C=1 Z=? N=0 V=? | in:- out:-
+ 1852          .step_back_hi
+ 1853      0.6     LDA b_ptr + 1                                                                          ;| A=? X=? Y=? C=0 Z=? N=? V=? | $CA=? | in:- out:A
+ 1854      0.4     DEC A                           \ 65C02 opcode                                         ;| A=?≡$CA X=? Y=? C=0 Z=? N=? V=? | in:A out:A
+ 1855      0.4     CMP #&40                                                                               ;| A=? X=? Y=? C=0 Z=? N=? V=? | in:A out:AC
+ 1856      0.6     BCS back_in_ring                                                                       ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AC out:A
+ 1857              LDA #&7F                                                                               ;| A=0..63 X=? Y=? C=0 Z=? N=? V=? | in:- out:A
+ 1858          .back_in_ring
+ 1859      0.6     STA b_ptr + 1                                                                          ;| A=64..255 X=? Y=? C=? Z=? N=? V=? | $CA=? | in:A out:-
+ 1860          .to_each
+ 1861      1.2     JMP each                                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | in:- out:-
+ 1862          .done
+ 1863     11.9     RTS                                                                                    ;| A=? X=? Y=? C=1 Z=1 N=0 V=? | in:- out:-
+ 1864          }
+ 1865          
+ 1866          .compiled_direct                    \ a kind in HAZEL: no bank to page
+ 1867      4.4     JMP (compiled_vec)                                                                     ;| A=$00 X=0..127 Y=? C=0 Z=1 N=0 V=? | in:AXYNZCV out:AXYNZCV
+ 1868          .compiled_none                      \ compiled_part: not a kind (carry set)
+ 1869      0.5     SEC                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:A out:AC
+ 1870      1.6     RTS                                                                                    ;| A=? X=? Y=? C=1 Z=? N=? V=? | in:AC out:AC
+ 1871          
+ 1872          \ compiled_part: the player's part (not clipped) as code, if its sprite, flip and line are one of
+ 1873          \ tools/compiled.py's kinds: the kind's code in its bank (through compiled_call), from the
+ 1874          \ part's bottom left cell (b_ptr), and an entry in the save block for restore_block: 11 bytes
+ 1875          \ as a column's record and cell, with count - 1 = &FF and the kind, then that cell's address.
+ 1876          \ Carry clear if drawn; set if not a kind, or if a row would run past &7FFF (nothing drawn: b_ptr
+ 1877          \ and ds_c are as the generic path wants them).
+ 1878          .compiled_part
+ 1879          {
+ 1880      7.5     LDA dm_flip                     \ the kind from ck_index: sprite << 4 | flip << 3 | line,;| A=$00 X=? Y=? C=? Z=1 N=0 V=? | $50=? | in:V out:AV
+ 1881      5.0     ASL A                           \ as (sprite << 1 | flip) << 3 | line: C = the flip (bit 7);| A=?≡$50 X=? Y=? C=? Z=? N=? V=? | in:AV out:CV
+ 1882      7.5     LDA ds_sprite                                                                          ;| A=0..254 %xxxxxxx0 X=? Y=? C=? Z=? N=? V=? | $62=? | in:CV out:ACV
+ 1883      5.0     ROL A                           \ sprite << 1 | flip (every sprite is below &80)       ;| A=?≡$62 X=? Y=? C=? Z=? N=? V=? | in:ACV out:AV

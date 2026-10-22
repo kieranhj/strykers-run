@@ -1,0 +1,39 @@
+window 8c09a589e9ec: src/render.6502 lines 694-730, 32 instructions, 382.6 cycles a pass measured (wait excluded)
+
+  694      1.5     BEQ by_cell                                                                            ;| A=?≡$01 X=? Y=? C=? Z=? N=? V=? | in:AZ out:A
+  695      3.0     STA fast_dst + 2                                                                       ;| A=?≡$01 X=? Y=? C=? Z=0 N=? V=? | $93F4=? | in:A out:-
+  696      2.3     LDA screen_start_address_low                                                           ;| A=?≡$01 X=? Y=? C=? Z=0 N=? V=? | $00=? | in:- out:A
+  697      3.0     STA fast_dst + 1                                                                       ;| A=?≡$00 X=? Y=? C=? Z=? N=? V=? | ren_plot_lives.fast_dst+1=? | in:A out:-
+  698      2.3     LDA lives                       \ lives_digits + 32 * (lives AND 15)                   ;| A=?≡$00 X=? Y=? C=? Z=? N=? V=? | $95=? | in:- out:A
+  699      1.5     ASL A                                                                                  ;| A=?≡$95 X=? Y=? C=? Z=? N=? V=? | in:A out:A
+  700      1.5     ASL A                                                                                  ;| A=0..254 %xxxxxxx0 X=? Y=? C=? Z=? N=? V=? | in:A out:A
+  701      1.5     ASL A                                                                                  ;| A=0..252 %xxxxxx00 X=? Y=? C=? Z=? N=? V=? | in:A out:A
+  702      1.5     ASL A                                                                                  ;| A=0..248 %xxxxx000 X=? Y=? C=? Z=? N=? V=? | in:A out:A
+  703      1.5     ASL A                           \ A = 32 * (lives AND 7), C = lives bit 3              ;| A=0..240 %xxxx0000 X=? Y=? C=? Z=? N=? V=? | in:A out:AC
+  704      1.5     TAX                                                                                    ;| A=0..224 %xxx00000 X=? Y=? C=? Z=? N=? V=? | in:AC out:XC
+  705      1.5     LDA #HI(lives_digits)                                                                  ;| A=0..224 %xxx00000 X=0..224 %xxx00000 Y=? C=? Z=? N=? V=? | in:XC out:AXC
+  706      1.5     ADC #0                          \ + bit 3 (C = 0 after: HI(lives_digits) < &FF)        ;| A=$94 X=0..224 %xxx00000 Y=? C=? Z=0 N=1 V=? | in:AXC out:AXC
+  707      3.0     STA fast_src + 2                                                                       ;| A=148..149 X=0..224 %xxx00000 Y=? C=0 Z=0 N=1 V=0 | $93F1=? | in:AXC out:XC
+  708      1.5     TXA                                                                                    ;| A=148..149 X=0..224 %xxx00000 Y=? C=0 Z=0 N=1 V=0 | in:XC out:AXC
+  709      1.5     ADC #LO(lives_digits)                                                                  ;| A=0..224 %xxx00000 X=0..224 %xxx00000 Y=? C=0 Z=? N=? V=0 | in:AXC out:AXCV
+  710      3.0     STA fast_src + 1                                                                       ;| A=4..228 %xxx00100 X=0..224 %xxx00000 Y=? C=? Z=0 N=? V=? | ren_plot_lives.fast_row+1=? | in:AXCV out:XCV
+  711      2.3     BCC fast_src_same_page                                                                 ;| A=4..228 %xxx00100 X=0..224 %xxx00000 Y=? C=? Z=0 N=? V=? | in:XCV out:XCV
+  712              INC fast_src + 2                                                                       ;| A=4..228 %xxx00100 X=0..224 %xxx00000 Y=? C=1 Z=0 N=? V=? | $93F1=? | in:XCV out:XCV
+  713          .fast_src_same_page
+  714      1.5     LDY #31                                                                                ;| A=4..228 %xxx00100 X=0..224 %xxx00000 Y=? C=? Z=? N=? V=? | in:XCV out:XYCV
+  715          .fast_row
+  716          .fast_src
+  717     97.6     LDA lives_digits,Y              \ self-modified: the digit's 32 bytes                  ;| A=? X=? Y=? C=? Z=? N=? V=? | [$9444,y]=? | in:XYCV out:AXYCV
+  718          .fast_dst
+  719    122.0     STA &4000,Y                     \ self-modified: the screen start                      ;| A=? X=? Y=? C=? Z=? N=? V=? | [save_arena_end,y]=? | in:AXYCV out:AXYCV
+  720     48.8     DEY                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXYCV out:AXYNZCV
+  721     72.4     BPL fast_row                                                                           ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXYNZCV out:AXYNZCV
+  722      4.6     RTS                                                                                    ;| A=? X=? Y=128..255 C=? Z=? N=1 V=? | in:AXYNZCV out:AXYNZCV
+  723          .by_cell                            \ round the 16K screen, a cell at a time
+  724              LDA lives                       \ d_ptr = lives_digits + 32 * (lives AND 15)           ;| A=$7F≡$01 X=? Y=? C=1 Z=1 N=0 V=? | $95=? | in:- out:A
+  725              ASL A                                                                                  ;| A=?≡$95 X=? Y=? C=1 Z=? N=? V=? | in:A out:A
+  726              ASL A                                                                                  ;| A=0..254 %xxxxxxx0 X=? Y=? C=? Z=? N=? V=? | in:A out:A
+  727              ASL A                                                                                  ;| A=0..252 %xxxxxx00 X=? Y=? C=? Z=? N=? V=? | in:A out:A
+  728              ASL A                                                                                  ;| A=0..248 %xxxxx000 X=? Y=? C=? Z=? N=? V=? | in:A out:A
+  729              ASL A                           \ A = 32 * (lives AND 7), C = lives bit 3              ;| A=0..240 %xxxx0000 X=? Y=? C=? Z=? N=? V=? | in:A out:AC
+  730              TAX                                                                                    ;| A=0..224 %xxx00000 X=? Y=? C=? Z=? N=? V=? | in:AC out:XC

@@ -1,0 +1,42 @@
+window 1e5bf8feda8c: src/lib/sfx50.6502 lines 146-185, 32 instructions, 157.1 cycles a pass measured (wait excluded)
+
+  146      5.5     LDA sfx_p_hi,X                  \ ...then its high 6 bits, the period >> 4: the high nibble of;| A=? X=0..2 Y=$00 C=? Z=1 N=0 V=? | [$A5DB,x]=? | in:X out:AX
+  147      5.5     EOR sfx_p_lo,X                  \ the period's low byte with the low nibble of its high byte;| A=? X=0..2 Y=$00 C=? Z=? N=? V=? | [$A5D7,x]=? | in:AX out:AX
+  148      2.8     AND #&0F                                                                               ;| A=? X=0..2 Y=$00 C=? Z=? N=? V=? | in:AX out:AX
+  149      5.5     EOR sfx_p_lo,X                                                                         ;| A=0..15 X=0..2 Y=$00 C=? Z=? N=0 V=? | [$A5D7,x]=? | in:AX out:AX
+  150      2.8     ASL A                           \ nibbles swapped                                      ;| A=? X=0..2 Y=$00 C=? Z=? N=? V=? | in:AX out:AXC
+  151      2.8     ADC #&80                                                                               ;| A=0..254 %xxxxxxx0 X=0..2 Y=$00 C=? Z=? N=? V=? | in:AXC out:AXC
+  152      2.8     ROL A                                                                                  ;| A=? X=0..2 Y=$00 C=? Z=? N=? V=? | in:AXC out:AX
+  153      2.8     ASL A                                                                                  ;| A=? X=0..2 Y=$00 C=? Z=? N=? V=? | in:AX out:AXC
+  154      2.8     ADC #&80                                                                               ;| A=0..254 %xxxxxxx0 X=0..2 Y=$00 C=? Z=? N=? V=? | in:AXC out:AXCV
+  155      2.8     ROL A                                                                                  ;| A=? X=0..2 Y=$00 C=? Z=? N=? V=? | in:AXCV out:AXV
+  156      2.8     AND #&3F                                                                               ;| A=? X=0..2 Y=$00 C=? Z=? N=? V=? | in:AXV out:AXV
+  157      8.3     JSR sfx_write.ddra_set_c046b    \ DDRA still &FF from the low byte's write (interrupts off);| A=0..63 X=0..2 Y=$00 C=? Z=? N=0 V=? | in:AXV out:XV
+  158      5.5     LDA sfx_v,X                     \ the tone's amplitude, DDRA still &FF (.amplitude below: the noise's);| A=0..63 X=0..2 Y=$00 C=? Z=1 N=0 V=? | [$A5E3,x]=? | in:XV out:AXV
+  159      2.8     LSR A                                                                                  ;| A=? X=0..2 Y=$00 C=? Z=? N=? V=? | in:AXV out:AXV
+  160      2.8     LSR A                                                                                  ;| A=0..127 X=0..2 Y=$00 C=? Z=? N=0 V=? | in:AXV out:AXV
+  161      2.8     LSR A                                                                                  ;| A=0..63 X=0..2 Y=$00 C=? Z=? N=0 V=? | in:AXV out:AXV
+  162      2.8     LSR A                                                                                  ;| A=0..31 X=0..2 Y=$00 C=? Z=? N=0 V=? | in:AXV out:AXCV
+  163      2.8     EOR #&1F                        \ the chip takes attenuation; &10: an amplitude latch byte;| A=0..15 X=0..2 Y=$00 C=? Z=? N=0 V=? | in:AXCV out:AXCV
+  164      5.5     ORA sfx_channel_bits,X                                                                 ;| A=16..31 X=0..2 Y=$00 C=? Z=0 N=0 V=? | [$A5C7,x]=? | in:AXCV out:AXCV
+  165      4.1     BRA sfx_write.ddra_set_c046b    \ 65C02 opcode                                         ;| A=16..255 %xxx1xxxx X=0..2 Y=$00 C=? Z=0 N=? V=? | in:AXCV out:AXCV
+  166          .amplitude
+  167      1.4     LDA sfx_v,X                                                                            ;| A={0,1,2,3,4,5,6,7,$E0,$E1,$E2,$E3,$E4,$E5,$E6,$E7} X=$03 Y=? C=? Z=1 N=0 V=? | [$A5E3,x]=? | in:XV out:AXV
+  168      0.7     LSR A                                                                                  ;| A=? X=$03 Y=? C=? Z=? N=? V=? | in:AXV out:AXV
+  169      0.7     LSR A                                                                                  ;| A=0..127 X=$03 Y=? C=? Z=? N=0 V=? | in:AXV out:AXV
+  170      0.7     LSR A                                                                                  ;| A=0..63 X=$03 Y=? C=? Z=? N=0 V=? | in:AXV out:AXV
+  171      0.7     LSR A                                                                                  ;| A=0..31 X=$03 Y=? C=? Z=? N=0 V=? | in:AXV out:AXCV
+  172      0.7     EOR #&1F                        \ the chip takes attenuation; &10: an amplitude latch byte;| A=0..15 X=$03 Y=? C=? Z=? N=0 V=? | in:AXCV out:AXCV
+  173      1.4     ORA sfx_channel_bits,X                                                                 ;| A=16..31 X=$03 Y=? C=? Z=0 N=0 V=? | [$A5C7,x]=$E0 | in:AXCV out:AXCV
+  174          noise = sfx_write.noise             \ after sfx_write's RTS
+  175          }
+  176              \ falls through
+  177          \ A to the chip, as MOS 3.20 writes it (&F5E6). Keeps X.
+  178          .sfx_write
+  179          {
+  180      3.6     LDY #&FF                                                                               ;| A=? X=0..3 Y=? C=? Z=? N=? V=? | in:AXCV out:AXYCV
+  181      9.4     STY sysvia_ddra                                                                        ;| A=? X=0..3 Y=$FF C=? Z=0 N=1 V=? | KBD_DDRA=? | in:AXYCV out:AXCV
+  182          .ddra_set_c046b                     \ entered with DDRA already &FF (sfx_output's tone)
+  183     25.9     STA sysvia_ora_nh                                                                      ;| A=? X=0..3 Y={0,$FF} C=? Z=? N=? V=? | KBD_ORA=? | in:AXCV out:XCV
+  184     27.3     STZ sysvia_orb                  \ latch line 0 low: write enable                       ;| A=? X=0..3 Y={0,$FF} C=? Z=? N=? V=? | KBD_PORTB=? | in:XCV out:XCV
+  185      9.1     LDY #2                                                                                 ;| A=? X=0..3 Y={0,$FF} C=? Z=? N=? V=? | in:XCV out:XYCV

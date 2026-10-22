@@ -1,0 +1,15 @@
+window a124220be8ec: src/game.6502 lines 4456-4468, 13 instructions, 366.6 cycles a pass measured (wait excluded)
+
+ 4456     16.0     EOR #&FF                        \ INKEY number -> internal key number (check_for_keypress, inlined);| A=? X=? Y=? C=? Z=? N=? V=? | in:AYV out:AYV
+ 4457     16.0     TAX                             \ keydown_int (src/lib/keydown.6502) inlined: X = the key number;| A=? X=? Y=? C=? Z=? N=? V=? | in:AYV out:XYV
+ 4458     16.0     LDA #&03                        \ KBD_LATCH_OFF: latch line 3 = 0                      ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XYV out:AXYV
+ 4459     16.0     SEI                             \ every caller runs with I = 0 (the play loop), so CLI after;| A=$03 X=? Y=? C=? Z=0 N=0 V=? | in:AXYV out:AXYV
+ 4460     46.9     STA sysvia_orb                  \ stop the free-running scan...                        ;| A=$03 X=? Y=? C=? Z=0 N=0 V=? | KBD_PORTB=? | in:AXYV out:XYV
+ 4461     16.0     LDA #&7F                        \ KBD_DDRA_SCAN: PA0-PA6 out, PA7 in                   ;| A=$03 X=? Y=? C=? Z=0 N=0 V=? | in:XYV out:AXYV
+ 4462     47.9     STA sysvia_ddra                 \ every key: the interrupt's sound writes set DDRA too ;| A=$7F X=? Y=? C=? Z=0 N=0 V=? | KBD_DDRA=? | in:AXYV out:XYV
+ 4463     47.9     STX sysvia_ora_nh               \ ask about this key                                   ;| A=$7F X=? Y=? C=? Z=0 N=0 V=? | KBD_ORA=? | in:XYV out:XYV
+ 4464     47.9     LDA sysvia_ora_nh               \ PA7 is the answer                                    ;| A=$7F X=? Y=? C=? Z=0 N=0 V=? | KBD_ORA=? | in:XYV out:AXYV
+ 4465     16.0     ASL A                           \ C = down (PA7)                                       ;| A=?≡KBD_ORA X=? Y=? C=? Z=? N=? V=? | in:AXYV out:XYCV
+ 4466     16.0     LDA #&0B                        \ KBD_LATCH_ON                                         ;| A=0..254 %xxxxxxx0 X=? Y=? C=? Z=? N=? V=? | in:XYCV out:AXYCV
+ 4467     47.9     STA sysvia_orb                  \ ...and hand it back                                  ;| A=$0B X=? Y=? C=? Z=0 N=0 V=? | KBD_PORTB=? | in:AXYCV out:XYCV
+ 4468     16.0     CLI                                                                                    ;| A=$0B X=? Y=? C=? Z=0 N=0 V=? | in:XYCV out:XYCV

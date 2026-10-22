@@ -1,0 +1,27 @@
+window 24b79a600df2: src/render.6502 lines 417-441, 18 instructions, 912.5 cycles a pass measured (wait excluded)
+
+  417      2.0     LDX #0                                                                                 ;| A=128..255 X=? Y=? C=? Z=0 N=1 V=? | in:- out:X
+  418          .classify
+  419    101.9     STX ren_i                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | $4D=? | in:X out:X
+  420    135.8     STZ need,X                                                                             ;| A=? X=? Y=? C=? Z=? N=? V=? | [$1F,x]=? | in:X out:X
+  421          classify_xh = * + 1
+  422    135.8     LDA rec_xh,X                    \ self-modified: rec_xh + boff                         ;| A=? X=? Y=? C=? Z=? N=? V=? | [rec_xh,x]=? | in:X out:AX
+  423     67.9     INC A                           \ &FF: nothing drawn here (65C02 opcode)               ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AX out:XZ
+  424     70.5     BNE shown_y                                                                            ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XZ out:X
+  425    125.7     LDA movers_x_high,X                                                                    ;| A=$00 X=? Y=? C=? Z=1 N=0 V=? | [$1366,x]=? | in:X out:AXN
+  426     76.8     BMI classified                  \ nothing shown, nothing there                         ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXN out:AX
+  427              \ RAM for cycles 4: not shown here, and its x cannot put it on the screen (its high byte past
+  428              \ the right edge's, or more than one below the left edge's: widths are under 256), so it
+  429              \ cannot go on (mark_to_draw's check_if_mover_is_on_screen) and nothing else lists it
+  430     52.5     CMP viewport_right_high                                                                ;| A=0..127 X=? Y=? C=? Z=? N=0 V=? | $BB=? | in:AX out:AXZC
+  431     39.3     BEQ near_screen                                                                        ;| A=0..127 X=? Y=? C=? Z=? N=? V=? | in:AXZC out:AXC
+  432     39.1     BCS classified                  \ right of the screen                                  ;| A=0..127 X=? Y=? C=? Z=0 N=? V=? | in:AXC out:AX
+  433          .near_screen
+  434      9.5     INC A                           \ 65C02 opcode                                         ;| A=0..127 X=? Y=? C=? Z=? N=? V=? | in:AX out:AX
+  435     14.2     CMP viewport_left_high                                                                 ;| A=1..128 X=? Y=? C=? Z=0 N=? V=? | $BA=? | in:AX out:XC
+  436      9.5     BCC classified                  \ left of it                                           ;| A=1..128 X=? Y=? C=? Z=? N=? V=? | in:XC out:X
+  437     14.2     BRA listed                      \ 65C02 opcode                                         ;| A=1..128 X=? Y=? C=1 Z=? N=? V=? | in:X out:X
+  438          .shown_y
+  439      5.1     TXA                             \ Y = slot + boff for .shown (slot < 64: OR is the add);| A=1..255 X=? Y=? C=? Z=0 N=? V=? | in:X out:AX
+  440      7.6     ORA boff                                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | $52=? | in:AX out:AX
+  441      5.1     TAY                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AX out:XY

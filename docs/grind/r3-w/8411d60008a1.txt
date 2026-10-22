@@ -1,0 +1,40 @@
+window 8411d60008a1: src/render.6502 lines 260-297, 32 instructions, 167.8 cycles a pass measured (wait excluded)
+
+  260              LDX acc_main                                                                           ;| A=? X=?≡acc_shadow Y=? C=? Z=? N=? V=? | acc_main=? | in:YCV out:XYCV
+  261              STX acccon                                                                             ;| A=? X=?≡acc_main Y=? C=? Z=? N=? V=? | acccon=? | in:XYCV out:YCV
+  262              INY                                                                                    ;| A=? X=?≡acc_main Y=? C=? Z=? N=? V=? | in:YCV out:YZCV
+  263              BNE copy                                                                               ;| A=? X=?≡acc_main Y=? C=? Z=? N=? V=? | in:YZCV out:YCV
+  264              INC save_ptr + 1                                                                       ;| A=? X=?≡acc_main Y=$00 C=? Z=1 N=0 V=? | $9D=? | in:YCV out:YNCV
+  265              BPL copy                        \ up to &7FFF                                          ;| A=? X=?≡acc_main Y=$00 C=? Z=? N=? V=? | in:YNCV out:YCV
+  266              RTS                                                                                    ;| A=? X=?≡acc_main Y=$00 C=? Z=? N=1 V=? | in:CV out:CV
+  267          }
+  268          
+  269          \ ---- the view: the zero-page values the plotter and the lives read ---------------------------
+  270          .view_to_buffer                     \ X = screen: the live view becomes that screen's
+  271      6.0     LDA screen_start_address_low                                                           ;| A=? X=? Y=? C=? Z=? N=? V=? | $00=? | in:XCV out:AXCV
+  272     10.0     STA buf_ss_lo,X                                                                        ;| A=?≡$00 X=? Y=? C=? Z=? N=? V=? | [buf_ss_lo,x]=? | in:AXCV out:XCV
+  273      6.0     LDA screen_start_address_high                                                          ;| A=? X=? Y=? C=? Z=? N=? V=? | $01=? | in:XCV out:AXCV
+  274     10.0     STA buf_ss_hi,X                                                                        ;| A=?≡$01 X=? Y=? C=? Z=? N=? V=? | [buf_ss_hi,x]=? | in:AXCV out:XCV
+  275      6.0     LDA crtc_start_address_low                                                             ;| A=? X=? Y=? C=? Z=? N=? V=? | $B1=? | in:XCV out:AXCV
+  276     10.0     STA buf_crtc_lo,X                                                                      ;| A=?≡$B1 X=? Y=? C=? Z=? N=? V=? | [buf_crtc_lo,x]=? | in:AXCV out:XCV
+  277      6.0     LDA crtc_start_address_high                                                            ;| A=? X=? Y=? C=? Z=? N=? V=? | $B0=? | in:XCV out:AXCV
+  278     10.0     STA buf_crtc_hi,X                                                                      ;| A=?≡$B0 X=? Y=? C=? Z=? N=? V=? | [buf_crtc_hi,x]=? | in:AXCV out:XCV
+  279      6.0     LDA viewport_left_low                                                                  ;| A=? X=? Y=? C=? Z=? N=? V=? | $B2=? | in:XCV out:AXCV
+  280     10.0     STA buf_vl_lo,X                                                                        ;| A=?≡$B2 X=? Y=? C=? Z=? N=? V=? | [buf_vl_lo,x]=? | in:AXCV out:XCV
+  281      6.0     LDA viewport_left_high                                                                 ;| A=? X=? Y=? C=? Z=? N=? V=? | $BA=? | in:XCV out:AXCV
+  282     10.0     STA buf_vl_hi,X                                                                        ;| A=?≡$BA X=? Y=? C=? Z=? N=? V=? | [buf_vl_hi,x]=? | in:AXCV out:XCV
+  283      6.0     LDA viewport_right_low                                                                 ;| A=? X=? Y=? C=? Z=? N=? V=? | $B3=? | in:XCV out:AXCV
+  284     10.0     STA buf_vr_lo,X                                                                        ;| A=?≡$B3 X=? Y=? C=? Z=? N=? V=? | [buf_vr_lo,x]=? | in:AXCV out:XCV
+  285      6.0     LDA viewport_right_high                                                                ;| A=? X=? Y=? C=? Z=? N=? V=? | $BB=? | in:XCV out:AXCV
+  286     10.0     STA buf_vr_hi,X                                                                        ;| A=?≡$BB X=? Y=? C=? Z=? N=? V=? | [buf_vr_hi,x]=? | in:AXCV out:XCV
+  287     12.0     RTS                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XCV out:XCV
+  288          
+  289          .buffer_to_view                     \ X = screen: that screen's view becomes the live one
+  290      4.0     LDA buf_ss_lo,X                                                                        ;| A=? X=$02 Y=? C=? Z=0 N=0 V=? | [buf_ss_lo,x]=? | in:X out:AX
+  291      3.0     STA screen_start_address_low                                                           ;| A=? X=$02 Y=? C=? Z=? N=? V=? | $00=? | in:AX out:X
+  292      4.0     LDA buf_ss_hi,X                                                                        ;| A=? X=$02 Y=? C=? Z=? N=? V=? | [buf_ss_hi,x]=? | in:X out:AX
+  293      3.0     STA screen_start_address_high                                                          ;| A=? X=$02 Y=? C=? Z=? N=? V=? | $01=? | in:AX out:X
+  294      4.0     LDA buf_crtc_lo,X                                                                      ;| A=? X=$02 Y=? C=? Z=? N=? V=? | [buf_crtc_lo,x]=? | in:X out:AX
+  295      3.0     STA crtc_start_address_low                                                             ;| A=? X=$02 Y=? C=? Z=? N=? V=? | $B1=? | in:AX out:X
+  296      4.0     LDA buf_crtc_hi,X                                                                      ;| A=? X=$02 Y=? C=? Z=? N=? V=? | [buf_crtc_hi,x]=? | in:X out:AX
+  297      3.0     STA crtc_start_address_high                                                            ;| A=? X=$02 Y=? C=? Z=? N=? V=? | $B0=? | in:AX out:X

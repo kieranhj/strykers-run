@@ -1,0 +1,38 @@
+{
+ "candidates": [
+  {
+   "window": "01a8e6807e46",
+   "file": "src/render.6502",
+   "line": 1321,
+   "old": "    STA dm_index\n    LDX back                        \\ room for its block, or make some: arena_top + MAX_BLOCK",
+   "file_written": "build/grind/r3/opt-01a8e6807e46.json",
+   "equivalence": "In SKY_MODE builds (the shipping build) the next instruction is JSR sky_room, whose subroutine test begins LDX back, overwriting X before anything reads it; compact (called inside sky_room) is only reached after a test has set X = back, and takes no X input. The paths after sky_room (BCS masked -> LDX back; JSR sky_put_on -> LDX dm_slot first, or its SKY_MODE=2 stub CLC/RTS then BCC masked -> LDX back) all reload X. LDX's N/Z are overwritten by sky_room's CMP/SBC before any use; Y, A, C not affected by the removal (A is overwritten by test's LDA, C by CMP/SBC). Non-SKY_MODE builds (DEBUG_FULLREDRAW oracle, SKY_HELI=0) keep the LDX because the ELSE branch's LDA arena_top_lo,X reads X = back. put_on.going_on (entered also by JSR from the put-on loop at render.6502:543) has the same contract either way.",
+   "claim": {
+    "cycles_per_execution": 3,
+    "executions_a_pass": 2.03,
+    "cycles_a_pass": 6.1,
+    "bytes": 2
+   },
+   "new": "    STA dm_index\nIF SKY_MODE = 0\n    LDX back                        \\ room for its block, or make some (SKY_MODE: sky_room loads X = back itself)\nENDIF",
+   "summary": "Drop put_on's LDX back in SKY_MODE builds: sky_room (and every path after it) loads X = back itself, so the load is dead. Saves 3 cycles per going-on mover, 2 bytes. Alternative to the layout-preserving variant below (overlapping).",
+   "relies_on": "sky_room's test subroutine starting with LDX back (src/sky_main.6502); sky_put_on's LDX dm_slot first (and its SKY_MODE=2 stub returning C clear to .masked, which loads X = back). Page crossings: no branch or indexed read inside put_on crosses a page before or after (put_on at &9992-&9A22, all of its branches are short and within &99xx; the BVS going_on is in-page). But everything after it in bank 4 slides 2 bytes lower (mark_part's self-modified operands, draw_mover, dm_setup, parts_go..., the sprite data and tables below REN_BASE), so any hot branch or indexed read after &9A00 that sits within 2 bytes of a page boundary can start or stop crossing; I have not counted these (the gate decides). If it loses, the layout-preserving alternative keeps the saved cycles."
+  },
+  {
+   "window": "01a8e6807e46",
+   "file": "src/render.6502",
+   "line": 1316,
+   "old": "    RTS\n.going_on\n    STX dm_slot\n    TXA\n    ORA boff                        \\ slot + boff: slot < &40, boff 0 or 64\n    STA dm_index\n    LDX back                        \\ room for its block, or make some: arena_top + MAX_BLOCK",
+   "file_written": "build/grind/r3/opt-01a8e6807e46.json",
+   "equivalence": "In SKY_MODE builds (the shipping build) the next instruction is JSR sky_room, whose subroutine test begins LDX back, overwriting X before anything reads it; compact (called inside sky_room) is only reached after a test has set X = back, and takes no X input. The paths after sky_room (BCS masked -> LDX back; JSR sky_put_on -> LDX dm_slot first, or its SKY_MODE=2 stub CLC/RTS then BCC masked -> LDX back) all reload X. LDX's N/Z are overwritten by sky_room's CMP/SBC before any use; Y, A, C not affected by the removal (A is overwritten by test's LDA, C by CMP/SBC). Non-SKY_MODE builds (DEBUG_FULLREDRAW oracle, SKY_HELI=0) keep the LDX because the ELSE branch's LDA arena_top_lo,X reads X = back. put_on.going_on (entered also by JSR from the put-on loop at render.6502:543) has the same contract either way.",
+   "claim": {
+    "cycles_per_execution": 3,
+    "executions_a_pass": 2.03,
+    "cycles_a_pass": 6.1,
+    "bytes": 0
+   },
+   "new": "    RTS\n    NOP                             \\ grind: padding after the RTS, never executed (keeps the code after at its addresses)\n    NOP\n.going_on\n    STX dm_slot\n    TXA\n    ORA boff                        \\ slot + boff: slot < &40, boff 0 or 64\n    STA dm_index\nIF SKY_MODE = 0\n    LDX back                        \\ room for its block, or make some: arena_top + MAX_BLOCK\nENDIF",
+   "summary": "Alternative to (overlapping) the first candidate: also drops LDX back in SKY_MODE builds but keeps every address after it as before, by two NOPs after put_on's early RTS (never executed; BVS going_on branches over them to the label after). Saves 3 cycles per going-on mover, 0 bytes.",
+   "relies_on": "As the first candidate for X. The NOPs follow an RTS and the label going_on is after them, so they are unreachable (put_on is entered only at put_on and put_on.going_on). Page crossings: no instruction after going_on's 'JSR sky_room' changes address (going_on moves 2 later, JSR sky_room stays at &99A0), so nothing past it moves; the hot BVS going_on (3 cycles taken) stays in page (&9994 -> &9999); the not-taken path RTS is at &9996 as before."
+  }
+ ]
+}
