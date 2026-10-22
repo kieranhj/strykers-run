@@ -1671,11 +1671,11 @@ ENDIF
     DEX
     BNE initialise_column_buffer_loop
 IF SKY_TINT
-    LDA #TINT_LEFT OR TINT_RIGHT    \ SKY_TINT: the seam under the band, screen rows 20-25 (buffer
-    STA column_buffer + 179         \ 179 down to 174), its colour thinning out: both pixels, the right,
-    LDA #TINT_RIGHT                 \ the left, none, the left, none (the same in every column: a byte
-    STA column_buffer + 178         \ is two pixels, so the pattern needs no column parity)
-    LDA #TINT_LEFT
+    LDA #&30                        \ SKY_TINT: the seam under the blue band, screen rows 20-25 (buffer
+    STA column_buffer + 179         \ 179 down to 174), blue thinning out: both pixels, the right, the
+    LDA #&10                        \ left, none, the left, none (the same in every column: a byte is
+    STA column_buffer + 178         \ two pixels, so the pattern needs no column parity)
+    LDA #&20
     STA column_buffer + 177
     STA column_buffer + 175
 ENDIF
