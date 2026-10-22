@@ -120,9 +120,16 @@ KC and the community, 2026-10-20 (gameplay first, rather than cheats; "more fun 
   (`GAMEPLAY_TIMER`, decision 47, above).
 - **Weapons to collect**: e.g. a shoulder-mounted long-range rocket launcher for the machine-gun
   nests; limited ammunition for some, collected as pickups.
-- **A dithering option for non-NuLA machines**, to make the palette easier on the eye.
+- **A dithering option for non-NuLA machines**, to make the palette easier on the eye. Tried for the hills: decision 64, branch
+  `dither-hills` (`DITHER_HILLS`), on trial; mocks of the sky and hills in the session's artifact.
 
 KC, 2026-10-21:
 - **Game rules presets**: ORIGINAL / EASY / MEDIUM / HARD, each setting every rule on the game
   rules screen at once (ORIGINAL as close to the original game as the gameplay build allows).
 - The timer's value configurable: built ("8 TIME LIMIT", decision 55, above).
+
+KC, 2026-10-22:
+- **How far through the game**, as a percentage on the right of the HUD (the player's x against the
+  headquarters' column, as `tools/flightscript.mjs`'s WorldBot measures it).
+- **The score on the HUD**. Probably wants the HUD's rupture first (above, "The HUD's cost"): today
+  the HUD is copied at every scroll on both screens, so each new column of it costs every pass.
