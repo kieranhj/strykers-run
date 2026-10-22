@@ -4378,6 +4378,9 @@ ENDIF
 IF HUD_RUPTURE
     BRA rup_armed                   \ 65C02 opcode
 .rup_arm
+    LDA acccon                      \ decision 67: main RAM for the HUD row's frame (rupture_t1 shows
+    AND #&FE                        \ the screen from the boundary)
+    STA acccon
     STZ rup_phase                   \ 65C02 opcode
     LDA #LO(RUP_E1)
     STA usrvia_t1cl
@@ -4412,12 +4415,17 @@ ELSE
     LDA flip_crtc_lo
     STA crtc_data
 ENDIF
+IF HUD_RUPTURE
+    LDA flip_screen                 \ decision 67: D is rupture_t1's, at the HUD row's end
+    STA shown_screen
+ELSE
     LDA acccon
     AND #&FE
     ORA flip_screen
     STA acccon                      \ D: which RAM the video shows
     AND #&01                        \ = flip_screen (0 or 1): the D bit just ORed in
     STA shown_screen
+ENDIF
     STZ flip_pending                \ 65C02 opcode
 .no_flip
     BIT irq_owned
@@ -5920,6 +5928,7 @@ SECTION moved_0a20, org = MOVED_ORG, cmos = TRUE
 \ multiply_by_78: A x &4E as multiply_A_by_X_2f1e with X = &4E leaves everything: the result,
 \ multiplicand and multiplier_low 0, multiplier_high &4E, A = result_high, X = &4E, Y = 0, C clear,
 \ Z set, N clear (V is never read). The tables are made at start-up.
+IF HUD_RUPTURE = 0                  \ (decision 67: no caller since the grind inlined it; its room is the rupture's)
 .multiply_by_78
     TAX
     LDA times_78_lo,X
@@ -5931,6 +5940,7 @@ SECTION moved_0a20, org = MOVED_ORG, cmos = TRUE
     LDX #&4E
     STX multiplier_high             \ grind: C, Y, N and Z are dead at the RTS (the one caller reloads Y; its callee writes C before reading it)
     RTS
+ENDIF
 
 \ rows_up: subtract_Y_rows_from_screen_address_in_AX's rows (unused_0076 of them, 1 or more) in
 \ a step each: those inside the cell, the whole cells, and the last cell's crossing by the
@@ -6028,6 +6038,7 @@ ENDIF
     EQUB &56, &56, &96, &16, &57, &57, &17, &98, &58, &18, &58, &58, &59, &99, &19, &59
     EQUB &9A, &5A, &9A, &5A, &9A
 
+IF HUD_RUPTURE = 0
 .new_helicopter_types
     EQUB &85    \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_MISSILE
     EQUB &86    \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER
@@ -6037,6 +6048,7 @@ ENDIF
     EQUB &9A    \ MOVER_TYPE_ENEMY | MOVER_TYPE_GREEN_WHITE_HELICOPTER_WITH_MISSILE
     EQUB &99    \ MOVER_TYPE_ENEMY | MOVER_TYPE_FLYING_SCOOTER
     EQUB &98    \ MOVER_TYPE_ENEMY | MOVER_TYPE_GREEN_WHITE_CRAFT_TWO
+ENDIF
 
 IF HUD_RUPTURE = 0
     INCLUDE "ground_columns.6502"   \ HUD_RUPTURE: in HAZEL (hazel_b's end)
@@ -6062,20 +6074,45 @@ IF HUD_RUPTURE
     CPX #2
     BCS rup_palette
     INC rup_phase
-    LDA #4                          \ R4: vertical total
+    TXA
+    BEQ rup_writes                  \ in the HUD row: its frame ends after it, M's start
+\ At the HUD row's end: its frame shows main RAM (D = 0 from the vsync: with D set, the CRTC's
+\ addresses below &3000 read ANDY and HAZEL, KC 2026-10-23), the shown screen from M's first line:
+\ D set in the horizontal blank after the HUD's last line, T1 timed to it from T2 and its flag
+\ polled. Then, M begun, R4 back to its 38 rows and HUD_ROW for the next frame.
+    LDX #2
+    JSR rup_rearm                   \ A = the count's high byte: not 0 if this ran too late to wait
+    BNE rup_switch
+.rup_wait
+    BIT usrvia_ifr                  \ V = T1's flag
+    BVC rup_wait
+.rup_switch
+    LDA acccon
+    AND #&FE
+    ORA shown_screen
+    STA acccon
+    LDX #1
+.rup_writes                         \ X = 0: the HUD row's writes, 1: M's
+    LDA #4                          \ R4: vertical total (H's must be in before its last line's C0 = 1)
     STA crtc_reg
     LDA rup_r4,X
     STA crtc_data
-    LDA #12                         \ R12, R13: the next frame's start
-    STA crtc_reg
+    JSR rup_rearm                   \ T1: X = 0 the boundary's event, 1 row 111's (writing it clears its flag)
+    LDA #12                         \ R12, R13: the next frame's start, after the re-arm: from the boundary,
+    STA crtc_reg                    \ well into M's first line (the 6845 latches them at a frame's start)
     LDA rup_start_hi,X
     STA crtc_data
     LDA #13
     STA crtc_reg
     LDA rup_start_lo,X
     STA crtc_data
-    LDY usrvia_t2ch                 \ T1 again: K on from T2's count (the high byte read again: the
-    LDA usrvia_t2cl                 \ low one may have wrapped)
+    JMP leave_irq1_handler_owned
+.rup_palette
+    JMP rupture_palette
+\ rup_rearm: T1 = T2's count + K[X] (the high byte read again: the low one may have wrapped)
+.rup_rearm
+    LDY usrvia_t2ch
+    LDA usrvia_t2cl
     CPY usrvia_t2ch
     BEQ rup_t2
     LDY usrvia_t2ch
@@ -6087,9 +6124,7 @@ IF HUD_RUPTURE
     TYA
     ADC rup_k_hi,X
     STA usrvia_t1ch
-    JMP leave_irq1_handler_owned
-.rup_palette
-    JMP rupture_palette
+    RTS
 \ rup_set_m_start: M's start, the screen start's CRTC address + 80 (a character row) round the 16K
 .rup_set_m_start                    \ A = the start's low byte, X its high
     CLC
@@ -6108,8 +6143,6 @@ IF HUD_RUPTURE
 .rup_r4         EQUB 0, RUP_R4_M
 .rup_start_hi   EQUB 0, HI(HUD_ROW DIV 8)   \ M's start (rup_set_m_start), then H's
 .rup_start_lo   EQUB 0, LO(HUD_ROW DIV 8)
-.rup_k_lo       EQUB LO(RUP_K_E2), LO(RUP_K_PAL)
-.rup_k_hi       EQUB HI(RUP_K_E2), HI(RUP_K_PAL)
 ENDIF
 
 .moved_0a20_end
@@ -6270,6 +6303,15 @@ SECTION hazel_b, org = hazel_a_end, cmos = TRUE
 IF HUD_RUPTURE
 .hazel_rup_gap
     INCLUDE "level_triggers.6502"   \ decision 67: in the padding before the page these tables need
+.new_helicopter_types
+    EQUB &85    \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_MISSILE
+    EQUB &86    \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER
+    EQUB &96    \ MOVER_TYPE_ENEMY | MOVER_TYPE_GREEN_WHITE_HELICOPTER
+    EQUB &87    \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_SOLDIER
+    EQUB &97    \ MOVER_TYPE_ENEMY | MOVER_TYPE_GREEN_WHITE_CRAFT_ONE
+    EQUB &9A    \ MOVER_TYPE_ENEMY | MOVER_TYPE_GREEN_WHITE_HELICOPTER_WITH_MISSILE
+    EQUB &99    \ MOVER_TYPE_ENEMY | MOVER_TYPE_FLYING_SCOOTER
+    EQUB &98    \ MOVER_TYPE_ENEMY | MOVER_TYPE_GREEN_WHITE_CRAFT_TWO
     ASSERT * - hazel_rup_gap <= ((&105 - LO(hazel_rup_gap)) AND &FF), "the trigger tables overrun hazel_b's padding"
 ENDIF
     SKIP (&105 - LO(*)) AND &FF
@@ -6536,6 +6578,8 @@ IF HUD_RUPTURE
     SKIP (&100 - LO(*)) AND &FF
   ENDIF
     INCLUDE "ground_columns.6502"
+.rup_k_lo       EQUB LO(RUP_K_EB), LO(RUP_K_PAL), LO(RUP_K_B)   \ decision 67: rupture_t1's T1 counts (HAZEL: paged in through play)
+.rup_k_hi       EQUB HI(RUP_K_EB), HI(RUP_K_PAL), HI(RUP_K_B)
 ENDIF
 .hazel_b_end
     ASSERT hazel_b_end <= &E000, "HAZEL overruns by ", hazel_b_end - &E000
