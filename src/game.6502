@@ -1670,6 +1670,15 @@ ENDIF
     STZ column_buffer + 179,X
     DEX
     BNE initialise_column_buffer_loop
+IF SKY_TINT
+    LDA #&30                        \ SKY_TINT: the seam under the blue band, screen rows 20-25 (buffer
+    STA column_buffer + 179         \ 179 down to 174), blue thinning out: both pixels, the right, the
+    LDA #&10                        \ left, none, the left, none (the same in every column: a byte is
+    STA column_buffer + 178         \ two pixels, so the pattern needs no column parity)
+    LDA #&20
+    STA column_buffer + 177
+    STA column_buffer + 175
+ENDIF
     LDA #&00                        \ A = X = 0, Z set, N clear
     RTS
 
@@ -4311,6 +4320,28 @@ ENDIF
     CMP #&C0
     BNE to_leave_irq1_handler
     LDA usrvia_t1cl                 \ User VIA timer 1 counter LSB
+IF SKY_TINT
+    LDA usrvia_t2ch                 \ SKY_TINT: T2 counts down from &FFFF at the vsync, so above &E000
+    CMP #&E0                        \ this is the band's edge (row 20), else row 111
+    BCC tint_bottom
+    LDA top_palette_value           \ the sky's cyan below the band
+    STA ula_palette
+    LDX usrvia_t2ch                 \ T1 again, for row 111: TINT_K on from T2's count, so it fires
+    LDA usrvia_t2cl                 \ where it did when it was set at the vsync, however late this ran
+    CPX usrvia_t2ch                 \ (the high byte read again: the low one may have wrapped)
+    BEQ tint_t2
+    LDX usrvia_t2ch
+    LDA usrvia_t2cl
+.tint_t2
+    CLC
+    ADC #LO(TINT_K)
+    STA usrvia_t1cl
+    TXA
+    ADC #HI(TINT_K)
+    STA usrvia_t1ch
+    JMP leave_irq1_handler_owned
+.tint_bottom
+ENDIF
     LDA bottom_palette_value
     STA ula_palette                 \ video ULA palette register
     JMP leave_irq1_handler_owned    \ Step 2 (decision 15): the MOS only offered this to the ROMs
@@ -4330,11 +4361,23 @@ ENDIF
     STA usrvia_acr                  \ User VIA auxiliary control register
     LDA #&C0                        \ Enable User VIA timer 1 interrupts
     STA usrvia_ier                  \ User VIA interrupt enable register
+IF SKY_TINT
+    LDA #LO(TINT_T)                 \ SKY_TINT: T1 first for the band's edge, then row 111 (not_vsync_2ed0)
+    STA usrvia_t1cl
+    LDA #HI(TINT_T)
+    STA usrvia_t1ch
+    LDA top_palette_value
+    CMP #&01                        \ cyan (play): the band blue; anything else (black) all the way down
+    BNE tint_top
+    LDA #TINT_PALETTE
+.tint_top
+ELSE
     LDA #&00
     STA usrvia_t1cl                 \ User VIA timer 1 counter LSB
     LDA #&29
     STA usrvia_t1ch                 \ User VIA timer 1 counter MSB
     LDA top_palette_value           \ ***
+ENDIF
     STA ula_palette                 \ video ULA palette register
     DEC game_over_cooldown
     \ Step 2 (decision 14): count fields, and in play keep vsync from the MOS. On the title
