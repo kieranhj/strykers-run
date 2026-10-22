@@ -1,0 +1,86 @@
+\ scroll_pixel.6502 - the title's scroll text a pixel at a time (decision 57): in bank 5 before the
+\ page-aligned music (src/bank5.6502), or in the gameplay builds in bank 5's &8000-&83FF block
+\ (src/main.6502), which gives the scroll text (src/scrolltext.txt) its room before the music.
+
+\ Step 2 (decision 57, KC: the scroll text "moving 1 pixel ... resulting in the same scrolling speed but
+\ smoother"): the original moved the row a byte column (2 pixels) every 4 fields; scroll_pixel moves it
+\ a pixel every 2 fields, the same 25 pixels a second. Each byte of the row takes its right pixel as its
+\ left and the next byte's left pixel as its right (MODE 2: left pixel bits 7, 5, 3, 1; right 6, 4, 2, 0),
+\ worked from column 79 down so one byte's left pixel carries to the byte before (px_carry, a row
+\ each); column 79 takes the buffer's column, its left pixel then its right. 640 bytes, ~24,000
+\ cycles: too long with interrupts off (the MOS's 100 Hz tick plays the front end's music), so it
+\ runs with them on, scroll_busy sending a nested vsync on to the MOS (title_screen_irq1_handler).
+\ In the room unused_925f (a dead copy of &1F5F-&1FFF) took, before the page-aligned music.
+.scroll_pixel
+    LDA #&80
+    STA scroll_busy
+    CLI                             \ (a vsync still pending comes back in now, and on to the MOS)
+    LDY scrolltext_buffer_offset    \ the incoming pixel, as a right pixel, for each row
+    LDX #0
+.scroll_pixel_in
+    LDA scrolltext_buffer,Y
+    BIT px_phase
+    BMI scroll_pixel_right
+    AND #&AA                        \ the column's left pixel, moved right
+    LSR A
+    BRA scroll_pixel_store          \ 65C02 opcode
+.scroll_pixel_right
+    AND #&55                        \ its right pixel
+.scroll_pixel_store
+    STA px_carry,X
+    INY
+    INX
+    CPX #8
+    BNE scroll_pixel_in
+    LDA #&F8                        \ &76F8: the row's column 79
+    STA source_address_low
+    LDA #&76
+    STA source_address_low + 1
+    LDA #79
+    STA multiplier_high             \ columns left (the handler saves it)
+.scroll_pixel_column
+    LDY #7
+.scroll_pixel_byte
+    LDA (source_address_low),Y
+    TAX
+    AND #&55                        \ its right pixel, now its left
+    ASL A
+    ORA px_carry,Y                  \ and the next byte's left as its right
+    STA (source_address_low),Y
+    TXA
+    AND #&AA                        \ its left pixel: the byte before's right
+    LSR A
+    STA px_carry,Y
+    DEY
+    BPL scroll_pixel_byte
+    LDA source_address_low
+    SEC
+    SBC #8
+    STA source_address_low
+    BCS scroll_pixel_page
+    DEC source_address_low + 1
+.scroll_pixel_page
+    DEC multiplier_high
+    BPL scroll_pixel_column
+    SEI
+    LDA px_phase                    \ the next pixel: the same column's right, then the next column
+    EOR #&80
+    STA px_phase
+    BMI scroll_pixel_done
+    DEC title_screen_cooldown       \ once a byte column, every 4 fields, as the original
+    LDA scrolltext_buffer_offset
+    CLC
+    ADC #8
+    STA scrolltext_buffer_offset
+    CMP #&18
+    BCC scroll_pixel_done
+    JSR initialise_scrolltext_buffer   \ the next character into the buffer
+.scroll_pixel_done
+    STZ scroll_busy                 \ 65C02 opcode
+    RTS
+.scroll_busy
+    EQUB 0
+.px_phase
+    EQUB 0                          \ bit 7: the column's right pixel next
+.px_carry
+    SKIP 8

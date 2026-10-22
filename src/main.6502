@@ -170,6 +170,7 @@ SECTION DATA2, org = DATA2_ORG, load = &FFFF0000 + DATA2_ORG - &6700, exec = &FF
 IF GAMEPLAY_SHIELD
     EQUB 0, 0, 0, 0, 0, 0, 0, 0     \ not a ROM header: the MOS looks for one in sideways RAM on BREAK
     INCLUDE "front_gameplay.6502"   \ shield_new_game and the game rules screen (start_game and the
+    INCLUDE "scroll_pixel.6502"     \ the title's pixel scroller (from before the music: the scroll text's room)
     ASSERT * <= &8400, "bank 5's gameplay front end overruns &83FF by ", * - &8400   \ front end run with bank 5 paged)
     PRINT "bank 5 &8000-&83FF: ", &8400 - *, " bytes free"
     SKIP &8400 - *
