@@ -382,8 +382,8 @@ the emulator):
 - `helicopter_fuel_low` (`&98`) is only ever read-modify-written, by `DEC helicopter_fuel_low` in
   `is_descending_helicopter`. Nothing in `src/` initialises it, so boarding any vehicle continues
   from whatever the last one left (the first time, whatever zero page held).
-- The carry: `DEC low`, then `DEC high` only if low is still nonzero **before** the branch falls
-  through, i.e. when the DEC reaches 0. From a low byte L the high byte first drops after L steps
+- The carry: `DEC low` then `BNE`, so `DEC high` runs only when the DEC reaches 0. From a low
+  byte L the high byte first drops after L steps
   (256 for L = 0), then every 256; out of fuel is high going negative (`BPL`/`BMI` on it). So a
   `$02` tank lasts L + 512 steps for L = 1..255 and 768 for L = 0.
 
