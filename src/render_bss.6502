@@ -43,7 +43,7 @@ SECTION ren_vars_z, org = REN_BASE + &822, cmos = TRUE
 .arena_top_lo   SKIP 2           \ per screen: the end of its arena's used part
 .arena_top_hi   SKIP 2
 .act            SKIP MOVER_SLOTS
-IF SKY_HELI
+IF SKY_MODE
 \ sky mode (src/sky.6502): the rectangle being drawn or erased, by character row q (0 at its bottom):
 \ its left cell, its top line, its lines, its block in the image
 .sky_rl         SKIP SKY_ROWS
@@ -131,7 +131,7 @@ SECTION ren_vars_d, org = REN_BASE + &A80, cmos = TRUE
 .list_x2_lo     SKIP MOVER_SLOTS + 1
 .list_x2_hi     SKIP MOVER_SLOTS + 1
 .list_y1        SKIP MOVER_SLOTS + 1
-IF SKY_HELI = 0
+IF SKY_MODE = 0
 .kg_byl         SKIP KC_GROUPS      \ kc_build: where each character row's arrays start (offsets,
 .kg_byh         SKIP KC_GROUPS      \ masks, pixels)
 .kg_bml         SKIP KC_GROUPS
@@ -145,7 +145,7 @@ ASSERT HI(ren_vars_d_start) = HI(ren_vars_d_end - 1)
 SECTION ren_vars_h0, org = REN_BASE + &4C8, cmos = TRUE
 .ren_vars_h0_start
 .list_y2        SKIP MOVER_SLOTS + 1
-IF SKY_HELI = 0
+IF SKY_MODE = 0
 .kg_bpl         SKIP KC_GROUPS
 .kg_bph         SKIP KC_GROUPS
 ENDIF

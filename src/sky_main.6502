@@ -94,61 +94,6 @@
     JMP sky_build
 }
 
-\ sky_col_row: X = an entry, sky_j8 8 * a column (from the first drawn): C set if not in it; else
-\ s_ptr, Y the column's top byte there, sky_stop below its lowest
-.sky_col_row
-{
-    LDA sky_j8
-    SEC
-    SBC sky_rc,X
-    BCC no                          \ before it
-    STA sky_stop
-    LDA sky_ry,X
-    CMP sky_stop
-    BCC no                          \ after it
-    LDA sky_rl,X
-    STA s_ptr
-    LDA sky_rh,X
-    STA s_ptr + 1
-    LDA sky_rt,X
-    ORA sky_stop
-    TAY
-    SEC
-    SBC sky_rn,X
-    STA sky_stop
-    CLC
-    RTS
-.no
-    SEC
-    RTS
-}
-
-\ sky_col_check: A = 8 * a column (from the first drawn): C set if that column of the rectangle
-\ holds anything but sky
-.sky_col_check
-{
-    STA sky_j8
-    LDX #0
-.row
-    JSR sky_col_row
-    BCS next
-.byte
-    LDA (s_ptr),Y
-    BNE dirty
-    DEY
-    CPY sky_stop
-    BNE byte
-.next
-    INX
-    CPX sky_nq
-    BNE row
-    CLC
-    RTS
-.dirty
-    SEC
-    RTS
-}
-
 \ ---- the rectangle ------------------------------------------------------------------------
 \ sky_row: X = a character row: s_ptr its first drawn cell; sky_n its lines, sky_skip 8 - them, Y
 \ its last drawn column's top byte; Z set if it is a whole row

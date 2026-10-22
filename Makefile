@@ -58,7 +58,8 @@ DEFINES  =
 COMPARE  = 0
 
 # Every DEBUG_ and GAMEPLAY_ flag main.6502 reads. Baron cannot default a -D symbol, so
-# each is passed on every build, 0 unless DEFINES names it (decision 9).
+# each is passed on every build, 0 unless DEFINES names it (decision 9), but SKY_HELI, 1
+# unless DEFINES=SKY_HELI=0 (decision 61).
 # A new flag goes here and in build.ps1's $flags.
 FLAGS = DEBUG_LIVES DEBUG_FULLREDRAW GAMEPLAY_SHIELD GAMEPLAY_LIVES GAMEPLAY_TIMER GAMEPLAY_OPTIONS GAMEPLAY_RUN GAMEPLAY_JUMP GAMEPLAY_FIRE SKY_HELI
 
@@ -68,7 +69,7 @@ BUILD = build
 # Set by `all` through a recursive make, from SHIFT, SHIFTEND and DEFINES;
 # these defaults are the plain build, for `make build/strykers.ssd`.
 STEM = strykers
-DEFS = -D DEBUG_LIVES=0 -D DEBUG_FULLREDRAW=0 -D GAMEPLAY_SHIELD=0 -D GAMEPLAY_LIVES=0 -D GAMEPLAY_TIMER=0 -D GAMEPLAY_OPTIONS=0 -D GAMEPLAY_RUN=0 -D GAMEPLAY_JUMP=0 -D GAMEPLAY_FIRE=0 -D SKY_HELI=0
+DEFS = -D DEBUG_LIVES=0 -D DEBUG_FULLREDRAW=0 -D GAMEPLAY_SHIELD=0 -D GAMEPLAY_LIVES=0 -D GAMEPLAY_TIMER=0 -D GAMEPLAY_OPTIONS=0 -D GAMEPLAY_RUN=0 -D GAMEPLAY_JUMP=0 -D GAMEPLAY_FIRE=0 -D SKY_HELI=1
 
 SSD    = $(BUILD)/$(STEM).ssd
 LST    = $(BUILD)/$(STEM).lst
@@ -97,7 +98,8 @@ SRC = \
   src/render.6502 src/render_zp.6502 src/lives_digits.6502 src/prebuild.6502 \
   src/sprite_andy.6502 src/sprite_columns.6502 src/sprite_straight.6502 src/compiled_table.6502 src/compiled_bank5.6502 src/compiled_bank6.6502 src/compiled_bank7.6502 src/compiled_hazel_a.6502 src/compiled_hazel_b.6502 src/music_packed.6502 src/lib/zx02depack.6502 \
   src/sfx_data.6502 src/title.6502 src/title_data.6502 src/loader.6502 \
-  src/lib/boot_stamp.6502 src/lib/keydown.6502 src/lib/sfx50.6502 src/scroll_hazel.6502
+  src/lib/boot_stamp.6502 src/lib/keydown.6502 src/lib/sfx50.6502 src/scroll_hazel.6502 \
+  src/sky.6502 src/sky_main.6502 src/sky_off.6502 src/sky_edges.6502 src/sky_hazel.6502 src/sky_hazel_c.6502
 
 # The baron to run, as build.ps1's Find-Tool finds it. A shell fragment, so
 # that it costs nothing on a build that does not assemble; `[ -f bin/baron ]`
@@ -149,7 +151,7 @@ all:
 	    if [ "$$v" != 1 ]; then stem=$$stem$$v; fi; \
 	done; \
 	if [ -n "$(NAME)" ]; then stem=$(NAME); fi; \
-	defs=; stamp=; \
+	f_SKY_HELI=$${f_SKY_HELI:-1}; defs=; stamp=; \
 	for f in $(FLAGS); do \
 	    eval "v=\$${f_$$f:-0}"; defs="$$defs -D $$f=$$v"; stamp="$$stamp $$f=$$v"; \
 	done; \
@@ -185,7 +187,7 @@ gameplay:
 # name (`make build/strykers.ssd`); `all` always stamps first.
 $(CONFIG):
 	$(PYTHON) tools/build_stamp.py $(BUILD) $(STEM).config RELEASE=$(RELEASE) \
-	    SHIFT=$(SHIFT) SHIFT_END=$(SHIFTEND) DEBUG_LIVES=0 DEBUG_FULLREDRAW=0 GAMEPLAY_SHIELD=0 GAMEPLAY_LIVES=0 GAMEPLAY_TIMER=0 GAMEPLAY_OPTIONS=0 GAMEPLAY_RUN=0 GAMEPLAY_JUMP=0 GAMEPLAY_FIRE=0 SKY_HELI=0
+	    SHIFT=$(SHIFT) SHIFT_END=$(SHIFTEND) DEBUG_LIVES=0 DEBUG_FULLREDRAW=0 GAMEPLAY_SHIELD=0 GAMEPLAY_LIVES=0 GAMEPLAY_TIMER=0 GAMEPLAY_OPTIONS=0 GAMEPLAY_RUN=0 GAMEPLAY_JUMP=0 GAMEPLAY_FIRE=0 SKY_HELI=1
 
 # Baron writes the image, the symbol dump and (on stdout) the listing. A
 # failed assembly removes the image and the dump, so a half-written image

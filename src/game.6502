@@ -5319,7 +5319,7 @@ compiled_back = * + 1               \ self-modified: the ROMSEL to come back to
     STA os_ram_copy_of_currently_selected_rom
     STA romsel
     RTS
-IF SKY_HELI
+IF SKY_MODE
     INCLUDE "sky_main.6502"         \ the enemy helicopters over the sky (src/sky.6502 its take_off half)
 ELSE
     INCLUDE "kindcache_build.6502"  \ step 2 layer 4 (decision 36): the kind cache's builder
@@ -5996,20 +5996,13 @@ up_n  = &C8
     LDA #HI(hazel_b_end - hazel_a_end)
     STA up_n + 1
     JSR copy
-IF SKY_HELI
-    LDA #LO(hazel_c_load)           \ the sky mode's image builder (src/sky_hazel_c.6502), at &C200
-    STA zxsrc
-    LDA #HI(hazel_c_load)
-    STA zxsrc + 1
-    LDA #LO(&C200)
-    STA zxdst
-    LDA #HI(&C200)
-    STA zxdst + 1
-    LDA #LO(hazel_c_end - &C200)
-    STA up_n
-    LDA #HI(hazel_c_end - &C200)
-    STA up_n + 1
-    JSR copy
+IF SKY_MODE
+    LDX #hazel_c_end - &C200        \ the sky mode's image builder (src/sky_hazel_c.6502), at &C200
+.hazel_c_copy
+    LDA hazel_c_load - 1,X
+    STA &C200 - 1,X
+    DEX
+    BNE hazel_c_copy
 ENDIF
     LDA #LO(music_packed)           \ the tunes, over part A's carrier
     STA zxsrc
@@ -6321,13 +6314,13 @@ MOVER_WIDEST = &0B                  \ step 2 (layer 3): the largest entry below 
     ASSERT LO(mover_types_new_grenade_bomb_or_rocket_type) = 0 AND HI(mover_types_parts) = HI(mover_types_new_grenade_bomb_or_rocket_type - 1) AND HI(mover_types_new_grenade_bomb_or_rocket_type) = HI(* - 1), "decision 40: a mover type table crosses a page"
     ASSERT * <= &DC00, "decision 40: hazel_b's tables reach &DC00 by ", * - &DC00
     INCLUDE "scroll_hazel.6502"     \ layer 4: the scroll column's code (decisions 38, 39)
-IF SKY_HELI
+IF SKY_MODE
     INCLUDE "sky_hazel.6502"        \ the enemy helicopters over the sky: the geometry
 ENDIF
 .hazel_b_end
     ASSERT hazel_b_end <= &E000, "HAZEL overruns by ", hazel_b_end - &E000
 ENDSECTION
-IF SKY_HELI
+IF SKY_MODE
 .hazel_c_load
 SECTION hazel_c, org = &C200, cmos = TRUE
     INCLUDE "sky_hazel_c.6502"      \ the enemy helicopters over the sky: the image builder

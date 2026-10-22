@@ -1,7 +1,8 @@
-\ sky.6502 - SKY_HELI (a prototype, for costing): the enemy helicopters (slots 10, 11) drawn over
-\ the sky as self-erasing rectangles (bank 4: put_on's and the drawing; take_off's, the checks and
-\ the per-screen state are in src/sky_main.6502, the geometry and the image builder in
-\ src/sky_hazel.6502). This build has no kind cache (decision 36).
+\ sky.6502 - SKY_HELI (decision 61, on by default): the enemy helicopters (slots 10, 11) drawn over
+\ the sky as self-erasing rectangles (bank 4: put_on's and the drawing; the cold half and the
+\ per-screen state in src/sky_main.6502 (main RAM), take_off's in src/sky_off.6502 and
+\ src/sky_edges.6502 (bank 4), the geometry and column checks in src/sky_hazel.6502 and the image
+\ builder in src/sky_hazel_c.6502 (HAZEL)). It replaces decision 36's kind cache (SKY_HELI=0).
 \
 \ Measured (2026-10-21, the whole world): 94.6% of their draws cover nothing but sky (byte 0), and
 \ between two drawings on the same screen a helicopter is at the same height, at most a column
@@ -62,7 +63,7 @@ sky_jh    = &AF
 \ clear: to be drawn masked (its old rectangle, if any, zeroed first).
 .sky_put_on
 {
-IF SKY_HELI = 2
+IF SKY_MODE = 2
     CLC                             \ the control: no kind cache, no sky mode
     RTS
 ENDIF

@@ -139,6 +139,10 @@ MOS's sound, skipping transparent bytes, building the column on the pass before.
 - **The loader stops on anything but a Master 128 or Compact** (decision 51, `86a457a`): OSBYTE 0
   (X = 1) 3 or 5, else a message and back to the prompt; jsbeeb B (the message) and Master (frontend
   0 failed); the Compact's value documented, not measured (jsbeeb has none).
+- **The enemy helicopters drawn over the sky as self-erasing rectangles** (decision 61, `SKY_HELI`,
+  2026-10-22, all builds; supersedes the kind cache): over the whole world the helicopters' cycles a
+  pass 9.0k -> 6.25k (two on screen 26.0k -> 19.2k), late frames 336 -> 176; state and every frame
+  identical to the full-redraw oracle.
 
 ### The front end (2026-10-21, all builds)
 
