@@ -20,7 +20,7 @@ IF GAMEPLAY_RUN
 .opt_run_drain_hi
     EQUB HI(2560 DIV 5), HI(2560 DIV 10), HI((2560 + 7) DIV 15), HI(2560 DIV 20), 0
 ENDIF
-.opt_limit          EQUB 3          \ decision 55: an index into opt_limit_hi/lo: 10 minutes (decision 47's)
+.opt_limit          EQUB 4          \ decision 55: an index into opt_limit_hi/lo: 15 minutes (decision 63; was 10)
 .opt_limit_hi                       \ the limit in BCD seconds: 3, 5, 8, 10, 15 minutes
     EQUB &01, &03, &04, &06, &09
 .opt_limit_lo

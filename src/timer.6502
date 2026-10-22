@@ -10,7 +10,7 @@
 \ and bank 4 back). It reads and writes only zero page and main RAM: hud_buffer, the score digits
 \ (game_over_text + 20 on, font offsets: "0" &6C, 6 a digit) and lives.
 
-\ TIMER_LIMIT (src/zp.6502, 10 minutes) is the start counting down and the par counting up; the game
+\ TIMER_LIMIT (src/zp.6502, 15 minutes: decision 63) is the start counting down and the par counting up; the game
 \ rules screen's limit replaces it (decision 55): timer_limit, set at the game's start (BCD, high first)
 
 \ timer_tick: once a pass (main_game_loop, after shield_tick)

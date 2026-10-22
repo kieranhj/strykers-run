@@ -186,7 +186,7 @@ death respawns whatever the lives, so the test scripts still never end.
    often): state and screens identical.
 
 18. **The timer's limit on the game rules screen: DONE** (decision 55, KC 2026-10-21): "8 TIME
-   LIMIT" 3/5/8/10/15 minutes, default 10, the start counting down and the par counting up; the
+   LIMIT" 3/5/8/10/15 minutes, default 15 (decision 63; was 10), the start counting down and the par counting up; the
    screen two rows higher to hold eight settings.
 
 19. **How hard each disc is** (KC 2026-10-21: "is the game completable with standard issue 3

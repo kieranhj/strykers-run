@@ -88,9 +88,8 @@ check("4 steps the hits and wraps 6 -> 1, 5 the recharge and wraps 10 s -> 2 s",
 await shot("game-rules-shield");
 {
     const l0 = rd(syms.opt_limit)[0];
-    await press("K8"); const l1 = rd(syms.opt_limit)[0];         // 10 -> 15 min
-    await press("K8"); const l2 = rd(syms.opt_limit)[0];         // 15 -> 3 min
-    check("the timer's limit: 10 min by default, 8 steps and wraps 15 -> 3", l0 === 3 && l1 === 4 && l2 === 0, `${l0} ${l1} ${l2}`);
+    await press("K8"); const l1 = rd(syms.opt_limit)[0];         // 15 -> 3 min (decision 63)
+    check("the timer's limit: 15 min by default, 8 wraps 15 -> 3", l0 === 4 && l1 === 0, `${l0} ${l1}`);
 }
 if (RUN) {
     const rn = () => ({ time: rd(syms.opt_run_time)[0], charge: rd(syms.opt_run_charge)[0] });

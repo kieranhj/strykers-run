@@ -48,7 +48,7 @@ ELSE
   IF GAMEPLAY_TIMER
     LDA #GAMEPLAY_TIMER
     STA timer_mode
-    LDA #HI(TIMER_LIMIT)            \ decision 55: decision 47's 10 minutes
+    LDA #HI(TIMER_LIMIT)            \ decision 55: 15 minutes (decision 63)
     STA timer_limit
     LDA #LO(TIMER_LIMIT)
     STA timer_limit + 1

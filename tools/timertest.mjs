@@ -1,7 +1,7 @@
 // timertest.mjs - GAMEPLAY_TIMER's rules checked (decision 47): the WorldBot plays a timer build
 // (infinite lives poked in, as tools/worldrun.mjs does) and the timer is judged every pass:
 //   the time   a second (BCD, timer_hi/timer_lo) every 25 passes: up from 0 (GAMEPLAY_TIMER=1, held
-//              at 999), or down from the limit (=2; timer_limit, 600 by default: decision 55)
+//              at 999), or down from the limit (=2; timer_limit, 900 by default: decisions 55, 63)
 //   the bonus  at the headquarters (completion_screen), the score rises by 10 a second under the par
 //              (timer_limit)
 //              (counting up) or left (counting down), and by nothing else
