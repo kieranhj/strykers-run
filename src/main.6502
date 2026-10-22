@@ -123,6 +123,9 @@ SECTION DATA1, org = &8000, load = &FFFF1900, exec = &FFFF1900, filename = "DATA
 IF GAMEPLAY_SHIELD
     INCLUDE "shield.6502"           \ decisions 44, 45: the shield and the respawn (the logic's: ROMSEL &04)
 ENDIF
+IF SKY_HELI
+    INCLUDE "sky_off.6502"          \ the enemy helicopters over the sky: take_off's (ROMSEL &04)
+ENDIF
     \ step 2 layer 3: the renderer draws with ANDY paged over &8000-&8FFF, so it, its tables and
     \ its sprites start at &9000; below it, only scenery data (read by the scroll, with bank 4 alone)
     ASSERT * <= &9000 + PAD_START

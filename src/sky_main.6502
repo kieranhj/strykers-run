@@ -1,0 +1,299 @@
+\ sky_main.6502 - SKY_HELI (src/sky.6502): its colder half (take_off's, the column checks, the
+\ image's kind) and its per-screen state, in main RAM where the kind cache's builder was. &3000 on
+\ is per screen: the renderer draws with ACCCON's X bit set for the shadow screen, so each screen
+\ has its own image and state at these addresses (render_reset copies main to shadow at each
+\ game's start, the code with it: what the code modifies of itself it sets before it runs, on the
+\ screen it runs on).
+
+\ sky_room: put_on's: room for a save block below helicopter 1's image (the end of the arena), made
+\ if not (compact), X = back. C set if there is none even then (a scene heavier than any played):
+\ the block may run into the image, which is dropped, and nothing goes in sky mode.
+.sky_room
+{
+    JSR test
+    BCC ok
+    JSR compact
+    JSR test
+    BCC ok
+    LDA #&FF
+    STA sky_k + 1
+.ok
+    RTS
+.test
+    LDX back
+    LDA arena_top_lo,X
+    CMP #LO(SKY_IMG1 - MAX_BLOCK + 1)
+    LDA arena_top_hi,X
+    SBC #HI(SKY_IMG1 - MAX_BLOCK + 1)
+    RTS
+}
+
+\ sky_erase_old: helicopter sky_s's rectangle on this screen zeroed (the sky it covered); it is no
+\ longer in sky mode here. Keeps sky_H.
+.sky_erase_old
+{
+    LDA sky_H
+    PHA
+    JSR sky_old_geom
+    JSR sky_zero
+    LDX sky_s
+    STZ sky_on,X                    \ 65C02 opcode
+    PLA
+    STA sky_H
+    RTS
+}
+
+\ sky_old_geom: helicopter sky_s's old rectangle's geometry (sky_geom), its columns drawn
+.sky_old_geom
+    LDX sky_s
+    LDA sky_h,X
+    STA sky_H
+    LDA sky_ojl,X
+    STA sky_d1
+    LDA sky_ojh,X
+    STA sky_d2
+    LDA sky_adr_hi,X
+    PHA
+    LDA sky_adr_lo,X
+    PLX                             \ 65C02 opcode
+    JMP sky_geom                    \ (it was drawn: none runs past &7FFF)
+
+\ sky_image: the image for this kind held (built if not): the body sprite, the line, the pixel
+\ table (colour and flip), the height (the blocks it uses)
+.sky_image
+{
+    LDA draw_column.pix_operand
+    STA sky_plo
+    LDA draw_column.pix_operand + 1
+    STA sky_phi
+    LDA sky_s                       \ sky_k: the kind's 5 bytes, each per helicopter
+    ORA #2 * 4
+    TAY
+    LDX #4
+.each
+    LDA sky_body,X
+    CMP sky_k,Y
+    BNE build
+    DEY
+    DEY
+    DEX
+    BPL each
+    RTS
+.build
+    LDA sky_s
+    ORA #2 * 4
+    TAY
+    LDX #4
+.copy
+    LDA sky_body,X
+    STA sky_k,Y
+    DEY
+    DEY
+    DEX
+    BPL copy
+    JMP sky_build
+}
+
+\ sky_col_row: X = an entry, sky_j8 8 * a column (from the first drawn): C set if not in it; else
+\ s_ptr, Y the column's top byte there, sky_stop below its lowest
+.sky_col_row
+{
+    LDA sky_j8
+    SEC
+    SBC sky_rc,X
+    BCC no                          \ before it
+    STA sky_stop
+    LDA sky_ry,X
+    CMP sky_stop
+    BCC no                          \ after it
+    LDA sky_rl,X
+    STA s_ptr
+    LDA sky_rh,X
+    STA s_ptr + 1
+    LDA sky_rt,X
+    ORA sky_stop
+    TAY
+    SEC
+    SBC sky_rn,X
+    STA sky_stop
+    CLC
+    RTS
+.no
+    SEC
+    RTS
+}
+
+\ sky_col_check: A = 8 * a column (from the first drawn): C set if that column of the rectangle
+\ holds anything but sky
+.sky_col_check
+{
+    STA sky_j8
+    LDX #0
+.row
+    JSR sky_col_row
+    BCS next
+.byte
+    LDA (s_ptr),Y
+    BNE dirty
+    DEY
+    CPY sky_stop
+    BNE byte
+.next
+    INX
+    CPX sky_nq
+    BNE row
+    CLC
+    RTS
+.dirty
+    SEC
+    RTS
+}
+
+\ ---- the rectangle ------------------------------------------------------------------------
+\ sky_row: X = a character row: s_ptr its first drawn cell; sky_n its lines, sky_skip 8 - them, Y
+\ its last drawn column's top byte; Z set if it is a whole row
+.sky_row
+    LDA sky_rl,X
+    STA s_ptr
+    LDA sky_rh,X
+    STA s_ptr + 1
+    LDA sky_rn,X
+    STA sky_n
+    EOR #&FF
+    SEC
+    ADC #8
+    STA sky_skip
+    LDA sky_rt,X
+    ORA sky_ry,X
+    TAY
+    LDA sky_skip
+    RTS
+
+\ sky_draw: helicopter sky_s's image over the rectangle's columns drawn: a whole character row four
+\ bytes a loop, a part row's cells from an entry into eight lines unrolled
+.sky_draw
+{
+    LDA sky_d1
+    ASL A
+    ASL A
+    ASL A
+    STA sky_j8
+    LDX #0
+.row
+    STX sky_q
+    LDA sky_rb,X                    \ the image: its block, + 8 * the first column drawn
+    LDY sky_s
+    BEQ h0
+    ORA #4
+.h0
+    TAY
+    LDA sky_blk_lo,Y
+    CLC
+    ADC sky_j8
+    STA d_ptr
+    LDA sky_blk_hi,Y
+    ADC #0
+    STA d_ptr + 1
+    LDA d_ptr                       \ + the entry's first column
+    CLC
+    ADC sky_rc,X
+    STA d_ptr
+    BCC rc_ok
+    INC d_ptr + 1
+.rc_ok
+    JSR sky_row
+    BNE part
+.whole
+    LDA (d_ptr),Y
+    STA (s_ptr),Y
+    DEY
+    LDA (d_ptr),Y
+    STA (s_ptr),Y
+    DEY
+    LDA (d_ptr),Y
+    STA (s_ptr),Y
+    DEY
+    LDA (d_ptr),Y
+    STA (s_ptr),Y
+    DEY
+    BPL whole
+    BMI next_row                    \ (always)
+.part                               \ A = 8 - lines: in at line8 + 5 * that
+    ASL A
+    ASL A
+    ADC sky_skip                    \ (C clear: 4 * at most 7)
+    ADC #LO(line8)
+    STA cell + 1
+    LDA #HI(line8)
+    ADC #0
+    STA cell + 2
+.cell
+    JMP &FFFF                       \ self-modified: the entry
+.line8
+FOR k = 1..8
+    LDA (d_ptr),Y
+    STA (s_ptr),Y
+    DEY
+NEXT
+    TYA                             \ the cell to the left's top (negative: none)
+    SEC
+    SBC sky_skip
+    TAY
+    BPL cell
+.next_row
+    LDX sky_q
+    INX
+    CPX sky_nq
+    BEQ done
+    JMP row
+.done
+    RTS
+}
+
+\ sky_zero: the rectangle's columns drawn zeroed
+.sky_zero
+{
+    LDX #0
+.row
+    STX sky_q
+    JSR sky_row
+    BNE cell
+    LDA #0
+.whole
+    STA (s_ptr),Y
+    DEY
+    BPL whole
+    BMI next_row                    \ (always)
+.cell
+    LDX sky_n
+    LDA #0
+.line
+    STA (s_ptr),Y
+    DEY
+    DEX
+    BNE line
+    TYA
+    SEC
+    SBC sky_skip
+    TAY
+    BPL cell
+.next_row
+    LDX sky_q
+    INX
+    CPX sky_nq
+    BNE row
+    RTS
+}
+
+\ ---- per screen ----
+    ASSERT * >= &3000
+.sky_on         SKIP 2              \ per helicopter: non-zero, drawn here in sky mode
+.sky_adr_lo     SKIP 2              \ its rectangle: the bottom left byte, the rows
+.sky_adr_hi     SKIP 2
+.sky_h          SKIP 2
+.sky_ojl        SKIP 2              \ its columns drawn (as its image numbers them)
+.sky_ojh        SKIP 2
+.sky_k          SKIP 2 * 5          \ the image's kind (sky_body to sky_H), each per helicopter: body
+                                    \ sprite (&FF: none), line, pixel table, height
+
+.sky_img0       SKIP SKY_IMG_SIZE   \ helicopter 0's image (1's: SKY_IMG1), a block a character row

@@ -207,6 +207,10 @@ MAX_BLOCK   = &2A0                  \ more than any mover's save block: 636 byte
     STA save_start_hi,X
     DEX
     BPL no_blocks
+IF SKY_HELI
+    JSR sky_reset                   \ no helicopter in sky mode, no image held (src/sky.6502), in
+                                    \ main RAM: the copy below gives shadow the same
+ELSE
     LDX #KC_SLOTS - 1               \ layer 4: no kinds built (src/kindcache.6502), none in use,
     LDA #&FF                        \ none asked for: the front end may have used HAZEL
 .no_kinds
@@ -216,6 +220,7 @@ MAX_BLOCK   = &2A0                  \ more than any mover's save block: 636 byte
     BPL no_kinds
     STA kc_want
     STZ kb_active                   \ 65C02 opcode: no build under way
+ENDIF
     LDX #1
 .each_screen
     LDA #LO(save_arena)             \ each screen's arena empty
@@ -325,8 +330,10 @@ MAX_BLOCK   = &2A0                  \ more than any mover's save block: 636 byte
 .render
 {
     JSR prebuild                    \ RAM for cycles 1: the next scroll column, if there is time
+IF SKY_HELI = 0
     INC kc_clock                    \ layer 4: a big part's kind asked for, built if there is time
     JSR kc_build                    \ (src/kindcache.6502)
+ENDIF
     JSR wait_for_flip               \ the hidden screen is the one the last frame went to until
     JSR save_game_zp                \ it is shown (decision 26)
     LDA shown_screen                \ draw into the screen not being shown
@@ -1288,7 +1295,13 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     LDA rec_xh,Y
     INC A                           \ 65C02 opcode: &FF, none recorded?
     BEQ out
+IF SKY_HELI
+    JSR sky_take_off                \ C set: a helicopter in sky mode, erased or left (keeps Y)
+    LDA #0
+    BCS sky_off
+ENDIF
     JSR restore_block               \ returns Y = rb_index, A = 0
+.sky_off
     DEC A                           \ 65C02 opcode: &FF
     STA rec_xh,Y
 .out
@@ -1307,6 +1320,19 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     ORA boff                        \ slot + boff: slot < &40, boff 0 or 64
     STA dm_index
     LDX back                        \ room for its block, or make some: arena_top + MAX_BLOCK
+IF SKY_HELI
+    JSR sky_room                    \ below helicopter 1's image (src/sky_main.6502; C set: none)
+    BCS masked
+    JSR sky_put_on                  \ C set: a helicopter drawn in sky mode (src/sky.6502), no
+    BCC masked                      \ block (the room above arena_top its rotor's scratch)
+    LDY dm_index
+    LDA #0
+    STA save_start_hi,Y
+    LDX dm_slot
+    JMP record_live                 \ X = slot, Y = slot + boff
+.masked
+    LDX back
+ELSE
     LDA arena_top_lo,X              \ below the arena's end (the kind cache's slot 0 after it:
     CMP kc_arena_lim                \ src/kindcache.6502), as one 16-bit compare
     LDA arena_top_hi,X
@@ -1319,6 +1345,7 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     BCC room                        \ arena up to save_arena_end, as before decision 36
     JSR kc_arena_full
     LDX back
+ENDIF
 .room
     LDY dm_index
     LDA arena_top_lo,X              \ the block starts at the arena's top: its header there,
@@ -1403,6 +1430,14 @@ header_hi = * + 1
 \ and pixel tables for its colour and flip. Saves what it covers into the screen's arena.
 .draw_mover
 {
+IF SKY_HELI
+    JSR dm_setup                    \ the clip and the tables (sky_put_on's too): C set, nothing
+    BCS no_parts                    \ to draw
+    JMP parts_go
+.no_parts
+    RTS
+.dm_setup
+ENDIF
     LDX dm_slot
     LDA movers_type_and_colour,X
     STA dm_typecol
@@ -1433,6 +1468,9 @@ header_hi = * + 1
     LDA viewport_right_high
     SBC movers_x_high,X
     BCS not_right_of_view
+IF SKY_HELI
+    SEC
+ENDIF
     RTS                             \ the mover starts right of the viewport
 .left_of_view
     BEQ jmin_low                    \ high 0: the low byte is it
@@ -1487,6 +1525,11 @@ header_hi = * + 1
     STA draw_column.mask_operand + 1
     STA draw_column.mask_operand_2 + 1
 .parts
+IF SKY_HELI
+    CLC
+    RTS
+.parts_go
+ENDIF
     LDX dm_type                     \ part one: the animation's sprite, at the bottom
     LDA dm_frame
     CLC
@@ -1536,7 +1579,9 @@ header_hi = * + 1
 {
     TAX
     STX ds_sprite
+IF SKY_HELI = 0
     STY kc_raise                    \ (src/kindcache.6502: only a mover's first part, not raised)
+ENDIF
     LDA straight_sprite_hi,X
     BNE known
     RTS                             \ an unused table entry
@@ -1567,6 +1612,11 @@ header_hi = * + 1
     LDA ds_clip                     \ step 2 layer 4: a part that cannot be clipped may be one of
     BNE generic                     \ the player's kinds compiled to code (tools/compiled.py), or
     LDA dm_slot                     \ a big part's kind built at run time (src/kindcache.6502,
+IF SKY_HELI
+    BNE generic
+    JSR compiled_part
+    BCS generic
+ELSE
     BNE cached                      \ decision 36)
     JSR compiled_part
     BCC drawn                       \ (carry set: not a kind, or a row that would pass &7FFF)
@@ -1576,6 +1626,7 @@ header_hi = * + 1
     BNE generic
     JSR kc_part
     BCS generic                     \ not held (now asked for), or a row would pass &7FFF
+ENDIF
 .drawn
     RTS
 .generic
@@ -2099,8 +2150,10 @@ lo_imm = * + 1
     BPL part_byte
     JMP columns
 .compiled                           \ its entry: the kind, then the part's bottom left cell
+IF SKY_HELI = 0
     CMP #KC_MARK                    \ (or a cached part's: src/kindcache.6502)
     BEQ cached
+ENDIF
     LDA v_ptr
     CLC
     ADC #11
@@ -2130,9 +2183,11 @@ lo_imm = * + 1
 .hazel_restore
     JSR hazel_restore               \ self-modified: the kind's restore
     JMP columns
+IF SKY_HELI = 0
 .cached                             \ X = the slot
     JSR kc_restore
     JMP columns
+ENDIF
 .blocks_done
     LDX back                        \ the block is free; the arena shrinks if it was the last
     LDA save_end_lo,Y
@@ -2455,7 +2510,11 @@ FOR k = 0..26
     EQUB HI(k * &280)
 NEXT
 
+IF SKY_HELI
+INCLUDE "sky.6502"                  \ the enemy helicopters over the sky: self-erasing rectangles
+ELSE
 INCLUDE "kindcache.6502"            \ layer 4 (decision 36): the big parts' kinds, built at run time
+ENDIF
 
 \ ---- the renderer's variables: in src/render_bss.6502 (its workspace), not in the file ----
 .render_end

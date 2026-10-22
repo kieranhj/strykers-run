@@ -1,0 +1,143 @@
+\ sky_hazel_c.6502 - SKY_HELI (src/sky.6502): the image builder, in HAZEL at &C200 (where the kind
+\ cache's slot 1 offsets were: free in this build; times_78 is below it, the mountains above),
+\ carried in the file after hazel_b and copied in by unpack_for_play.
+
+\ sky_build: helicopter sky_s's image: body sprite sky_body's pixels (draw_column's table: its
+\ colour and flip) at their places in the rectangle sky_geom has set (line sky_L, the blocks), sky
+\ everywhere else. Run when the kind changes (sky_image).
+.sky_build
+{
+    LDA sky_s
+    ASL A
+    ASL A
+    TAX
+    LDA sky_blk_lo,X
+    STA w_ptr
+    LDA sky_blk_hi,X
+    STA w_ptr + 1
+    LDA #0
+    TAY
+.zero1
+    STA (w_ptr),Y
+    INY
+    BNE zero1
+    INC w_ptr + 1
+    LDY #SKY_IMG_SIZE - 256
+.zero2
+    DEY
+    STA (w_ptr),Y
+    BNE zero2
+    LDA sky_plo
+    STA pix + 1
+    LDA sky_phi
+    STA pix + 2
+    LDX sky_body
+    LDA straight_sprite_lo,X
+    STA p_ptr
+    LDA straight_sprite_hi,X
+    STA p_ptr + 1
+    STZ sky_c                       \ 65C02 opcode: the sprite's column
+.column
+    LDA sky_c                       \ 8 * the image's column: j + 1, j = c, or 11 - c flipped
+    BIT dm_flip
+    BPL unflipped
+    EOR #&FF
+    CLC
+    ADC #SKY_COLS
+.unflipped
+    INC A                           \ 65C02 opcode
+    ASL A
+    ASL A
+    ASL A
+    STA sky_j8
+    LDY #1
+    LDA (p_ptr),Y                   \ the count
+    BEQ next_col
+    STA sky_n
+    CLC
+    ADC (p_ptr)                     \ 65C02 opcode: + the first row
+    DEC A                           \ 65C02 opcode: the top row r, its data first
+    STA sky_tmp
+    LDA sky_L
+    SEC
+    SBC sky_tmp                     \ L - r
+    BCC above
+    STA sky_line                    \ in the bottom row
+    STZ sky_bq                      \ 65C02 opcode
+    BRA placed                      \ 65C02 opcode
+.above
+    EOR #&FF                        \ r - (L + 1)
+    TAY
+    AND #&07
+    EOR #&07
+    STA sky_line                    \ 7 - its rows into the row
+    TYA
+    LSR A
+    LSR A
+    LSR A
+    INC A                           \ 65C02 opcode
+    STA sky_bq
+.placed
+    JSR row_ptr
+    LDA p_ptr                       \ the indices, from the top row down
+    CLC
+    ADC #2
+    STA src + 1
+    LDA p_ptr + 1
+    ADC #0
+    STA src + 2
+    LDX #0
+.byte
+.src
+    LDA &FFFF,X                     \ self-modified: the column's indices
+    TAY
+.pix
+    LDA &FFFF,Y                     \ self-modified: the pixel table
+    LDY sky_line
+    STA (w_ptr),Y
+    INX
+    INY
+    CPY #8
+    BCC same_cell
+    DEC sky_bq                      \ the line below is the character row below's first
+    JSR row_ptr
+    LDY #0
+.same_cell
+    STY sky_line
+    DEC sky_n
+    BNE byte
+.next_col
+    LDY #1                          \ on 2 + count
+    LDA (p_ptr),Y
+    SEC
+    ADC #1
+    CLC
+    ADC p_ptr
+    STA p_ptr
+    BCC same_page
+    INC p_ptr + 1
+.same_page
+    INC sky_c
+    LDA sky_c
+    CMP #SKY_COLS
+    BEQ built
+    JMP column
+.built
+    RTS
+.row_ptr                            \ w_ptr = character row sky_bq's block + 8j (keeps X)
+    LDY sky_bq
+    LDA sky_rb,Y
+    LDY sky_s
+    BEQ h0
+    ORA #4
+.h0
+    TAY
+    LDA sky_blk_lo,Y
+    CLC
+    ADC sky_j8
+    STA w_ptr
+    LDA sky_blk_hi,Y
+    ADC #0
+    STA w_ptr + 1
+    RTS
+}
