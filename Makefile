@@ -100,7 +100,7 @@ SRC = \
   src/sfx_data.6502 src/title.6502 src/title_data.6502 src/loader.6502 \
   src/lib/boot_stamp.6502 src/lib/keydown.6502 src/lib/sfx50.6502 src/scroll_hazel.6502 \
   src/sky.6502 src/sky_main.6502 src/sky_off.6502 src/sky_edges.6502 src/sky_hazel.6502 src/sky_hazel_c.6502 \
-  src/hills_dither_two.6502 src/mountains_one.6502 src/scroll_pixel.6502 src/level_triggers.6502 src/level_movers_x_low.6502 src/ground_columns.6502 $(BUILD)/scrolltext.6502
+  src/hills_dither_two.6502 src/mountains_one.6502 src/scroll_pixel.6502 src/level_triggers.6502 src/level_movers_x_low.6502 src/ground_columns.6502 src/hud_extra.6502 src/hud_extra_init.6502 $(BUILD)/scrolltext.6502
 
 # The baron to run, as build.ps1's Find-Tool finds it. A shell fragment, so
 # that it costs nothing on a build that does not assemble; `[ -f bin/baron ]`

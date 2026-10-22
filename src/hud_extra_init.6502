@@ -1,0 +1,26 @@
+\ hud_extra_init.6502 - decision 68's start of a game and its variables (src/hud_extra.6502 has the rest),
+\ bank 4 under ANDY with shield_tick (ROMSEL &04 only: the logic's), for the room above &9000.
+
+.hud_extra_init
+{
+    LDA #&FF                        \ every score digit drawn at the first look
+    LDX #5
+.unshown
+    STA hx_shown,X
+    DEX
+    BPL unshown
+    STZ hx_pct                      \ 65C02 opcodes
+    LDA #LO(HX_STEP)
+    STA hx_next
+    LDA #HI(HX_STEP)
+    STA hx_next + 1
+    LDA #HX_SIGNG
+    LDY #HX_SIGN
+    JSR hx_digit
+    JMP hx_show_pct                 \ (the HUD row is clear: rupture_on)
+}
+
+.hx_tmp     EQUB 0
+.hx_pct     EQUB 0                  \ the percentage shown
+.hx_next    EQUW 0                  \ the column of the next percent
+.hx_shown   SKIP 6                  \ the score's digits as drawn (font offsets)

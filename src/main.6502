@@ -147,6 +147,9 @@ SECTION DATA1, org = &8000, load = &FFFF1900, exec = &FFFF1900, filename = "DATA
     INCLUDE "render_bss_zero.6502"  \ decision 32: its variables zeroed at start-up (ROMSEL &04)
 IF GAMEPLAY_SHIELD
     INCLUDE "shield.6502"           \ decisions 44, 45: the shield and the respawn (the logic's: ROMSEL &04)
+IF HUD_RUPTURE
+    INCLUDE "hud_extra_init.6502"   \ decision 68: its start and variables (the rest above &9000)
+ENDIF
 ENDIF
 IF SKY_MODE
     INCLUDE "sky_off.6502"          \ the enemy helicopters over the sky: take_off's (ROMSEL &04)
@@ -163,6 +166,9 @@ ENDIF
     INCLUDE "compiled_table.6502"   \ step 2 layer 4: the player's compiled kinds (tools/compiled.py)
     INCLUDE "sprite_straight.6502"  \ step 2 layer 3: the masked renderer's sprites (and ANDY's, below)
 IF GAMEPLAY_SHIELD
+IF HUD_RUPTURE
+    INCLUDE "hud_extra.6502"        \ decision 68: the HUD row's progress and score
+ENDIF
     INCLUDE "shield_hi.6502"        \ decisions 44-47: the HUD builder, in the room lives_digits leaves
 IF SKY_MODE
     INCLUDE "sky_edges.6502"        \ the enemy helicopters over the sky: take_off's edge columns

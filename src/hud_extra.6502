@@ -1,0 +1,151 @@
+\ hud_extra.6502 - the HUD row's progress and score (KC, 2026-10-22: "a percentage through the game value
+\ on the right hand side of the HUD", "show the score in the HUD"; decision 68), in HUD_RUPTURE's
+\ full-width row (decision 67). Bank 4, above &9000 (the room ren_plot_lives' copy left), called from
+\ shield_tick (bank 4 paged): hud_extra_init at a game's first pass (src/hud_extra_init.6502, under ANDY
+\ with shield_tick: room), hud_extra every pass after it.
+\
+\ Progress: the furthest the player has got, a percent each HX_STEP columns (74: the headquarters,
+\ &1CEC, is 100), kept by counting thresholds up as they are passed (no division), never down (a
+\ rewind or a walk left keeps it). The score: the game's own six digits (game_over_text + 20 on,
+\ font offsets, "0" &6C, 6 a digit), each redrawn only when it changes. Both in the timer's 3x5
+\ digits (src/timer.6502, which is in bank 6), black on the sky's colour 0; the percent sign its own.
+
+HX_BASE  = HUD_ROW + 384            \ column 48: every glyph below is within 256 bytes of it
+HX_PCT   = 8 * (52 - 48)            \ the percentage's hundreds, tens and units at columns 52, 54, 56,
+HX_SIGN  = HX_PCT + 48              \ the sign at 58
+HX_SCORE = 8 * (66 - 48)            \ the score's six digits at columns 66-77
+HX_STEP  = 74                       \ columns a percent
+HX_BLANK = 10                       \ hx_digit's glyphs after the digits: a blank, the percent sign
+HX_SIGNG = 11
+
+.hud_extra
+{
+    LDA hx_pct                      \ progress: past the next threshold, a percent more (one a pass:
+    CMP #100                        \ the player moves at most two columns)
+    BCS score
+    LDA movers_x_high               \ (negative while a respawn hides the player)
+    BMI score
+    LDA movers_x_low
+    CMP hx_next
+    LDA movers_x_high
+    SBC hx_next + 1
+    BCC score
+    INC hx_pct
+    LDA hx_next
+    CLC
+    ADC #HX_STEP
+    STA hx_next
+    BCC next_page
+    INC hx_next + 1
+.next_page
+    JSR hx_show_pct
+.score
+    LDX #5
+.each
+    LDA game_over_text + 20,X
+    CMP hx_shown,X
+    BEQ same
+    STA hx_shown,X
+    SEC
+    SBC #&6C                        \ a font offset as a digit: (b - &6C) / 6
+    LDY #&FF
+.sixes
+    INY
+    SBC #6
+    BCS sixes
+    PHX                             \ 65C02 opcode
+    TXA                             \ the digit's place: HX_SCORE + 16 * X
+    ASL A
+    ASL A
+    ASL A
+    ASL A
+    ADC #HX_SCORE                   \ C = 0 (X <= 5)
+    PHY                             \ 65C02 opcodes
+    TAY
+    PLA
+    JSR hx_digit
+    PLX
+.same
+    DEX
+    BPL each
+    RTS
+}
+
+\ hx_show_pct: hx_pct (0-100) as up to three digits, blank before the first
+.hx_show_pct
+{
+    LDA hx_pct
+    CMP #100
+    BCC under
+    LDA #1
+    LDY #HX_PCT
+    JSR hx_digit
+    LDA #0
+    LDY #HX_PCT + 16
+    JSR hx_digit
+    LDA #0
+    BRA units                       \ 65C02 opcode
+.under
+    LDX #0
+.tens
+    CMP #10
+    BCC split
+    SBC #10                         \ C = 1
+    INX
+    BRA tens                        \ 65C02 opcode
+.split
+    PHA
+    TXA
+    BNE shown
+    LDA #HX_BLANK
+.shown
+    LDY #HX_PCT + 16
+    JSR hx_digit
+    PLA
+.units
+    LDY #HX_PCT + 32
+}
+\ hx_digit: glyph A (0-9, HX_BLANK, HX_SIGNG) at HX_BASE + Y: its two byte columns' rows 2-6, black
+.hx_digit
+{
+    STA hx_tmp
+    ASL A
+    ASL A
+    ADC hx_tmp                      \ 5 * A, C = 0 (at most 55)
+    TAX
+    LDA #5
+    STA hx_tmp
+.row
+    LDA hx_font,X                   \ bits 2-0: its three pixels, left to right
+    LSR A                           \ C = the third
+    PHY                             \ 65C02 opcodes
+    TAY
+    LDA hx_left_two,Y               \ bits 2, 1: the first byte column's two pixels
+    PLY
+    STA HX_BASE + 2,Y
+    LDA #0
+    BCC no_third
+    LDA #&28                        \ bit 0: the second's left pixel (its right one the gap)
+.no_third
+    STA HX_BASE + 8 + 2,Y
+    INX
+    INY
+    DEC hx_tmp
+    BNE row
+    RTS
+}
+.hx_left_two                        \ two pixels (bit 1 left, bit 0 right) in black, as a byte
+    EQUB &00, &14, &28, &3C
+.hx_font                            \ five rows each, top down, three pixels in bits 2-0
+    EQUB 7, 5, 5, 5, 7              \ 0
+    EQUB 2, 6, 2, 2, 7              \ 1
+    EQUB 7, 1, 7, 4, 7              \ 2
+    EQUB 7, 1, 7, 1, 7              \ 3
+    EQUB 5, 5, 7, 1, 1              \ 4
+    EQUB 7, 4, 7, 1, 7              \ 5
+    EQUB 7, 4, 7, 5, 7              \ 6
+    EQUB 7, 1, 1, 1, 1              \ 7
+    EQUB 7, 5, 7, 5, 7              \ 8
+    EQUB 7, 5, 7, 1, 7              \ 9
+    EQUB 0, 0, 0, 0, 0              \ HX_BLANK
+    EQUB 5, 1, 2, 4, 5              \ HX_SIGNG: %

@@ -95,7 +95,13 @@ ENDIF
 IF GAMEPLAY_TIMER
     STZ time_up                     \ (the front end writes this zero page: this tick reads it before the timer's)
 ENDIF
+IF HUD_RUPTURE
+    JSR hud_extra_init              \ decision 68: the progress and the score (src/hud_extra.6502)
+ENDIF
 .ready
+IF HUD_RUPTURE
+    JSR hud_extra
+ENDIF
 IF GAMEPLAY_TIMER
     LDA time_up                     \ decision 47: the time is up (timer_tick): the skeleton, then game over
     BEQ time_left
