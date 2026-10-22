@@ -1670,7 +1670,7 @@ ENDIF
     STZ column_buffer + 179,X
     DEX
     BNE initialise_column_buffer_loop
-IF SKY_TINT
+IF SKY_TINT = 1
     LDA #TINT_LEFT OR TINT_RIGHT    \ SKY_TINT: the seam under the band, screen rows 20-25 (buffer
     STA column_buffer + 179         \ 179 down to 174), its colour thinning out: both pixels, the right,
     LDA #TINT_RIGHT                 \ the left, none, the left, none (the same in every column: a byte
@@ -1679,8 +1679,36 @@ IF SKY_TINT
     STA column_buffer + 177
     STA column_buffer + 175
 ENDIF
+IF SKY_TINT = 2
+    LDX #TINT_ROWS - 1              \ SKY_TINT 2: the top TINT_ROWS rows of sky a dithered gradient, half
+.tint_gradient_loop                 \ blue at the top to cyan (KC, 2026-10-22: "fairly short so it doesn't
+    LDA tint_gradient,X             \ interrupt the helicopter plotting"): above the enemy helicopters'
+    STA column_buffer + 200 - TINT_ROWS,X   \ rectangles, so SKY_HELI's sky path still finds byte 0
+    DEX
+    BPL tint_gradient_loop
+    LDA #&00                        \ A = X = 0, Z set, N clear, as the clear left them
+    TAX
+ENDIF
     LDA #&00                        \ A = X = 0, Z set, N clear
     RTS
+
+IF SKY_TINT = 2
+.tint_gradient                      \ buffer rows 200 - TINT_ROWS up to 199 (screen rows TINT_ROWS - 1 up
+                                    \ to 0): a 2x4 ordered dither in TINT_COLOUR, half at the top to none,
+                                    \ the same in every column (a byte is two pixels); screen row 0 last
+    EQUB 0
+    EQUB 0
+    EQUB 0
+    EQUB TINT_LEFT
+    EQUB 0
+    EQUB TINT_LEFT
+    EQUB 0
+    EQUB TINT_LEFT
+    EQUB 0
+    EQUB TINT_LEFT
+    EQUB TINT_RIGHT
+    EQUB TINT_LEFT
+ENDIF
 
 .get_scenery_address_for_layer_Y
     LDA scenery_layer_addresses_high,Y
@@ -4320,7 +4348,7 @@ ENDIF
     CMP #&C0
     BNE to_leave_irq1_handler
     LDA usrvia_t1cl                 \ User VIA timer 1 counter LSB
-IF SKY_TINT
+IF SKY_TINT = 1
     LDA usrvia_t2ch                 \ SKY_TINT: T2 counts down from &FFFF at the vsync, so above &E000
     CMP #&E0                        \ this is the band's edge (row 20), else row 111
     BCC tint_bottom
@@ -4361,7 +4389,7 @@ ENDIF
     STA usrvia_acr                  \ User VIA auxiliary control register
     LDA #&C0                        \ Enable User VIA timer 1 interrupts
     STA usrvia_ier                  \ User VIA interrupt enable register
-IF SKY_TINT
+IF SKY_TINT = 1
     LDA #LO(TINT_T)                 \ SKY_TINT: T1 first for the band's edge, then row 111 (not_vsync_2ed0)
     STA usrvia_t1cl
     LDA #HI(TINT_T)
