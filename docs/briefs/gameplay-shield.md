@@ -202,6 +202,10 @@ death respawns whatever the lives, so the test scripts still never end.
    13 HUD columns. Room: `moved_0a20` from `&0982` in gameplay builds, `hud_buffer` at `&0C00`; the
    run meter and the bonus to bank 7. Banks after: 6, 28 bytes; 7, 281.
 
+21. **Vehicles take hits: DONE** (decision 62, KC 2026-10-22): `GAMEPLAY_ARMOUR` gives each of the
+   player's vehicles 3 hits, each with the shield's absorbed-hit sound, before the hit that wrecks it
+   (then the next explodes it, as before). No HUD. Proven on helilock's flights 5 and 2.
+
 ## Answered (KC, 2026-10-20)
 
 - **High scores with infinite lives:** a game with infinite lives ends only by ESCAPE or by

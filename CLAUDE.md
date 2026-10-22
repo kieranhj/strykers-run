@@ -235,7 +235,7 @@ masked drawing made it unnecessary; gameplay builds (`GAMEPLAY_SHIELD`) load `DA
 Gameplay builds (`GAMEPLAY_*`, branch `gameplay-shield`, decisions 43-55) add: zero page `&07-&1E`
 (the shield and its settings, the respawn, the timer, the run key: `src/zp.6502`); `moved_0a20` from `&0982` (not `&0A20`: !BOOT's and SRRUN's bytes, dead in play, decision 59); the HUD
 buffer at `&0C00` and the variables after it (`game_completed`, the run meter's, `timer_limit`, the timer
-display's; not in the file); the shield, the respawn and the HUD builder in
+display's; `vehicle_hits`, decision 62's; not in the file); the shield, the respawn and the HUD builder in
 bank 4 under ANDY; the timer in bank 6; `shield_new_game` and the game rules screen in bank 5 after
 its music (the front end's hooks replace instructions of the same size); the main block's
 unexecuted padding dropped (`GAMEPLAY_ANY`). The timer and the game rules need the unshifted banks.

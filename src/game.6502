@@ -2335,6 +2335,9 @@ ENDIF
     STA movers_x_high,X
     LDA #&02
     STA movers_helicopter_fuel_high,X
+IF GAMEPLAY_ARMOUR
+    STZ vehicle_hits - &18,X        \ decision 62: no hits taken (65C02 opcode)
+ENDIF
     LDA #&18
     STA movers_y,X
     STZ movers_frame_and_flip,X     \ *** 65C02 opcode, not zeroed in standard version
@@ -3695,6 +3698,21 @@ IF GAMEPLAY_SHIELD
     INC lives
   ENDIF
 .not_the_player
+ENDIF
+IF GAMEPLAY_ARMOUR
+    TYA                             \ decision 62: the player hit in a vehicle: it takes ARMOUR_HITS hits
+    BNE not_armour                  \ before the first that wrecks it (kill_player_helicopter), each
+    LDX player_helicopter           \ with a bullet's impact, not the explosion's sounds; the count
+    BEQ not_armour                  \ is the vehicle's (by its slot), kept while it is parked
+    LDA vehicle_hits - &18,X
+    CMP #ARMOUR_HITS
+    BCS not_armour                  \ used up: on to the wreck, then the explosion, as before
+    INC vehicle_hits - &18,X
+    LDA #&38                        \ the shield's absorbed hit's sound (decision 44)
+    JSR play_sound
+    LDY #&00                        \ MOVER_PLAYER: as the wreck's way out
+    JMP to_plot_mover_2957
+.not_armour
 ENDIF
     LDA #&00                        \ Play sound for explosion
     JSR play_sound
@@ -5945,6 +5963,10 @@ last_lo = changed + 5
 n_lo = changed + 6
 n_hi = changed + 7
 ASSERT n_hi < &0D00
+IF GAMEPLAY_ARMOUR
+vehicle_hits = n_hi + 1             \ decision 62: hits each player vehicle has taken, by slot &18-&21
+ASSERT vehicle_hits + 9 < &0D00     \ (start_game zeroes them)
+ENDIF
 ASSERT timer_limit + 1 < &0D00, "the run meter and the timer's limit overrun &0CFF"
 ASSERT game_completed < &0D00, "hud_buffer overruns &0CFF by ", game_completed + 1 - &0D00
 ASSERT HI(hud_buffer) = HI(hud_buffer + HUD_BYTES - 1)

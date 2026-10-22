@@ -50,7 +50,11 @@ ASSERT GAMEPLAY_SHIELD >= GAMEPLAY_RUN, "GAMEPLAY_RUN needs GAMEPLAY_SHIELD"
 \                    UP is held (decision 53); the original jumps on its release
 \   GAMEPLAY_FIRE    firing on the move: the bullet out at once, one update's shooting pose, as a
 \                    grenade is thrown (decision 54); the original stands still for 4 updates
-GAMEPLAY_ANY = GAMEPLAY_SHIELD OR GAMEPLAY_LIVES OR GAMEPLAY_TIMER OR GAMEPLAY_OPTIONS OR GAMEPLAY_RUN OR GAMEPLAY_JUMP OR GAMEPLAY_FIRE   \ the OR of every GAMEPLAY_ flag: their builds need not keep the main block's
+\   GAMEPLAY_ARMOUR  the player's vehicles take ARMOUR_HITS hits, each a bullet's impact, before the
+\                    one that wrecks them (decision 62; with GAMEPLAY_SHIELD, whose RAM it uses)
+ASSERT GAMEPLAY_SHIELD >= GAMEPLAY_ARMOUR, "GAMEPLAY_ARMOUR needs GAMEPLAY_SHIELD"
+ARMOUR_HITS = 3                     \ KC, 2026-10-22: "3 hits before the wreck"
+GAMEPLAY_ANY = GAMEPLAY_SHIELD OR GAMEPLAY_LIVES OR GAMEPLAY_TIMER OR GAMEPLAY_OPTIONS OR GAMEPLAY_RUN OR GAMEPLAY_JUMP OR GAMEPLAY_FIRE OR GAMEPLAY_ARMOUR   \ the OR of every GAMEPLAY_ flag: their builds need not keep the main block's
                                     \ addresses, so its unexecuted padding goes (src/game.6502), room for their hooks
 DEBUG_ANY = DEBUG_LIVES OR DEBUG_FULLREDRAW   \ the OR of every DEBUG_ flag (GAMEPLAY_ flags are not debug: RELEASE allows them)
 \ Renderer flag, on by default (1): SKY_HELI, the enemy helicopters drawn over the sky as

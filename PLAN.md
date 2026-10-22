@@ -64,6 +64,8 @@ Built (2026-10-20/21), each with its harness:
 - **Jumping and firing on the move** (`GAMEPLAY_JUMP`, `GAMEPLAY_FIRE`, decisions 53, 54): the jump
   on UP's press after one update's crouch (again on each landing while held); the bullet at once
   with one update's shooting pose, as a grenade's throw.
+- **Vehicles take hits** (`GAMEPLAY_ARMOUR`, decision 62): the player's helicopters and tank take 3
+  hits (a bullet's impact sound) before the one that wrecks them; the count stays with a parked vehicle.
 - Speed: the HUD copied a byte column a turn; every flag on, 6 late frames of 1,998 against 5 with
   every flag off (passbench, seed 1, unshifted `DEBUG_LIVES` builds, 2026-10-21).
 
