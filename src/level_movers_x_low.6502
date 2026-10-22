@@ -1,0 +1,13 @@
+\ level_movers_x_low.6502 - moved out of src/game.6502's moved_0a20 so that HUD_RUPTURE builds can put it in HAZEL
+\ (its room below &3000 is the HUD row's and the rupture's interrupt code: decision 67); other builds
+\ keep it where it was. Read only in play, where HAZEL is paged in.
+
+.new_movers_initial_x_low
+    EQUB &1E, &BC, &D2, &FA, &04, &0A, &38, &6E, &82, &8C, &C1, &26, &42, &74, &B6, &DC
+    EQUB &3A, &5A, &64, &82, &B4, &F6, &32, &3C, &5A, &B4, &DA, &1A, &2C, &BE, &E6, &24
+    EQUB &46, &80, &92, &A0, &30, &3C, &5E, &AA, &B5, &BE, &04, &1E, &50, &40, &58, &70
+    EQUB &96, &BC, &C8, &16, &AA, &D2, &1A, &42, &6E, &90, &FC, &12, &1E, &8C, &AA, &DC
+    EQUB &00, &DC, &E6, &FA, &02, &46, &6E, &A0, &00, &28, &76, &B4, &C8, &F8, &3C, &5E
+    EQUB &66, &74, &82, &AA, &D0, &06, &82, &C6, &F0, &0A, &64, &02, &46, &6E, &9E, &BA
+    EQUB &8E, &A0, &AA, &FA, &46, &6E, &B4, &01, &32, &8C, &B4, &DC, &1F, &6E, &8C, &C8
+    EQUB &08, &2E, &50, &78, &96

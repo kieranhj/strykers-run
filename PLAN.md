@@ -80,9 +80,9 @@ Left:
   than the original (35 deaths against 175 with the multi-hit fix, 334 without); whether 3 lives is
   enough for a person wants a playtest, or a count of the hits nobody could avoid (a floor).
 - **KC's review** of play: the rewind's speed and distance, the timer's bonus (10 points a second).
-- **The HUD's cost** (KC's idea): rupture the screen so the top line is one fixed area of RAM, drawn
-  once and only when it changes, instead of copied at every scroll on both screens (the brief,
-  item 10). Needs a measured design, and b2 or real hardware.
+- **The HUD's cost: built** (`HUD_RUPTURE`, decision 67): the HUD's row a CRTC frame of its own from
+  `HUD_ROW` (`&0B80`, 80 columns), 3.2% of a pass saved. Wants b2 or real hardware before a release.
+  Next on it (KC): the progress percentage and the score.
 - **Merging into `main`**, when KC says: then one disc with both builds and a boot menu, for a
   release (the brief, "Discs").
 - **Room** in the build with every flag (2026-10-21, after decision 60): bank 4 2 and 4 under ANDY

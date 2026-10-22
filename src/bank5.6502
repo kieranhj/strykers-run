@@ -1383,6 +1383,9 @@ RND_SEED = &7A31                    \ decision 17: every game starts the generat
     STA sysvia_ier                  \ (decision 16) and the ADC is unused; T1 off: irq1_handler
                                     \ plays the effects at vsync (decision 25)
     JSR sfx_silence                 \ the MOS's notes stop where they are: silence them
+IF HUD_RUPTURE
+    JSR rupture_on                  \ decision 67: the HUD row's CRTC frame (main RAM)
+ENDIF
     LDA #&FF
     STA irq_owned                   \ vsync is ours from the next one
     LDA field_count
@@ -1423,6 +1426,9 @@ RND_SEED = &7A31                    \ decision 17: every game starts the generat
     ORA #&80
     STA sysvia_ier
     STZ irq_owned                   \ 65C02 opcode
+IF HUD_RUPTURE
+    JSR rupture_off                 \ decision 67: one CRTC frame again
+ENDIF
     JSR sfx_silence                 \ and ours: the MOS has the chip back
     CLI
 .leave_give_irq_back

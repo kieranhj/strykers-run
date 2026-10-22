@@ -621,6 +621,9 @@ ENDIF
 \ not depend on what was there: src/lives_digits.6502, from tools/livesdigits.py) -------------
 .ren_plot_lives
 {
+IF HUD_RUPTURE
+    RTS                             \ decision 67: the HUD is its own CRTC frame: nothing to copy
+ENDIF
 IF GAMEPLAY_SHIELD
 \ decision 44: the top line's HUD_COLUMNS cells are hud_buffer (src/shield.6502 builds it: the
 \ digit, then the bar, the timer), HUD_BYTES in a row unless they can pass &8000 (page &7F only:
