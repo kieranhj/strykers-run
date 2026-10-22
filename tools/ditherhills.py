@@ -9,11 +9,11 @@ three ridge lines over transparent colour 0, which the palette split shows as ma
 111. The ridges close the transparent pixels into regions in three tiers - far, mid, fore - and
 this fills each tier with an ordered (Bayer 4x4) dither of its own colour in place of colour 0:
 
-    far   blue (logical 4), 6/16 (KC, 2026-10-22; first 4/16)
-    mid   red  (logical 1), 2/16 (KC tried blue, 2026-10-22)
-    fore  blue (logical 4), 4/16 (KC, 2026-10-22; tried red, green, blue 6/16)
+    far   blue (logical 4), 4/16
+    mid   red  (logical 1), 6/16
+    fore  red  (logical 1), 2/16
 
-(the mock KC chose, 2026-10-22: "Cool far, warm near"). Pixels the pattern leaves off stay colour
+(KC, 2026-10-22, after trying the mock "Cool far, warm near" and several others: decision 64). Pixels the pattern leaves off stay colour
 0, so the band keeps its magenta between the dots, and whatever the later layers draw goes over
 it as before. The regions are found on the sprite tiled three times (as it is drawn, end to end)
 and taken from the middle copy, so a region that runs over a sprite's edge is classed as a whole.
@@ -35,7 +35,7 @@ from worldmap import Build, Scenery, decode_column, SPLIT_ROW, ROWS  # noqa: E40
 SPRITES = {4: "MOUNTAINS_ONE", 5: "MOUNTAINS_TWO"}
 Y0 = 23                                 # the mountain layer's y (tools/worldmap.py's runs: all at 23)
 B4 = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]
-TIERS = [(4, 6), (1, 2), (4, 4)]        # (colour, density of 16): far, mid, fore (KC, 2026-10-22: far blue 6, fore blue 4; tried: mid blue, fore green, fore red, far 4 fore 6)
+TIERS = [(4, 4), (1, 6), (1, 2)]        # (colour, density of 16): far, mid, fore (KC, 2026-10-22, the last of several: see decision 64)
 COLOUR_NAMES = {1: "red", 2: "green", 3: "yellow", 4: "blue", 5: "magenta", 6: "cyan", 7: "white"}
 # a region's tier by its mean screen row (rows from the top): about 129 far, 145 mid, 166 fore in
 # the mocks (tools/worldmap.py crops at columns 400 and 2000)

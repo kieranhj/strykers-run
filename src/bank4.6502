@@ -62,7 +62,7 @@
     EQUB &00, &0B, &A8, &94, &05, &00, &A8, &BC, &9C, &A8, &00, &8A, &BE, &68, &BE, &BC
     EQUB &BE, &A8, &04, &00, &A8, &BE, &A8, &00, &8E
 
-IF DITHER_HILLS = 0
+IF DITHER_HILLS_ONE = 0            \ DITHER_HILLS: MOUNTAINS_ONE dithered in bank 6 unless it is too big (src/main.6502)
 .scenery_sprite_04    \ (SCENERY_MOUNTAINS_ONE)
     EQUB &00, &0F, &00, &68, &54, &19, &00, &54, &68, &80, &94, &BD, &0F, &3F, &7D, &54
     EQUB &00, &11, &13, &00, &A8, &94, &13, &00, &54, &68, &06, &00, &7C, &7D, &0F, &3F
@@ -80,6 +80,8 @@ IF DITHER_HILLS = 0
     EQUB &A8, &94, &1E, &00, &BC, &C0, &BC, &07, &3F, &BD, &09, &3F, &7E, &A8, &00, &12
     EQUB &0F, &00, &BC, &1E, &00, &A8, &94, &40, &BC, &0E, &3F, &BE, &A8, &00, &8F
 scenery_sprite_04_last = scenery_sprite_04 + 223   \ the last column: the flipped sprite's start
+ENDIF
+IF DITHER_HILLS = 0
 
 .scenery_sprite_05    \ (SCENERY_MOUNTAINS_TWO)
     EQUB &00, &0E, &00, &94, &A8, &13, &00, &94, &0B, &00, &BC, &80, &54, &BD, &0D, &3F
