@@ -1,0 +1,21 @@
+\ mountains_one.6502 - SCENERY_MOUNTAINS_ONE, the original's, unchanged (from src/bank4.6502): in bank 4,
+\ or with DITHER_HILLS in bank 7 (decision 64: its room in bank 4 is MOUNTAINS_TWO's dither's). On a real
+\ Master the mountain layer may draw it (BUGS #9); jsbeeb never does.
+
+.scenery_sprite_04    \ (SCENERY_MOUNTAINS_ONE)
+    EQUB &00, &0F, &00, &68, &54, &19, &00, &54, &68, &80, &94, &BD, &0F, &3F, &7D, &54
+    EQUB &00, &11, &13, &00, &A8, &94, &13, &00, &54, &68, &06, &00, &7C, &7D, &0F, &3F
+    EQUB &BE, &A8, &00, &12, &15, &00, &A8, &54, &0E, &00, &94, &A8, &08, &00, &94, &BD
+    EQUB &0B, &3F, &BE, &05, &3F, &BE, &BC, &00, &15, &18, &00, &68, &54, &08, &00, &94
+    EQUB &A8, &0A, &00, &A8, &7E, &0A, &3F, &BD, &BE, &7F, &BE, &BD, &7F, &BD, &94, &00
+    EQUB &18, &1C, &00, &A8, &54, &40, &94, &68, &0E, &00, &A8, &FE, &08, &3F, &BD, &BE
+    EQUB &BD, &06, &3F, &BC, &00, &15, &1F, &00, &A8, &94, &A8, &11, &00, &54, &95, &BD
+    EQUB &08, &3F, &BD, &BE, &05, &3F, &BE, &A8, &00, &14, &E8, &D4, &0E, &00, &94, &A8
+    EQUB &0A, &00, &A8, &94, &0F, &00, &94, &BD, &0E, &3F, &BD, &7E, &BF, &BE, &A8, &00
+    EQUB &17, &06, &00, &68, &94, &08, &00, &54, &A8, &0D, &00, &A8, &0E, &00, &A8, &7E
+    EQUB &11, &3F, &7D, &94, &00, &15, &08, &00, &A8, &94, &04, &00, &94, &68, &20, &00
+    EQUB &A8, &BE, &14, &3F, &BC, &00, &11, &0A, &00, &68, &94, &A8, &1D, &00, &A8, &94
+    EQUB &05, &00, &94, &7D, &05, &3F, &7E, &FD, &07, &3F, &BE, &A8, &00, &17, &0D, &00
+    EQUB &A8, &94, &1E, &00, &BC, &C0, &BC, &07, &3F, &BD, &09, &3F, &7E, &A8, &00, &12
+    EQUB &0F, &00, &BC, &1E, &00, &A8, &94, &40, &BC, &0E, &3F, &BE, &A8, &00, &8F
+scenery_sprite_04_last = scenery_sprite_04 + 223   \ the last column: the flipped sprite's start

@@ -17,7 +17,7 @@
 # Tools: baron from $env:BARON, then bin\baron.exe, then the PATH. Put machine-specific paths in
 # local.ps1 beside this file (gitignored); it is run first if it exists.
 param([switch]$Release, [switch]$Compare, [switch]$NoCompare, [int]$Shift = 0, [switch]$ShiftEnd, [string[]]$Define = @(), [switch]$Gameplay)
-if ($Gameplay) { $Define += @('GAMEPLAY_SHIELD', 'GAMEPLAY_LIVES', 'GAMEPLAY_TIMER', 'GAMEPLAY_OPTIONS', 'GAMEPLAY_RUN', 'GAMEPLAY_JUMP', 'GAMEPLAY_FIRE', 'GAMEPLAY_ARMOUR') }
+if ($Gameplay) { $Define += @('GAMEPLAY_SHIELD', 'GAMEPLAY_LIVES', 'GAMEPLAY_TIMER', 'GAMEPLAY_OPTIONS', 'GAMEPLAY_RUN', 'GAMEPLAY_JUMP', 'GAMEPLAY_FIRE', 'GAMEPLAY_ARMOUR', 'DITHER_HILLS') }
 
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
@@ -46,7 +46,7 @@ foreach ($d in $Define) {
     $flags[$k] = $(if ($v) { $v } else { '1' })
     $stem += '-' + $k.ToLower() + $(if ($flags[$k] -ne '1') { $flags[$k] } else { '' })   # a value other than 1 named too (GAMEPLAY_TIMER=2)
 }
-if ($Gameplay -and $Define.Count -eq 8 -and -not $Shift) { $stem = 'strykers-gameplay' }   # the gameplay disc by its own name
+if ($Gameplay -and $Define.Count -eq 9 -and -not $Shift) { $stem = 'strykers-gameplay' }   # the gameplay disc by its own name
 $extra = @(); $stampFlags = @()
 foreach ($k in $flags.Keys) { $extra += @('-D', "$k=$($flags[$k])"); $stampFlags += "$k=$($flags[$k])" }
 

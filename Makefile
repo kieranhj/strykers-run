@@ -181,7 +181,7 @@ release:
 # Every GAMEPLAY_ flag (decisions 43-54): the gameplay disc, build/strykers-gameplay.ssd
 # (make gameplay RELEASE=1 for testers), as build.ps1 -Gameplay. NAME= names any build's files
 gameplay:
-	@$(MAKE) DEFINES=GAMEPLAY_SHIELD,GAMEPLAY_LIVES,GAMEPLAY_TIMER,GAMEPLAY_OPTIONS,GAMEPLAY_RUN,GAMEPLAY_JUMP,GAMEPLAY_FIRE,GAMEPLAY_ARMOUR NAME=strykers-gameplay all
+	@$(MAKE) DEFINES=GAMEPLAY_SHIELD,GAMEPLAY_LIVES,GAMEPLAY_TIMER,GAMEPLAY_OPTIONS,GAMEPLAY_RUN,GAMEPLAY_JUMP,GAMEPLAY_FIRE,GAMEPLAY_ARMOUR,DITHER_HILLS NAME=strykers-gameplay all
 
 # Only reached when the .config is missing and the image was asked for by
 # name (`make build/strykers.ssd`); `all` always stamps first.

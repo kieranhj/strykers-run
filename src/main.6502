@@ -161,11 +161,7 @@ ENDSECTION
 \ decision 32: the renderer's variables, in bytes of its workspace no table uses (not in the file)
 INCLUDE "render_bss.6502"
 
-DITHER_HILLS_ONE = 0                \ MOUNTAINS_ONE (real hardware only: BUGS #9) left undithered: at mid red 6/16 it is
-                                    \ 708 bytes, 178 more than bank 6 has (KC's last try, 2026-10-22); 1 to dither it
-ASSERT DITHER_HILLS_ONE <= DITHER_HILLS
-ASSERT GAMEPLAY_SHIELD = 0 OR DITHER_HILLS = 0, "DITHER_HILLS takes bank 5's &8000-&83FF, the gameplay front end's"
-IF GAMEPLAY_SHIELD OR DITHER_HILLS  \ decisions 44-50: the gameplay front end in bank 5's &8000-&83FF, free
+IF GAMEPLAY_SHIELD                  \ decisions 44-50: the gameplay front end in bank 5's &8000-&83FF, free
     DATA2_ORG = &8000               \ since masked drawing (the player buffer's): DATA2 loads from there
 ELSE
     DATA2_ORG = &8400
@@ -176,12 +172,6 @@ IF GAMEPLAY_SHIELD
     INCLUDE "front_gameplay.6502"   \ shield_new_game and the game rules screen (start_game and the
     ASSERT * <= &8400, "bank 5's gameplay front end overruns &83FF by ", * - &8400   \ front end run with bank 5 paged)
     PRINT "bank 5 &8000-&83FF: ", &8400 - *, " bytes free"
-    SKIP &8400 - *
-ENDIF
-IF DITHER_HILLS
-    EQUB 0, 0, 0, 0, 0, 0, 0, 0     \ not a ROM header (as the gameplay front end's)
-    INCLUDE "hills_dither_two.6502" \ MOUNTAINS_TWO dithered (tools/ditherhills.py): bank 4 has no room
-    ASSERT * <= &8400, "MOUNTAINS_TWO dithered overruns &83FF by ", * - &8400
     SKIP &8400 - *
 ENDIF
     SKIP PAD_START
@@ -209,9 +199,6 @@ SECTION DATA3, org = &8000, load = &FFFF1900, exec = &FFFF1900, filename = "DATA
     SKIP PAD_START
     INCLUDE "bank6.6502"
     INCLUDE "compiled_bank6.6502"   \ step 2 layer 4: compiled kinds of the player's parts
-IF DITHER_HILLS_ONE
-    INCLUDE "hills_dither_one.6502" \ MOUNTAINS_ONE dithered: no room for it in bank 4 (src/bank4.6502 has MOUNTAINS_TWO's)
-ENDIF
 IF GAMEPLAY_TIMER
     INCLUDE "timer.6502"            \ decision 47: the timer (called through timer_tick_call: ROMSEL &06)
 ENDIF
@@ -223,6 +210,9 @@ SECTION DATA4, org = &8000, load = &FFFF1900, exec = &FFFF1D00, filename = "DATA
     SKIP PAD_START
     INCLUDE "bank7.6502"
     INCLUDE "compiled_bank7.6502"   \ step 2 layer 4: compiled kinds of the player's parts
+IF DITHER_HILLS
+    INCLUDE "mountains_one.6502"    \ decision 64: out of bank 4, for MOUNTAINS_TWO's dither
+ENDIF
 IF GAMEPLAY_RUN
     INCLUDE "run.6502"              \ decision 52: the run meter (timer_tick_call pages bank 7 for it)
 ENDIF

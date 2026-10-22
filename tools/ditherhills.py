@@ -21,7 +21,7 @@ Pattern phase: x from the sprite's first pixel (12 columns is 24 pixels, a multi
 pattern runs on across sprites), y from the buffer row (the layer's y is fixed).
 
 Reads the original sprites from the build (unflipped addresses, the sprite's bank) and writes them
-re-encoded, one file each (src/hills_dither_one.6502, _two), in the sprites' own run-length format (docs/level-format.md): per column the previous
+re-encoded (src/hills_dither_two.6502; MOUNTAINS_ONE has no room: see SPRITES), in the sprites' own run-length format (docs/level-format.md): per column the previous
 column's length, the runs, 0; after the last column &80 + its length. `scenery_sprite_0N_last`
 is the last column's offset, for the flipped address tables. Checked by re-encoding the original
 sprites to their own bytes, and by decoding what it writes.
@@ -32,7 +32,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from worldmap import Build, Scenery, decode_column, SPLIT_ROW, ROWS  # noqa: E402
 
-SPRITES = {4: "MOUNTAINS_ONE", 5: "MOUNTAINS_TWO"}
+SPRITES = {5: "MOUNTAINS_TWO"}       # MOUNTAINS_ONE (4) too, given room: at these densities it is 708 bytes, and its
+                                        # room in bank 4 is MOUNTAINS_TWO's dither's (decision 64; it moves to bank 7)
 Y0 = 23                                 # the mountain layer's y (tools/worldmap.py's runs: all at 23)
 B4 = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]
 TIERS = [(4, 4), (1, 6), (1, 2)]        # (colour, density of 16): far, mid, fore (KC, 2026-10-22, the last of several: see decision 64)
