@@ -1680,50 +1680,22 @@ IF SKY_TINT = 1
     STA column_buffer + 175
 ENDIF
 IF SKY_TINT = 2
-    PHP                             \ SKY_TINT 2: the top TINT_ROWS rows of sky a dithered gradient, half
-    LDA viewport_left_low           \ blue at the top to cyan, above the enemy helicopters' rectangles (so
-    BIT last_dir                    \ SKY_HELI's sky path still finds byte 0). A 4x4 ordered dither wants
-    BPL tint_phase                  \ the column's parity (a byte is two of its four pixels across): the
-    EOR #1                          \ view has not moved yet (the prebuild clears first too), so scrolling
-.tint_phase                         \ right the new column is the left edge + 80, left it is the edge - 1
-    LSR A
-    LDX #TINT_ROWS - 1
-    BCS tint_odd
-.tint_even
-    LDA tint_gradient_even,X
-    STA column_buffer + 200 - TINT_ROWS,X
+    LDX #TINT_ROWS - 1              \ SKY_TINT 2: the top TINT_ROWS rows of sky a dithered gradient, half
+.tint_gradient_loop                 \ blue at the top to cyan (KC, 2026-10-22: "fairly short so it doesn't
+    LDA tint_gradient,X             \ interrupt the helicopter plotting"): above the enemy helicopters'
+    STA column_buffer + 200 - TINT_ROWS,X   \ rectangles, so SKY_HELI's sky path still finds byte 0
     DEX
-    BPL tint_even
-    BRA tint_done                   \ 65C02 opcode
-.tint_odd
-    LDA tint_gradient_odd,X
-    STA column_buffer + 200 - TINT_ROWS,X
-    DEX
-    BPL tint_odd
-.tint_done
-    PLP                             \ C and V as they came, as the clear leaves them
-    LDX #0
+    BPL tint_gradient_loop
+    LDA #&00                        \ A = X = 0, Z set, N clear, as the clear left them
+    TAX
 ENDIF
     LDA #&00                        \ A = X = 0, Z set, N clear
     RTS
 
 IF SKY_TINT = 2
-.tint_gradient_even                 \ buffer rows 200 - TINT_ROWS up to 199 (screen row 0 last): a 4x4
-                                    \ ordered dither in TINT_COLOUR, half (8 of 16) at the top to none;
-                                    \ an even world column's two pixels, then an odd one's
-    EQUB 0
-    EQUB 0
-    EQUB 0
-    EQUB TINT_LEFT
-    EQUB 0
-    EQUB TINT_LEFT
-    EQUB TINT_RIGHT
-    EQUB TINT_LEFT
-    EQUB 0
-    EQUB TINT_LEFT
-    EQUB TINT_RIGHT
-    EQUB TINT_LEFT
-.tint_gradient_odd
+.tint_gradient                      \ buffer rows 200 - TINT_ROWS up to 199 (screen rows TINT_ROWS - 1 up
+                                    \ to 0): a 2x4 ordered dither in TINT_COLOUR, half at the top to none,
+                                    \ the same in every column (a byte is two pixels); screen row 0 last
     EQUB 0
     EQUB 0
     EQUB 0
@@ -1732,7 +1704,7 @@ IF SKY_TINT = 2
     EQUB TINT_LEFT
     EQUB 0
     EQUB TINT_LEFT
-    EQUB TINT_RIGHT
+    EQUB 0
     EQUB TINT_LEFT
     EQUB TINT_RIGHT
     EQUB TINT_LEFT

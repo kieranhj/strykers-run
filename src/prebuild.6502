@@ -92,9 +92,6 @@ PRE_T2_MIN = &C8                    \ one field to go: start only if User VIA T2
     STA pre_old_ops
     LDA use_flipped_or_unflipped_scenery_sprite_opcode_two
     STA pre_old_ops + 1
-IF SKY_TINT = 2
-    JSR initialise_column_buffer    \ main RAM, as the scroll starts (SKY_TINT 2: before the view moves,
-ENDIF                               \ as the scroll's, for the gradient's column parity)
     LDA viewport_left_low           \ the edges as the scroll will move them: the walk reads only
     STA pre_old_view                \ their low bytes (&00B2,Y)
     CLC
@@ -105,9 +102,7 @@ ENDIF                               \ as the scroll's, for the gradient's column
     CLC
     ADC last_dir
     STA viewport_right_low
-IF SKY_TINT <> 2
     JSR initialise_column_buffer    \ main RAM, as the scroll starts
-ENDIF
     LDX last_dir
     JSR prebuild_layers             \ main RAM: the walk; bank 4 again after, pre_bank what it left
 
