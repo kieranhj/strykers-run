@@ -43,15 +43,16 @@ PROTECT_BYTES = (
 # &8000-&BFFF), or None for main RAM, zero page and HAZEL.
 SEGMENT_BANK = {'DATA1': 4, 'DATA2': 5, 'DATA3': 6, 'DATA4': 7}
 
-# The builds, as (build.ps1 arguments, the image they make). 'bench' is what every proof and
+# The builds, as (build.ps1 arguments, the image they make). 2026-10-22: 'bench' is the unshifted
+# DEBUG_LIVES build, not -Shift 256 -ShiftEnd (same code addresses, as SHIFT_END moves nothing; bank 5's
+# credits left it no room for the 256 bytes of padding) and the start-shifted 'shift' build is gone for the
+# same reason. 'bench' is what every proof and
 # measurement runs on; 'full' its DEBUG_FULLREDRAW twin (the oracle); 'ship' the shipping build
 # (the front end check); the rest only have to assemble.
 BUILDS = {
-    'bench': ('-Shift 256 -ShiftEnd -Define DEBUG_LIVES', 'strykers-shift256end-debug_lives'),
-    'full': ('-Shift 256 -ShiftEnd -Define DEBUG_LIVES,DEBUG_FULLREDRAW',
-             'strykers-shift256end-debug_lives-debug_fullredraw'),
+    'bench': ('-Define DEBUG_LIVES', 'strykers-debug_lives'),
+    'full': ('-Define DEBUG_LIVES,DEBUG_FULLREDRAW', 'strykers-debug_lives-debug_fullredraw'),
     'ship': ('', 'strykers'),
-    'shift': ('-Shift 256 -Define DEBUG_LIVES', 'strykers-shift256-debug_lives'),
     'release': ('-Release', 'strykers'),
 }
 
