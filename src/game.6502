@@ -5370,16 +5370,15 @@ ENDIF
 \ the vsync interrupt restores ROMSEL from), runs the code, pages X's back; keeps the code's carry.
 \ Here because the renderer in bank 4 cannot page another bank over itself.
 .compiled_call
-    STX compiled_back
     STA os_ram_copy_of_currently_selected_rom
     STA romsel
 compiled_vec = * + 1                \ self-modified: the entry (also compiled_direct's vector)
     JSR &0000
-compiled_back = * + 1               \ self-modified: the ROMSEL to come back to
-    LDA #&00
+    TXA                             \ grind: X = the ROMSEL to come back to, kept by the kinds (no X in tools/compiled.py's code) and the interrupt (PHX/PLX)
     STA os_ram_copy_of_currently_selected_rom
     STA romsel
     RTS
+    EQUB &00, &00, &00, &00         \ grind: pad, so nothing after moves
 IF SKY_MODE
     INCLUDE "sky_main.6502"         \ the enemy helicopters over the sky (src/sky.6502 its take_off half)
 ELSE
