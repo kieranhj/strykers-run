@@ -38,7 +38,7 @@ if (!UNIT || !WAIT) throw new Error(`${disc}: shield_unit ${UNIT}, shield_rechar
 let pre = null;                           // the movers' types where a collision path began
 const snapshot = () => { pre = rd(syms.movers_type_and_colour, 0x22); };
 const typeAt = (slot) => slot < 0x22 ? (pre ?? rd(syms.movers_type_and_colour, 0x22))[slot] & 0x7f : null;
-let hit = null, bars = 0;                           // the hit under way: set at shield_hit, judged at the next pass
+let hit = null, bars = 0, tone = null, tones = 0;                           // the hit under way: set at shield_hit, judged at the next pass
 const hits = [], fails = [];
 const fail = (msg) => { if (fails.length < 30) fails.push(`pass ${m.passes}: ${msg}`); };
 cpu.debugInstruction.add((pc) => {
@@ -57,6 +57,17 @@ cpu.debugInstruction.add((pc) => {
     }
     if (pc === syms.kill_player && hit && hit.pass === m.passes) hit.died = true;
     if (pc === syms.play_sound && hit && hit.pass === m.passes) (hit.sounds ||= []).push(cpu.a);
+    // decision 69: the tink, request 9 on chip channel 1 (shield_sound), in place of play_sound's &38
+    if (pc === syms.shield_sound && hit && hit.pass === m.passes && cpu.a === 9) (hit.sounds ||= []).push(0x38);
+    // decision 69: the refill's tone, from shield_tone_start's caller's return: its ramp for the shield now
+    if (syms.shield_tone_start !== undefined && pc === syms.shield_tone_start) tone = { pass: m.passes, shield: zp("shield") };
+    if (tone && tone.at === undefined && pc === syms.shield_sound) {
+        tone.at = m.passes; tones++;
+        const d = 50 - tone.shield, r = rd(syms.shield_tone, 7), period = r[1] + 256 * r[2];
+        if (r[0] !== 2 * d || period !== 100 + 8 * d || r[3] !== 0xfc || r[6] !== 0) fail(`the refill's tone at shield ${tone.shield}: ${r.map((b) => b.toString(16)).join(" ")}`);
+        if (cpu.a !== 10) fail(`the refill's tone requested as ${cpu.a}, not 10`);
+        tone = null;
+    }
     if (pc === syms.not_the_player && hit && hit.pass === m.passes && rd(0x87)[0] === 0) hit.deathSounds = true;   // the death's sounds follow
     // just after main_game_loop's JSR shield_tick: the bar as the tick left it
     if (pc === syms.not_game_over + 3 && m.passes > 2) checkBar(zp("shield"), zp("lives"));
@@ -127,7 +138,7 @@ for (let p = 1; p <= PASSES; p++) {
 }
 const byType = {};
 for (const h of hits) { const k = `${h.type === null ? "?" : "&" + h.type.toString(16)} ${h.before === 0 ? "at 0 (a life)" : EXPLOSIVE.has(h.type) ? "explosive" : "1 unit"}`; byType[k] = (byType[k] || 0) + 1; }
-console.log(`${disc}: ${m.passes} passes (${end}); the bar right after ${bars} ticks; ${hits.length} hits, ${hits.filter((h) => h.died).length} of them lives, ${hits.filter((h) => h.second).length} a second hit in one pass, ${hits.filter((h) => h.safe).length} while invulnerable; ${refills} refills to full, ${refillPasses} passes refilling`);
+console.log(`${disc}: ${m.passes} passes (${end}); the bar right after ${bars} ticks; ${hits.length} hits, ${hits.filter((h) => h.died).length} of them lives, ${hits.filter((h) => h.second).length} a second hit in one pass, ${hits.filter((h) => h.safe).length} while invulnerable; ${tones} refill tones; ${refills} refills to full, ${refillPasses} passes refilling`);
 console.log("hits by culprit type:", byType);
 console.log(fails.length ? `FAILED (${fails.length}${fails.length === 30 ? "+" : ""}):\n  ` + fails.join("\n  ") : "all rules held");
 process.exit(fails.length ? 1 : 0);

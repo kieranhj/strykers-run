@@ -1,0 +1,24 @@
+\ sfx_gameplay.6502 - the gameplay builds' own sound effects (decision 69), effects 8-11 of
+\ src/lib/sfx50.6502 (requests 9-12: sfx_data.6502's tables name them). Ramps as tools/sfx50.py
+\ writes them: fields, period (low, high), period step, amplitude * 16 + 8, amplitude step
+\ (sixteenths); the tone is 125,000 / period Hz. Bank 5, before the music (read by sfx_tick with
+\ bank 5 paged in), where the flags-off builds have the pixel scroller.
+
+.sfx_effect_40                      \ 8: the shield takes a hit (chip channel 1): a metallic tink, high and falling fast
+    EQUB 2, 40, 0, 6, &F8, 216      \ period 40 +6 (3,125 Hz), amplitude 15 -2.50
+    EQUB 6, 52, 0, 10, &A8, 232     \ period 52 +10, amplitude 10 -1.50
+    EQUB 0
+
+sfx_effect_48 = shield_tone         \ 9: the shield refilling (chip channel 1): the ramp shield_tone_start writes
+                                    \ (src/shield.6502), from the shield's level to full
+ASSERT shield_tone < &3000, "the refill's ramp must be below &3000 (read in the interrupt)"
+ASSERT HI(shield_tone) > 15 OR HI(shield_tone) <> &8, "sfx_tick takes the ramp's page for the amplitude last written: it must differ from the tone's (8)"
+
+.sfx_effect_50                      \ 10: the run spent (chip channel 0): a low falling blip
+    EQUB 8, &68, &01, 30, &D8, 232  \ period 360 +30 (347 Hz down to 211), amplitude 13 -1.50
+    EQUB 0
+
+.sfx_effect_58                      \ 11: the run ready again (chip channel 0): a quick rising blip
+    EQUB 3, &40, &01, 206, &D8, 0   \ period 320 -50 (391 Hz up), amplitude 13
+    EQUB 4, 170, 0, 241, &D8, 208   \ period 170 -15 (735 Hz up to 1,000), amplitude 13 -3.00
+    EQUB 0

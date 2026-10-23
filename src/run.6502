@@ -13,8 +13,13 @@
 RUN_FULL   = 250                    \ the meter full (a byte: 10 seconds a unit a pass)
 RUN_TIME   = 5                      \ seconds of running, full to empty (KC, 2026-10-21: 5, then 10 to refill)
 RUN_CHARGE = 10                     \ seconds to refill, empty to full
+IF GAMEPLAY_SHIELD                  \ decision 69: their own (src/sfx_gameplay.6502), requests on chip channel 0
+RUN_OUT_SOUND   = 11                \ effect 10: a low falling blip, the run is spent
+RUN_READY_SOUND = 12                \ effect 11: a quick rising blip, it may run again
+ELSE
 RUN_OUT_SOUND   = &28               \ the player landing: the run is spent
 RUN_READY_SOUND = &30               \ the player jumping: it may run again
+ENDIF
 
 .run_tick
 {
@@ -37,7 +42,7 @@ RUN_READY_SOUND = &30               \ the player jumping: it may run again
     STZ run_meter + 1
     STZ run_state                   \ tired until it is past half again
     LDA #RUN_OUT_SOUND
-    JMP play_sound
+    JMP run_sound
 .not_running
     LDA run_meter + 1               \ refill, up to full
     CMP #RUN_FULL
@@ -64,7 +69,17 @@ RUN_READY_SOUND = &30               \ the player jumping: it may run again
     LDA #&80
     STA run_state
     LDA #RUN_READY_SOUND
-    JMP play_sound
+    JMP run_sound
 .done
     RTS
 }
+
+IF GAMEPLAY_SHIELD
+.run_sound                          \ A: a request (effect + 1) on chip channel 0, unless the sound is off (play_sound's rule)
+    LDY sound_muted
+    BNE run_tick.done
+    STA sfx_request
+    RTS
+ELSE
+run_sound = play_sound
+ENDIF

@@ -6204,6 +6204,12 @@ IF HUD_RUPTURE
 .rup_start_hi   EQUB 0, HI(HUD_ROW DIV 8)   \ M's start (rup_set_m_start), then H's
 .rup_start_lo   EQUB 0, LO(HUD_ROW DIV 8)
 ENDIF
+IF GAMEPLAY_SHIELD                  \ below &3000: sfx_tick reads it in the interrupt, whatever ACCCON's X bit is
+.shield_tone                        \ decision 69: the refill's tone, a ramp for src/lib/sfx50.6502 (effect 9): its
+    EQUB 0, 0, 0                    \ fields and starting period, written by shield_tone_start (src/shield.6502);
+    EQUB &FC, &88, 0                \ the period 4 less a field (8 a pass: to SHIELD_TONE_TOP at full), amplitude 8
+    EQUB 0                          \ the end
+ENDIF
 
 .moved_0a20_end
 ENDSECTION

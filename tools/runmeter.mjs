@@ -33,8 +33,8 @@ const fail = (msg) => { if (fails.length < 30) fails.push(`pass ${m.passes}: ${m
 let sounds = [], before = null;
 const ev = { ran: 0, tiredPasses: 0, outs: 0, readies: 0 };
 cpu.debugInstruction.add((pc) => {
-    if (pc === syms.run_tick) before = { state: rd(syms.run_state)[0], meter: r16(syms.run_meter), pass: m.passes };
-    if (pc === syms.play_sound && before && before.pass === m.passes) sounds.push(cpu.a);
+    if (pc === syms.run_tick && (cpu.romsel & 15) === 7) before = { state: rd(syms.run_state)[0], meter: r16(syms.run_meter), pass: m.passes };
+    if ((pc === syms.play_sound || (pc === syms.run_sound && (cpu.romsel & 15) === 7)) && before && before.pass === m.passes) sounds.push(cpu.a);   // run_sound: decision 69
     return false;
 });
 

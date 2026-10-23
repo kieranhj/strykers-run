@@ -1139,7 +1139,9 @@ ENDIF
 
 IF GAMEPLAY_SHIELD = 0
     INCLUDE "scroll_pixel.6502"     \ the pixel scroller (gameplay builds: in the &8000 block, src/main.6502,
-ENDIF                               \ so the scroll text has its room here)
+ELSE                                \ so the scroll text has its room here)
+    INCLUDE "sfx_gameplay.6502"     \ decision 69: the gameplay builds' own sound effects
+ENDIF
     ASSERT * <= &9300 + B5_OFF, "the pixel scroller overruns the music's page by ", * - &9300 - B5_OFF
     SKIP &9300 + B5_OFF - *
 

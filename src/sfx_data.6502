@@ -48,9 +48,17 @@
     EQUB 7, &06, &00, 0, &F8, 0    \ period 6 +0, amplitude 15 +0.00
     EQUB 0
 
+IF GAMEPLAY_SHIELD = 0
 .sfx_effect_channel
     EQUB 3, 2, 2, 0, 1, 1, 0, 3
+ENDIF
 .sfx_effect_lo
     EQUB LO(sfx_effect_00), LO(sfx_effect_08), LO(sfx_effect_10), LO(sfx_effect_18), LO(sfx_effect_20), LO(sfx_effect_28), LO(sfx_effect_30), LO(sfx_effect_38)
+IF GAMEPLAY_SHIELD                  \ src/sfx_gameplay.6502's, effects 8-11 (requests 9-12)
+    EQUB LO(sfx_effect_40), LO(sfx_effect_48), LO(sfx_effect_50), LO(sfx_effect_58)
+ENDIF
 .sfx_effect_hi
     EQUB HI(sfx_effect_00), HI(sfx_effect_08), HI(sfx_effect_10), HI(sfx_effect_18), HI(sfx_effect_20), HI(sfx_effect_28), HI(sfx_effect_30), HI(sfx_effect_38)
+IF GAMEPLAY_SHIELD                  \ src/sfx_gameplay.6502's, effects 8-11 (requests 9-12)
+    EQUB HI(sfx_effect_40), HI(sfx_effect_48), HI(sfx_effect_50), HI(sfx_effect_58)
+ENDIF

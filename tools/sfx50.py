@@ -144,14 +144,24 @@ def main():
             print("  MOS:   " + " ".join(f"{p}/{a}" for p, a in s[:40]))
             print("  ramps: " + " ".join(f"{p}/{a}" for p, a in got[:40]))
     lines.append("")
+    # sfx_effect_channel: read by nothing (play_sound takes the channel from the SOUND block); kept
+    # where flags-off builds have it, its 8 bytes the gameplay builds' 4 more effects (decision 69)
+    lines.append("IF GAMEPLAY_SHIELD = 0")
     lines.append(".sfx_effect_channel")
     lines.append("    EQUB " + ", ".join(str(chip_channel(chan)) for _, chan, _ in EFFECTS))
-    lines.append(".sfx_effect_lo")
-    lines.append("    EQUB " + ", ".join(f"LO(sfx_effect_{off:02x})" for off, _, _ in EFFECTS))
-    lines.append(".sfx_effect_hi")
-    lines.append("    EQUB " + ", ".join(f"HI(sfx_effect_{off:02x})" for off, _, _ in EFFECTS))
+    lines.append("ENDIF")
+    extra = [f"sfx_effect_{off:02x}" for off in EXTRA]
+    for half in ("lo", "hi"):
+        lines.append(f".sfx_effect_{half}")
+        lines.append("    EQUB " + ", ".join(f"{half.upper()}(sfx_effect_{off:02x})" for off, _, _ in EFFECTS))
+        lines.append("IF GAMEPLAY_SHIELD" + " " * 18 + c + "src/sfx_gameplay.6502's, effects 8-11 (requests 9-12)")
+        lines.append("    EQUB " + ", ".join(f"{half.upper()}({e})" for e in extra))
+        lines.append("ENDIF")
     Path(outfile).write_text(NL.join(lines) + NL)
     print(f"wrote {outfile}: {len(EFFECTS)} effects, {total + 3 * len(EFFECTS)} bytes")
+
+
+EXTRA = (0x40, 0x48, 0x50, 0x58)   # decision 69: the gameplay builds' own, hand-written in src/sfx_gameplay.6502
 
 
 if __name__ == "__main__":
