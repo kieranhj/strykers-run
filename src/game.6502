@@ -1918,6 +1918,10 @@ not_white = leave_1e3e - 4                \ plot_mover's BCS not_white + 4 lands
     CMP #&87                        \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_SOLDIER
     BEQ pm_not_white_g0b1b
     INC pixel_table_address_high    \ Use white pixel table for most enemies
+IF GAMEPLAY_ANY = 0
+    BRA pm_not_white_g0b1b
+    SKIP 0
+ENDIF
 .pm_not_white_g0b1b
     AND #&7F                        \ A = mover type
     STA &7A
@@ -1926,7 +1930,6 @@ not_white = leave_1e3e - 4                \ plot_mover's BCS not_white + 4 lands
     BCS not_white + 4
     JSR get_mover_sprite_and_screen_addresses
     JSR plot_mover_sprite           \ Plot first part of mover (e.g. player's legs)
-    LDY mover
     LDA movers_x_low,Y              \ get_mover_Y_x without &C5: still movers_x_high,Y from the first
     STA mover_x_low
     LDX &7A

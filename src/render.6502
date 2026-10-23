@@ -1256,16 +1256,17 @@ c1_rec = * + 1
     LDA list_x2_hi,Y
     STA list_x2_hi,X
 .x2_kept
-    LDA list_y1 + MOVER_SLOTS       \ Y = MOVER_SLOTS: absolute, as ,Y crosses a page
-    CMP list_y1,X
-    BCS y1_kept
-    STA list_y1,X
-.y1_kept
     LDA list_y2,Y
     CMP list_y2,X
     BCC y2_kept
     STA list_y2,X
 .y2_kept
+    LDA list_y1 + MOVER_SLOTS       \ Y = MOVER_SLOTS: absolute, as ,Y crosses a page
+    CMP list_y1,X
+    BCC y1_store_c1              \ rare (y1 seldom widens): out of line, so the common path falls into RTS
+    RTS
+.y1_store_c1
+    STA list_y1,X
     RTS
 }
 
@@ -1288,10 +1289,8 @@ c1_rec = * + 1
     BCC no
     LDA list_y2,X                   \ y1 of Y <= y2 of X
     CMP list_y1,Y
+.no                                 \ every BCC no arrives with C clear: this RTS serves
     RTS                             \ C as it stands
-.no
-    CLC
-    RTS
 }
 
 \ ---- take off and put on -------------------------------------------------------------------
@@ -1299,7 +1298,9 @@ c1_rec = * + 1
 .take_off
 {
     LDA need,X
-    BPL out
+    BMI toff_go_c1               \ not coming off is the common case: no taken branch before its RTS
+    RTS
+.toff_go_c1
     TXA
     ORA boff                        \ slot + boff: slot < &40, boff 0 or 64
     TAY
@@ -1800,6 +1801,11 @@ pix_operand = * + 1
     BCC save_same_page
     INC v_ptr + 1
     CLC                             \ C = 0 on both paths
+    BRA save_same_page              \ 65C02 opcode
+.ede5_more                          \ C = 0: the column goes on in the next cell (rare: out of the common path)
+    EOR #&FF                        \ rows left after this cell, less 1
+    STA rows_m1
+    BRA byte                        \ 65C02 opcode (C = 0, as the byte loop needs)
 .save_same_page
     LDA s_ptr                       \ ...the screen a character row up (C = 0: &7F + 1)...
     SBC #&7F
@@ -1811,10 +1817,7 @@ pix_operand = * + 1
     LDY #7                          \ ...from its bottom line: the cell test inline (C = 1, as
     TYA                             \ the ring's high byte is 3 or more)
     SBC rows_m1                     \ line - (rows left - 1)
-    BCS last_cell                   \ 0 or more: it ends here
-    EOR #&FF                        \ no: rows left after this cell, less 1
-    STA rows_m1
-    BRA byte                        \ 65C02 opcode (C = 0, as the byte loop needs)
+    BCC ede5_more                   \ below 0: not the last cell (the last cell is the common case: falls through)
 .last_cell                          \ A = line - rows left + 1: the last line drawn
     DEC A                           \ 65C02 opcode: the line below it
     STA ede5_stop_imm               \ self-modified: the CPY below's operand (stop_y's zero page byte, no longer read)
@@ -2084,17 +2087,18 @@ lo_imm = * + 1
     JSR columns
     LDY rb_index
     JMP blocks_done
-.columns                            \ the columns from v_ptr + 8 to rb_end + 8
-    LDA v_ptr
-    CMP rb_end
-    BNE more
-    LDA v_ptr + 1
+.cols_low_eq                        \ the low bytes are equal (3 of 13 calls reach the end): the high bytes
+    LDA v_ptr + 1                   \ say whether this is the end (RTS) or a record still (.more)
     CMP rb_end + 1
     BNE more
     RTS
 .cells_next_page                    \ v_ptr + 11 crossed a page (rare): off the hot path
     INC v_ptr + 1
     BRA cells_on_page               \ 65C02 opcode
+.columns                            \ the columns from v_ptr + 8 to rb_end + 8
+    LDA v_ptr
+    CMP rb_end
+    BEQ cols_low_eq                 \ the end is the rarer case (3 of 13 calls): a record falls through
 .more
     LDY #10                         \ the record
     LDA (v_ptr),Y
