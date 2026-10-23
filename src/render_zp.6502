@@ -58,10 +58,6 @@
     STA zp_save + 19
     LDA &B1
     STA zp_save + 20
-    LDA &B2
-    STA zp_save + 21
-    LDA &B3
-    STA zp_save + 22
     LDA &B4
     STA zp_save + 23
     LDA &B5
@@ -74,10 +70,6 @@
     STA zp_save + 27
     LDA &B9
     STA zp_save + 28
-    LDA &BA
-    STA zp_save + 29
-    LDA &BB
-    STA zp_save + 30
     LDA &C0
     STA zp_save + 31
     LDA &F8
@@ -87,53 +79,19 @@
     RTS
 
 .restore_game_zp
-    LDA zp_save + 0
-    STA &00
-    LDA zp_save + 1
-    STA &01
-    LDA zp_save + 2
-    STA &02
-    LDA zp_save + 3
-    STA &03
-    LDA zp_save + 4
-    STA &7E
-    LDA zp_save + 5
-    STA &7F
-    LDA zp_save + 6
-    STA &80
-    LDA zp_save + 7
-    STA &82
-    LDA zp_save + 8
-    STA &83
-    LDA zp_save + 9
-    STA &84
-    LDA zp_save + 10
-    STA &8E
-    LDA zp_save + 11
-    STA &8F
-    LDA zp_save + 14
-    STA &94
-    LDA zp_save + 15
-    STA &95
-    LDA zp_save + 16
-    STA &9B
+    \ grind: restore_game_zp restores only what the renderer's own work changes and the logic then reads. Nothing between
+    \ save_game_zp and here writes &02 &03 &7E &7F &80 &82 &83 &84 &8E &8F &94 &95 &9B (tools/zplive.mjs, 2026-10-22,
+    \ with its restoring range corrected; static scan of every render-phase store), and &00/&01 are put back by
+    \ render's buffer_to_view (slot 2), the last writer of them, from the values view_to_buffer took at the start.
     LDA zp_save + 17
-    STA &9F
-    LDA zp_save + 18
-    STA &A0
-    LDA zp_save + 19
-    STA &B0
-    LDA zp_save + 20
-    STA &B1
-    LDA zp_save + 21
     \ &B2/&B3/&BA/&BB (the viewport) need nothing: render's buffer_to_view (slot 2) put back
-    \ the values saved here (A = zp_save + 21, unused)
+    \ the values saved here; &B0/&B1 (the CRTC start) likewise (history_to_view, the only other
+    \ writer, is followed by that buffer_to_view); &9F, &A0, &B6 the renderer never writes, nor the
+    \ interrupt: nothing to give back (zp_save + 17, + 18, + 19, + 20, + 21, + 25 unused)
     LDA zp_save + 23
     STA &B4
     LDA zp_save + 24
     STA &B5
-    LDA zp_save + 25
-    STA &B6
     LDA zp_save + 26
     STA &B7
     LDA zp_save + 27

@@ -1,0 +1,31 @@
+window 821189dabd3a: src/render.6502 lines 2157-2185, 26 instructions, 142.0 cycles a pass measured (wait excluded)
+
+ 2157      6.7     LDA v_ptr                                                                              ;| A=128..255 X=? Y=$08 C=? Z=? N=1 V=? | $C4=? | in:X out:AX
+ 2158      4.5     CLC                                                                                    ;| A=?≡$C4 X=? Y=$08 C=? Z=? N=? V=? | in:AX out:AXC
+ 2159      4.5     ADC #11                                                                                ;| A=?≡$C4 X=? Y=$08 C=0 Z=? N=? V=? | in:AXC out:AXCV
+ 2160      6.7     STA v_ptr                                                                              ;| A=? X=? Y=$08 C=? Z=? N=? V=? | $C4=? | in:AXCV out:XCV
+ 2161      6.6     BCC kind_on_page                                                                       ;| A=? X=? Y=$08 C=? Z=? N=? V=? | in:XCV out:XCV
+ 2162      0.3     INC v_ptr + 1                                                                          ;| A=? X=? Y=$08 C=1 Z=? N=? V=? | $C5=? | in:XCV out:XCV
+ 2163          .kind_on_page
+ 2164     11.1     LDA (v_ptr)                     \ 65C02 opcode                                         ;| A=? X=? Y=$08 C=? Z=? N=? V=? | [($C4)]=? | in:XCV out:AXCV
+ 2165      6.7     STA &C0                                                                                ;| A=? X=? Y=$08 C=? Z=? N=? V=? | $C0=? | in:AXCV out:XCV
+ 2166      4.5     LDY #1                                                                                 ;| A=? X=? Y=$08 C=? Z=? N=? V=? | in:XCV out:XYCV
+ 2167     11.1     LDA (v_ptr),Y                                                                          ;| A=? X=? Y=$01 C=? Z=0 N=0 V=? | [($C4),y]=? | in:XYCV out:AXYCV
+ 2168      6.7     STA &C1                                                                                ;| A=? X=? Y=$01 C=? Z=? N=? V=? | $C1=? | in:AXYCV out:XYCV
+ 2169      8.9     LDA ck_bank,X                                                                          ;| A=? X=? Y=$01 C=? Z=? N=? V=? | [$A452,x]=? | in:XYCV out:AXYZCV
+ 2170      5.2     BEQ in_hazel                    \ bank 0: HAZEL                                        ;| A=? X=? Y=$01 C=? Z=? N=? V=? | in:AXYZCV out:AXYCV
+ 2171      6.0     LDY ck_restore_lo,X             \ Y, not A: A is the bank                              ;| A=1..255 X=? Y=$01 C=? Z=0 N=? V=? | [$A47C,x]=? | in:AXCV out:AXYCV
+ 2172      6.0     STY compiled_vec                                                                       ;| A=1..255 X=? Y=? C=? Z=? N=? V=? | compiled_vec=? | in:AXYCV out:AXCV
+ 2173      6.0     LDY ck_restore_hi,X                                                                    ;| A=1..255 X=? Y=? C=? Z=? N=? V=? | [$A48A,x]=? | in:AXCV out:AYCV
+ 2174      6.0     STY compiled_vec + 1                                                                   ;| A=1..255 X=? Y=? C=? Z=? N=? V=? | compiled_vec+1=? | in:AYCV out:AYCV
+ 2175      3.0     LDX #&04                        \ bank 4 again after                                   ;| A=1..255 X=? Y=? C=? Z=? N=? V=? | in:AYCV out:AXYNZCV
+ 2176      9.0     JSR compiled_call                                                                      ;| A=1..255 X=$04 Y=? C=? Z=0 N=0 V=? | in:AXYNZCV out:XYV
+ 2177      4.5     JMP columns                                                                            ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XYV out:XYV
+ 2178          .in_hazel                           \ straight into the kind: no JMP (compiled_vec)
+ 2179      2.9     LDA ck_restore_lo,X                                                                    ;| A=$00 X=? Y=$01 C=? Z=1 N=0 V=? | [$A47C,x]=? | in:XYCV out:AXYCV
+ 2180      2.9     STA hazel_restore + 1                                                                  ;| A=? X=? Y=$01 C=? Z=? N=? V=? | restore_block.hazel_restore+1=? | in:AXYCV out:XYCV
+ 2181      2.9     LDA ck_restore_hi,X                                                                    ;| A=? X=? Y=$01 C=? Z=? N=? V=? | [$A48A,x]=? | in:XYCV out:AXYNZCV
+ 2182      2.9     STA hazel_restore + 2                                                                  ;| A=? X=? Y=$01 C=? Z=? N=? V=? | $9EC6=? | in:AXYNZCV out:AXYNZCV
+ 2183          .hazel_restore
+ 2184      4.4     JSR hazel_restore               \ self-modified: the kind's restore                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXYNZCV out:XYV
+ 2185      2.2     JMP columns                                                                            ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XYV out:XYV

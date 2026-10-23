@@ -1,0 +1,21 @@
+{
+ "candidates": [
+  {
+   "window": "b7241327ae78",
+   "file": "src/game.6502",
+   "line": 1729,
+   "old": "    CMP #&40\n    BCS skip_wraparound_1d66\n    ADC #&40\n.skip_wraparound_1d66\n    TAX\n    TYA\n.leave_1d68\n    RTS                             \\ Leave with A = address_low, X = address_high",
+   "new": "    ORA #&40                        \\ grind: the ring wrap without a branch. A = hi - delta - borrow is 1-&7F here (a screen address &40-&7F less at most &3E, and 0 less a delta wraps to &FE-&FF, whose bit 6 is set), so OR &40 is the original's CMP #&40 : BCS : ADC #&40 (below &40: + &40; from &40 on: unchanged); C and V as the SBC left them (no caller reads a flag)\n.skip_wraparound_1d66\n    TAX\n    TYA\n.leave_1d68\n    RTS                             \\ Leave with A = address_low, X = address_high\nIF GAMEPLAY_ANY = 0                 \\ (gameplay builds: unexecuted padding not needed, decision 43)\n    SKIP 4                          \\ grind: never run (after RTS); the wrap's 4 bytes saved, so subtract_Y_rows and everything after stay where they were\nENDIF",
+   "summary": "subtract_delta_from_screen_address_in_AX: the ring wrap CMP #&40 / BCS / ADC #&40 becomes ORA #&40 (A = 1..&7F for a screen address), 3 cycles saved on the common taken-BCS path (4 when the wrap is needed); the 4 freed bytes are a SKIP after the RTS so nothing after moves.",
+   "claim": {
+    "cycles_per_execution": 3.0,
+    "executions_a_pass": 0.7,
+    "cycles_a_pass": 2.1,
+    "bytes": 4
+   },
+   "equivalence": "Inputs: X (address high) is a screen high byte, &40-&7F on every path (movers_screen_address_high starts 0 and is only written from this routine's and the add's outputs and the player's; screen_start/edge/mover addresses are ring-wrapped &40-&7F), delta_high_table <= &3E. So hi' = X - dh - borrow lies in [1,&7F] (X=&40,dh=&3E,borrow: 1; X=0 inactive mover: 0 - dh - b gives 0 or &FF/&FE, all handled below). For hi' < &40 (bit 6 clear, bit 7 clear): original adds &40, ORA #&40 sets bit 6 = adds &40: equal. For hi' in &40-&7F: original unchanged, ORA leaves bit 6 set: equal. For the inactive-mover case hi'=&FE/&FF/0: &FE,&FF unchanged in both (bit 6 set), 0 -> &40 both. The only inputs where they differ are hi' in &80-&BF, which needs X >= &80 + dh: never a screen address. A, X, Y at the RTS are the same (TAX/TYA unchanged; Y = low sum). Flags: the original left C from CMP/ADC, N/Z from TYA (unchanged), V from SBC; now C and V are the SBC's. Every caller of subtract_delta (1050, 1842, 2859, 4218, shield.rewind) and, through subtract_Y_rows/rows_up, (1948, 1965, 2883, 4221) goes on with STX/STA/LDY/LDA/DEC/JMP that set or ignore flags; none branches on C or V before writing them. The branch from add's wrap (BRA skip_wraparound_1d66) still lands on TAX. Not a bug-for-bug difference on any path the original reaches.",
+   "relies_on": "No page crossing moves: the whole routine, both delta tables and the rows routines stay in page &19 (&1931-&1969 in the bench build); the SKIP 4 keeps subtract_Y_rows_from_screen_address_in_AX at &196A and everything after in place, so BEQ leave_1d68 (now -7 and -14 bytes, same page) and every later hot branch are unchanged. leave_1d68 moves 4 bytes earlier (&1969 -> &1967); its three users are all short relative branches in page &19. The BRA from add's wrap becomes 2 bytes shorter, still in page. Gameplay builds (GAMEPLAY_ANY) compile the SKIP out, as the file's other padding does. Relies on the screen-address invariant X in &40-&7F (and 0 for never-plotted movers) for the subtract callers.",
+   "file_written": "build/grind/r3/opt-b7241327ae78.json"
+  }
+ ]
+}

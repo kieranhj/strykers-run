@@ -1,0 +1,42 @@
+window e3fb03986cd1: src/game.6502 lines 2737-2776, 32 instructions, 110.8 cycles a pass measured (wait excluded)
+
+ 2737      0.0     STZ movers_frame_and_flip,X     \ *** 65C02 opcode                                     ;| A=115..146 X=10..11 Y=0..7 C=0 Z=0 N=? V=? | [$1322,x]=? | in:XY out:XY
+ 2738      0.0     INY                                                                                    ;| A=115..146 X=10..11 Y=0..7 C=0 Z=0 N=? V=? | in:XY out:X
+ 2739      0.0     INX                                                                                    ;| A=115..146 X=10..11 Y=1..8 C=0 Z=0 N=0 V=? | in:X out:X
+ 2740      0.0     CPX #&0C                        \ MOVER_LAST_HELICOPTER + 1                            ;| A=115..146 X=11..12 Y=1..8 C=0 Z=0 N=0 V=? | in:X out:XC
+ 2741      0.0     BCC add_enemy_helicopters_loop                                                         ;| A=115..146 X=11..12 Y=1..8 C=? Z=? N=? V=? | in:XC out:X
+ 2742      0.0     RTS                                                                                    ;| A=115..146≡$1393 X=$0C Y=1..8 C=1 Z=1 N=0 V=? | in:- out:-
+ 2743          
+ 2744          .animate_mover
+ 2745      3.4     LDA #&80                                                                               ;| A=1..255 X=? Y=? C=? Z=0 N=? V=? | in:XV out:AXV
+ 2746      5.2     STA hostile_mover               \ Set to negative to indicate no hostile mover         ;| A=$80 X=? Y=? C=? Z=0 N=1 V=? | $8D=? | in:AXV out:AXV
+ 2747      5.2     STA mover_had_hostile_collision \ Set to negative to indicate no hostile collision     ;| A=$80 X=? Y=? C=? Z=0 N=1 V=? | $81=? | in:AXV out:XV
+ 2748      5.2     LDY mover_to_update             \ grind: get_mover_type inlined (Y = &03, A = type)    ;| A=$80 X=? Y=? C=? Z=0 N=1 V=? | $03=? | in:XV out:XYV
+ 2749      6.9     LDA movers_type_and_colour,Y                                                           ;| A=$80 X=? Y=?≡$03 C=? Z=? N=? V=? | [$1300,y]=? | in:XYV out:AXYV
+ 2750      3.4     AND #&7F                                                                               ;| A=? X=? Y=?≡$03 C=? Z=? N=? V=? | in:AXYV out:AXYV
+ 2751      3.4     CMP #&0D                        \ MOVER_TYPE_SKELETON                                  ;| A=0..127 X=? Y=?≡$03 C=? Z=? N=0 V=? | in:AXYV out:AXYZCV
+ 2752      3.4     BEQ skip_animation                                                                     ;| A=0..127 X=? Y=?≡$03 C=? Z=? N=? V=? | in:AXYZCV out:AXYCV
+ 2753      3.4     TAX                                                                                    ;| A=0..127 X=? Y=?≡$03 C=? Z=0 N=? V=? | in:AYCV out:XYCV
+ 2754      3.4     TYA                             \ ***                                                  ;| A=0..127 X=0..127 Y=?≡$03 C=? Z=? N=0 V=? | in:XYCV out:XYZCV
+ 2755      4.8     BNE not_player_23b1             \ ***                                                  ;| A=?≡$03 X=0..127 Y=?≡$03 C=? Z=? N=? V=? | in:XYZCV out:XYCV
+ 2756          .is_player_23a9    \ ***
+ 2757      1.2     LDA player_helicopter           \ *** Zero if player not in helicopter                 ;| A=$00≡$03 X=0..127 Y=?≡$03 C=? Z=1 N=0 V=? | $84=? | in:XYCV out:XYZCV
+ 2758      1.2     BEQ not_player_23b1             \ ***                                                  ;| A=?≡$84 X=0..127 Y=?≡$03 C=? Z=? N=? V=? | in:XYZCV out:XYCV
+ 2759              LDA helicopter_fuel_high        \ ***                                                  ;| A=1..255≡$84 X=0..127 Y=?≡$03 C=? Z=0 N=? V=? | $97=? | in:XYCV out:XYNCV
+ 2760              BMI skip_animation              \ *** Don't animate player helicopter if out of fuel   ;| A=?≡$97 X=0..127 Y=?≡$03 C=? Z=? N=? V=? | in:XYNCV out:XYCV
+ 2761          .not_player_23b1
+ 2762      6.9     LDA movers_frame_and_flip,Y     \ grind: the next frame kept in A and compared with the type's;| A=? X=0..127 Y=?≡$03 C=? Z=? N=? V=? | [$1322,y]=? | in:XYV out:AXYV
+ 2763      3.4     AND #&7F                        \ frame count in place (frames, &C6, no longer written: nothing;| A=? X=0..127 Y=?≡$03 C=? Z=? N=? V=? | in:AXYV out:AXYV
+ 2764      3.4     INC A                           \ 65C02 opcode; else reads it)                         ;| A=0..127 X=0..127 Y=?≡$03 C=? Z=? N=0 V=? | in:AXYV out:AXYV
+ 2765      6.9     CMP mover_types_animation_frame,X                                                      ;| A=1..128 X=0..127 Y=?≡$03 C=? Z=0 N=? V=? | [$DAAE,x]=? | in:AXYV out:AXYCV
+ 2766      4.3     BCC skip_wraparound_23c3                                                               ;| A=1..128 X=0..127 Y=?≡$03 C=? Z=? N=? V=? | in:AXYCV out:AXYCV
+ 2767      1.7     LDA #&00                                                                               ;| A=1..128 X=0..127 Y=?≡$03 C=1 Z=? N=? V=? | in:XYCV out:AXYCV
+ 2768          .skip_wraparound_23c3
+ 2769      5.2     ORA flip                                                                               ;| A=0..128 X=0..127 Y=?≡$03 C=? Z=? N=? V=? | $7B=? | in:AXYCV out:AXYCV
+ 2770      8.6     STA movers_frame_and_flip,Y                                                            ;| A=? X=0..127 Y=?≡$03 C=? Z=? N=? V=? | [$1322,y]=? | in:AXYCV out:XYCV
+ 2771          .skip_animation
+ 2772      6.9     LDA movers_y,Y                                                                         ;| A=? X=? Y=?≡$03 C=? Z=? N=? V=? | [$1388,y]=? | in:XYCV out:AXYNZCV
+ 2773     10.3     RTS                                                                                    ;| A=? X=? Y=?≡$03 C=? Z=? N=? V=? | in:AXYNZCV out:AXYNZCV
+ 2774          
+ 2775          .move_mover_right
+ 2776      3.2     LDA mover_x_low                                                                        ;| A=? X=? Y=? C=? Z=? N=? V=? | $F8=? | in:- out:A

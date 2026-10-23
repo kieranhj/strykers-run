@@ -1,0 +1,38 @@
+{
+ "candidates": [
+  {
+   "window": "03d027d5dfec",
+   "file": "src/render.6502",
+   "line": 1763,
+   "old": "    TYA\n    SEC\n    SBC rows_m1                     \\ line - (rows left - 1)\n    BCS last_cell                   \\ 0 or more: it ends here\n    EOR #&FF                        \\ no: rows left after this cell, less 1: rows - line - 2\n    STA rows_m1\n.byte                               \\ down to line 0\n    LDA (d_ptr),Y                   \\ the pixel/mask index\n    TAX\n    LDA (s_ptr),Y\n    STA (v_ptr),Y                   \\ saved\nmask_operand = * + 1\n    AND &FFFF,X                     \\ self-modified: the mask table for the flip\npix_operand = * + 1\n    EOR &FFFF,X                     \\ self-modified: the pixel table for the colour and flip\n    STA (s_ptr),Y\n    DEY\n    BPL byte\n    LDA d_ptr                       \\ the next cell: the data 8 back (C = 0 from the cell test:\n    SBC #7                          \\ the byte loop leaves C alone, so 7 + 1)...\n    STA d_ptr\n    BCS data_same_page\n    DEC d_ptr + 1\n    SEC                             \\ C = 1 on both paths",
+   "new": "    TYA\n    SBC rows_m1                     \\ line - (rows left - 1) (C = 1 already: the ADC #&FF above carried, col_ptr + 1 being 1 or more)\n    BCS last_cell                   \\ 0 or more: it ends here\n    EOR #&FF                        \\ no: rows left after this cell, less 1: rows - line - 2\n    STA rows_m1\n.byte                               \\ down to line 0\n    LDA (d_ptr),Y                   \\ the pixel/mask index\n    TAX\n    LDA (s_ptr),Y\n    STA (v_ptr),Y                   \\ saved\nmask_operand = * + 1\n    AND &FFFF,X                     \\ self-modified: the mask table for the flip\npix_operand = * + 1\n    EOR &FFFF,X                     \\ self-modified: the pixel table for the colour and flip\n    STA (s_ptr),Y\n    DEY\n    BPL byte\n    LDA d_ptr                       \\ the next cell: the data 8 back (C = 0 from the cell test:\n    SBC #7                          \\ the byte loop leaves C alone, so 7 + 1)...\n    STA d_ptr\n    BCS data_same_page\n    DEC d_ptr + 1\n    SEC                             \\ C = 1 on both paths\n    NOP                             \\ grind: pad for the SEC dropped above, so nothing after this slides (the cold path)",
+   "summary": "Drop the SEC before the cell test (ADC #&FF on a sprite column address >= &0100 always leaves C = 1) and put the freed byte back as a NOP in the cold DEC d_ptr+1 path, so no later code moves. Alternative to the second candidate (same SEC removal); this one is byte-neutral.",
+   "claim": {
+    "cycles_per_execution": 2,
+    "executions_a_pass": 9.4,
+    "cycles_a_pass": 18.4,
+    "bytes": 0
+   },
+   "equivalence": "Only the SEC before SBC rows_m1 is removed. Entry to .cell is by fall-through only (grep: no other reference to draw_column.cell; draw_column is entered only at .each, from ren_draw_sprite). Just before, LDA col_ptr + 1 ; ADC #&FF ; STA d_ptr + 1: A = col_ptr + 1 >= 1, so A + &FF + C >= &100 and C = 1 whatever the carry in (col_ptr + 1 starts as straight_sprite_hi,X, tested non-zero by BNE known in ren_draw_sprite, and is only ever incremented by the column advance; the sprites are in ANDY at &8000-&8FFF). STA and TYA leave C, so SBC rows_m1 sees C = 1 exactly as after SEC: same A, same C, same Z/N, both exits (last_cell, the EOR/STA rows_m1 path) unchanged. SEC changed no register or other flag (V untouched either way). The NOP sits after the cold path's SEC, before .data_same_page; it changes no register or flag, and the hot path (BCS data_same_page taken) jumps over it.",
+   "relies_on": "Relies on col_ptr + 1 >= 1 whenever draw_column reaches .cell (straight_sprite_hi non-zero, only incremented; sprites at &8000-&8FFF). Page crossings: none moved. The code from BCS last_cell to the SEC in the cold path moves down 1 byte inside page &9C (draw_column is &9B8F-&9CC8; .byte/BPL byte loop &9C33-&9C45 and .last_cell/.part_byte stay in page &9C, all branches here are same-page before and after: BCS last_cell, BPL byte, BCS data_same_page, BCC save_same_page); .data_same_page and everything after it, and all later bank 4 code and tables, keep their addresses because the NOP restores the byte. The NOP costs 2 cycles on the cold path (DEC d_ptr+1 runs 0.18 times a pass): about 0.4 cycles a pass.",
+   "file_written": "build/grind/r3/opt-03d027d5dfec.json"
+  },
+  {
+   "window": "03d027d5dfec",
+   "file": "src/render.6502",
+   "line": 1763,
+   "old": "    TYA\n    SEC\n    SBC rows_m1                     \\ line - (rows left - 1)",
+   "new": "    TYA\n    SBC rows_m1                     \\ line - (rows left - 1) (C = 1 already: the ADC #&FF above carried, col_ptr + 1 being 1 or more)",
+   "summary": "Drop the SEC before the cell test: ADC #&FF on a sprite column address >= &0100 always leaves C = 1. Smaller by 1 byte, but slides all later bank 4 code and tables down 1; alternative to the first candidate.",
+   "claim": {
+    "cycles_per_execution": 2,
+    "executions_a_pass": 9.4,
+    "cycles_a_pass": 18.8,
+    "bytes": 1
+   },
+   "equivalence": "Only the SEC before SBC rows_m1 is removed. Entry to .cell is by fall-through only (grep: no other reference to draw_column.cell; draw_column is entered only at .each, from ren_draw_sprite). Just before, LDA col_ptr + 1 ; ADC #&FF ; STA d_ptr + 1: A = col_ptr + 1 >= 1, so A + &FF + C >= &100 and C = 1 whatever the carry in (col_ptr + 1 starts as straight_sprite_hi,X, tested non-zero by BNE known in ren_draw_sprite, and is only ever incremented by the column advance; the sprites are in ANDY at &8000-&8FFF). STA and TYA leave C, so SBC rows_m1 sees C = 1 exactly as after SEC: same A, same C, same Z/N, both exits (last_cell, the EOR/STA rows_m1 path) unchanged. SEC changed no register or other flag (V untouched either way).",
+   "relies_on": "Relies on col_ptr + 1 >= 1 at .cell. SLIDES everything after it in bank 4 by 1 byte (rest of draw_column, the rest of render.6502 and the tables after it): the gate must show no hot branch or indexed table read starts crossing a page; draw_column itself is entirely in page &9C before and after (&9C2B-&9CC8), so its own branches and loops are unchanged. Prefer the byte-neutral candidate.",
+   "file_written": "build/grind/r3/opt-03d027d5dfec.json"
+  }
+ ]
+}

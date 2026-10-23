@@ -1,0 +1,45 @@
+window f4362625a84b: src/render.6502 lines 910-952, 32 instructions, 107.2 cycles a pass measured (wait excluded)
+
+  910      1.5     TXA                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XYC out:AYC
+  911      1.5     ADC #0                                                                                 ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AYC out:AY
+  912      3.8     STA lz_hi,Y                                                                            ;| A=? X=? Y=? C=? Z=? N=? V=? | [lz_hi,y]=? | in:AY out:-
+  913      4.6     INC lz_n                                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | lz_n=? | in:- out:-
+  914      4.6     RTS                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:- out:-
+  915          }
+  916          
+  917          .add_zone_column                    \ zone_tmp -> the list; keeps X and Y
+  918          {
+  919      4.6     PHX                                                                                    ;| A=? X=? Y=0..1 C=? Z=? N=? V=? | in:XY out:Y
+  920      4.6     LDX zone_n                                                                             ;| A=? X=? Y=0..1 C=? Z=? N=? V=? | $69=? | in:Y out:XY
+  921      4.6     LDA zone_tmp_lo                                                                        ;| A=? X=?≡$69 Y=0..1 C=? Z=? N=? V=? | $5B=? | in:XY out:AXY
+  922      7.6     STA zone_lo,X                                                                          ;| A=?≡$5B X=?≡$69 Y=0..1 C=? Z=? N=? V=? | [zone_lo,x]=? | in:AXY out:XY
+  923      4.6     LDA zone_tmp_hi                                                                        ;| A=?≡$5B X=?≡$69 Y=0..1 C=? Z=? N=? V=? | $64=? | in:XY out:AXY
+  924      7.6     STA zone_hi,X                                                                          ;| A=?≡$64 X=?≡$69 Y=0..1 C=? Z=? N=? V=? | [zone_hi,x]=? | in:AXY out:Y
+  925      7.6     INC zone_n                                                                             ;| A=?≡$64 X=?≡$69 Y=0..1 C=? Z=? N=? V=? | $69=? | in:Y out:Y
+  926      6.1     PLX                                                                                    ;| A=?≡$64 X=?≡$69 Y=0..1 C=? Z=? N=? V=? | in:Y out:XY
+  927      9.1     RTS                                                                                    ;| A=?≡$64 X=? Y=0..1 C=? Z=? N=? V=? | in:XY out:XY
+  928          }
+  929          
+  930          \ span_in_zone: does [span_x - 1, span_x + A + 1] hold a zone column? C set if so. Keeps Y.
+  931          .span_in_zone
+  932          {
+  933      1.2     CLC                                                                                    ;| A=? X=0..127 Y=? C=? Z=? N=? V=? | in:A out:AC
+  934      1.2     ADC #2                                                                                 ;| A=? X=0..127 Y=? C=0 Z=? N=? V=? | in:AC out:A
+  935      2.4     STA span_w2                                                                            ;| A=? X=0..127 Y=? C=? Z=? N=? V=? | span_w2=? | in:A out:-
+  936      1.8     LDA span_x_lo                   \ span_x -= 1 once (span_x is the caller's, dead after):;| A=? X=0..127 Y=? C=? Z=? N=? V=? | $6F=? | in:- out:Z
+  937      1.8     BNE no_borrow                   \ then d = column - span_x                             ;| A=?≡$6F X=0..127 Y=? C=? Z=? N=? V=? | in:Z out:-
+  938              DEC span_x_hi                                                                          ;| A=$00≡$6F X=0..127 Y=? C=? Z=1 N=0 V=? | $72=? | in:- out:-
+  939          .no_borrow
+  940      3.0     DEC span_x_lo                                                                          ;| A=?≡$6F X=0..127 Y=? C=? Z=? N=? V=? | $6F=? | in:- out:-
+  941      1.8     LDX zone_n                                                                             ;| A=?≡$6F X=0..127 Y=? C=? Z=? N=? V=? | $69=? | in:- out:XZ
+  942      1.4     BEQ lives                                                                              ;| A=?≡$6F X=?≡$69 Y=? C=? Z=? N=? V=? | in:XZ out:X
+  943          .each
+  944      1.5     DEX                                                                                    ;| A=? X=? Y=? C=? Z=0 N=? V=? | in:X out:X
+  945      3.1     LDA zone_hi,X                   \ d's high byte less 1 into span_d + 1 ...             ;| A=? X=? Y=? C=? Z=? N=? V=? | [zone_hi,x]=? | in:X out:AX
+  946      1.5     CLC                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AX out:AXC
+  947      2.3     SBC span_x_hi                                                                          ;| A=? X=? Y=? C=0 Z=? N=? V=? | $72=? | in:AXC out:AX
+  948      2.3     STA span_d + 1                                                                         ;| A=? X=? Y=? C=? Z=? N=? V=? | $4C=? | in:AX out:X
+  949      3.1     LDA zone_lo,X                   \ ... its low byte in A, C clear if it borrowed (ADC #0 below;| A=? X=? Y=? C=? Z=? N=? V=? | [zone_lo,x]=? | in:X out:AX
+  950      1.5     SEC                             \ makes span_d + 1 + C the high byte)                  ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AX out:AXC
+  951      2.3     SBC span_x_lo                                                                          ;| A=? X=? Y=? C=1 Z=? N=? V=? | $6F=? | in:AXC out:AXC
+  952      2.3     STA span_d                                                                             ;| A=? X=? Y=? C=? Z=? N=? V=? | $4B=? | in:AXC out:XC

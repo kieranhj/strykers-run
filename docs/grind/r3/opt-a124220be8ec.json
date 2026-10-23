@@ -1,0 +1,21 @@
+{
+ "candidates": [
+  {
+   "window": "a124220be8ec",
+   "file": "src/game.6502",
+   "line": 4456,
+   "old": "    EOR #&FF                        \\ INKEY number -> internal key number (check_for_keypress, inlined)\n    TAX                             \\ keydown_int (src/lib/keydown.6502) inlined: X = the key number\n    LDA #&03                        \\ KBD_LATCH_OFF: latch line 3 = 0\n    SEI                             \\ every caller runs with I = 0 (the play loop), so CLI after\n    STA sysvia_orb                  \\ stop the free-running scan...\n    LDA #&7F                        \\ KBD_DDRA_SCAN: PA0-PA6 out, PA7 in\n    STA sysvia_ddra                 \\ every key: the interrupt's sound writes set DDRA too\n    STX sysvia_ora_nh               \\ ask about this key\n    LDA sysvia_ora_nh               \\ PA7 is the answer\n    ASL A                           \\ C = down (PA7)\n    LDA #&0B                        \\ KBD_LATCH_ON\n    STA sysvia_orb                  \\ ...and hand it back\n    CLI",
+   "new": "    EOR #&FF                        \\ INKEY number -> internal key number (check_for_keypress, inlined)\n    LDX #&03                        \\ KBD_LATCH_OFF: latch line 3 = 0 (A keeps the key number: no TAX; X is dead after)\n    SEI                             \\ every caller runs with I = 0 (the play loop), so CLI after\n    STX sysvia_orb                  \\ stop the free-running scan...\n    LDX #&7F                        \\ KBD_DDRA_SCAN: PA0-PA6 out, PA7 in\n    STX sysvia_ddra                 \\ every key: the interrupt's sound writes set DDRA too\n    STA sysvia_ora_nh               \\ ask about this key (A = the key number)\n    LDA sysvia_ora_nh               \\ PA7 is the answer\n    ASL A                           \\ C = down (PA7)\n    LDX #&0B                        \\ KBD_LATCH_ON\n    STX sysvia_orb                  \\ ...and hand it back\n    CLI",
+   "summary": "Keep the key number in A and use X for the three constants (3, &7F, &0B): drops TAX, and the constants load into X with STX instead of A. 2 cycles and 1 byte per key.",
+   "claim": {
+    "cycles_per_execution": 2,
+    "executions_a_pass": 8,
+    "cycles_a_pass": 16,
+    "bytes": 1
+   },
+   "equivalence": "Original: A=key^FF -> X; stores 3 to orb, &7F to ddra, X to ora_nh, reads ora_nh, ASL, stores &0B to orb. New: A holds key^FF throughout until STA ora_nh; 3, &7F, &0B go via X to the same three registers in the same order, SEI before the first orb write and CLI after the last, same bus accesses in the same order. After the window A (was the shifted port read after ASL, still is: LDX does not touch A), C (from ASL, LDX leaves C), and Y are identical; N/Z differ (LDX #&0B vs LDA #&0B both give Z=0,N=0 anyway). X differs on exit (&0B, was the key number) but is dead: the loop reloads X (now by LDX #3) before any read, and both callers (JSR check_for_player_input, in main_game_loop and wait_for_unpause) go on to LDA keys_pressed_bitmap / update_player which load Y/A and never read X. The 2-cycle TAX removed keeps the 2MHz parity, so the 1MHz bus stalls on the following accesses are unchanged: exactly 2 cycles saved per key.",
+   "relies_on": "X dead on exit of check_for_player_input (both callers checked) and at loop entry; STX abs exists on the 65SC12 (4 cycles, same as STA abs). Page crossings: none inside; the code is 1 byte shorter so everything after it in game.6502 up to the next SKIP/ORG (unused_3400_original, ~850 lines of main RAM code including update_enemy_helicopter etc.) slides down 1 byte - the gate must confirm no hot branch or indexed read newly crosses a page. 'GAMEPLAY_RUN' variant (nine keys) takes the same lines and saves 18 cycles. No label inside the window, no entry past a label (grep: only the two JSRs and the loop BPL/BCC target the routine; the loop label is above the window).",
+   "file_written": "build/grind/r3/opt-a124220be8ec.json"
+  }
+ ]
+}

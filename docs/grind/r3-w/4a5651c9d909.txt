@@ -1,0 +1,31 @@
+window 4a5651c9d909: src/render.6502 lines 825-853, 25 instructions, 1,285.8 cycles a pass measured (wait excluded)
+
+  825     95.3     LDA hist0 - 1 - 5,X             \ self-modified: hist0 or hist1                        ;| A=? X=? Y=? C=? Z=? N=? V=? | [$B7FA,x]=? | in:XY out:AXY
+  826    114.3     STA (edge_screen_address),Y                                                            ;| A=? X=? Y=? C=? Z=? N=? V=? | [($85),y]=? | in:AXY out:XY
+  827     38.1     INY                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XY out:XY
+  828          .src6
+  829     95.3     LDA hist0 - 1 - 6,X             \ self-modified: hist0 or hist1                        ;| A=? X=? Y=? C=? Z=? N=? V=? | [$B7F9,x]=? | in:XY out:AXY
+  830    114.3     STA (edge_screen_address),Y                                                            ;| A=? X=? Y=? C=? Z=? N=? V=? | [($85),y]=? | in:AXY out:XY
+  831     38.1     INY                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XY out:XY
+  832          .src7
+  833     95.3     LDA hist0 - 1 - 7,X             \ self-modified: hist0 or hist1                        ;| A=? X=? Y=? C=? Z=? N=? V=? | [$B7F8,x]=? | in:XY out:AXY
+  834    114.3     STA (edge_screen_address),Y                                                            ;| A=? X=? Y=? C=? Z=? N=? V=? | [($85),y]=? | in:AXY out:XY
+  835     38.1     TXA                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XY out:AXY
+  836     38.1     SEC                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXY out:AXYC
+  837     38.1     SBC #8                                                                                 ;| A=? X=? Y=? C=1 Z=? N=? V=? | in:AXYC out:AXYNZCV
+  838     38.9     BEQ done                                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXYNZCV out:AXYNZCV
+  839     36.6     TAX                                                                                    ;| A=1..255 X=? Y=? C=? Z=0 N=? V=? | in:AC out:XC
+  840     54.9     LDA edge_screen_address_low     \ down a character row: &280, round the 16K screen     ;| A=1..255 X=1..255 Y=? C=? Z=0 N=? V=? | $85=? | in:XC out:AXC
+  841     36.6     ADC #&7F                        \ C = 1 from the SBC (X >= 16 here): + &80             ;| A=?≡$85 X=1..255 Y=? C=? Z=? N=? V=? | in:AXC out:AXC
+  842     54.9     STA edge_screen_address_low                                                            ;| A=? X=1..255 Y=? C=? Z=? N=? V=? | $85=? | in:AXC out:XC
+  843     54.9     LDA edge_screen_address_high                                                           ;| A=? X=1..255 Y=? C=? Z=? N=? V=? | $86=? | in:XC out:AXC
+  844     36.6     ADC #&02                                                                               ;| A=?≡$86 X=1..255 Y=? C=? Z=? N=? V=? | in:AXC out:AXN
+  845     37.3     BMI wrap                        \ the hot path falls through                           ;| A=? X=1..255 Y=? C=? Z=? N=? V=? | in:AXN out:AX
+  846     52.6     STA edge_screen_address_high                                                           ;| A=0..127 X=1..255 Y=? C=? Z=? N=0 V=? | $86=? | in:AX out:X
+  847     52.6     BRA group                       \ 65C02 opcode                                         ;| A=0..127 X=1..255 Y=? C=? Z=? N=0 V=? | in:X out:X
+  848          .wrap
+  849      1.5     EOR #&C0                        \ &80-&82 -> &40-&42: - &40                            ;| A=128..255 X=1..255 Y=? C=? Z=? N=1 V=? | in:AX out:AX
+  850      2.3     STA edge_screen_address_high                                                           ;| A=0..127 X=1..255 Y=? C=? Z=? N=0 V=? | $86=? | in:AX out:X
+  851      2.3     BRA group                       \ 65C02 opcode                                         ;| A=0..127 X=1..255 Y=? C=? Z=? N=0 V=? | in:X out:X
+  852          .done
+  853      4.6     RTS                                                                                    ;| A=$00 X=? Y=? C=? Z=1 N=0 V=? | in:AXYNZCV out:AXYNZCV

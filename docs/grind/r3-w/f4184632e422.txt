@@ -1,0 +1,11 @@
+window f4184632e422: src/sky_edges.6502 lines 164-172, 8 instructions, 132.3 cycles a pass measured (wait excluded)
+
+  164     51.5     STA (s_ptr),Y                                                                          ;| A=$00 X=? Y=? C=? Z=? N=? V=? | [($C2),y]=? | in:AXY out:AXY
+  165     17.2     DEY                                                                                    ;| A=$00 X=? Y=? C=? Z=? N=? V=? | in:AXY out:AXY
+  166     25.8     CPY sky_stop                                                                           ;| A=$00 X=? Y=? C=? Z=? N=? V=? | $E2=? | in:AXY out:AXYZ
+  167     24.3     BNE byte                                                                               ;| A=$00 X=? Y=? C=? Z=? N=? V=? | in:AXYZ out:AXY
+  168          .next
+  169      3.0     INX                                                                                    ;| A=? X=? Y=? C=1 Z=? N=? V=? | in:XY out:XY
+  170      4.4     CPX sky_nq                                                                             ;| A=? X=? Y=? C=1 Z=? N=? V=? | $DA=? | in:XY out:XYZ
+  171      4.1     BNE row                                                                                ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XYZ out:XY
+  172      2.0     RTS                                                                                    ;| A=? X=? Y=? C=1 Z=1 N=0 V=? | in:Y out:Y

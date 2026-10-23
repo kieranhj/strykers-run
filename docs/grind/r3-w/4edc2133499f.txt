@@ -1,0 +1,36 @@
+window 4edc2133499f: src/render.6502 lines 1533-1566, 32 instructions, 132.8 cycles a pass measured (wait excluded)
+
+ 1533      4.9     LDX dm_type                     \ part one: the animation's sprite, at the bottom      ;| A=? X=? Y=4..5 C=0 Z=? N=? V=? | $61=? | in:- out:X
+ 1534      4.9     LDA dm_frame                                                                           ;| A=? X=?≡$61 Y=4..5 C=0 Z=? N=? V=? | $63=? | in:X out:AX
+ 1535      3.3     CLC                                                                                    ;| A=?≡$63 X=?≡$61 Y=4..5 C=0 Z=? N=? V=? | in:AX out:AXC
+ 1536      6.5     ADC mover_types_first_sprite_animation_offsets,X                                       ;| A=?≡$63 X=?≡$61 Y=4..5 C=0 Z=? N=? V=? | [$DA1D,x]=? | in:AXC out:A
+ 1537      3.3     TAY                                                                                    ;| A=? X=?≡$61 Y=4..5 C=? Z=? N=? V=? | in:A out:Y
+ 1538      6.5     LDA animation_table,Y                                                                  ;| A=? X=?≡$61 Y=? C=? Z=? N=? V=? | [$D91B,y]=? | in:Y out:A
+ 1539      3.3     LDY #0                                                                                 ;| A=? X=?≡$61 Y=? C=? Z=? N=? V=? | in:A out:AY
+ 1540      9.8     JSR ren_draw_sprite                                                                    ;| A=? X=?≡$61 Y=$00 C=? Z=1 N=0 V=? | in:AY out:-
+ 1541      4.9     LDX dm_type                                                                            ;| A=? X=? Y=? C=? Z=? N=? V=? | $61=? | in:- out:X
+ 1542      6.5     LDA mover_types_parts,X                                                                ;| A=? X=?≡$61 Y=? C=? Z=? N=? V=? | [$DA01,x]=? | in:X out:AX
+ 1543      3.3     CMP #&02                                                                               ;| A=? X=?≡$61 Y=? C=? Z=? N=? V=? | in:AX out:XC
+ 1544      3.8     BCS nothing                     \ one part                                             ;| A=? X=?≡$61 Y=? C=? Z=? N=? V=? | in:XC out:XC
+ 1545      3.3     LDA dm_frame                    \ part two: raised by sprites_y_offset                 ;| A=0..1 X=?≡$61 Y=? C=0 Z=? N=? V=? | $63=? | in:XC out:AXC
+ 1546      4.4     ADC mover_types_second_sprite_offset,X    \ (C clear)                                  ;| A=?≡$63 X=?≡$61 Y=? C=0 Z=? N=? V=? | [$DA92,x]=? | in:AXC out:AXC
+ 1547      2.2     TAY                                                                                    ;| A=? X=?≡$61 Y=? C=? Z=? N=? V=? | in:AXC out:XYC
+ 1548      4.4     LDA sprites_y_offset,Y                                                                 ;| A=? X=?≡$61 Y=? C=? Z=? N=? V=? | [$D99B,y]=? | in:XYC out:AXC
+ 1549      3.3     STA dm_raise                                                                           ;| A=? X=?≡$61 Y=? C=? Z=? N=? V=? | $71=? | in:AXC out:AXC
+ 1550      2.2     TAY                             \ Y = the raise, for mark_part2 and ren_draw_sprite    ;| A=? X=?≡$61 Y=? C=? Z=? N=? V=? | in:AXC out:XYC
+ 1551      3.3     LDA dm_frame                    \ (C still clear: frame <= &3F plus an offset <= &1E)  ;| A=? X=?≡$61 Y=? C=? Z=? N=? V=? | $63=? | in:XYC out:AXYC
+ 1552      4.4     ADC mover_types_first_sprite_animation_offsets + &1C,X    \ the second parts' mover types;| A=?≡$63 X=?≡$61 Y=? C=? Z=? N=? V=? | [$DA39,x]=? | in:AXYC out:AY
+ 1553      2.2     TAX                                                                                    ;| A=? X=?≡$61 Y=? C=? Z=? N=? V=? | in:AY out:XY
+ 1554      4.4     LDA animation_table,X                                                                  ;| A=? X=? Y=? C=? Z=? N=? V=? | [$D91B,x]=? | in:XY out:AY
+ 1555      6.6     JSR mark_part2                                                                         ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AY out:AY
+ 1556      6.6     JSR ren_draw_sprite                                                                    ;| A=? X=$00 Y=? C=? Z=? N=? V=? | in:AY out:-
+ 1557      3.3     LDX dm_type                                                                            ;| A=? X=? Y=? C=? Z=? N=? V=? | $61=? | in:- out:X
+ 1558      4.4     LDA mover_types_parts,X                                                                ;| A=? X=?≡$61 Y=? C=? Z=? N=? V=? | [$DA01,x]=? | in:X out:XZ
+ 1559      3.3     BEQ part_three                  \ three parts                                          ;| A=? X=?≡$61 Y=? C=? Z=? N=? V=? | in:XZ out:X
+ 1560          .nothing
+ 1561      3.2     RTS                             \ one part or two                                      ;| A=1..255 X=?≡$61 Y=? C=? Z=? N=? V=? | in:- out:-
+ 1562          .part_three
+ 1563      3.3     LDA dm_raise                    \ part three: eight rows above part two                ;| A=$00 X=?≡$61 Y=? C=? Z=1 N=0 V=? | $71=? | in:X out:AX
+ 1564      2.2     CLC                                                                                    ;| A=?≡$71 X=?≡$61 Y=? C=? Z=? N=? V=? | in:AX out:AXC
+ 1565      2.2     ADC #&08                                                                               ;| A=?≡$71 X=?≡$61 Y=? C=0 Z=? N=? V=? | in:AXC out:AX
+ 1566      2.2     TAY                                                                                    ;| A=? X=?≡$61 Y=? C=? Z=? N=? V=? | in:AX out:XY

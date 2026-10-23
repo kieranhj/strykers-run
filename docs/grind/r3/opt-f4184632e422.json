@@ -1,0 +1,38 @@
+{
+ "candidates": [
+  {
+   "window": "f4184632e422",
+   "file": "src/sky_edges.6502",
+   "line": 164,
+   "old": "    STA (s_ptr),Y\n    DEY\n    CPY sky_stop\n    BNE byte\n.next\n    INX\n    CPX sky_nq\n    BNE row\n    RTS\n",
+   "new": "    LDA sky_rn,X                    \\ sky_col_row left sky_stop = Y - sky_rn,X: 8 bytes (the whole cells: 64% of\n    EOR #8                          \\ the rows, 92% of the bytes) in a straight line; A = 0 then\n    BNE zf_slow\n    STA (s_ptr),Y\n    DEY\n    STA (s_ptr),Y\n    DEY\n    STA (s_ptr),Y\n    DEY\n    STA (s_ptr),Y\n    DEY\n    STA (s_ptr),Y\n    DEY\n    STA (s_ptr),Y\n    DEY\n    STA (s_ptr),Y\n    DEY\n    STA (s_ptr),Y\n    INX\n    CPX sky_nq\n    BNE row\n    RTS\n.zf_slow\n    LDA #0\n.zf_loop\n    STA (s_ptr),Y\n    DEY\n    CPY sky_stop\n    BNE zf_loop\n.next\n    INX\n    CPX sky_nq\n    BNE row\n    RTS\n",
+   "summary": "Test sky_rn,X = 8 once per column row and, for a whole cell (64% of the rows, 92% of the bytes zeroed), zero its 8 bytes in a straight line (8 STA, 7 DEY: 62 cycles instead of 111, no CPY/BNE per byte); other rows take the old loop after an LDA #0 (+11 cycles). The fast path falls through the test, the slow path is placed after it with its own epilogue so no extra jump. Alternative to the next candidate (same idea, other layout).",
+   "claim": {
+    "cycles_per_execution": 41,
+    "executions_a_pass": 1.4,
+    "cycles_a_pass": 48,
+    "bytes": -38
+   },
+   "equivalence": "Writes: the loop stores A=0 at Y0, Y0-1, ... until Y reaches sky_stop; sky_col_row sets sky_stop = (Y0 - sky_rn,X) mod 256 exactly (SEC; SBC sky_rn,X on the same X, which nothing in the window changes before the test), so when sky_rn,X = 8 the original stores exactly 8 bytes, Y0 down to Y0-7 (Y wraps as 8 bits in both), and ends with Y = stop. The new fast path stores the same 8 bytes with A = 0 (rn EOR 8 = 0), and leaves Y = Y0-7 and the other registers as noted. Any other rn (1..7 in practice: sky_geom makes it L+1, 8 or 1..8) goes to the original loop, with A reloaded as 0: identical. Exits: both paths reach INX/CPX sky_nq/BNE row/RTS with X unchanged by the stores (the row loop is the same). Live after: sky_col_zero is only reached by JMP from sky_edges.zero (grep sky_col_zero), whose callers (sky_edges .left/.right) reload A and use no X, Y or flags after JSR zero, and sky_take_off reloads Y (LDY sky_idx) after JSR sky_edges; sky_stop is rewritten by sky_col_row before every read (sky_col_check and sky_col_zero are the only readers); so Y (Y0-7 instead of Y0-8 after a fast row), A and the flags at the exit are dead. The BCS next from sky_col_row still reaches .next (label kept); .byte, still before the first line, now labels the test and is not otherwise referenced (BNE byte was the only reference).",
+   "relies_on": "Measured on the bench build (ctl-3db31c8), 1500 passes seed 1: 706 calls, 3278 rows, of which sky_rn,X = 8: 2098 (16784 of 18296 bytes), 1: 908, 2: 232, 3 and 4: 20 each; holding RIGHT 600 passes: 115 calls, 460 rows, rn 8: 287, 7: 58, 3: 58, 2: 57. Saving per fast row 111 - (4+2+2+62) = 41; each other row costs +11 (LDA abs,X 4 + EOR 2 + BNE taken 3 + LDA #0 2), so net about 48 cycles a pass on seed 1 (2098*41 - 1180*11 = 73,000 / 1500) and 16 holding RIGHT, before page effects. sky_rn,X = &BCA2..&BCA7 does not cross a page (no +1). Page crossings: sky_col_zero is at &8FCB in the bench build, this grows the code by 38 bytes so from &8FD6 it runs to &9008 and the slow path's code (&8FFA on) straddles &9000: the slow loop's BNE zf_loop (taken only for rows of 2 or more bytes, ~330 times in 1500 passes) and the slow epilogue's BNE row (taken ~1000 times) each cost +1 when taken; the original had no crossing. The fast path's epilogue and branch are inside &8F00-&8FFF (BNE zf_slow forward 31, BNE row back 57 bytes). Net page cost about 1 cycle a pass; the code after sky_col_zero is the free SKIP up to &9000 + PAD_START (110 bytes free in the ship build before this, so room remains), nothing else slides. sky_rn is read under the same ROMSEL as sky_col_row's read of it. New labels zf_slow, zf_loop (scoped in sky_col_zero's braces); .next kept.",
+   "file_written": "build/grind/r3/opt-f4184632e422.json"
+  },
+  {
+   "window": "f4184632e422",
+   "file": "src/sky_edges.6502",
+   "line": 164,
+   "old": "    STA (s_ptr),Y\n    DEY\n    CPY sky_stop\n    BNE byte\n.next\n    INX\n    CPX sky_nq\n    BNE row\n    RTS\n",
+   "new": "    LDA sky_rn,X                    \\ sky_col_row left sky_stop = Y - sky_rn,X: 8 bytes (the whole cells: 64% of\n    EOR #8                          \\ the rows, 92% of the bytes) in a straight line; A = 0 then\n    BEQ zh_fast\n    LDA #0\n.zh_loop\n    STA (s_ptr),Y\n    DEY\n    CPY sky_stop\n    BNE zh_loop\n.next\n    INX\n    CPX sky_nq\n    BNE row\n    RTS\n.zh_fast\n    STA (s_ptr),Y\n    DEY\n    STA (s_ptr),Y\n    DEY\n    STA (s_ptr),Y\n    DEY\n    STA (s_ptr),Y\n    DEY\n    STA (s_ptr),Y\n    DEY\n    STA (s_ptr),Y\n    DEY\n    STA (s_ptr),Y\n    DEY\n    STA (s_ptr),Y\n    INX\n    CPX sky_nq\n    BNE row\n    RTS\n",
+   "summary": "Same as the first candidate but the fast path is the branch target (BEQ) and the old loop falls through the test: fast rows 9 cycles of test (4+2+3), others +10; the fast path's epilogue ends past &9000 in the bench layout (+1 on its BNE row). Alternative to the first candidate; slightly worse by about 1 cycle a pass on the bench layout but its slow path is nearer the old code.",
+   "claim": {
+    "cycles_per_execution": 40,
+    "executions_a_pass": 1.4,
+    "cycles_a_pass": 47,
+    "bytes": -38
+   },
+   "equivalence": "Writes: the loop stores A=0 at Y0, Y0-1, ... until Y reaches sky_stop; sky_col_row sets sky_stop = (Y0 - sky_rn,X) mod 256 exactly (SEC; SBC sky_rn,X on the same X, which nothing in the window changes before the test), so when sky_rn,X = 8 the original stores exactly 8 bytes, Y0 down to Y0-7 (Y wraps as 8 bits in both), and ends with Y = stop. The new fast path stores the same 8 bytes with A = 0 (rn EOR 8 = 0), and leaves Y = Y0-7 and the other registers as noted. Any other rn (1..7 in practice: sky_geom makes it L+1, 8 or 1..8) goes to the original loop, with A reloaded as 0: identical. Exits: both paths reach INX/CPX sky_nq/BNE row/RTS with X unchanged by the stores (the row loop is the same). Live after: sky_col_zero is only reached by JMP from sky_edges.zero (grep sky_col_zero), whose callers (sky_edges .left/.right) reload A and use no X, Y or flags after JSR zero, and sky_take_off reloads Y (LDY sky_idx) after JSR sky_edges; sky_stop is rewritten by sky_col_row before every read (sky_col_check and sky_col_zero are the only readers); so Y (Y0-7 instead of Y0-8 after a fast row), A and the flags at the exit are dead. The BCS next from sky_col_row still reaches .next (label kept); .byte, still before the first line, now labels the test and is not otherwise referenced (BNE byte was the only reference).",
+   "relies_on": "Same measurements as the first candidate. Fast row saves 111 - (4+2+3+62) = 40, other rows +10, net about 47 a pass on seed 1. Page crossings in the bench layout: test &8FD6, slow loop &8FDD-&8FE5 and its epilogue to &8FEB (all in &8F, no crossing), the fast path from &8FEC straddles &9000 (straight-line, free) and its epilogue's BNE row (at &9006, target &8FCF) crosses a page: +1 each time taken (~1,700 of the fast rows in 1500 passes, about 1.1 cycles a pass); the original had none. Grows code 38 bytes into the free SKIP after sky_edges; nothing else slides. New labels zh_fast, zh_loop; .next kept.",
+   "file_written": "build/grind/r3/opt-f4184632e422.json"
+  }
+ ]
+}

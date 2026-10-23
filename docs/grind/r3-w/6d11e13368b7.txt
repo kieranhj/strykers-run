@@ -1,0 +1,47 @@
+window 6d11e13368b7: src/render.6502 lines 1122-1166, 32 instructions, 205.3 cycles a pass measured (wait excluded)
+
+ 1122      0.0     STA list_changed                                                                       ;| A=$C0 X=? Y=? C=1 Z=0 N=1 V=? | $74=? | in:AX out:X
+ 1123      0.0     BRA next_a                      \ 65C02 opcode                                         ;| A=$C0 X=? Y=? C=1 Z=0 N=1 V=? | in:X out:X
+ 1124          .next_b
+ 1125      4.7     LDY list_b                                                                             ;| A=? X=? Y=? C=? Z=? N=? V=? | $6E=? | in:X out:XY
+ 1126      3.1     INY                                                                                    ;| A=? X=? Y=?≡$6E C=? Z=? N=? V=? | in:XY out:XY
+ 1127      4.7     BRA each_b                      \ 65C02 opcode                                         ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XY out:XY
+ 1128          .next_a
+ 1129      5.3     INX                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:X out:X
+ 1130      7.9     BRA each_a                      \ 65C02 opcode                                         ;| A=? X=? Y=? C=? Z=? N=? V=? | in:X out:X
+ 1131          .swept
+ 1132      3.0     LDA list_changed                                                                       ;| A=? X=? Y=? C=1 Z=1 N=0 V=? | $74=? | in:- out:Z
+ 1133      2.0     BNE again                                                                              ;| A=?≡$74 X=? Y=? C=1 Z=? N=? V=? | in:Z out:-
+ 1134      6.0     RTS                                                                                    ;| A=$00≡$74 X=? Y=? C=1 Z=1 N=0 V=? | in:- out:-
+ 1135          }
+ 1136          
+ 1137          \ list entry list_n for slot ren_i: its recorded rectangle (Y = slot + boff)
+ 1138          .list_recorded
+ 1139          {
+ 1140      5.1     TXA                             \ X = ren_i on entry (the one caller)                  ;| A=0..254 X=? Y=? C=? Z=0 N=? V=? | in:XY out:AY
+ 1141      7.6     LDX list_n                                                                             ;| A=? X=? Y=? C=? Z=? N=? V=? | $53=? | in:AY out:AXY
+ 1142     12.7     STA list_slot,X                                                                        ;| A=? X=?≡$53 Y=? C=? Z=? N=? V=? | [list_slot,x]=? | in:AXY out:XY
+ 1143     10.2     LDA rec_type,Y                                                                         ;| A=? X=?≡$53 Y=? C=? Z=? N=? V=? | [REN_BASE,y]=? | in:XY out:AXY
+ 1144      5.1     AND #&7F                                                                               ;| A=? X=?≡$53 Y=? C=? Z=? N=? V=? | in:AXY out:AXY
+ 1145      7.6     STA list_type                                                                          ;| A=0..127 X=?≡$53 Y=? C=? Z=? N=0 V=? | $5D=? | in:AXY out:XY
+ 1146     10.2     LDA rec_wxl,Y                   \ where it was drawn (BUGS #7)                         ;| A=0..127 X=?≡$53 Y=? C=? Z=? N=0 V=? | [rec_wxl,y]=? | in:XY out:AXY
+ 1147      7.6     STA list_x_lo                                                                          ;| A=? X=?≡$53 Y=? C=? Z=? N=? V=? | $54=? | in:AXY out:XY
+ 1148     10.2     LDA rec_wxh,Y                                                                          ;| A=? X=?≡$53 Y=? C=? Z=? N=? V=? | [rec_wxh,y]=? | in:XY out:AXY
+ 1149      7.6     STA list_x_hi                                                                          ;| A=? X=?≡$53 Y=? C=? Z=? N=? V=? | $55=? | in:AXY out:XY
+ 1150     10.2     LDA rec_wy,Y                                                                           ;| A=? X=?≡$53 Y=? C=? Z=? N=? V=? | [rec_wy,y]=? | in:XY out:AX
+ 1151      7.6     JMP list_finish                                                                        ;| A=? X=?≡$53 Y=? C=? Z=? N=? V=? | in:AX out:AX
+ 1152          }
+ 1153          
+ 1154          \ list entry list_n for slot ren_i: its live rectangle
+ 1155          .list_live
+ 1156          {
+ 1157      6.1     LDX list_n                                                                             ;| A={$22,$40} X=? Y=? C=? Z=0 N=0 V=? | $53=? | in:- out:X
+ 1158      6.1     LDY ren_i                                                                              ;| A={$22,$40} X=?≡$53 Y=? C=? Z=? N=? V=? | $4D=? | in:X out:XY
+ 1159      4.1     TYA                                                                                    ;| A={$22,$40} X=?≡$53 Y=?≡$4D C=? Z=? N=? V=? | in:XY out:AXY
+ 1160     10.1     STA list_slot,X                                                                        ;| A=?≡$4D X=?≡$53 Y=?≡$4D C=? Z=? N=? V=? | [list_slot,x]=? | in:AXY out:Y
+ 1161      6.1     STY dm_slot                     \ world_of_address's slot (BUGS #10); put_on sets its own;| A=?≡$4D X=?≡$53 Y=?≡$4D C=? Z=? N=? V=? | $58=? | in:Y out:Y
+ 1162      8.1     LDA movers_type_and_colour,Y                                                           ;| A=?≡$4D X=?≡$53 Y=?≡$4D C=? Z=? N=? V=? | [$1300,y]=? | in:Y out:AY
+ 1163      4.1     AND #&7F                                                                               ;| A=? X=?≡$53 Y=?≡$4D C=? Z=? N=? V=? | in:AY out:AY
+ 1164      6.1     STA list_type                                                                          ;| A=0..127 X=?≡$53 Y=?≡$4D C=? Z=? N=0 V=? | $5D=? | in:AY out:Y
+ 1165      8.1     LDA movers_screen_address_low,Y \ where it will be drawn (BUGS #7), in the logic's view;| A=0..127 X=?≡$53 Y=?≡$4D C=? Z=? N=0 V=? | [$13AA,y]=? | in:Y out:AY
+ 1166      8.1     LDX movers_screen_address_high,Y                                                       ;| A=? X=?≡$53 Y=?≡$4D C=? Z=? N=? V=? | [$13CC,y]=? | in:AY out:AX

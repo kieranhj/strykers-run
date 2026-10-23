@@ -1,0 +1,40 @@
+window ba449511bac7: src/sky_hazel_c.6502 lines 79-116, 32 instructions, 120.2 cycles a pass measured (wait excluded)
+
+   79      0.5     STA sky_bq                                                                             ;| A=1..32 X=? Y=? C=? Z=0 N=0 V=? | $AC=? | in:A out:-
+   80          .placed
+   81      1.0     JSR row_ptr                                                                            ;| A=? X=? Y=? C=? Z=? N=? V=? | in:- out:-
+   82      0.5     LDA p_ptr                       \ the indices, from the top row down                   ;| A=? X=? Y=? C=? Z=? N=? V=? | $AA=? | in:- out:A
+   83      0.3     CLC                                                                                    ;| A=?≡$AA X=? Y=? C=? Z=? N=? V=? | in:A out:AC
+   84      0.3     ADC #2                                                                                 ;| A=?≡$AA X=? Y=? C=0 Z=? N=? V=? | in:AC out:AC
+   85      0.7     STA src + 1                                                                            ;| A=? X=? Y=? C=? Z=? N=? V=? | sky_build.src+1=? | in:AC out:C
+   86      0.5     LDA p_ptr + 1                                                                          ;| A=? X=? Y=? C=? Z=? N=? V=? | $AB=? | in:C out:AC
+   87      0.3     ADC #0                                                                                 ;| A=?≡$AB X=? Y=? C=? Z=? N=? V=? | in:AC out:A
+   88      0.7     STA src + 2                                                                            ;| A=? X=? Y=? C=? Z=? N=? V=? | $C28A=? | in:A out:-
+   89      0.3     LDX #0                                                                                 ;| A=? X=? Y=? C=? Z=? N=? V=? | in:- out:X
+   90          .byte
+   91          .src
+   92     11.2     LDA &FFFF,X                     \ self-modified: the column's indices                  ;| A=? X=? Y=? C=? Z=? N=? V=? | [$FFFF,x]=? | in:X out:AX
+   93      5.5     TAY                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AX out:XY
+   94          .pix
+   95     11.0     LDA &FFFF,Y                     \ self-modified: the pixel table                       ;| A=? X=? Y=? C=? Z=? N=? V=? | [$FFFF,y]=? | in:XY out:AX
+   96      8.3     LDY sky_line                                                                           ;| A=? X=? Y=? C=? Z=? N=? V=? | $E6=? | in:AX out:AXY
+   97     16.5     STA (w_ptr),Y                                                                          ;| A=? X=? Y=?≡$E6 C=? Z=? N=? V=? | [($A8),y]=? | in:AXY out:XY
+   98      5.5     INX                                                                                    ;| A=? X=? Y=?≡$E6 C=? Z=? N=? V=? | in:XY out:XY
+   99      5.5     INY                                                                                    ;| A=? X=? Y=?≡$E6 C=? Z=? N=? V=? | in:XY out:XY
+  100      5.5     CPY #8                                                                                 ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XY out:XYC
+  101      7.9     BCC same_cell                                                                          ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XYC out:XY
+  102      1.7     DEC sky_bq                      \ the line below is the character row below's first    ;| A=? X=? Y=8..255 C=1 Z=? N=? V=? | $AC=? | in:X out:X
+  103      2.1     JSR row_ptr                                                                            ;| A=? X=? Y=8..255 C=1 Z=? N=? V=? | in:X out:X
+  104      0.7     LDY #0                                                                                 ;| A=? X=? Y=? C=? Z=? N=? V=? | in:X out:XY
+  105          .same_cell
+  106      8.3     STY sky_line                                                                           ;| A=? X=? Y=0..7 C=? Z=? N=? V=? | $E6=? | in:XY out:X
+  107     13.8     DEC sky_n                                                                              ;| A=? X=? Y=0..7 C=? Z=? N=? V=? | $DE=? | in:X out:XZ
+  108      8.1     BNE byte                                                                               ;| A=? X=? Y=0..7 C=? Z=? N=? V=? | in:XZ out:X
+  109          .next_col
+  110      0.3     LDY #1                          \ on 2 + count                                         ;| A=? X=? Y=0..7 C=? Z=1 N=0 V=? | in:X out:XY
+  111      0.9     LDA (p_ptr),Y                                                                          ;| A=? X=? Y=$01 C=? Z=0 N=0 V=? | [($AA),y]=? | in:XY out:AXY
+  112      0.3     SEC                                                                                    ;| A=? X=? Y=$01 C=? Z=? N=? V=? | in:AXY out:AXYC
+  113      0.3     ADC #1                                                                                 ;| A=? X=? Y=$01 C=1 Z=? N=? V=? | in:AXYC out:AXY
+  114      0.3     CLC                                                                                    ;| A=? X=? Y=$01 C=? Z=? N=? V=? | in:AXY out:AXYC
+  115      0.5     ADC p_ptr                                                                              ;| A=? X=? Y=$01 C=0 Z=? N=? V=? | $AA=? | in:AXYC out:AXYCV
+  116      0.5     STA p_ptr                                                                              ;| A=? X=? Y=$01 C=? Z=? N=? V=? | $AA=? | in:AXYCV out:XYCV

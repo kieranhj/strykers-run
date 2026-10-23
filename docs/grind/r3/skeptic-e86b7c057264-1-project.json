@@ -1,0 +1,6 @@
+{
+ "refuted": true,
+ "reason": "No room. The candidate grows render.6502 by 32 bytes (old 19 bytes: TYA/ASL x3/EOR#/ADC#/BCC + y_known's 9; new 51: CPY/BCS/LDA/AND/EOR abs,Y/STA/RTS 14 + the 25-byte table + CLC/BRA 3 + y_known 9). Built with the candidate applied to HEAD in a scratch copy (Baron 0.5.3): the shipping build and -Gameplay assemble, but the DEBUG_FULLREDRAW build (the oracle every passlock/worldrun/scrollleft proof compares against) fails 'src/main.6502:151: bank 4 overruns the renderer's workspace by 25' (HEAD's oracle ends bank 4 at &B3F9, 7 bytes under REN_BASE &B400), and the SKY_HELI=0 build fails the same ASSERT by 23. So the gate cannot build its control and a supported flag set stops assembling. Semantics otherwise checked and sound: Y reaches 0..27 at y_of_row (wa_rows_guess max 25, +1 row_known, +1 late_column), the original takes row_25 for every Y 25..31 as the new CPY #25/BCS does, row_25 ignores A and needs only C clear (the stub's CLC), and neither caller (list_live, the record writer) reads A or the flags after world_of_address. Also in the gameplay build the new table lands at &9EF2-&9F0A, crossing a page (rows 14-24 pay +1), so the claimed 11 cycles is not uniform across builds.",
+ "cycles_per_execution_recounted": 11,
+ "bytes_recounted": -32
+}

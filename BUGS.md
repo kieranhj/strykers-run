@@ -368,6 +368,7 @@ the 1986 original and on the shipping build (the original's rules with this fix)
 quick repeats (172 deaths within 10 passes of the one before, against 57). The original's 9 lives
 were worth about 5 hits.
 
+
 ## 14. A vehicle's fuel low byte is never initialised: it carries over from the last vehicle (original behaviour; KEPT, nothing changed)
 
 Reported 2026-10-22 from the original (scarybeasts, who found it in the standard version too): fuel

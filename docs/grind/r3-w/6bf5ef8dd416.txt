@@ -1,0 +1,34 @@
+window 6bf5ef8dd416: src/game.6502 lines 1931-1962, 32 instructions, 114.1 cycles a pass measured (wait excluded)
+
+ 1931      5.9     STA mover_x_low                                                                        ;| A=? X=? Y=?≡$79 C=? Z=? N=? V=? | $F8=? | in:AYV out:YV
+ 1932      5.9     LDX &7A                                                                                ;| A=? X=? Y=?≡$79 C=? Z=? N=? V=? | $7A=? | in:YV out:XYV
+ 1933      7.9     LDA mover_types_parts,X         \ ***                                                  ;| A=? X=?≡$7A Y=?≡$79 C=? Z=? N=? V=? | [$DA01,x]=? | in:XYV out:AXYV
+ 1934      3.9     CMP #&02                        \ ***                                                  ;| A=? X=?≡$7A Y=?≡$79 C=? Z=? N=? V=? | in:AXYV out:AXYNZCV
+ 1935      4.8     BCS leave_1f08                  \ Leave if the mover only uses one sprite              ;| A=? X=?≡$7A Y=?≡$79 C=? Z=? N=? V=? | in:AXYNZCV out:AXYNZCV
+ 1936      4.2     LDA movers_frame_and_flip,Y                                                            ;| A=0..1 X=?≡$7A Y=?≡$79 C=0 Z=? N=? V=? | [$1322,y]=? | in:XYC out:AXC
+ 1937      2.1     AND #&3F                                                                               ;| A=? X=?≡$7A Y=?≡$79 C=0 Z=? N=? V=? | in:AXC out:AXC
+ 1938      4.2     ADC mover_types_second_sprite_offset,X                                                 ;| A=0..63 X=?≡$7A Y=?≡$79 C=0 Z=? N=0 V=? | [$DA92,x]=? | in:AXC out:A
+ 1939      2.1     TAX                                                                                    ;| A=? X=?≡$7A Y=?≡$79 C=? Z=? N=? V=? | in:A out:X
+ 1940      4.2     LDA sprites_y_offset,X                                                                 ;| A=? X=? Y=?≡$79 C=? Z=? N=? V=? | [$D99B,x]=? | in:X out:A
+ 1941      3.1     STA y_offset                                                                           ;| A=? X=? Y=?≡$79 C=? Z=? N=? V=? | $78=? | in:A out:-
+ 1942      3.1     LDA &7A                                                                                ;| A=? X=? Y=?≡$79 C=? Z=? N=? V=? | $7A=? | in:- out:A
+ 1943      2.1     CLC                                                                                    ;| A=?≡$7A X=? Y=?≡$79 C=? Z=? N=? V=? | in:A out:AC
+ 1944      2.1     ADC #&1C                        \ *** Use mover types &1c - &37 for second part of mover;| A=?≡$7A X=? Y=?≡$79 C=0 Z=? N=? V=? | in:AC out:AC
+ 1945      2.1     TAX                                                                                    ;| A=? X=? Y=?≡$79 C=? Z=? N=? V=? | in:AC out:XC
+ 1946      6.2     JSR get_mover_sprite_and_screen_addresses                                              ;| A=? X=? Y=?≡$79 C=? Z=? N=? V=? | in:XC out:AXCV
+ 1947      3.1     LDY y_offset                                                                           ;| A=? X=? Y={0,8} C=? Z=? N=0 V=? | $78=? | in:AXCV out:AXYNZCV
+ 1948      6.2     JSR subtract_Y_rows_from_screen_address_in_AX                                          ;| A=? X=? Y=?≡$78 C=? Z=? N=? V=? | in:AXYNZCV out:AX
+ 1949      6.2     JSR plot_mover_sprite           \ Plot second part of mover (e.g. player's torso)      ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AX out:CV
+ 1950      3.1     LDY mover                                                                              ;| A=$40 X=? Y=? C=? Z=0 N=0 V=? | $79=? | in:CV out:YCV
+ 1951      6.2     JSR get_mover_Y_x                                                                      ;| A=$40 X=? Y=?≡$79 C=? Z=? N=? V=? | in:YCV out:YCV
+ 1952      3.1     LDX &7A                                                                                ;| A=? X=? Y=? C=? Z=? N=? V=? | $7A=? | in:YCV out:XYCV
+ 1953      4.2     LDA mover_types_parts,X         \ ***                                                  ;| A=? X=?≡$7A Y=? C=? Z=? N=? V=? | [$DA01,x]=? | in:XYCV out:AXYNZCV
+ 1954      2.4     BNE leave_1f08                  \ *** Leave if the mover only uses two sprites         ;| A=? X=?≡$7A Y=? C=? Z=? N=? V=? | in:AXYNZCV out:AXYNZCV
+ 1955      2.1     LDA y_offset                                                                           ;| A=$00 X=?≡$7A Y=? C=? Z=1 N=0 V=? | $78=? | in:XY out:AXY
+ 1956      1.4     CLC                                                                                    ;| A=?≡$78 X=?≡$7A Y=? C=? Z=? N=? V=? | in:AXY out:AXYC
+ 1957      1.4     ADC #&08                                                                               ;| A=?≡$78 X=?≡$7A Y=? C=0 Z=? N=? V=? | in:AXYC out:AXYV
+ 1958      2.1     STA y_offset                                                                           ;| A=? X=?≡$7A Y=? C=? Z=? N=? V=? | $78=? | in:AXYV out:XYV
+ 1959      2.1     STZ sprite_data_offset          \ 65C02 opcode                                         ;| A=? X=?≡$7A Y=? C=? Z=? N=? V=? | $CD=? | in:XYV out:XYV
+ 1960      2.7     LDA mover_types_third_sprite,X                                                         ;| A=? X=?≡$7A Y=? C=? Z=? N=? V=? | [$DA8D,x]=? | in:XYV out:AYV
+ 1961      1.4     TAX                                                                                    ;| A=? X=?≡$7A Y=? C=? Z=? N=? V=? | in:AYV out:XYV
+ 1962      2.7     LDA movers_frame_and_flip,Y                                                            ;| A=? X=? Y=? C=? Z=? N=? V=? | [$1322,y]=? | in:XYV out:XNV

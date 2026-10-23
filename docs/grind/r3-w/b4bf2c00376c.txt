@@ -1,0 +1,35 @@
+window b4bf2c00376c: src/lib/sfx50.6502 lines 187-219, 25 instructions, 200.6 cycles a pass measured (wait excluded)
+
+  187     18.2     DEY                                                                                    ;| A=? X=0..3 Y=1..2 C=? Z=0 N=0 V=? | in:XYCV out:XYZCV
+  188     22.8     BNE wait_low                                                                           ;| A=? X=0..3 Y=0..1 C=? Z=? N=0 V=? | in:XYZCV out:XYCV
+  189      9.1     LDY #&08                                                                               ;| A=? X=0..3 Y=$00 C=? Z=1 N=0 V=? | in:XCV out:XYCV
+  190     22.8     STY sysvia_orb                  \ and high again                                       ;| A=? X=0..3 Y=$08 C=? Z=0 N=0 V=? | KBD_PORTB=? | in:XYCV out:XCV
+  191      9.1     LDY #4                                                                                 ;| A=? X=0..3 Y=$08 C=? Z=0 N=0 V=? | in:XCV out:XYCV
+  192          .wait_high
+  193     36.4     DEY                                                                                    ;| A=? X=0..3 Y=1..4 C=? Z=0 N=0 V=? | in:XYCV out:XYZCV
+  194     50.1     BNE wait_high                                                                          ;| A=? X=0..3 Y=0..3 C=? Z=? N=0 V=? | in:XYZCV out:XYCV
+  195     27.3     RTS                                                                                    ;| A=? X=0..3 Y=$00 C=? Z=1 N=0 V=? | in:XYCV out:XYCV
+  196          .noise                              \ sfx_output's noise channel (its BEQ noise lands here)
+  197      1.4     LDA sfx_p_lo,X                  \ noise: only when it changes (writing it restarts the noise);| A=1..255 X=$03 Y=? C=1 Z=1 N=0 V=? | [$A5D7,x]=? | in:XV out:AXV
+  198      0.7     AND #&07                                                                               ;| A=? X=$03 Y=? C=1 Z=? N=? V=? | in:AXV out:AXV
+  199      1.4     CMP sfx_noise_written,X                                                                ;| A=0..7 X=$03 Y=? C=1 Z=? N=0 V=? | [$A5EB,x]=? | in:AXV out:AXZV
+  200      1.0     BEQ sfx_output.amplitude                                                               ;| A=0..7 X=$03 Y=? C=? Z=? N=? V=? | in:AXZV out:AXV
+  201      0.1     STA sfx_noise_written,X                                                                ;| A=0..7 X=$03 Y=? C=? Z=0 N=? V=? | [$A5EB,x]=? | in:AXV out:AXV
+  202      0.1     ORA #&E0                                                                               ;| A=0..7≡$A5EE X=$03 Y=? C=? Z=0 N=? V=? | in:AXV out:AXV
+  203      0.2     JSR sfx_write                                                                          ;| A=224..231 X=$03 Y=? C=? Z=0 N=1 V=? | in:AXV out:XV
+  204      0.1     BRA sfx_output.amplitude        \ 65C02 opcode                                         ;| A=224..231 X=$03 Y=$00 C=? Z=1 N=0 V=? | in:XV out:XV
+  205          }
+  206          
+  207          \ All four channels off, and forgotten (requests too).
+  208          .sfx_silence
+  209          {
+  210              PHP                                                                                    ;| A=81..255 X=? Y=? C=? Z=0 N=? V=? | in:NZCV out:-
+  211              SEI                                                                                    ;| A=81..255 X=? Y=? C=? Z=0 N=? V=? | in:- out:-
+  212              LDX #3                                                                                 ;| A=81..255 X=? Y=? C=? Z=0 N=? V=? | in:- out:X
+  213          .each
+  214              STZ sfx_request,X                                                                      ;| A=81..255 X=0..3 Y=? C=? Z=? N=0 V=? | [$2A42,x]=? | in:X out:X
+  215              JSR sfx_next_ramp.ended         \ its channel off and forgotten (ends in sfx_write: Y = 0);| A=81..255 X=0..3 Y=? C=? Z=? N=0 V=? | in:X out:XY
+  216              DEX                                                                                    ;| A={$9F,$BF,$DF,$FF} X=0..3 Y=$00 C=? Z=1 N=0 V=? | in:XY out:XYN
+  217              BPL each                                                                               ;| A={$9F,$BF,$DF,$FF} X={0,1,2,$FF} Y=$00 C=? Z=? N=? V=? | in:XYN out:XY
+  218              PLP                                                                                    ;| A={$9F,$BF,$DF,$FF} X=$FF Y=$00 C=? Z=0 N=1 V=? | in:XY out:XYCV
+  219              RTS                                                                                    ;| A={$9F,$BF,$DF,$FF} X=$FF Y=$00 C=? Z=0 N=? V=? | in:XYCV out:XYCV

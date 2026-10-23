@@ -1,0 +1,50 @@
+window 5e2cbccb0d22: src/render.6502 lines 1917-1964, 32 instructions, 103.4 cycles a pass measured (wait excluded)
+
+ 1917      6.6     BCC on_page                                                                            ;| A=? X=? Y=$09 C=? Z=? N=? V=? | in:C out:C
+ 1918      0.3     INC v_ptr + 1                                                                          ;| A=? X=? Y=$09 C=1 Z=? N=? V=? | $C5=? | in:- out:-
+ 1919      0.1     CLC                             \ carry clear to return                                ;| A=? X=? Y=$09 C=1 Z=? N=? V=? | in:- out:C
+ 1920          .on_page
+ 1921      6.7     LDA &C0                                                                                ;| A=? X=? Y=$09 C=0 Z=? N=? V=? | $C0=? | in:C out:AC
+ 1922     11.1     STA (v_ptr)                     \ 65C02 opcode                                         ;| A=?≡$C0 X=? Y=$09 C=0 Z=? N=? V=? | [($C4)]=? | in:AC out:C
+ 1923      4.5     LDY #1                                                                                 ;| A=?≡$C0 X=? Y=$09 C=0 Z=? N=? V=? | in:C out:YC
+ 1924      6.7     LDA &C1                                                                                ;| A=?≡$C0 X=? Y=$01 C=0 Z=0 N=0 V=? | $C1=? | in:YC out:AYC
+ 1925     13.4     STA (v_ptr),Y                                                                          ;| A=?≡$C1 X=? Y=$01 C=0 Z=? N=? V=? | [($C4),y]=? | in:AYC out:AC
+ 1926     13.4     RTS                             \ carry clear: drawn                                   ;| A=?≡$C1 X=? Y=$01 C=0 Z=? N=? V=? | in:AC out:AC
+ 1927          .in_hazel
+ 1928      4.4     JSR compiled_direct                                                                    ;| A=$00 X=0..127 Y=? C=0 Z=1 N=0 V=? | in:AXYNZCV out:C
+ 1929      2.2     BCC called                                                                             ;| A=? X=? Y=? C=? Z=? N=? V=? | in:C out:C
+ 1930          .unsafe                             \ the code's row pointers used b_ptr and ds_c
+ 1931      0.1     LDA &C0                                                                                ;| A=? X=? Y=? C=1 Z=? N=? V=? | $C0=? | in:- out:A
+ 1932      0.1     STA b_ptr                                                                              ;| A=?≡$C0 X=? Y=? C=1 Z=? N=? V=? | $C9=? | in:A out:-
+ 1933      0.1     LDA &C1                                                                                ;| A=?≡$C0 X=? Y=? C=1 Z=? N=? V=? | $C1=? | in:- out:A
+ 1934      0.1     STA b_ptr + 1                                                                          ;| A=?≡$C1 X=? Y=? C=1 Z=? N=? V=? | $CA=? | in:A out:-
+ 1935      0.1     LDA ds_n                                                                               ;| A=?≡$C1 X=? Y=? C=1 Z=? N=? V=? | $68=? | in:- out:A
+ 1936      0.1     STA ds_c                                                                               ;| A=?≡$68 X=? Y=? C=1 Z=? N=? V=? | $CC=? | in:A out:A
+ 1937      0.0     SEC                                                                                    ;| A=?≡$68 X=? Y=? C=1 Z=? N=? V=? | in:A out:AC
+ 1938      0.1     RTS                                                                                    ;| A=?≡$68 X=? Y=? C=1 Z=? N=? V=? | in:AC out:AC
+ 1939          }
+ 1940          
+ 1941          \ up_a_cell: AX = a character cell's top line; returns AX = the bottom line of the cell above
+ 1942          \ (&279 lower, round the 16K screen), as the plotter moves up a group.
+ 1943          .up_a_cell
+ 1944          {
+ 1945              SEC                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXY out:AXYC
+ 1946              SBC #&79                                                                               ;| A=? X=? Y=? C=1 Z=? N=? V=? | in:AXYC out:AXYC
+ 1947              PHA                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXYC out:XYC
+ 1948              TXA                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XYC out:AYC
+ 1949              SBC #&02                                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AYC out:AYV
+ 1950              CMP #&40                                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AYV out:AYCV
+ 1951              BCS in_ring                                                                            ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AYCV out:AYCV
+ 1952              ADC #&40                                                                               ;| A=0..63 X=? Y=? C=0 Z=? N=? V=? | in:AYC out:AYCV
+ 1953          .in_ring
+ 1954              TAX                                                                                    ;| A=64..255 X=? Y=? C=? Z=? N=? V=? | in:AYCV out:XYCV
+ 1955              PLA                                                                                    ;| A=64..255 X=64..255 Y=? C=? Z=0 N=? V=? | in:XYCV out:AXYNZCV
+ 1956              RTS                                                                                    ;| A=? X=64..255 Y=? C=? Z=? N=? V=? | in:AXYNZCV out:AXYNZCV
+ 1957          }
+ 1958          
+ 1959          \ raise_address: AX up Y rows (Y may be 0). A row up is one byte lower inside a cell; from a
+ 1960          \ cell's top line it is the cell above's bottom line.
+ 1961          .raise_address
+ 1962          {
+ 1963     16.8     STA lo_imm                      \ RAM for cycles 4: in one step, not a cell at a time  ;| A=? X=? Y=? C=? Z=? N=? V=? | raise_address.lo_imm=? | in:AXY out:AXY
+ 1964     16.8     STY rows_imm                    \ self-modified: lo and rows into the operands below   ;| A=? X=? Y=? C=? Z=? N=? V=? | raise_address.rows_imm=? | in:AXY out:AX

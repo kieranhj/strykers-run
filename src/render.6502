@@ -268,22 +268,24 @@ ENDIF
 
 \ ---- the view: the zero-page values the plotter and the lives read ---------------------------
 .view_to_buffer                     \ X = screen: the live view becomes that screen's
+                                    \ slot 2 always: nothing reads slots 0 and 1, and the one call with X = back follows buffer_to_view,
+                                    \ so the live view is slot 2's already; absolute stores are a cycle cheaper than ,X
     LDA screen_start_address_low
-    STA buf_ss_lo,X
+    STA buf_ss_lo + 2
     LDA screen_start_address_high
-    STA buf_ss_hi,X
+    STA buf_ss_hi + 2
     LDA crtc_start_address_low
-    STA buf_crtc_lo,X
+    STA buf_crtc_lo + 2
     LDA crtc_start_address_high
-    STA buf_crtc_hi,X
+    STA buf_crtc_hi + 2
     LDA viewport_left_low
-    STA buf_vl_lo,X
+    STA buf_vl_lo + 2
     LDA viewport_left_high
-    STA buf_vl_hi,X
+    STA buf_vl_hi + 2
     LDA viewport_right_low
-    STA buf_vr_lo,X
+    STA buf_vr_lo + 2
     LDA viewport_right_high
-    STA buf_vr_hi,X
+    STA buf_vr_hi + 2
     RTS
 
 .buffer_to_view                     \ X = screen: that screen's view becomes the live one
@@ -416,7 +418,6 @@ ENDIF
     ASSERT (LO(rec_xh) AND &40) = 0 AND LO(rec_xh) + 64 + MOVER_SLOTS <= &100
     LDX #0
 .classify
-    STX ren_i
     STZ need,X
 classify_xh = * + 1
     LDA rec_xh,X                    \ self-modified: rec_xh + boff
@@ -433,9 +434,10 @@ classify_xh = * + 1
 .near_screen
     INC A                           \ 65C02 opcode
     CMP viewport_left_high
-    BCC classified                  \ left of it
-    BRA listed                      \ 65C02 opcode
+    BCS listed                      \ not left of it
+    BRA classified                  \ 65C02 opcode: left of it
 .shown_y
+    STX ren_i                       \ read back after span_in_zone (the shown path only)
     TXA                             \ Y = slot + boff for .shown (slot < 64: OR is the add)
     ORA boff
     TAY
@@ -483,7 +485,10 @@ ENDIF
     STY ren_k
     LDX act,Y
     BEQ taken_off                   \ the player: first in the list, already off
+    LDA need,X                      \ take_off's own first test, inline: most entries stay as they are
+    BPL toff_skip_f
     JSR take_off
+.toff_skip_f
     LDY ren_k
     BNE taking_off
 .taken_off
@@ -491,10 +496,9 @@ ENDIF
     \ ---- 5. the scroll, oldest column first, each with its view and the lives digit ----
     LDA pending_n
     BEQ scrolled
-    LDY #0
-    CMP #2
-    BEQ apply_entries
-    INY
+    LSR A                           \ pending_n 1 or 2 -> Y 1 or 0
+    EOR #1
+    TAY
 .apply_entries
     STY ren_k
     LDX pending_slot,Y
@@ -507,14 +511,15 @@ ENDIF
     JSR write_column                \ X = the slot still
     JSR ren_plot_lives
     LDY ren_k
-    BNE scrolled                    \ entry 1 (pending_slot + 1) is always the last
+    BNE view_restore_f
     INY
     BRA apply_entries               \ 65C02 opcode
-.scrolled
-    LDX #2                          \ the logic's view again; it is this screen's now
+    SKIP 2                         \ keeps the code after it where it was
+.view_restore_f
+    LDX #2                          \ the logic's view again (history_to_view changed it); with nothing scrolled it never did
     JSR buffer_to_view
-    LDX back
-    JSR view_to_buffer
+.scrolled
+    LDX back                        \ buf_*[back] is never read: view_to_buffer's stores were dead
     LDA buf_lives,X
     CMP HUD_KEY
     BEQ lives_drawn
@@ -528,10 +533,10 @@ ENDIF
     LDA #&84
     STA os_ram_copy_of_currently_selected_rom
     STA romsel
-    LDY #0
-    LDA act                         \ the player (slot 0) goes on last: when listed, it is first
-    BNE put_on_test
-    INY
+    LDY #1                          \ the player (slot 0) goes on last: when listed, it is first
+    LDA act
+    BEQ put_on_test
+    DEY
 .put_on_test
     CPY act_n                       \ (unsigned: act_n may be 0 with a stale player entry)
     BCS put_on_player
@@ -539,27 +544,30 @@ ENDIF
     LDX act,Y
     BIT need,X                      \ V = bit 6, it goes on: put_on's own test, done here
     BVC next_put_on
-    PHY                             \ 65C02 opcode
+    STY ren_k                       \ ren_k is dead here (take_off's and the scroll's)
     JSR put_on.going_on
-    PLY                             \ 65C02 opcode
+    LDY ren_k
 .next_put_on
     INY
     CPY act_n
     BCC putting_on
 .put_on_player
+    BIT need                        \ the player (slot 0): V = bit 6, it goes on (put_on's own test, done here)
+    BVC pon_player_off
     LDX #0
-    JSR put_on
+    JSR put_on.going_on
+.pon_player_off
     LDA #&04
     STA os_ram_copy_of_currently_selected_rom
     STA romsel
 .player_done
-    LDA back                        \ for the vsync interrupt to show, at the pass lock's field
-    STA flip_screen
-    LDA crtc_start_address_high
-    STA flip_crtc_hi
-    LDA crtc_start_address_low
-    STA flip_crtc_lo
-    JSR cpu_sees_main
+    LDX back                        \ for the vsync interrupt to show, at the pass lock's field
+    STX flip_screen
+    LDX crtc_start_address_high
+    STX flip_crtc_hi
+    LDX crtc_start_address_low
+    STX flip_crtc_lo
+    TRB acccon                      \ A = &04: X = 0, the CPU sees main again (cpu_sees_main as one read-modify-write; I = 0, as cpu_sees_back's CLI left it)
     JMP restore_game_zp
 }
 
@@ -852,9 +860,8 @@ ENDIF
     STA edge_screen_address_low
     LDA edge_screen_address_high
     ADC #&02
-    BMI wrap                        \ the hot path falls through
-    STA edge_screen_address_high
-    BRA group                       \ 65C02 opcode
+    STA edge_screen_address_high    \ stored before the test (STA keeps N): a wrapped &80-&82 is mended at .wrap
+    BPL group                       \ the hot path: N = 0 (A = &40-&7F), straight back
 .wrap
     EOR #&C0                        \ &80-&82 -> &40-&42: - &40
     STA edge_screen_address_high
@@ -924,16 +931,16 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     RTS
 }
 
-.add_zone_column                    \ zone_tmp -> the list; keeps X and Y
+.add_zone_column                    \ zone_tmp_lo, and A = zone_tmp_hi (every caller has just stored it) -> the list; keeps X and Y
 {
-    PHX
+    STX zone_tmp_hi                 \ X saved in zone_tmp_hi (dead: A holds it): 6 cycles where PHX/PLX is 7
     LDX zone_n
+    INX
+    STX zone_n
+    STA zone_hi - 1,X
     LDA zone_tmp_lo
-    STA zone_lo,X
-    LDA zone_tmp_hi
-    STA zone_hi,X
-    INC zone_n
-    PLX
+    STA zone_lo - 1,X
+    LDX zone_tmp_hi
     RTS
 }
 
@@ -953,7 +960,6 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
 .each
     DEX
     LDA zone_hi,X                   \ d's high byte less 1 into span_d + 1 ...
-    CLC
     SBC span_x_hi
     STA span_d + 1
     LDA zone_lo,X                   \ ... its low byte in A, C clear if it borrowed (ADC #0 below
@@ -1003,45 +1009,46 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     RTS
 }
 
-.width_of_type_A                    \ A = movers_type_and_colour -> A = width; keeps Y
-    AND #&7F
-    TAX
-    LDA mover_types_width_table,X
-    RTS
 
 \ ---- what goes on, and what overlaps it --------------------------------------------------
 \ mark_to_draw: need bit 6 for every live slot on screen (the logic's view) that this screen
 \ does not show, or is taking off.
 .mark_to_draw
 {
-    LDY #0
-.each
-    CPY act_n                       \ in the body Y < act_n, so C clear
-    BEQ done
-    STY ren_k
+    LDA render.classify_xh          \ the records' x high for this screen: rec_xh + boff, as classify's operand has it
+    STA c1_rec
+    LDY act_n                       \ the list from its end (each slot is judged alone, so the order is free)
+.each                               \ next's way back in: Y = the entry just done (it stored its index - 1), + 1
+    DEY
+    BMI done
     LDX act,Y
+    LDA viewport_right_low          \ check_if_mover_is_on_screen's right edge, first and inline (a slot that
+    CMP movers_x_low,X              \ is off the right changes nothing, shown or not, and most are): right - x,
+    LDA viewport_right_high         \ 16 bits
+    SBC movers_x_high,X
+    BCC each                        \ x > right: not on screen
     LDA need,X
-    BMI not_shown                   \ coming off: goes back on if still there
-    TXA
-    ADC boff                        \ C clear (CPY act_n with Y < act_n)
-    TAY
-    LDA rec_xh,Y
+    BMI c1_cand                     \ coming off: goes back on if still there
+c1_rec = * + 1
+    LDA rec_xh,X                    \ self-modified: rec_xh + boff
     INC A                           \ 65C02 opcode: &FF (not shown) -> 0
-    BNE next                        \ shown and staying
-.not_shown
-    STX ren_i
-.candidate
-    LDA movers_x_high,X             \ X = ren_i on both ways in
-    BMI next                        \ no mover in the slot
-    STA &C5                         \ get_mover_Y_x, inline and by X
-    LDA movers_x_low,X
+    BNE each                        \ shown and staying
+.c1_cand                            \ not shown here, or coming off: it may go on
+    LDA movers_x_low,X              \ C = 1 from here to the JSR: the right test's
     STA mover_x_low
+    LDA movers_x_high,X
+    BMI each                        \ no mover in the slot
+    PHY                             \ the index: the callee takes Y (the x high) and X (the type)
+    TAY
     LDA movers_type_and_colour,X
     AND #&7F
     TAX
-    JSR check_if_mover_is_on_screen \ carry set if not
-    BCS next
-    LDX ren_i
+    JSR is_left_c1_3d13             \ the left edge, past check_if_mover_is_on_screen's right one: carry set if not
+    PLY                             \ (keeps C)
+    BCS each
+    LDX act,Y                       \ the slot
+    DEY                             \ next's index (it takes the INY and each the DEY)
+    STY ren_k
     LDA need,X
     ORA #&40
     STA need,X
@@ -1069,23 +1076,23 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     BEQ gathered
     STY ren_k
     LDX act,Y
-    STX ren_i
     TXA                             \ C = 0: CPY act_n found Y < act_n
     ADC boff
     TAY
     LDA rec_xh,Y
     CMP #&FF
     BNE shown
-    LDA need,X
-    AND #&40
-    BNE going_on
+    BIT need,X                      \ 65C02 opcode: V = need bit 6 (X = slot still)
+    BVS going_on
     LDY ren_k                       \ not listed: the loop's tail, kept in gather's page
     INY
     BRA gather                      \ 65C02 opcode
 .going_on
+    STX ren_i                       \ ren_i is read only from here on: list_live's
     JSR list_live                   \ going on, not shown: where it goes
     BRA listed                      \ 65C02 opcode
 .shown
+    STX ren_i                       \ list_recorded's caller's X, and what widen_by_live reads
     JSR list_recorded               \ where it is shown...
     LDX ren_i
     BIT need,X                      \ 65C02 opcode: V = need bit 6
@@ -1096,7 +1103,8 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
 .not_listed
     LDY ren_k
     INY
-    BRA gather                      \ 65C02 opcode
+    CPY act_n                       \ gather's test, inline: equal falls through to .gathered, else
+    BNE gather + 4                  \ in at gather's STY ren_k (its CPY act_n and BEQ are 4 bytes)
 .gathered
 .again
     STZ list_changed
@@ -1107,25 +1115,28 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     LDY list_slot,X
     LDA need,Y
     BNE next_a                      \ already coming off or going on
-    LDY #0
-.each_b
-    CPY list_n
-    BEQ next_a
-    STY list_b
-    LDA list_slot,Y
-    TAY
-    LDA need,Y
-    BEQ next_b                      \ staying too: no reason
+    STX list_b                      \ a is staying: list_b = its entry (X runs over b below)
     TYA                             \ decision 37: only if b is drawn before a (below it). Over a,
-    BEQ next_b                      \ b's save holds a's bytes, so b comes off and on alone. The
-    CMP list_slot,X                 \ player (slot 0) is drawn last, over everything; the movers
-    BCC below                       \ in slot order (C clear: b's slot below a's)
+    BNE c1_start                    \ b's save holds a's bytes, so b comes off and on alone. The
+    LDX list_n                      \ player (slot 0, entry 0) is drawn last, over everything: for it
+.c1_start                           \ every other entry is below; for a mover b is an entry before
+    DEX                             \ its own (act is in slot order, so is the list)
+    BMI c1_done                     \ (C is clear from CPX list_n above: X < list_n)
+.each_b
     LDY list_slot,X
-    BNE next_b                      \ (a the player: b is below it)
-.below
+    LDA need,Y
+    BEQ c1_next                     \ staying too: no reason
+    TYA
+    BEQ c1_next                     \ b the player: drawn over a
     LDY list_b
     JSR list_overlap                \ X, Y list entries: C set if they overlap
-    BCC next_b
+    BCS c1_done
+.c1_next
+    DEX
+    BPL each_b
+.c1_done                            \ C set: a overlaps b. C clear on every other way in
+    LDX list_b
+    BCC next_a
     LDY list_slot,X                 \ a overlaps b: a comes off and goes back on
     LDA #&C0
     STA need,Y
@@ -1164,9 +1175,9 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
 \ list entry list_n for slot ren_i: its live rectangle
 .list_live
 {
+    TXA                             \ X = ren_i on entry (both callers)
+    TAY
     LDX list_n
-    LDY ren_i
-    TYA
     STA list_slot,X
     STY dm_slot                     \ world_of_address's slot (BUGS #10); put_on sets its own
     LDA movers_type_and_colour,Y
@@ -1235,15 +1246,19 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     PLX
     STX list_n                      \ ...and take the union
     LDY #MOVER_SLOTS
+    LDA list_x1_hi,Y                \ the high bytes are nearly always equal: then only the low
+    CMP list_x1_hi,X                \ bytes are compared, and only the low byte is copied
+    BNE wbl_x1_differ
     LDA list_x1_lo,Y
     CMP list_x1_lo,X
-    LDA list_x1_hi,Y
-    SBC list_x1_hi,X
     BCS x1_kept
+    STA list_x1_lo,X
+    BRA x1_kept
+.wbl_x1_differ                      \ C from the high bytes' CMP
+    BCS x1_kept                     \ the live one's high byte is above: kept
+    STA list_x1_hi,X                \ below (A = its high byte): take both bytes
     LDA list_x1_lo,Y
     STA list_x1_lo,X
-    LDA list_x1_hi,Y
-    STA list_x1_hi,X
 .x1_kept
     LDA list_x2_lo,X
     CMP list_x2_lo,Y
@@ -1255,16 +1270,17 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     LDA list_x2_hi,Y
     STA list_x2_hi,X
 .x2_kept
-    LDA list_y1 + MOVER_SLOTS       \ Y = MOVER_SLOTS: absolute, as ,Y crosses a page
-    CMP list_y1,X
-    BCS y1_kept
-    STA list_y1,X
-.y1_kept
     LDA list_y2,Y
     CMP list_y2,X
     BCC y2_kept
     STA list_y2,X
 .y2_kept
+    LDA list_y1 + MOVER_SLOTS       \ Y = MOVER_SLOTS: absolute, as ,Y crosses a page
+    CMP list_y1,X
+    BCC y1_store_c1              \ rare (y1 seldom widens): out of line, so the common path falls into RTS
+    RTS
+.y1_store_c1
+    STA list_y1,X
     RTS
 }
 
@@ -1287,10 +1303,8 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     BCC no
     LDA list_y2,X                   \ y1 of Y <= y2 of X
     CMP list_y1,Y
+.no                                 \ every BCC no arrives with C clear: this RTS serves
     RTS                             \ C as it stands
-.no
-    CLC
-    RTS
 }
 
 \ ---- take off and put on -------------------------------------------------------------------
@@ -1298,7 +1312,9 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
 .take_off
 {
     LDA need,X
-    BPL out
+    BMI toff_go_c1               \ not coming off is the common case: no taken branch before its RTS
+    RTS
+.toff_go_c1
     TXA
     ORA boff                        \ slot + boff: slot < &40, boff 0 or 64
     TAY
@@ -1329,7 +1345,9 @@ ENDIF
     TXA
     ORA boff                        \ slot + boff: slot < &40, boff 0 or 64
     STA dm_index
-    LDX back                        \ room for its block, or make some: arena_top + MAX_BLOCK
+IF SKY_MODE = 0
+    LDX back                        \ room for its block, or make some (SKY_MODE: sky_room loads X = back itself)
+ENDIF
 IF SKY_MODE
     JSR sky_room                    \ below helicopter 1's image (src/sky_main.6502; C set: none)
     BCS masked
@@ -1417,7 +1435,7 @@ ENDIF
     LDX #0
 .mark_part
 {
-    PHA
+    STA stop_y                  \ A kept in stop_y (dead here), not on the stack
     LDA v_ptr
     SEC
 base_lo = * + 1
@@ -1429,7 +1447,7 @@ base_hi = * + 1
     SBC #0
 header_hi = * + 1
     STA &FFFF,X
-    PLA
+    LDA stop_y
     RTS
 }
 
@@ -1492,21 +1510,22 @@ ENDIF
 .jmin_store
     STA dm_jmin
     BRA jmin_done                   \ 65C02 opcode
-.not_right_of_view
-    BEQ jmax_done
+.jmax_big_a1
     LDA #&FF
     STA dm_jmax
+    BRA jmax_done                   \ 65C02 opcode
+.not_right_of_view
+    BNE jmax_big_a1                 \ high > 0: jmax 255 (never in the profiles: the hot path falls through)
 .jmax_done
     \ the tables: pixels by colour and flip, masks by flip (plot_mover and
     \ get_mover_type_and_colour's rules: most enemies white)
     LDY #HI(unflipped_green_pixel_table)
     LDA dm_typecol
     BPL green
-    CMP #&85                        \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_MISSILE
-    BEQ green
     CMP #&95                        \ MOVER_TYPE_ENEMY | MOVER_TYPE_HEAVY_GUN and above
     BCS green
-    CMP #&87                        \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_SOLDIER
+    AND #&FD                        \ &85 (MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_MISSILE) and &87
+    CMP #&85                        \ (... _WITH_SOLDIER) differ only in bit 1
     BEQ green
     INY                             \ white: the next page
 .green
@@ -1556,8 +1575,9 @@ ENDIF
     ADC mover_types_second_sprite_offset,X    \ (C clear)
     TAY
     LDA sprites_y_offset,Y
-    STA dm_raise
     TAY                             \ Y = the raise, for mark_part2 and ren_draw_sprite
+    ADC #&08                        \ (C clear) dm_raise: part three's raise, eight rows above
+    STA dm_raise                    \ (C still clear: the raise <= &F7)
     LDA dm_frame                    \ (C still clear: frame <= &3F plus an offset <= &1E)
     ADC mover_types_first_sprite_animation_offsets + &1C,X    \ the second parts' mover types
     TAX
@@ -1570,10 +1590,7 @@ ENDIF
 .nothing
     RTS                             \ one part or two
 .part_three
-    LDA dm_raise                    \ part three: eight rows above part two
-    CLC
-    ADC #&08
-    TAY
+    LDY dm_raise                    \ part three: eight rows above part two (stored so)
     LDA mover_types_third_sprite,X
     JSR mark_part3
 }
@@ -1595,6 +1612,10 @@ ENDIF
     LDA straight_sprite_hi,X
     BNE known
     RTS                             \ an unused table entry
+.rds_clip_g31                       \ out of line, reached by branch only: a part that can be clipped
+    LDA #&FF
+    STA ds_clip                     \ &FF
+    BRA generic
 .known
     STA col_ptr + 1
     LDA straight_sprite_lo,X
@@ -1602,15 +1623,6 @@ ENDIF
     LDA sprite_column_count,X
     STA ds_c                        \ columns left
     STA ds_n
-    STZ ds_clip                     \ 65C02 opcode: whether any column can be clipped: not if
-    LDX dm_jmin                     \ jmin is 0 and jmax n - 1 or more (X: the sprite, done with)
-    BNE clips
-    CMP dm_jmax                     \ A = n: no clip if n <= jmax
-    BCC no_clip
-    BEQ no_clip
-.clips
-    DEC ds_clip                     \ &FF
-.no_clip
     LDA dm_scr_lo                   \ the part's bottom, raised once
     LDX dm_scr_hi                   \ Y: still the rows it is raised
     JSR raise_address
@@ -1619,9 +1631,13 @@ ENDIF
     STA ds_line
     TRB b_ptr                       \ 65C02 opcode: b_ptr AND &F8
     STX b_ptr + 1
-    LDA ds_clip                     \ step 2 layer 4: a part that cannot be clipped may be one of
-    BNE generic                     \ the player's kinds compiled to code (tools/compiled.py), or
-    LDA dm_slot                     \ a big part's kind built at run time (src/kindcache.6502,
+    LDA dm_jmin                     \ whether any column can be clipped: not if jmin is 0 and
+    BNE rds_clip_g31                \ jmax n - 1 or more (decided here, with A free, so that the
+    LDA dm_jmax                     \ unclipped part, the common one, goes on with no flag to
+    CMP ds_n                        \ reload: C set if n <= jmax)
+    BCC rds_clip_g31
+    STZ ds_clip                     \ 65C02 opcode: 0; step 2 layer 4: a part that cannot be clipped may be one of
+    LDA dm_slot                     \ the player's kinds compiled to code (tools/compiled.py), or a big part's kind built at run time (src/kindcache.6502,
 IF SKY_MODE
     BNE generic
     JSR compiled_part
@@ -1642,12 +1658,11 @@ ENDIF
 .generic
     BIT dm_flip
     BPL draw_column.each
-    LDA ds_c                        \ flipped: the bottom 8 * (n - 1) on
-    DEC A                           \ 65C02 opcode
+    LDA ds_c                         \ flipped: the bottom 8 * (n - 1) on
+    DEC A                            \ 65C02 opcode
     ASL A
     ASL A
-    ASL A
-    CLC
+    ASL A                            \ C = 0: n <= 12 (every sprite drawn, sprite_column_count), so n - 1 < 32
     ADC b_ptr
     STA b_ptr
     BCC draw_column.each            \ the same page
@@ -1726,29 +1741,12 @@ ENDIF
     LDA b_ptr + 1
     STA s_ptr + 1
     TXA                             \ ...raised by its first row
-    BPL raised
-.up_cell                            \ X = the line, negative: a cell up for each 8
-    LDA s_ptr
-    SEC
-    SBC #&80
-    STA s_ptr
-    LDA s_ptr + 1
-    SBC #&02
-    CMP #&40
-    BCS up_in_ring
-    ADC #&40
-.up_in_ring
-    STA s_ptr + 1
-    TXA
-    CLC
-    ADC #8
-    TAX
-    BCC up_cell
+    BMI up_cell                     \ negative (about 1 column in 8): a cell up for each 8, out of line
 .raised                             \ A = X = the line of the lowest byte drawn
     ORA s_ptr                       \ the record's address
     LDY #9
     STA (v_ptr),Y
-    INY
+    LDY #10                         \ (LDY, not INY: the BCC below must start its next instruction on a page)
     LDA s_ptr + 1
     STA (v_ptr),Y
     LDA v_ptr                       \ the cells after it
@@ -1758,6 +1756,21 @@ ENDIF
     BCC save_on_page                \ C = 0 on the common path
     INC v_ptr + 1
     CLC                             \ (the page-crossing path: C was 1)
+    BRA save_on_page                \ 65C02 opcode
+.up_cell                            \ X = the line, negative: a cell up for each 8
+    LDA s_ptr
+    SEC
+    SBC #&80
+    STA s_ptr
+    LDA s_ptr + 1
+    SBC #&02                        \ C = 1 after this: the ring's high byte is 3 or more
+    ORA #&40                        \ round the 16K: &3D-&3F (below the ring) -> &7D-&7F
+    STA s_ptr + 1
+    TXA
+    SBC #&F8                        \ + 8 (C = 1); carry out when it reaches 0 or more
+    TAX
+    BCC up_cell
+    BRA raised                      \ 65C02 opcode: A = X = the line
 .save_on_page                       \ C = 0 here (TXA, TAY, EOR leave it)
     \ the data: the byte for line Y of the first cell is data[count - 1 - (line - Y)], so
     \ d_ptr = the column + 2 + count - 1 - line = col_ptr - 1 - line = col_ptr + (line EOR &FF) - &100
@@ -1771,8 +1784,7 @@ ENDIF
     STA d_ptr + 1
 .cell                               \ Y = the line it starts on: does the column end in this cell?
     TYA
-    SEC
-    SBC rows_m1                     \ line - (rows left - 1)
+    SBC rows_m1                     \ line - (rows left - 1) (C = 1 already: the ADC #&FF above carried, col_ptr + 1 being 1 or more)
     BCS last_cell                   \ 0 or more: it ends here
     EOR #&FF                        \ no: rows left after this cell, less 1: rows - line - 2
     STA rows_m1
@@ -1801,6 +1813,11 @@ pix_operand = * + 1
     BCC save_same_page
     INC v_ptr + 1
     CLC                             \ C = 0 on both paths
+    BRA save_same_page              \ 65C02 opcode
+.ede5_more                          \ C = 0: the column goes on in the next cell (rare: out of the common path)
+    EOR #&FF                        \ rows left after this cell, less 1
+    STA rows_m1
+    BRA byte                        \ 65C02 opcode (C = 0, as the byte loop needs)
 .save_same_page
     LDA s_ptr                       \ ...the screen a character row up (C = 0: &7F + 1)...
     SBC #&7F
@@ -1812,13 +1829,10 @@ pix_operand = * + 1
     LDY #7                          \ ...from its bottom line: the cell test inline (C = 1, as
     TYA                             \ the ring's high byte is 3 or more)
     SBC rows_m1                     \ line - (rows left - 1)
-    BCS last_cell                   \ 0 or more: it ends here
-    EOR #&FF                        \ no: rows left after this cell, less 1
-    STA rows_m1
-    BRA byte                        \ 65C02 opcode (C = 0, as the byte loop needs)
+    BCC ede5_more                   \ below 0: not the last cell (the last cell is the common case: falls through)
 .last_cell                          \ A = line - rows left + 1: the last line drawn
     DEC A                           \ 65C02 opcode: the line below it
-    STA stop_y
+    STA ede5_stop_imm               \ self-modified: the CPY below's operand (stop_y's zero page byte, no longer read)
 .part_byte
     LDA (d_ptr),Y
     TAX
@@ -1830,7 +1844,8 @@ pix_operand_2 = * + 1
     EOR &FFFF,X                     \ self-modified, as pix_operand
     STA (s_ptr),Y
     DEY
-    CPY stop_y
+ede5_stop_imm = * + 1
+    CPY #0                          \ self-modified: the line below the last one drawn (set at .last_cell)
     BNE part_byte
 .next_c                             \ C = 1: the loop's CPY found Y = stop_y, or .next set it
     DEC ds_c
@@ -1851,22 +1866,15 @@ pix_operand_2 = * + 1
     STA b_ptr
     BCS forward_hi
     JMP each
-.forward_hi
-    LDA b_ptr + 1
-    INC A                           \ 65C02 opcode
-    BPL forward_in_ring
-    LDA #&40
-.forward_in_ring
-    STA b_ptr + 1
-    BRA to_each                     \ 65C02 opcode
 .step_back_hi
-    LDA b_ptr + 1
-    DEC A                           \ 65C02 opcode
-    CMP #&40
-    BCS back_in_ring
-    LDA #&7F
-.back_in_ring
-    STA b_ptr + 1
+    DEC b_ptr + 1                   \ the high byte down a page: &40 -> &3F -> &7F (round the 16K)
+    LDA #&40
+    TSB b_ptr + 1
+    BRA to_each                     \ 65C02 opcode
+.forward_hi
+    INC b_ptr + 1                   \ up a page: &7F -> &80 -> &40 (round the 16K)
+    BPL to_each
+    LSR b_ptr + 1
 .to_each
     JMP each
 .done
@@ -1900,7 +1908,12 @@ pix_operand_2 = * + 1
     TAY
     LDX ck_index,Y
     BMI compiled_none               \ &FF: not a kind
-    STX ck_kind
+    LDY #8                          \ its entry, written now (X = the kind; the kinds never touch
+    LDA #&FF                        \ the save block, and a refused part's generic path writes
+    STA (v_ptr),Y                   \ these two bytes again before restore_block can read them)
+    INY
+    TXA
+    STA (v_ptr),Y
     LDA b_ptr
     STA &C0
     LDA b_ptr + 1
@@ -1915,18 +1928,10 @@ pix_operand_2 = * + 1
     JSR compiled_call
     BCS unsafe                      \ the banked kinds (the commoner) fall through
 .called                             \ carry clear here from either path
-    LDY #8                          \ its entry
-    LDA #&FF
-    STA (v_ptr),Y
-    INY
-    LDA ck_kind
-    STA (v_ptr),Y
     LDA v_ptr                       \ carry still clear
     ADC #11
     STA v_ptr
-    BCC on_page
-    INC v_ptr + 1
-    CLC                             \ carry clear to return
+    BCS cp2_page_cross              \ the rare carry: off the hot path, which falls through
 .on_page
     LDA &C0
     STA (v_ptr)                     \ 65C02 opcode
@@ -1934,35 +1939,20 @@ pix_operand_2 = * + 1
     LDA &C1
     STA (v_ptr),Y
     RTS                             \ carry clear: drawn
+.cp2_page_cross                     \ v_ptr + 11 crossed a page (rare)
+    INC v_ptr + 1
+    CLC                             \ carry clear to return
+    BRA on_page                     \ 65C02 opcode
 .in_hazel
     JSR compiled_direct
     BCC called
 .unsafe                             \ the code's row pointers used b_ptr and ds_c
-    LDA &C0
+    LDA &C0                         \ (C = 1 here from either path: BCS unsafe, BCC called not taken)
     STA b_ptr
     LDA &C1
     STA b_ptr + 1
     LDA ds_n
     STA ds_c
-    SEC
-    RTS
-}
-
-\ up_a_cell: AX = a character cell's top line; returns AX = the bottom line of the cell above
-\ (&279 lower, round the 16K screen), as the plotter moves up a group.
-.up_a_cell
-{
-    SEC
-    SBC #&79
-    PHA
-    TXA
-    SBC #&02
-    CMP #&40
-    BCS in_ring
-    ADC #&40
-.in_ring
-    TAX
-    PLA
     RTS
 }
 
@@ -1975,39 +1965,35 @@ pix_operand_2 = * + 1
     AND #&07                        \ the line in the cell
 rows_imm = * + 1
     CMP #&00                        \ self-modified: rows
-    BCC up
-lo_imm = * + 1
-    LDA #&00                        \ self-modified: lo. It stays in the cell (C = 1)
-    SBC rows_imm
-    RTS                             \ X is still hi
+    BCS ra_stay_g3969               \ the line is in the cell: no crossing (the rarer path)
 .up                                 \ d = rows - line - 1: 0 is the cell above's bottom line
-    STX ra_hi
-    EOR #&FF                        \ C = 0 from the BCC
+    STX ra_hi                       \ hi parked: X is the index below
+    EOR #&FF                        \ C = 0 from the BCS not taken
     ADC rows_imm
-    TAY
+    TAY                             \ Y = d
+    LSR A
+    LSR A
+    LSR A
+    TAX                             \ X = cells up, less 1
+    TYA
     EOR lo_imm                      \ lo AND &F8, OR the line it ends on: 7 - (d AND 7)
     AND #&07
     EOR #&07
     EOR lo_imm
-    STA ra_lo
-    TYA
-    LSR A
-    LSR A
-    LSR A
-    TAY                             \ cells up, less 1
-    LDA ra_lo
     SEC
-    SBC raise_cells_lo,Y
-    STA ra_lo
+    SBC raise_cells_lo,X
+    TAY                             \ Y = the low byte; C = no borrow
     LDA ra_hi
-    SBC raise_cells_hi,Y
-    CMP #&40                        \ round the 16K screen
-    BCS in_ring
-    ADC #&40
-.in_ring
+    SBC raise_cells_hi,X
+    ORA #&40                        \ round the 16K screen: hi - up is above &2A, hi is &40-&7F
     TAX
-    LDA ra_lo
+    TYA
     RTS
+.ra_stay_g3969
+lo_imm = * + 1
+    LDA #&00                        \ self-modified: lo. It stays in the cell (C = 1)
+    SBC rows_imm
+    RTS                             \ X is still hi
 }
 .raise_cells_lo                     \ (n + 1) character rows: (n + 1) * &280
     EQUB &80, &00, &80, &00, &80, &00, &80, &00
@@ -2023,12 +2009,14 @@ lo_imm = * + 1
 .restore_block
 {
     STY rb_index
-    LDA save_end_lo,Y               \ the walk ends when v_ptr + 8 is the block's end
-    SEC
-    SBC #8
+IF SKY_MODE = 0
+    CLC
+ENDIF
+    LDA save_end_lo,Y               \ the walk ends when v_ptr + 8 is the block's end (C = 0 from
+    ADC #&F8                        \ sky_take_off's clear; - 8 as + &F8, C = no borrow)
     STA rb_end
     LDA save_end_hi,Y
-    SBC #0
+    ADC #&FF                        \ - 1 + C
     STA rb_end + 1
     LDA save_start_lo,Y             \ the header: where parts 2 and 3 start
     STA v_ptr
@@ -2056,32 +2044,31 @@ lo_imm = * + 1
     ADC rb_part2,X
     STA v_ptr                       \ v_ptr is dead here: set to the result below
     LDA save_start_hi,Y
-    ADC rb_part2 + 1,X
+    ADC rb_part2 + 1,X              \ C = 0: start + offset is an address, no carry out of 16 bits
+    STA v_ptr + 1                   \ v_ptr = the part's start - 8, and the same pair kept in rb_p8
     STA rb_p8 + 1
     LDA v_ptr
-    SEC
-    SBC #8
+    SBC #7                          \ C = 0: minus 8; C = 1 afterwards if no borrow
     STA v_ptr
-    PHA                             \ the part's start - 8 kept on the stack, not in rb_p8
-    LDA rb_p8 + 1
-    SBC #0
-    STA v_ptr + 1
-    PHA
-    PHX
+    STA rb_p8
+    BCS rbA_nb
+    DEC v_ptr + 1
+    DEC rb_p8 + 1
+.rbA_nb
+    STX rb_part3                    \ X kept in rb_part3, dead since both its bytes were read
     JSR columns
-    PLX
-    PLA                             \ the part before ends where this one starts
-    STA rb_end + 1
-    PLA
+    LDX rb_part3
+    LDA rb_p8                       \ the part before ends where this one starts
     STA rb_end
+    LDA rb_p8 + 1
+    STA rb_end + 1
 .no_part
     DEX
     DEX
     BPL each_part
     LDY rb_index                    \ part 1: after the header, v_ptr = the start + 4 - 8
     LDA save_start_lo,Y
-    SEC
-    SBC #4
+    SBC #4                          \ C = 1 here: the header's SBC #0 carry, or JSR columns' last CMP
     STA v_ptr
     LDA save_start_hi,Y
     SBC #0
@@ -2089,17 +2076,18 @@ lo_imm = * + 1
     JSR columns
     LDY rb_index
     JMP blocks_done
-.columns                            \ the columns from v_ptr + 8 to rb_end + 8
-    LDA v_ptr
-    CMP rb_end
-    BNE more
-    LDA v_ptr + 1
+.cols_low_eq                        \ the low bytes are equal (3 of 13 calls reach the end): the high bytes
+    LDA v_ptr + 1                   \ say whether this is the end (RTS) or a record still (.more)
     CMP rb_end + 1
     BNE more
     RTS
 .cells_next_page                    \ v_ptr + 11 crossed a page (rare): off the hot path
     INC v_ptr + 1
     BRA cells_on_page               \ 65C02 opcode
+.columns                            \ the columns from v_ptr + 8 to rb_end + 8
+    LDA v_ptr
+    CMP rb_end
+    BEQ cols_low_eq                 \ the end is the rarer case (3 of 13 calls): a record falls through
 .more
     LDY #10                         \ the record
     LDA (v_ptr),Y
@@ -2130,6 +2118,7 @@ lo_imm = * + 1
     BCS last_cell
     EOR #&FF
     STA rows_m1
+    TAX                             \ the rows after this cell, less 1, kept in X for the test below (neither loop touches X)
 .byte
     LDA (v_ptr),Y
     STA (s_ptr),Y
@@ -2140,25 +2129,26 @@ lo_imm = * + 1
     STA s_ptr
     LDA s_ptr + 1
     SBC #&02                        \ (high &40-&7F: no borrow, C = 1 after)
-    AND #&3F                        \ ...round the 16K (&3D-&7D to &40-&7F)
-    ORA #&40
+    ORA #&40                        \ ...round the 16K (&3D-&3F to &7D-&7F; no AND: the draw's rule, as .draw_column's)
     STA s_ptr + 1
     LDA v_ptr                       \ ...the save block 8 on (C = 1: ADC #7 adds 8)
     ADC #7
     STA v_ptr
     LDY #7
-    BCC cell
+    BCC g0a9b_a_test                \ Y = 7 and X = rows_m1 already (the hot path: the next cell is the last)
     INC v_ptr + 1
-    BRA cell                        \ 65C02 opcode
 .last_cell                          \ rows_m1 = Y - the last line: rows_m1 + 1 bytes to put back
     LDX rows_m1                     \ (X is free in columns: .more reloads it)
+.g0a9b_a_test
+    CPX #8                          \ from last_cell here: rows_m1 <= Y <= 7, so C = 0. From the next cell (Y = 7):
+    BCS cell                        \ rows_m1 >= 8 means the column goes on: the full test above
 .part_byte
     LDA (v_ptr),Y
     STA (s_ptr),Y
     DEY
     DEX
     BPL part_byte
-    JMP columns
+    BRA columns                     \ 65C02 opcode
 .compiled                           \ its entry: the kind, then the part's bottom left cell
 IF SKY_MODE = 0
     CMP #KC_MARK                    \ (or a cached part's: src/kindcache.6502)
@@ -2168,8 +2158,7 @@ ENDIF
     CLC
     ADC #11
     STA v_ptr
-    BCC kind_on_page
-    INC v_ptr + 1
+    BCS kop_next_page               \ the hot path falls through
 .kind_on_page
     LDA (v_ptr)                     \ 65C02 opcode
     STA &C0
@@ -2193,6 +2182,9 @@ ENDIF
 .hazel_restore
     JSR hazel_restore               \ self-modified: the kind's restore
     JMP columns
+.kop_next_page                      \ v_ptr + 11 crossed a page (rare): off the hot path
+    INC v_ptr + 1
+    BRA kind_on_page                \ 65C02 opcode
 IF SKY_MODE = 0
 .cached                             \ X = the slot
     JSR kc_restore
@@ -2356,23 +2348,23 @@ ENDIF
 \ X = slot (the live tables), Y = slot + boff (the records)
 .record_differs                     \ Z clear if the record and the live slot differ; keeps X, Y
 {
-    LDA rec_type,Y
-    CMP movers_type_and_colour,X
+    LDA rec_sl,Y                    \ the most likely to differ first (a moved or scrolled mover), then the animation frame
+    CMP movers_screen_address_low,X
     BNE out
     LDA rec_frame,Y
     CMP movers_frame_and_flip,X
     BNE out
-    LDA rec_xl,Y
-    CMP movers_x_low,X
-    BNE out
     LDA rec_xh,Y
     CMP movers_x_high,X
     BNE out
+    LDA rec_type,Y
+    CMP movers_type_and_colour,X
+    BNE out
+    LDA rec_xl,Y
+    CMP movers_x_low,X
+    BNE out
     LDA rec_y,Y
     CMP movers_y,X
-    BNE out
-    LDA rec_sl,Y
-    CMP movers_screen_address_low,X
     BNE out
     LDA rec_sh,Y
     CMP movers_screen_address_high,X
@@ -2395,12 +2387,11 @@ ENDIF
     STA rec_sl,Y
     LDA movers_screen_address_high,X
     STA rec_sh,Y
-    PHY                             \ and where that is in the world (BUGS #7): the view in
     LDY movers_screen_address_low,X \ zero page is this screen's now; A = the high byte (rec_sh)
     TAX
     TYA
     JSR world_of_address
-    PLY
+    LDY dm_index                    \ = slot + boff (put_on's two calls); no PHY/PLY
     LDA wa_x_lo
     STA rec_wxl,Y
     LDA wa_x_hi
@@ -2431,7 +2422,6 @@ ENDIF
     TXA
     SBC screen_start_address_high
     AND #&3F                        \ round the 16K screen
-    STA wa_off + 1
     TAX
     LDY wa_rows_guess,X
     LDA wa_off                      \ at or past the next row's start: that row
@@ -2442,14 +2432,13 @@ ENDIF
     INY
 .row_known
     LDA wa_off                      \ the column: (offset - the row's start) / 8
-    SEC
-    SBC wa_rows_base_lo,Y
-    PHA                             \ the offset in the row, low byte
+    CMP wa_rows_base_lo,Y           \ C = no borrow: the offset's low byte less the row's start (0 or &80)
     TXA                             \ X = wa_off + 1 still
     SBC wa_rows_base_hi,Y           \ high byte 0..2: the offset is under &280
     LSR A                           \ C = bit 0 of it, A = bit 1
     TAX
-    PLA
+    LDA wa_off                      \ the offset in the row, low byte: less 0 or &80 is bit 7 flipped
+    EOR wa_rows_base_lo,Y           \ (every row start's low byte is 0 or &80)
     ROR A
     CPX #1                          \ C = bit 1
     ROR A

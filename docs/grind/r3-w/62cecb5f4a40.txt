@@ -1,0 +1,47 @@
+window 62cecb5f4a40: src/game.6502 lines 3531-3575, 32 instructions, 2,119.7 cycles a pass measured (wait excluded)
+
+ 3531     13.9     STA cm_x_max_high_operand                                                              ;| A=?≡$C6 X=? Y=? C=? Z=? N=? V=? | cm_x_max_high_operand=? | in:AX out:X
+ 3532     20.8     JSR set_cm_left                                                                        ;| A=?≡$C6 X=? Y=? C=? Z=? N=? V=? | in:X out:XV
+ 3533      6.9     INX                             \ grind: into the loop through cm_right_next's DEX (X back to first_mover);| A=? X=? Y=? C=? Z=? N=? V=? | in:XV out:XV
+ 3534          .cm_right_next                      \ grind: right of the range: next mover. Never the last: X >= last_mover + 3
+ 3535    143.5     DEX                             \ here (last_mover is &17 or &FF), so the DEX cannot reach last_mover;| A=? X=? Y=? C=? Z=? N=? V=? | in:XV out:XV
+ 3536          .check_for_mover_collision_with_range_of_movers_loop
+ 3537          cm_full_below_operand = * + 1
+ 3538    164.0     CPX #&00                        \ actually CPX #(last_mover + 3), set above            ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XV out:XCV
+ 3539    170.7     BCC check_in_full                                                                      ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XCV out:XV
+ 3540          cm_x_max_low_operand = * + 1
+ 3541    150.5     LDA #&00                        \ actually LDA #mover_x_max_low, set above: right of the range: x > the range's right (the original's;| A=? X=? Y=? C=1 Z=? N=? V=? | in:X out:AX
+ 3542    301.1     CMP movers_x_low,X              \ own first test)                                      ;| A=? X=? Y=? C=1 Z=? N=? V=? | [$1344,x]=? | in:AX out:XC
+ 3543          cm_x_max_high_operand = * + 1
+ 3544    150.5     LDA #&00                        \ actually LDA #mover_x_max_high, set above            ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XC out:AXC
+ 3545    301.1     SBC movers_x_high,X                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | [$1366,x]=? | in:AXC out:XCV
+ 3546    218.8     BCC cm_right_next               \ grind: right of the range: the hot path, taken       ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XCV out:XV
+ 3547          .cm_not_right
+ 3548     27.9     LDA movers_x_low,X              \ left of it even at the widest type: x < its left - &0B;| A=? X=? Y=? C=1 Z=? N=? V=? | [$1344,x]=? | in:X out:AX
+ 3549     27.9     CMP cm_left_low                                                                        ;| A=? X=? Y=? C=1 Z=? N=? V=? | $2F83=? | in:AX out:XC
+ 3550     27.9     LDA movers_x_high,X                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | [$1366,x]=? | in:XC out:AXC
+ 3551     27.9     SBC cm_left_high                                                                       ;| A=? X=? Y=? C=? Z=? N=? V=? | $2F84=? | in:AXC out:XCV
+ 3552     17.6     BCC check_next_mover                                                                   ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XCV out:XV
+ 3553          .check_in_full
+ 3554     30.2     CPX mover_to_update             \ grind: check_for_mover_collision_with_mover_X's own first test, done here:;| A=? X=? Y=? C=? Z=? N=? V=? | $03=? | in:XV out:XZV
+ 3555     23.5     BEQ check_next_mover            \ the searching mover itself goes straight on to the next;| A=? X=? Y=? C=? Z=? N=? V=? | in:XZV out:XV
+ 3556     40.2     JSR check_for_collision_with_mover                                                     ;| A=? X=? Y=? C=? Z=0 N=? V=? | in:X out:XCV
+ 3557     13.5     BCS leave_2865                  \ Leave with carry set to indicate collision, X = mover;| A=? X=? Y=? C=? Z=? N=? V=? | in:XCV out:XCV
+ 3558          .check_next_mover
+ 3559     27.2     DEX                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XV out:XV
+ 3560     40.9     CPX last_mover                                                                         ;| A=? X=? Y=? C=? Z=? N=? V=? | $B7=? | in:XV out:XZV
+ 3561     37.5     BNE check_for_mover_collision_with_range_of_movers_loop                                ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XZV out:XV
+ 3562      6.7     CLC                             \ Leave with carry clear to indicate no collision      ;| A=? X=? Y=? C=1 Z=1 N=0 V=? | in:XV out:XCV
+ 3563          .leave_2865
+ 3564     20.8     RTS                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XCV out:XCV
+ 3565          
+ 3566          \ Step 2 (layer 3): the collision searches' left edge, the range's left (mover_x_low, &C5) less
+ 3567          \ the widest type, 0 if that is below 0: a mover whose x is below it cannot be in range.
+ 3568          .set_cm_left
+ 3569     19.0     LDA mover_x_low                                                                        ;| A=? X=? Y=? C=? Z=? N=? V=? | $F8=? | in:XY out:AXY
+ 3570     12.7     SEC                                                                                    ;| A=?≡$F8 X=? Y=? C=? Z=? N=? V=? | in:AXY out:AXYC
+ 3571     12.7     SBC #MOVER_WIDEST                                                                      ;| A=?≡$F8 X=? Y=? C=1 Z=? N=? V=? | in:AXYC out:AXYCV
+ 3572     25.4     STA cm_left_low                                                                        ;| A=? X=? Y=? C=? Z=? N=? V=? | $2F83=? | in:AXYCV out:XYCV
+ 3573     19.0     LDA &C5                         \ grind: no borrow (C=1, the common case): the high byte as it is;| A=? X=? Y=? C=? Z=? N=? V=? | $C5=? | in:XYCV out:AXYCV
+ 3574     18.6     BCS cm_left_known                                                                      ;| A=?≡$C5 X=? Y=? C=? Z=? N=? V=? | in:AXYCV out:AXYCV
+ 3575      0.8     SBC #0                          \ a borrow (C=0): one less, C clear if that is below 0 ;| A=?≡$C5 X=? Y=? C=0 Z=? N=? V=? | in:AXYC out:AXYCV

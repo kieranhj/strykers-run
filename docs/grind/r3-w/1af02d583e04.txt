@@ -1,0 +1,21 @@
+window 1af02d583e04: src/game.6502 lines 1963-1981, 14 instructions, 150.7 cycles a pass measured (wait excluded)
+
+ 1963      4.1     JSR get_sprite_and_screen_addresses_for_frame_A                                        ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XNV out:AXCV
+ 1964      2.1     LDY y_offset                                                                           ;| A=? X=? Y={0,8} C=? Z=? N=0 V=? | $78=? | in:AXCV out:AXYNZCV
+ 1965      4.1     JSR subtract_Y_rows_from_screen_address_in_AX                                          ;| A=? X=? Y=?≡$78 C=? Z=? N=? V=? | in:AXYNZCV out:AX
+ 1966          .plot_mover_sprite    \ # Plot third part of mover (e.g. player's head)
+ 1967     11.1     STA screen_address_low                                                                 ;| A=? X=? Y=? C=? Z=? N=? V=? | $CE=? | in:AX out:X
+ 1968     11.1     STX screen_address_high                                                                ;| A=? X=? Y=? C=? Z=? N=? V=? | $CF=? | in:X out:-
+ 1969      7.4     LDA #&04                                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | in:- out:A
+ 1970     11.1     STA mask_table_address_high                                                            ;| A=$04 X=? Y=? C=? Z=0 N=0 V=? | $C9=? | in:A out:-
+ 1971     11.1     LDA pixel_table_address_low                                                            ;| A=$04 X=? Y=? C=? Z=0 N=0 V=? | $B8=? | in:- out:A
+ 1972      7.4     ORA #&80                                                                               ;| A=?≡$B8 X=? Y=? C=? Z=? N=? V=? | in:A out:A
+ 1973     11.1     STA mask_table_address_low                                                             ;| A=128..255 X=? Y=? C=? Z=0 N=1 V=? | $C8=? | in:A out:-
+ 1974              \ Step 2 (layer 2): only the renderer draws. The game's own calls still work out the
+ 1975              \ sprite and the address, and walk the sprite as the plotter would, but write nothing
+ 1976              \ (`drawing` is never set, and the zero-page unpacker's body is the renderer's: decision 34).
+ 1977     22.1     JSR walk_column                 \ (walk_column sets its own Y)                         ;| A=128..255 X=? Y=? C=? Z=0 N=1 V=? | in:- out:XYCV
+ 1978      7.4     LDA #&40                                                                               ;| A={0,8} X=? Y=? C=? Z=? N=0 V=? | in:XYCV out:AXYNZCV
+ 1979     11.1     STA pixel_table_address_low                                                            ;| A=$40 X=? Y=? C=? Z=0 N=0 V=? | $B8=? | in:AXYNZCV out:AXYNZCV
+ 1980          .leave_1f08
+ 1981     29.8     RTS                                                                                    ;| A=1..255 X=? Y=? C=? Z=? N=? V=? | in:AXYNZCV out:AXYNZCV

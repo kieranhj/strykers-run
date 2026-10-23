@@ -1,0 +1,41 @@
+window e2f6545d0d8f: src/sky_hazel.6502 lines 113-151, 32 instructions, 183.0 cycles a pass measured (wait excluded)
+
+  113              SEC                                                                                    ;| A=?≡sky_ytop X=? Y=?≡$DA C=? Z=? N=? V=? | in:AXY out:AXYC
+  114              SBC sky_rc,Y                                                                           ;| A=?≡sky_ytop X=? Y=?≡$DA C=1 Z=? N=? V=? | [sky_rc,y]=? | in:AXYC out:AXYV
+  115              STA sky_ry,Y                                                                           ;| A=? X=? Y=?≡$DA C=? Z=? N=? V=? | [sky_ry,y]=? | in:AXYV out:XYV
+  116              LDA #&00                                                                               ;| A=? X=? Y=?≡$DA C=? Z=? N=? V=? | in:XYV out:AXYV
+  117              STA sky_rl,Y                                                                           ;| A=$00 X=? Y=?≡$DA C=? Z=1 N=0 V=? | [sky_rl,y]=? | in:AXYV out:XYV
+  118              LDA #&40                                                                               ;| A=$00 X=? Y=?≡$DA C=? Z=1 N=0 V=? | in:XYV out:AXYV
+  119              STA sky_rh,Y                                                                           ;| A=$40 X=? Y=?≡$DA C=? Z=0 N=0 V=? | [sky_rh,y]=? | in:AXYV out:XYV
+  120              LDA sky_rt,X                                                                           ;| A=$40 X=? Y=?≡$DA C=? Z=0 N=0 V=? | [sky_rt,x]=? | in:XYV out:AXYV
+  121              STA sky_rt,Y                                                                           ;| A=? X=? Y=?≡$DA C=? Z=? N=? V=? | [sky_rt,y]=? | in:AXYV out:XYV
+  122              LDA sky_rn,X                                                                           ;| A=? X=? Y=?≡$DA C=? Z=? N=? V=? | [sky_rn,x]=? | in:XYV out:AXYV
+  123              STA sky_rn,Y                                                                           ;| A=? X=? Y=?≡$DA C=? Z=? N=? V=? | [sky_rn,y]=? | in:AXYV out:XYV
+  124              LDA sky_rb,X                                                                           ;| A=? X=? Y=?≡$DA C=? Z=? N=? V=? | [sky_rb,x]=? | in:XYV out:AXYV
+  125              STA sky_rb,Y                                                                           ;| A=? X=? Y=?≡$DA C=? Z=? N=? V=? | [sky_rb,y]=? | in:AXYV out:XYV
+  126              INC sky_nq                                                                             ;| A=? X=? Y=?≡$DA C=? Z=? N=? V=? | $DA=? | in:XYV out:XYV
+  127          .whole
+  128      5.3     INX                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XYV out:XYV
+  129      8.0     CPX sky_t                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | $DB=? | in:XYV out:XYZV
+  130      9.4     BNE split                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XYZV out:XYV
+  131      1.3     CLC                                                                                    ;| A=? X=? Y=? C=1 Z=1 N=0 V=? | in:YV out:YCV
+  132      3.9     RTS                                                                                    ;| A=? X=? Y=? C=0 Z=1 N=0 V=? | in:YCV out:YCV
+  133          }
+  134          
+  135          \ sky_col_row: X = an entry, sky_j8 8 * a column (from the first drawn): C set if not in it; else
+  136          \ s_ptr, Y the column's top byte there, sky_stop below its lowest
+  137          .sky_col_row
+  138          {
+  139     11.3     LDA sky_j8                                                                             ;| A=? X=? Y=? C=? Z=? N=? V=? | $E1=? | in:XY out:AXY
+  140      7.6     SEC                                                                                    ;| A=?≡$E1 X=? Y=? C=? Z=? N=? V=? | in:AXY out:AXYC
+  141     15.1     SBC sky_rc,X                                                                           ;| A=?≡$E1 X=? Y=? C=1 Z=? N=? V=? | [sky_rc,x]=? | in:AXYC out:AXYCV
+  142      7.6     BCC no                          \ before it                                            ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXYCV out:AXYV
+  143     11.3     STA sky_stop                                                                           ;| A=? X=? Y=? C=1 Z=? N=? V=? | $E2=? | in:AXYV out:XYV
+  144     15.1     LDA sky_ry,X                                                                           ;| A=? X=? Y=? C=1 Z=? N=? V=? | [sky_ry,x]=? | in:XYV out:AXYV
+  145     11.3     CMP sky_stop                                                                           ;| A=? X=? Y=? C=1 Z=? N=? V=? | $E2=? | in:AXYV out:XYCV
+  146      7.6     BCC no                          \ after it                                             ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XYCV out:XYV
+  147     15.1     LDA sky_rl,X                                                                           ;| A=? X=? Y=? C=1 Z=? N=? V=? | [sky_rl,x]=? | in:X out:AX
+  148     11.4     STA s_ptr                                                                              ;| A=? X=? Y=? C=1 Z=? N=? V=? | $C2=? | in:AX out:X
+  149     15.1     LDA sky_rh,X                                                                           ;| A=? X=? Y=? C=1 Z=? N=? V=? | [sky_rh,x]=? | in:X out:AX
+  150     11.3     STA s_ptr + 1                                                                          ;| A=? X=? Y=? C=1 Z=? N=? V=? | $C3=? | in:AX out:X
+  151     15.1     LDA sky_rt,X                                                                           ;| A=? X=? Y=? C=1 Z=? N=? V=? | [sky_rt,x]=? | in:X out:AX

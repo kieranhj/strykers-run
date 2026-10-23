@@ -1,0 +1,55 @@
+{
+ "candidates": [
+  {
+   "window": "93cc43d357a4",
+   "file": "src/render.6502",
+   "line": 1831,
+   "old": "    SBC #8\n    STA b_ptr\n    BCC step_back_hi\n    JMP each\n.next                               \\ v_ptr: this column's last cell (the next record 8 on)\n    SEC                             \\ (from empty and clip_test: carry either way)\n    BRA next_c                      \\ 65C02 opcode\n.step_forward\n    LDA b_ptr                       \\ on 8 (C = 1)\n    ADC #7\n    STA b_ptr\n    BCS forward_hi\n    JMP each\n.forward_hi\n    LDA b_ptr + 1\n    INC A                           \\ 65C02 opcode\n    BPL forward_in_ring\n    LDA #&40\n.forward_in_ring\n    STA b_ptr + 1\n    BRA to_each                     \\ 65C02 opcode\n.step_back_hi\n    LDA b_ptr + 1\n    DEC A                           \\ 65C02 opcode\n    CMP #&40\n    BCS back_in_ring\n    LDA #&7F\n.back_in_ring\n    STA b_ptr + 1\n.to_each\n    JMP each",
+   "new": "    SBC #8\n    STA b_ptr\n    BCC step_back_hi\n    JMP each\n.next                               \\ v_ptr: this column's last cell (the next record 8 on)\n    SEC                             \\ (from empty and clip_test: carry either way)\n    DEC ds_c                        \\ next_c's own steps done here (no BRA): the same as above\n    BEQ done\n    BIT dm_flip\n    BPL step_forward\n    LDA b_ptr                       \\ flipped: back 8 (C = 1)\n    SBC #8\n    STA b_ptr\n    BCC step_back_hi\n    JMP each\n.step_forward\n    LDA b_ptr                       \\ on 8 (C = 1)\n    ADC #7\n    STA b_ptr\n    BCS forward_hi\n    JMP each\n.step_back_hi\n    DEC b_ptr + 1                   \\ the high byte down a page: &40 -> &3F -> &7F (round the 16K)\n    LDA #&40\n    TSB b_ptr + 1\n    BRA to_each                     \\ 65C02 opcode\n.forward_hi\n    INC b_ptr + 1                   \\ up a page: &7F -> &80 -> &40 (round the 16K)\n    BPL to_each\n    LSR b_ptr + 1\n.to_each\n    JMP each",
+   "summary": "`.next` carries next_c's steps inline (saves the BRA on every empty or clipped column, 5.4 a pass) and the cold ring-wrap code is smaller (DEC/TSB, INC/LSR on the zero-page high byte). Alternative to the next two (the second keeps the cold code, the third is the cold code alone).",
+   "claim": {
+    "cycles_per_execution": 3,
+    "executions_a_pass": 5.4,
+    "cycles_a_pass": 16.2,
+    "bytes": -9
+   },
+   "equivalence": "`.next` (reached only by JMP next from empty/to_next and clip_test: grep) was `SEC; BRA next_c`, and next_c is `DEC ds_c; BEQ done; BIT dm_flip; BPL step_forward; LDA b_ptr; SBC #8; STA b_ptr; BCC step_back_hi; JMP each`. The new `.next` is `SEC` followed by that very sequence inline, so every register, flag and byte at `done`, `step_forward`, `step_back_hi` and `each` is what it was (C=1 from the SEC for the SBC and for step_forward's ADC #7; DEC and BIT leave C alone; A, X, Y untouched until the LDA b_ptr). Only the BRA is gone. next_c, step_forward and the original flipped body keep their code. forward_hi: b_ptr+1 is a screen high byte in &40-&7F (it is set from raise_address, which rings it into &40-&7F, or by the generic path's own &40 ring; the old code assumed the same). INC then BPL is the old LDA/INC A/BPL test; the only value that fails it is &80, and LSR of &80 is &40, the old LDA #&40; other values are the INC result as before. A, N, Z, C are not live at to_each/each (each starts LDY #1; LDA (col_ptr),Y and sets what it uses). step_back_hi: DEC gives hi-1; old: keep it if >= &40, else (it is &3F) &7F. New: TSB sets bit 6 of it: hi-1 in &40-&7E already has it (unchanged), &3F becomes &7F. Same for hi in &40-&7F.",
+   "relies_on": "Measured on the bench build (unshifted DEBUG_LIVES, pcprof work a pass, HEAD ff62e12 vs this; scratch worktree): seed 1 34422.4 -> 34405.3 (-17.1), RIGHT 39622.9 -> 39600.9 (-22.0); passlock seed 1 against HEAD: state and screen identical over 3000 passes. Needs b_ptr+1 in &40-&7F for the cold code. Bytes +9 in this window (new .next 20 for 3, cold code 17 for 25): bank 4 from .compiled_part (&9CCE -> &9CD7) on moves up 9. Page crossings it moves (taken branches): BEQ in_hazel (&9CFC, 6 cyc/pass) stops crossing, BEQ no_part (&9DD0, 7.6 cyc/pass, mostly not taken) starts; the pcprof totals above include everything else, incl. indexed reads. Labels forward_in_ring and back_in_ring removed (grep: only this window). Entries past labels: none for next/step_forward.",
+   "file_written": "build/grind/r3/opt-93cc43d357a4.json"
+  },
+  {
+   "window": "93cc43d357a4",
+   "file": "src/render.6502",
+   "line": 1831,
+   "old": "    SBC #8\n    STA b_ptr\n    BCC step_back_hi\n    JMP each\n.next                               \\ v_ptr: this column's last cell (the next record 8 on)\n    SEC                             \\ (from empty and clip_test: carry either way)\n    BRA next_c                      \\ 65C02 opcode\n.step_forward\n    LDA b_ptr                       \\ on 8 (C = 1)\n    ADC #7\n    STA b_ptr\n    BCS forward_hi\n    JMP each\n.forward_hi\n    LDA b_ptr + 1\n    INC A                           \\ 65C02 opcode\n    BPL forward_in_ring\n    LDA #&40\n.forward_in_ring\n    STA b_ptr + 1\n    BRA to_each                     \\ 65C02 opcode\n.step_back_hi\n    LDA b_ptr + 1\n    DEC A                           \\ 65C02 opcode\n    CMP #&40\n    BCS back_in_ring\n    LDA #&7F\n.back_in_ring\n    STA b_ptr + 1\n.to_each\n    JMP each",
+   "new": "    SBC #8\n    STA b_ptr\n    BCC step_back_hi\n    JMP each\n.next                               \\ v_ptr: this column's last cell (the next record 8 on)\n    SEC                             \\ (from empty and clip_test: carry either way)\n    DEC ds_c                        \\ next_c's own steps done here (no BRA): the same as above\n    BEQ done\n    BIT dm_flip\n    BPL step_forward\n    LDA b_ptr                       \\ flipped: back 8 (C = 1)\n    SBC #8\n    STA b_ptr\n    BCC step_back_hi\n    JMP each\n.step_forward\n    LDA b_ptr                       \\ on 8 (C = 1)\n    ADC #7\n    STA b_ptr\n    BCS forward_hi\n    JMP each\n.forward_hi\n    LDA b_ptr + 1\n    INC A                           \\ 65C02 opcode\n    BPL forward_in_ring\n    LDA #&40\n.forward_in_ring\n    STA b_ptr + 1\n    BRA to_each                     \\ 65C02 opcode\n.step_back_hi\n    LDA b_ptr + 1\n    DEC A                           \\ 65C02 opcode\n    CMP #&40\n    BCS back_in_ring\n    LDA #&7F\n.back_in_ring\n    STA b_ptr + 1\n.to_each\n    JMP each",
+   "summary": "`.next` carries next_c's steps inline (saves the BRA on every empty or clipped column, 5.4 a pass); the cold code untouched. Alternative to the first candidate (same plus smaller cold code) and a safer one: no assumption on b_ptr+1.",
+   "claim": {
+    "cycles_per_execution": 3,
+    "executions_a_pass": 5.4,
+    "cycles_a_pass": 16.2,
+    "bytes": -17
+   },
+   "equivalence": "`.next` (reached only by JMP next from empty/to_next and clip_test: grep) was `SEC; BRA next_c`, and next_c is `DEC ds_c; BEQ done; BIT dm_flip; BPL step_forward; LDA b_ptr; SBC #8; STA b_ptr; BCC step_back_hi; JMP each`. The new `.next` is `SEC` followed by that very sequence inline, so every register, flag and byte at `done`, `step_forward`, `step_back_hi` and `each` is what it was (C=1 from the SEC for the SBC and for step_forward's ADC #7; DEC and BIT leave C alone; A, X, Y untouched until the LDA b_ptr). Only the BRA is gone. next_c, step_forward and the original flipped body keep their code. The cold code is the old text.",
+   "relies_on": "Measured on the bench build (pcprof work a pass, HEAD ff62e12): seed 1 34422.4 -> 34403.7 (-18.7), RIGHT 39622.9 -> 39602.6 (-20.3). Bytes +17 in this window, so bank 4 from the end of to_each (compiled_part on) moves up 17: BEQ in_hazel (&9CFC) stops crossing, BEQ no_part (&9DD0) and BNE whole_pages (&9FED, 8.4 cyc/pass) start crossing; the totals include them.",
+   "file_written": "build/grind/r3/opt-93cc43d357a4.json"
+  },
+  {
+   "window": "93cc43d357a4",
+   "file": "src/render.6502",
+   "line": 1844,
+   "old": ".forward_hi\n    LDA b_ptr + 1\n    INC A                           \\ 65C02 opcode\n    BPL forward_in_ring\n    LDA #&40\n.forward_in_ring\n    STA b_ptr + 1\n    BRA to_each                     \\ 65C02 opcode\n.step_back_hi\n    LDA b_ptr + 1\n    DEC A                           \\ 65C02 opcode\n    CMP #&40\n    BCS back_in_ring\n    LDA #&7F\n.back_in_ring\n    STA b_ptr + 1\n.to_each\n    JMP each",
+   "new": ".step_back_hi\n    DEC b_ptr + 1                   \\ the high byte down a page: &40 -> &3F -> &7F (round the 16K)\n    LDA #&40\n    TSB b_ptr + 1\n    BRA to_each                     \\ 65C02 opcode\n.forward_hi\n    INC b_ptr + 1                   \\ up a page: &7F -> &80 -> &40 (round the 16K)\n    BPL to_each\n    LSR b_ptr + 1\n.to_each\n    JMP each",
+   "summary": "Cold ring-wrap code only (forward_hi and step_back_hi: DEC/TSB, INC/LSR on b_ptr+1), 8 bytes smaller. Not the .next change; the first candidate contains it. Weakest.",
+   "claim": {
+    "cycles_per_execution": 0,
+    "executions_a_pass": 0,
+    "cycles_a_pass": 0,
+    "bytes": 8
+   },
+   "equivalence": "forward_hi: b_ptr+1 is a screen high byte in &40-&7F (it is set from raise_address, which rings it into &40-&7F, or by the generic path's own &40 ring; the old code assumed the same). INC then BPL is the old LDA/INC A/BPL test; the only value that fails it is &80, and LSR of &80 is &40, the old LDA #&40; other values are the INC result as before. A, N, Z, C are not live at to_each/each (each starts LDY #1; LDA (col_ptr),Y and sets what it uses). step_back_hi: DEC gives hi-1; old: keep it if >= &40, else (it is &3F) &7F. New: TSB sets bit 6 of it: hi-1 in &40-&7E already has it (unchanged), &3F becomes &7F. Same for hi in &40-&7F.",
+   "relies_on": "b_ptr+1 in &40-&7F. No hot-path cycles; bank 4 after it moves down 8. Measured (pcprof work a pass): seed 1 34422.4 -> 34421.2 (-1.2), RIGHT 39622.9 -> 39620.7 (-2.2), from page crossings only (BEQ in_hazel and BEQ no_part move).",
+   "file_written": "build/grind/r3/opt-93cc43d357a4.json"
+  }
+ ]
+}

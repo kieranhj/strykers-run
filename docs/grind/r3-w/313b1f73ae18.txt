@@ -1,0 +1,45 @@
+window 313b1f73ae18: src/game.6502 lines 2935-2977, 32 instructions, 154.5 cycles a pass measured (wait excluded)
+
+ 2935      0.2     INX                                                                                    ;| A=0..127 X={$C9,$D5} Y=? C=? Z=0 N=1 V=? | in:XV out:XV
+ 2936      0.2     INX                                                                                    ;| A=0..127 X={$CA,$D6} Y=? C=? Z=0 N=1 V=? | in:XV out:XV
+ 2937      0.2     INX                                                                                    ;| A=0..127 X={$CB,$D7} Y=? C=? Z=0 N=1 V=? | in:XV out:XV
+ 2938      0.2     INX                                                                                    ;| A=0..127 X={$CC,$D8} Y=? C=? Z=0 N=1 V=? | in:XV out:XV
+ 2939      0.4     BRA move_mover_set_43fa                                                                ;| A=0..127 X={$CD,$D9} Y=? C=? Z=0 N=1 V=? | in:XV out:XV
+ 2940          
+ 2941          .unplot_and_move_mover
+ 2942      4.0     LDY mover_to_update                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | $03=? | in:V out:YV
+ 2943      7.9     JSR plot_mover                  \ Unplot mover                                         ;| A=? X=? Y=?≡$03 C=? Z=? N=? V=? | in:YV out:V
+ 2944              \ Step 2 (BUGS #4): the plotter leaves mover_x_low advanced past a clipped or wide sprite,
+ 2945              \ and the move routines start from it, so a soldier jumped 1-6 columns in ~1% of moves.
+ 2946              \ Move from the mover's own x, as the logic will once it no longer draws (layer 2).
+ 2947      4.0     LDY mover_to_update                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | $03=? | in:V out:YV
+ 2948      7.9     JSR get_mover_Y_x                                                                      ;| A=? X=? Y=?≡$03 C=? Z=? N=? V=? | in:YV out:V
+ 2949          .move_mover
+ 2950      3.4     LDX #LO(move_mover_up_and_right)                                                       ;| A=? X=? Y=? C=? Z=? N=? V=? | in:V out:XV
+ 2951      5.2     LDA x_delta                                                                            ;| A=? X=$C7 Y=? C=? Z=0 N=1 V=? | $7C=? | in:XV out:AXV
+ 2952      5.2     STA x_edge_size_and_direction   \ ***                                                  ;| A=?≡$7C X=$C7 Y=? C=? Z=? N=? V=? | $99=? | in:AXV out:AXV
+ 2953      3.4     AND #&80                                                                               ;| A=?≡$7C X=$C7 Y=? C=? Z=? N=? V=? | in:AXV out:AXNV
+ 2954      5.2     STA flip                        \ N = x direction                                      ;| A=0..128 %x0000000 X=$C7 Y=? C=? Z=? N=? V=? | $7B=? | in:AXNV out:AXNV
+ 2955      4.5     BPL move_mover_x_done_43fa                                                             ;| A=0..128 %x0000000 X=$C7 Y=? C=? Z=? N=? V=? | in:AXNV out:AXV
+ 2956      3.3     TRB x_delta                     \ A = &80: x_delta AND &7F                             ;| A=$80 X=$C7 Y=? C=? Z=? N=1 V=? | $7C=? | in:AV out:V
+ 2957      1.3     LDX #LO(move_mover_up_and_left)                                                        ;| A=$80 X=$C7 Y=? C=? Z=? N=1 V=? | in:V out:XV
+ 2958          .move_mover_x_done_43fa
+ 2959      5.2     LDA y_delta                                                                            ;| A={0,$80} X={$C7,$D3} Y=? C=? Z=? N=? V=? | $7D=? | in:XV out:AXNV
+ 2960      5.2     STA y_edge_size_and_direction   \ ***                                                  ;| A=?≡$7D X={$C7,$D3} Y=? C=? Z=? N=? V=? | $9A=? | in:AXNV out:AXNV
+ 2961      3.6     BMI move_mover_y_down_43fa      \ (y_delta AND &7F = y_delta when going up)            ;| A=?≡$7D X={$C7,$D3} Y=? C=? Z=? N=? V=? | in:AXNV out:AXV
+ 2962          .move_mover_set_43fa
+ 2963      3.4     LDA #HI(move_mover_up_and_right)                                                       ;| A=0..127 X={$C7,$CD,$D3,$D9} Y=? C=? Z=? N=? V=? | in:XV out:AXV
+ 2964      6.9     STA move_mover_routine_address_high                                                    ;| A=$20 X={$C7,$CD,$D3,$D9} Y=? C=? Z=0 N=0 V=? | move_mover_routine_address_high=? | in:AXV out:XV
+ 2965      6.9     STX move_mover_routine_address_low                                                     ;| A=$20 X={$C7,$CD,$D3,$D9} Y=? C=? Z=0 N=0 V=? | move_mover_routine_address_low=? | in:XV out:XV
+ 2966     10.3     JSR animate_mover               \ Returns A = mover_y                                  ;| A=$20 X={$C7,$CD,$D3,$D9} Y=? C=? Z=0 N=0 V=? | in:XV out:AXYNZCV
+ 2967          move_mover_routine_address_low = * + 1
+ 2968          move_mover_routine_address_high = * + 2
+ 2969     10.3     JSR &FFFF                       \ Move mover up or down, then right or left            ;| A=? X=0..217 Y=? C=? Z=? N=? V=? | in:AXYNZCV out:-
+ 2970          \ #     actually JSR move_mover_routine_address
+ 2971      5.2     LDY mover_to_update                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | $03=? | in:- out:Y
+ 2972      5.2     LDA mover_x_low                                                                        ;| A=? X=? Y=?≡$03 C=? Z=? N=? V=? | $F8=? | in:Y out:AY
+ 2973      8.6     STA movers_x_low,Y                                                                     ;| A=?≡$F8 X=? Y=?≡$03 C=? Z=? N=? V=? | [$1344,y]=? | in:AY out:Y
+ 2974      5.2     LDA &C5                                                                                ;| A=?≡$F8 X=? Y=?≡$03 C=? Z=? N=? V=? | $C5=? | in:Y out:AY
+ 2975      8.6     STA movers_x_high,Y                                                                    ;| A=?≡$C5 X=? Y=?≡$03 C=? Z=? N=? V=? | [$1366,y]=? | in:AY out:Y
+ 2976      5.2     LDA mover_screen_address_low                                                           ;| A=?≡$C5 X=? Y=?≡$03 C=? Z=? N=? V=? | $C2=? | in:Y out:AY
+ 2977      8.6     STA movers_screen_address_low,Y                                                        ;| A=?≡$C2 X=? Y=?≡$03 C=? Z=? N=? V=? | [$13AA,y]=? | in:AY out:Y

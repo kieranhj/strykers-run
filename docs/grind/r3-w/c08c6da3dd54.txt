@@ -1,0 +1,44 @@
+window c08c6da3dd54: src/game.6502 lines 2198-2239, 32 instructions, 91.8 cycles a pass measured (wait excluded)
+
+ 2198              LDA flipped_mover_sprite_addresses_high_table,X                                        ;| A=? X=? Y=? C=? Z=? N=? V=? | [$1440,x]=? | in:X out:A
+ 2199              STA &CF                                                                                ;| A=? X=? Y=? C=? Z=? N=? V=? | $CF=? | in:A out:-
+ 2200              STZ pixel_table_address_low     \ 65C02 opcode: zero to use flipped pixel table        ;| A=? X=? Y=? C=? Z=? N=? V=? | $B8=? | in:- out:-
+ 2201          .clip_flipped_mover_loop            \ Grind: the n = edge_x_low - mover_x_low columns counted in X
+ 2202      0.4     LDA edge_x_low                                                                         ;| A=? X=? Y=? C=? Z=? N=? V=? | $B5=? | in:- out:A
+ 2203      0.3     SEC                                                                                    ;| A=?≡$B5 X=? Y=? C=? Z=? N=? V=? | in:A out:AC
+ 2204      0.4     SBC mover_x_low                                                                        ;| A=?≡$B5 X=? Y=? C=1 Z=? N=? V=? | $F8=? | in:AC out:AZV
+ 2205      0.3     BEQ leave_with_sprite_address_and_carry_set                                            ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AZV out:AV
+ 2206      0.4     STA columns_to_clip_from_left   \ n: zero on entry (both callers zero it), as n INCs left it;| A=1..255 X=? Y=? C=? Z=0 N=? V=? | $CD=? | in:A out:A
+ 2207      0.3     TAX                                                                                    ;| A=1..255 X=? Y=? C=? Z=0 N=? V=? | in:A out:X
+ 2208      0.4     LDA edge_x_low                                                                         ;| A=1..255 X=1..255 Y=? C=? Z=0 N=? V=? | $B5=? | in:X out:AX
+ 2209      0.4     STA mover_x_low                 \ + n, as n INCs left it                               ;| A=?≡$B5 X=1..255 Y=? C=? Z=? N=? V=? | $F8=? | in:AX out:X
+ 2210      0.3     SEC                                                                                    ;| A=?≡$B5 X=1..255 Y=? C=? Z=? N=? V=? | in:X out:XC
+ 2211          .clip_flipped_column_c1
+ 2212      2.0     LDA &CE                                                                                ;| A=? X=1..255 Y=? C=1 Z=? N=? V=? | $CE=? | in:XC out:AXC
+ 2213      3.4     SBC (&CE)                       \ 65C02 opcode: move back a column of sprite data (C = 1);| A=?≡$CE X=1..255 Y=? C=1 Z=? N=? V=? | [($CE)]=? | in:AXC out:AXCV
+ 2214      2.0     STA &CE                                                                                ;| A=? X=1..255 Y=? C=? Z=? N=? V=? | $CE=? | in:AXCV out:AXCV
+ 2215      2.0     BCS skip_page_2054                                                                     ;| A=? X=1..255 Y=? C=? Z=? N=? V=? | in:AXCV out:AXCV
+ 2216              DEC &CF                                                                                ;| A=? X=1..255 Y=? C=0 Z=? N=? V=? | $CF=? | in:AXV out:AXV
+ 2217              SEC                                                                                    ;| A=? X=1..255 Y=? C=0 Z=? N=? V=? | in:AXV out:AXCV
+ 2218          .skip_page_2054
+ 2219      1.4     DEX                                                                                    ;| A=? X=1..255 Y=? C=1 Z=? N=? V=? | in:AXCV out:AXZCV
+ 2220      1.9     BNE clip_flipped_column_c1                                                             ;| A=? X=0..254 Y=? C=1 Z=? N=? V=? | in:AXZCV out:AXCV
+ 2221          .leave_with_sprite_address_and_carry_set
+ 2222      0.4     LDY &CE                                                                                ;| A=? X=? Y=? C=? Z=1 N=0 V=? | $CE=? | in:AV out:AYV
+ 2223      0.4     LDX &CF                                                                                ;| A=? X=? Y=?≡$CE C=? Z=? N=? V=? | $CF=? | in:AYV out:AXYNZV
+ 2224                                              \ Grind: falls into the SEC/RTS below (carry set: mover is on edge)
+ 2225          .leave_with_carry_set_2097
+ 2226     18.8     SEC                             \ Leave with carry set to indicate mover not on screen ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXYNZV out:AXYNZCV
+ 2227          .leave_with_carry_set_rts_2097
+ 2228     56.5     RTS                                                                                    ;| A=? X=? Y=? C=1 Z=? N=? V=? | in:AXYNZCV out:AXYNZCV
+ 2229          
+ 2230          .get_mover_sprite
+ 2231              LDY mover_to_update                                                                    ;| A=? X=? Y=? C=1 Z=? N=? V=? | $03=? | in:X out:XY
+ 2232              CLC                             \ Grind: here, not below; both get_mover_Y_sprite callers arrive with C=0;| A=? X=? Y=?≡$03 C=1 Z=? N=? V=? | in:XY out:XYC
+ 2233          .get_mover_Y_sprite
+ 2234              LDA movers_frame_and_flip,Y                                                            ;| A=? X=? Y=?≡$03 C=0 Z=? N=? V=? | [$1322,y]=? | in:XYC out:AXYC
+ 2235              AND #&3F                                                                               ;| A=? X=? Y=?≡$03 C=0 Z=? N=? V=? | in:AXYC out:AXYC
+ 2236              ADC mover_types_first_sprite_animation_offsets,X                                       ;| A=0..63 X=? Y=?≡$03 C=0 Z=? N=0 V=? | [$DA1D,x]=? | in:AXYC out:AYV
+ 2237              TAX                                                                                    ;| A=? X=? Y=?≡$03 C=? Z=? N=? V=? | in:AYV out:XYV
+ 2238              LDA animation_table,X                                                                  ;| A=? X=? Y=?≡$03 C=? Z=? N=? V=? | [$D91B,x]=? | in:XYV out:AYV
+ 2239              TAX                                                                                    ;| A=? X=? Y=?≡$03 C=? Z=? N=? V=? | in:AYV out:XYV

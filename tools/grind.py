@@ -12,6 +12,11 @@ evaluation workflow's agents do that. This cuts the work up, keeps the record, a
     python tools/grind.py add RESULT.json
         the evaluation workflow's result into the ledger, docs/grind/ledger.jsonl: each candidate
         with its skeptics' votes, approved or refuted; its windows into seen.txt
+    python tools/grind.py todo ROUND_DIR [--windows W.json]
+        what an interrupted evaluation still owes, as JSON for refute.workflow.js / evaluate.workflow.js:
+        `items` (each candidate in ROUND_DIR's opt-*.json with fewer skeptic files than its lenses:
+        window, i, file, line, lenses) and, with --windows (build/grind/windows.json), `windows`
+        (the entries that have no opt-*.json yet)
     python tools/grind.py queue                  the approved candidates not yet tried, best first
     python tools/grind.py apply ID ... | revert ID ...
     python tools/grind.py gate [--quick]
@@ -246,6 +251,32 @@ def from_dir(d):
                 c['skeptics'].append(vote)
             cands.append(c)
     return dict(round=rnd, windows=sorted(w for w in wins if w), candidates=cands)
+
+
+def cmd_todo(a):
+    """An interrupted evaluation's remainder: candidates short of skeptic files, windows with no
+    optimiser file. The lens rule is the workflow's: three from 5 cycles a pass, else semantics and machine."""
+    d = Path(a.dir)
+    lenses_all = ['semantics', 'machine', 'project']
+    items = []
+    for f in sorted(d.glob('opt-*.json')):
+        try:
+            got = json.loads(f.read_text(encoding='utf-8')).get('candidates', [])
+        except ValueError as e:
+            print(f"{f.name}: {e}; skipped", file=sys.stderr)
+            continue
+        for i, c in enumerate(got):
+            w = c.get('window')
+            lenses = lenses_all if (c.get('claim') or {}).get('cycles_a_pass', 0) >= 5 else lenses_all[:2]
+            missing = [x for x in lenses if not (d / f'skeptic-{w}-{i}-{x}.json').exists()]
+            if missing:
+                items.append(dict(window=w, i=i, file=c['file'], line=c['line'], lenses=missing,
+                                  cycles_a_pass=(c.get('claim') or {}).get('cycles_a_pass', 0)))
+    out = dict(round=int(re.sub(r'\D', '', d.name) or 0), items=items)
+    if a.windows:
+        have = {f.stem[4:] for f in d.glob('opt-*.json')}
+        out['windows'] = [w for w in json.loads(Path(a.windows).read_text(encoding='utf-8')) if w['id'] not in have]
+    print(json.dumps(out, separators=(',', ':')))
 
 
 def cmd_add(a):
@@ -579,6 +610,9 @@ def main():
     w.add_argument('--profile', nargs='*', default=[])
     w.add_argument('--all', action='store_true')
     s.add_parser('add').add_argument('result')
+    t = s.add_parser('todo')
+    t.add_argument('dir')
+    t.add_argument('--windows')
     s.add_parser('queue')
     s.add_parser('apply').add_argument('ids', nargs='+')
     s.add_parser('revert').add_argument('ids', nargs='+')
@@ -591,7 +625,7 @@ def main():
     r.add_argument('--retry', nargs='*', default=[], help="statuses to queue again, e.g. 'no room'")
     s.add_parser('report')
     a = p.parse_args()
-    {'windows': cmd_windows, 'add': cmd_add, 'queue': cmd_queue, 'apply': cmd_apply,
+    {'windows': cmd_windows, 'add': cmd_add, 'todo': cmd_todo, 'queue': cmd_queue, 'apply': cmd_apply,
      'revert': lambda a: cmd_apply(a, True), 'gate': cmd_gate, 'run': cmd_run, 'report': cmd_report}[a.cmd](a)
 
 

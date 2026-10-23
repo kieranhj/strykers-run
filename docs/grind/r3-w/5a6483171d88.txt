@@ -1,0 +1,41 @@
+window 5a6483171d88: src/render.6502 lines 785-823, 32 instructions, 1,309.1 cycles a pass measured (wait excluded)
+
+  785      3.0     LDA hist_edge_lo,X                                                                     ;| A=? X=? Y=? C=? Z=? N=? V=? | [hist_edge_lo,x]=? | in:X out:AX
+  786      2.3     STA edge_screen_address_low                                                            ;| A=? X=? Y=? C=? Z=? N=? V=? | $85=? | in:AX out:X
+  787      3.0     LDA hist_edge_hi,X                                                                     ;| A=? X=? Y=? C=? Z=? N=? V=? | [hist_edge_hi,x]=? | in:X out:AX
+  788      2.3     STA edge_screen_address_high                                                           ;| A=? X=? Y=? C=? Z=? N=? V=? | $86=? | in:AX out:X
+  789      3.0     LDA hist_src_hi,X               \ the slot: the 8 operands' high byte                  ;| A=? X=? Y=? C=? Z=? N=? V=? | [$96C1,x]=? | in:X out:A
+  790      3.0     CMP src0 + 2                    \ the 8 always hold one value: unchanged, nothing to write;| A=? X=? Y=? C=? Z=? N=? V=? | $9674=? | in:A out:AZ
+  791      1.9     BEQ same_slot                                                                          ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AZ out:A
+  792      1.5     STA src0 + 2                                                                           ;| A=? X=? Y=? C=? Z=0 N=? V=? | $9674=? | in:A out:A
+  793      1.5     STA src1 + 2                                                                           ;| A=? X=? Y=? C=? Z=0 N=? V=? | $967A=? | in:A out:A
+  794      1.5     STA src2 + 2                                                                           ;| A=? X=? Y=? C=? Z=0 N=? V=? | $9680=? | in:A out:A
+  795      1.5     STA src3 + 2                                                                           ;| A=? X=? Y=? C=? Z=0 N=? V=? | $9686=? | in:A out:A
+  796      1.5     STA src4 + 2                                                                           ;| A=? X=? Y=? C=? Z=0 N=? V=? | $968C=? | in:A out:A
+  797      1.5     STA src5 + 2                                                                           ;| A=? X=? Y=? C=? Z=0 N=? V=? | $9692=? | in:A out:A
+  798      1.5     STA src6 + 2                                                                           ;| A=? X=? Y=? C=? Z=0 N=? V=? | $9698=? | in:A out:A
+  799      1.5     STA src7 + 2                                                                           ;| A=? X=? Y=? C=? Z=0 N=? V=? | $969E=? | in:A out:-
+  800          .same_slot
+  801      1.5     LDX #&C8                        \ the history's bytes from the top: X - 1 - line       ;| A=? X=? Y=? C=? Z=? N=? V=? | in:- out:X
+  802          .group
+  803     38.1     LDY #0                                                                                 ;| A=? X=1..255 Y=? C=? Z=? N=? V=? | in:X out:XY
+  804          .src0
+  805     95.3     LDA hist0 - 1 - 0,X             \ self-modified: hist0 or hist1                        ;| A=? X=? Y=? C=? Z=? N=? V=? | [$B7FF,x]=? | in:XY out:AXY
+  806    114.3     STA (edge_screen_address),Y                                                            ;| A=? X=? Y=? C=? Z=? N=? V=? | [($85),y]=? | in:AXY out:XY
+  807     38.1     INY                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XY out:XY
+  808          .src1
+  809     95.3     LDA hist0 - 1 - 1,X             \ self-modified: hist0 or hist1                        ;| A=? X=? Y=? C=? Z=? N=? V=? | [$B7FE,x]=? | in:XY out:AXY
+  810    114.3     STA (edge_screen_address),Y                                                            ;| A=? X=? Y=? C=? Z=? N=? V=? | [($85),y]=? | in:AXY out:XY
+  811     38.1     INY                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XY out:XY
+  812          .src2
+  813     95.3     LDA hist0 - 1 - 2,X             \ self-modified: hist0 or hist1                        ;| A=? X=? Y=? C=? Z=? N=? V=? | [$B7FD,x]=? | in:XY out:AXY
+  814    114.3     STA (edge_screen_address),Y                                                            ;| A=? X=? Y=? C=? Z=? N=? V=? | [($85),y]=? | in:AXY out:XY
+  815     38.1     INY                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XY out:XY
+  816          .src3
+  817     95.3     LDA hist0 - 1 - 3,X             \ self-modified: hist0 or hist1                        ;| A=? X=? Y=? C=? Z=? N=? V=? | [$B7FC,x]=? | in:XY out:AXY
+  818    114.3     STA (edge_screen_address),Y                                                            ;| A=? X=? Y=? C=? Z=? N=? V=? | [($85),y]=? | in:AXY out:XY
+  819     38.1     INY                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XY out:XY
+  820          .src4
+  821     95.3     LDA hist0 - 1 - 4,X             \ self-modified: hist0 or hist1                        ;| A=? X=? Y=? C=? Z=? N=? V=? | [$B7FB,x]=? | in:XY out:AXY
+  822    114.3     STA (edge_screen_address),Y                                                            ;| A=? X=? Y=? C=? Z=? N=? V=? | [($85),y]=? | in:AXY out:XY
+  823     38.1     INY                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XY out:XY

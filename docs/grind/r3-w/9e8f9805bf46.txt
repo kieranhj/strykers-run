@@ -1,0 +1,44 @@
+window 9e8f9805bf46: src/game.6502 lines 2240-2281, 32 instructions, 529.6 cycles a pass measured (wait excluded)
+
+ 2240              LDA movers_frame_and_flip,Y     \ Grind: reloaded (Y kept) instead of PHA/PLA; N and Z from it as from the PLA;| A=? X=? Y=?≡$03 C=? Z=? N=? V=? | [$1322,y]=? | in:XYV out:XNV
+ 2241              RTS                             \ Leave with X = sprite, A = mover frame and flip      ;| A=? X=? Y=?≡$03 C=? Z=? N=? V=? | in:XNV out:XNV
+ 2242          
+ 2243          .change_pixel_tables    \ # Called with A = &14 (KC) or A = &55 (Kf)
+ 2244      0.1     STA value                                                                              ;| A={$14,$55} X=? Y=? C=? Z=0 N=0 V=? | $CE=? | in:AYV out:AYV
+ 2245      0.1     STA unflipped_green_pixel_table + 20\ KC                                               ;| A={$14,$55} X=? Y=? C=? Z=0 N=0 V=? | $0454=? | in:AYV out:AYV
+ 2246      0.1     STA flipped_green_pixel_table + 40                                                     ;| A={$14,$55} X=? Y=? C=? Z=0 N=0 V=? | $0428=? | in:AYV out:AYV
+ 2247      0.1     ASL A                                                                                  ;| A={$14,$55} X=? Y=? C=? Z=0 N=0 V=? | in:AYV out:AYCV
+ 2248      0.1     STA flipped_green_pixel_table + 20                                                     ;| A={$28,$AA} X=? Y=? C=0 Z=0 N=? V=? | $0414=? | in:AYCV out:AYCV
+ 2249      0.1     STA unflipped_green_pixel_table + 40\ CK                                               ;| A={$28,$AA} X=? Y=? C=0 Z=0 N=? V=? | $0468=? | in:AYCV out:AYCV
+ 2250      0.1     EOR value                                                                              ;| A={$28,$AA} X=? Y=? C=0 Z=0 N=? V=? | $CE=? | in:AYCV out:AYCV
+ 2251      0.1     STA flipped_green_pixel_table + 60                                                     ;| A=? X=? Y=? C=0 Z=? N=? V=? | $043C=? | in:AYCV out:AYCV
+ 2252      0.1     STA unflipped_green_pixel_table + 60\ CC                                               ;| A=? X=? Y=? C=0 Z=? N=? V=? | $047C=? | in:AYCV out:YCV
+ 2253      0.2     RTS                                                                                    ;| A=? X=? Y=? C=0 Z=? N=? V=? | in:YCV out:YCV
+ 2254          
+ 2255          .check_if_mover_Y_is_on_screen
+ 2256     16.5     LDA movers_type_and_colour,Y    \ Mover type (get_mover_Y_type inlined)                ;| A=? X=? Y=? C=? Z=? N=? V=? | [$1300,y]=? | in:YV out:AV
+ 2257      8.3     AND #&7F                                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AV out:AV
+ 2258      8.3     TAX                                                                                    ;| A=0..127 X=? Y=? C=? Z=? N=0 V=? | in:AV out:AXV
+ 2259          .check_if_mover_is_on_screen
+ 2260     43.5     LDY &C5                                                                                ;| A=0..127 X=0..127 Y=? C=? Z=? N=0 V=? | $C5=? | in:AXV out:AXYV
+ 2261     43.5     CPY viewport_right_high                                                                ;| A=0..127 X=0..127 Y=?≡$C5 C=? Z=? N=? V=? | $BB=? | in:AXYV out:AXYNZCV
+ 2262     30.4     BCC is_left_of_viewport_right                                                          ;| A=0..127 X=0..127 Y=?≡$C5 C=? Z=? N=? V=? | in:AXYNZCV out:AXYNZCV
+ 2263     26.2     BNE leave_with_carry_set_rts_2097\ Grind: C=1 from the CPY; equal (the common case) falls through;| A=0..127 X=0..127 Y=?≡$C5 C=1 Z=? N=? V=? | in:AXYNZCV out:AXYNZCV
+ 2264          .check_x_low_2099
+ 2265     39.3     LDA viewport_right_low                                                                 ;| A=0..127 X=0..127 Y=?≡$C5 C=1 Z=1 N=0 V=? | $B3=? | in:XYV out:AXYV
+ 2266     39.3     CMP mover_x_low                                                                        ;| A=?≡$B3 X=0..127 Y=?≡$C5 C=1 Z=? N=? V=? | $F8=? | in:AXYV out:AXYNZCV
+ 2267     30.5     BCC leave_with_carry_set_2097                                                          ;| A=?≡$B3 X=0..127 Y=?≡$C5 C=? Z=? N=? V=? | in:AXYNZCV out:AXYNZCV
+ 2268          .is_left_c1_3d13                    \ Grind: C=1 here on both ways in (the CMP, or the SEC below)
+ 2269     40.6     LDA mover_types_width_table,X                                                          ;| A=? X=0..127 Y=?≡$C5 C=1 Z=? N=? V=? | [$DA55,x]=? | in:XYC out:AXYC
+ 2270     30.5     ADC mover_x_low                 \ x + width + 1                                        ;| A=? X=0..127 Y=?≡$C5 C=1 Z=? N=? V=? | $F8=? | in:AXYC out:AXYZC
+ 2271     20.4     BCS overflow_c1_3d13            \ the rare carry out of line, so the hot path falls through;| A=? X=0..127 Y=?≡$C5 C=? Z=? N=? V=? | in:AXYZC out:AXYZC
+ 2272          .skip_overflow_c1_3d13
+ 2273     30.5     SBC viewport_left_low           \ C=0: x + width + 1 - left_low - 1, the CMP's carry; Y:A >= viewport_left as one 16-bit compare;| A=? X=0..127 Y=? C=? Z=? N=? V=? | $B2=? | in:AXYC out:XYC
+ 2274     20.3     TYA                                                                                    ;| A=? X=0..127 Y=? C=? Z=? N=? V=? | in:XYC out:AXYC
+ 2275     30.5     SBC viewport_left_high                                                                 ;| A=? X=0..127 Y=? C=? Z=? N=? V=? | $BA=? | in:AXYC out:AXYNZCV
+ 2276     25.3     BCC leave_with_carry_set_2097                                                          ;| A=? X=0..127 Y=? C=? Z=? N=? V=? | in:AXYNZCV out:AXYNZV
+ 2277          .leave_with_carry_clear_20b2
+ 2278     10.4     CLC                             \ Leave with carry clear to indicate mover is on screen;| A=? X=0..127 Y=? C=1 Z=? N=? V=? | in:AXYNZV out:AXYNZCV
+ 2279     31.3     RTS                                                                                    ;| A=? X=0..127 Y=? C=0 Z=? N=? V=? | in:AXYNZCV out:AXYNZCV
+ 2280          .is_left_of_viewport_right          \ the BCC from check_if_mover_is_on_screen: C=0
+ 2281      2.8     SEC                                                                                    ;| A=0..127 X=0..127 Y=0..254≡$C5 C=0 Z=? N=? V=? | in:XY out:XYC

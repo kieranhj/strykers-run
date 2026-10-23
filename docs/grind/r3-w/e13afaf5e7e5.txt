@@ -1,0 +1,38 @@
+window e13afaf5e7e5: src/render.6502 lines 1682-1717, 32 instructions, 796.9 cycles a pass measured (wait excluded)
+
+ 1682      4.3     LDA ds_c                                                                               ;| A=? X=? Y=$08 C=? Z=? N=1 V=? | $CC=? | in:X out:AX
+ 1683      2.9     DEC A                           \ 65C02 opcode                                         ;| A=?≡$CC X=? Y=$08 C=? Z=? N=? V=? | in:AX out:AX
+ 1684          .have_j
+ 1685      9.0     CMP dm_jmin                                                                            ;| A=? X=? Y=$08 C=? Z=? N=? V=? | $5A=? | in:AX out:AXC
+ 1686      6.6     BCC to_next                     \ left of the viewport                                 ;| A=? X=? Y=$08 C=? Z=? N=? V=? | in:AXC out:AX
+ 1687      7.3     CMP dm_jmax                                                                            ;| A=? X=? Y=$08 C=1 Z=? N=? V=? | $5C=? | in:AX out:AXZC
+ 1688      6.2     BCC visible                     \ not right of it: j < jmax...                         ;| A=? X=? Y=$08 C=? Z=? N=? V=? | in:AXZC out:AXZ
+ 1689      2.5     BEQ visible                     \ ...or j = jmax                                       ;| A=? X=? Y=$08 C=1 Z=? N=? V=? | in:AXZ out:AX
+ 1690      2.5     JMP next                                                                               ;| A=? X=? Y=$08 C=1 Z=0 N=? V=? | in:A out:A
+ 1691          .each
+ 1692     30.4     LDY #1                                                                                 ;| A=? X=? Y=? C=? Z=? N=? V=? | in:- out:Y
+ 1693     75.9     LDA (col_ptr),Y                 \ the count                                            ;| A=? X=? Y=$01 C=? Z=0 N=0 V=? | [($C7),y]=? | in:Y out:AZ
+ 1694     34.8     BEQ empty                                                                              ;| A=? X=? Y=$01 C=? Z=? N=? V=? | in:AZ out:A
+ 1695     21.6     DEC A                           \ 65C02 opcode: count - 1, the record's and the cell loop's;| A=1..255 X=? Y=$01 C=? Z=0 N=? V=? | in:A out:A
+ 1696     32.4     STA rows_m1                                                                            ;| A=0..254 X=? Y=$01 C=? Z=? N=? V=? | $CB=? | in:A out:A
+ 1697     21.6     LDY #8                                                                                 ;| A=0..254 X=? Y=$01 C=? Z=? N=? V=? | in:A out:AY
+ 1698     64.9     STA (v_ptr),Y                   \ the record: count - 1 (then the address)             ;| A=0..254 X=? Y=$08 C=? Z=0 N=0 V=? | [($C4),y]=? | in:AY out:-
+ 1699     32.4     LDA ds_line                     \ the lowest byte's line: the part's line - the first row;| A=0..254 X=? Y=$08 C=? Z=0 N=0 V=? | $CD=? | in:- out:A
+ 1700     21.6     SEC                             \ drawn (below 0: a cell up for each 8)                ;| A=?≡$CD X=? Y=$08 C=? Z=? N=? V=? | in:A out:AC
+ 1701     54.1     SBC (col_ptr)                   \ 65C02 opcode                                         ;| A=?≡$CD X=? Y=$08 C=1 Z=? N=? V=? | [($C7)]=? | in:AC out:A
+ 1702     21.6     TAX                                                                                    ;| A=? X=? Y=$08 C=? Z=? N=? V=? | in:A out:X
+ 1703     32.4     LDA rows_m1                     \ col_ptr on to the next column: 2 + count bytes (the data;| A=? X=? Y=$08 C=? Z=? N=? V=? | $CB=? | in:X out:AX
+ 1704     21.6     SEC                             \ is found back from there)                            ;| A=?≡$CB X=? Y=$08 C=? Z=? N=? V=? | in:AX out:AXC
+ 1705     21.6     ADC #2                                                                                 ;| A=?≡$CB X=? Y=$08 C=1 Z=? N=? V=? | in:AXC out:AXC
+ 1706     32.4     ADC col_ptr                                                                            ;| A=? X=? Y=$08 C=? Z=? N=? V=? | $C7=? | in:AXC out:AXC
+ 1707     32.4     STA col_ptr                                                                            ;| A=? X=? Y=$08 C=? Z=? N=? V=? | $C7=? | in:AXC out:AXC
+ 1708     32.2     BCC on_same_page                                                                       ;| A=? X=? Y=$08 C=? Z=? N=? V=? | in:AXC out:AX
+ 1709      1.4     INC col_ptr + 1                                                                        ;| A=? X=? Y=$08 C=1 Z=? N=? V=? | $C8=? | in:AX out:AX
+ 1710          .on_same_page
+ 1711     32.4     BIT ds_clip                                                                            ;| A=? X=? Y=$08 C=? Z=? N=? V=? | $51=? | in:AX out:AXN
+ 1712     24.7     BMI clip_test                                                                          ;| A=? X=? Y=$08 C=? Z=? N=? V=? | in:AXN out:AX
+ 1713          .visible
+ 1714     28.2     LDA b_ptr                       \ the cell of the column's bottom...                   ;| A=? X=? Y=$08 C=? Z=? N=? V=? | $C9=? | in:X out:AX
+ 1715     28.2     STA s_ptr                                                                              ;| A=?≡$C9 X=? Y=$08 C=? Z=? N=? V=? | $C2=? | in:AX out:X
+ 1716     28.2     LDA b_ptr + 1                                                                          ;| A=?≡$C9 X=? Y=$08 C=? Z=? N=? V=? | $CA=? | in:X out:AX
+ 1717     28.2     STA s_ptr + 1                                                                          ;| A=?≡$CA X=? Y=$08 C=? Z=? N=? V=? | $C3=? | in:AX out:X

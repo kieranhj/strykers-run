@@ -1,0 +1,7 @@
+{
+ "refuted": true,
+ "reason": "The cycles and bytes are right but the build breaks. The 65SC12 opcodes are all real (BRA and INC zp are 65C02), and all three new branches stay inside page &25. On the common path it saves 15 cycles: JSR 6 + RTS 6 + CLC 2, plus BCC taken (3) against BCS not taken (2). The skeleton path is the same and the carry path saves 8. The 52 bytes against 10 are +42, as claimed. The problem is that the +42 shifts everything from &2545 to the SKIP unused_3400_original, and the free block there is too small in the flag sets the gate builds. With the candidate applied in a scratch tree, Baron fails 'layer 1's code overruns the free block by 38 bytes' for SKY_HELI=0 and for DEBUG_FULLREDRAW=1 (the oracle), and 'by 10 bytes' for GAMEPLAY_* with SKY_HELI=0. The unmodified source builds all of these. Only the default and gameplay SKY_HELI=1 builds assemble. The shift also changes the page crossing of about 30 later branches. Among them, search_for_target_loop's two BPLs (&280c, &283b) stop crossing, and projectile_hit_mover's BPL (&26b6->&26e0), BNE not_player_292b and the leave_30b2/leave_with_carry_set_30af branches start crossing when taken. So the per-pass figure is a layout effect, not 15 x 1.63. The indexed table reads that move do not start crossing a page (the game_over_text+20 and mover_type_scoring_table reads stop).",
+ "cycles_per_execution_recounted": 15,
+ "bytes_recounted": 42,
+ "file_written": "build/grind/r3/skeptic-b916c5e9f8ef-1-machine.json"
+}

@@ -1,0 +1,72 @@
+{
+ "candidates": [
+  {
+   "window": "b84d55ff8866",
+   "file": "src/render.6502",
+   "line": 486,
+   "old": "    JSR take_off\n    LDY ren_k\n    BNE taking_off\n.taken_off\n\n    \\ ---- 5. the scroll, oldest column first, each with its view and the lives digit ----\n    LDA pending_n\n    BEQ scrolled\n    LDY #0\n    CMP #2\n    BEQ apply_entries\n    INY\n.apply_entries\n    STY ren_k\n    LDX pending_slot,Y\n    JSR history_to_view             \\ (keeps X, Y; changes only A): the view after this scroll\n    LDA hist_seqs,X\n    LDY back\n    STA buf_seq,Y\n    LDA HUD_KEY\n    STA buf_lives,Y\n    JSR write_column                \\ X = the slot still\n    JSR ren_plot_lives\n    LDY ren_k\n    BNE scrolled                    \\ entry 1 (pending_slot + 1) is always the last\n    INY\n    BRA apply_entries               \\ 65C02 opcode\n.scrolled\n    LDX #2                          \\ the logic's view again; it is this screen's now\n    JSR buffer_to_view\n    LDX back\n    JSR view_to_buffer\n",
+   "new": "    LDA need,X                      \\ take_off's own first test, inline: most entries stay as they are\n    BPL toff_skip_f\n    JSR take_off\n.toff_skip_f\n    LDY ren_k\n    BNE taking_off\n.taken_off\n\n    \\ ---- 5. the scroll, oldest column first, each with its view and the lives digit ----\n    LDA pending_n\n    BEQ scrolled\n    LSR A                           \\ pending_n 1 or 2 -> Y 1 or 0\n    EOR #1\n    TAY\n.apply_entries\n    STY ren_k\n    LDX pending_slot,Y\n    JSR history_to_view             \\ (keeps X, Y; changes only A): the view after this scroll\n    LDA hist_seqs,X\n    LDY back\n    STA buf_seq,Y\n    LDA HUD_KEY\n    STA buf_lives,Y\n    JSR write_column                \\ X = the slot still\n    JSR ren_plot_lives\n    LDY ren_k\n    BNE view_restore_f\n    INY\n    BRA apply_entries               \\ 65C02 opcode\n    SKIP 2                         \\ keeps the code after it where it was\n.view_restore_f\n    LDX #2                          \\ the logic's view again (history_to_view changed it); with nothing scrolled it never did\n    JSR buffer_to_view\n.scrolled\n    LDX back                        \\ buf_*[back] is never read: view_to_buffer's stores were dead\n",
+   "summary": "Whole window: (a) inline take_off's first test so entries that stay as they are (about 5.3 of 6.3 a pass) skip the JSR/RTS and the second LDA need,X; (b) drop the dead view_to_buffer(back) call and skip buffer_to_view(2) when nothing scrolled; (c) pending_n 1/2 -> Y 1/0 by LSR/EOR/TAY. Padded (SKIP 2 after the BRA, never executed) so every later address is unchanged. Alternatives: the next three candidates are subsets of this one.",
+   "claim": {
+    "cycles_per_execution": 169.0,
+    "executions_a_pass": 1.0,
+    "cycles_a_pass": 169.0,
+    "bytes": 0
+   },
+   "equivalence": "(a) take_off starts LDA need,X / BPL out / ... out: RTS; on BPL taken it returns with A=need,X (bit 7 clear), X and Y unchanged, and the loop then does LDY ren_k / BNE taking_off, which read nothing of A; inline, the same LDA need,X/BPL decides and skips the JSR to the same LDY ren_k. When bit 7 is set the JSR is made as before (take_off tests again: 6 cycles extra, about once a pass). X is the slot (non-zero: BEQ taken_off before) as take_off wants. view_to_buffer(back) stored the live view into buf_ss/crtc/vl/vr[back]; those arrays at index 0/1 are never read anywhere in src/ or tools/ (only buf_vl_lo/hi + 2 at render.6502:395-396, written by the render's first view_to_buffer with X=2; buffer_to_view is called once, with X=2), so the 8 stores are dead; the routine's only other effects are A (overwritten by the LDA buf_lives,X that follows) and flags (dead), X is kept (LDX back precedes it and still does). buffer_to_view(2) is skipped only when pending_n=0: history_to_view is the only thing in the pass that changes the live view (zp &00 &01 &B0 &B1 &B2 &B3 &BA &BB), it runs only inside the pending_n<>0 loop, no store in src/ writes those bytes between render's view_to_buffer(2) and here (prebuild's writes are before it and undone inside it; game.6502's are the logic's scroll, not run during a render), so the restore would copy back what is already there. The pending_n<>0 paths (loop exit by BNE, as before) still restore. (c) pending_n is 1 or 2 here (non-zero; 0..2 by the history's two slots): A=1 -> LSR 0, EOR 1 -> Y=1; A=2 -> 1, EOR -> Y=0; the old code gave Y=1 for A<>2 and 0 for A=2. A is dead into apply_entries (STY ren_k; LDX pending_slot,Y; JSR history_to_view; LDA hist_seqs,X), flags dead, C changed (LSR) but nothing reads C before a CMP/CLC/SEC.",
+   "relies_on": "Layout: SKIP 2 pads the net -2 bytes (+4 inline test, -3 entry, -3 view_to_buffer JSR) so .lives_drawn and everything after render's window stays at its old address (checked in the listing of a DEBUG_LIVES build: .lives_drawn &9334, JMP restore_game_zp &9376, .cpu_sees_back &9379 same as the control). Measured: render 20422 -> 20253. Page crossings: inside the window BEQ scrolled (&92F2 -> &9320) crosses a page in the control too (+1 when taken, unchanged); BNE view_restore_f, BNE taking_off (&92EE -> &92DD), BEQ lives_drawn do not cross. Reads nothing new: need is zero page (LDA need,X = 4 cycles, 2 bytes). Needs the invariant that buf_ss/crtc/vl/vr[0..1] are never read (grep of src/ and tools/ for buf_ss buf_crtc buf_vl buf_vr: only render.6502 lines 395-396 slot 2, and view_to_buffer/buffer_to_view themselves). Tested here in a scratch copy, DEBUG_LIVES build vs the HEAD control: passlock --screen --unclobber state and screen identical over 3000 passes seed 1 and 2000 passes seed 3; pcprof (seed 1, passes 500-1100, no stub): render 20422 -> 20253 cycles a pass (-169), logic and interrupts unchanged.",
+   "file_written": "build/grind/r3/opt-b84d55ff8866.json"
+  },
+  {
+   "window": "b84d55ff8866",
+   "file": "src/render.6502",
+   "line": 494,
+   "old": "    LDY #0\n    CMP #2\n    BEQ apply_entries\n    INY\n.apply_entries\n    STY ren_k\n    LDX pending_slot,Y\n    JSR history_to_view             \\ (keeps X, Y; changes only A): the view after this scroll\n    LDA hist_seqs,X\n    LDY back\n    STA buf_seq,Y\n    LDA HUD_KEY\n    STA buf_lives,Y\n    JSR write_column                \\ X = the slot still\n    JSR ren_plot_lives\n    LDY ren_k\n    BNE scrolled                    \\ entry 1 (pending_slot + 1) is always the last\n    INY\n    BRA apply_entries               \\ 65C02 opcode\n.scrolled\n    LDX #2                          \\ the logic's view again; it is this screen's now\n    JSR buffer_to_view\n    LDX back\n    JSR view_to_buffer\n",
+   "new": "    LSR A                           \\ pending_n 1 or 2 -> Y 1 or 0\n    EOR #1\n    TAY\n.apply_entries\n    STY ren_k\n    LDX pending_slot,Y\n    JSR history_to_view             \\ (keeps X, Y; changes only A): the view after this scroll\n    LDA hist_seqs,X\n    LDY back\n    STA buf_seq,Y\n    LDA HUD_KEY\n    STA buf_lives,Y\n    JSR write_column                \\ X = the slot still\n    JSR ren_plot_lives\n    LDY ren_k\n    BNE view_restore_c2\n    INY\n    BRA apply_entries               \\ 65C02 opcode\n    SKIP 6                         \\ keeps the code after it where it was\n.view_restore_c2\n    LDX #2                          \\ the logic's view again (history_to_view changed it); with nothing scrolled it never did\n    JSR buffer_to_view\n.scrolled\n    LDX back                        \\ buf_*[back] is never read: view_to_buffer's stores were dead\n",
+   "summary": "The scroll half only: LSR/EOR/TAY for the entry index, no view_to_buffer(back), buffer_to_view(2) only after a scroll. Padded SKIP 6 after the BRA so addresses after it are unchanged. Alternative to the first candidate (a subset of it, without the take_off inline test).",
+   "claim": {
+    "cycles_per_execution": 119.0,
+    "executions_a_pass": 1.0,
+    "cycles_a_pass": 119.0,
+    "bytes": 0
+   },
+   "equivalence": "view_to_buffer(back) stored the live view into buf_ss/crtc/vl/vr[back]; those arrays at index 0/1 are never read anywhere in src/ or tools/ (only buf_vl_lo/hi + 2 at render.6502:395-396, written by the render's first view_to_buffer with X=2; buffer_to_view is called once, with X=2), so the 8 stores are dead; the routine's only other effects are A (overwritten by the LDA buf_lives,X that follows) and flags (dead), X is kept (LDX back precedes it and still does). buffer_to_view(2) is skipped only when pending_n=0: history_to_view is the only thing in the pass that changes the live view (zp &00 &01 &B0 &B1 &B2 &B3 &BA &BB), it runs only inside the pending_n<>0 loop, no store in src/ writes those bytes between render's view_to_buffer(2) and here (prebuild's writes are before it and undone inside it; game.6502's are the logic's scroll, not run during a render), so the restore would copy back what is already there. The pending_n<>0 paths (loop exit by BNE, as before) still restore. The LSR/EOR/TAY entry: pending_n is 1 or 2 (history has two slots), A=1 -> Y=1, A=2 -> Y=0, as CMP #2 / BEQ / INY gave; A and flags dead into apply_entries.",
+   "relies_on": "Layout: SKIP 6 = -3 (entry) -3 (JSR view_to_buffer); .lives_drawn stays &9334 (checked in a build). Same page-crossing facts as the first candidate; BEQ scrolled is still the same branch to the same label with the same crossing. Measured in a scratch build (pcprof seed 1, passes 500-1100): render 20422 -> 20303 (-119).",
+   "file_written": "build/grind/r3/opt-b84d55ff8866.json"
+  },
+  {
+   "window": "b84d55ff8866",
+   "file": "src/render.6502",
+   "line": 509,
+   "old": "    LDY ren_k\n    BNE scrolled                    \\ entry 1 (pending_slot + 1) is always the last\n    INY\n    BRA apply_entries               \\ 65C02 opcode\n.scrolled\n    LDX #2                          \\ the logic's view again; it is this screen's now\n    JSR buffer_to_view\n    LDX back\n    JSR view_to_buffer\n",
+   "new": "    LDY ren_k\n    BNE view_restore_c1\n    INY\n    BRA apply_entries               \\ 65C02 opcode\n    SKIP 3                         \\ keeps the code after it where it was\n.view_restore_c1\n    LDX #2                          \\ the logic's view again (history_to_view changed it); with nothing scrolled it never did\n    JSR buffer_to_view\n.scrolled\n    LDX back                        \\ buf_*[back] is never read: view_to_buffer's stores were dead\n",
+   "summary": "No view_to_buffer(back) (its stores are dead) and buffer_to_view(2) only after a scroll: the pending_n=0 branch (BEQ scrolled) now lands after the restore. Padded SKIP 3 after the BRA so addresses after it are unchanged. Alternative to the two above (a subset of both): the least change for the biggest part of the saving.",
+   "claim": {
+    "cycles_per_execution": 118.0,
+    "executions_a_pass": 1.0,
+    "cycles_a_pass": 118.0,
+    "bytes": 0
+   },
+   "equivalence": "view_to_buffer(back) stored the live view into buf_ss/crtc/vl/vr[back]; those arrays at index 0/1 are never read anywhere in src/ or tools/ (only buf_vl_lo/hi + 2 at render.6502:395-396, written by the render's first view_to_buffer with X=2; buffer_to_view is called once, with X=2), so the 8 stores are dead; the routine's only other effects are A (overwritten by the LDA buf_lives,X that follows) and flags (dead), X is kept (LDX back precedes it and still does). buffer_to_view(2) is skipped only when pending_n=0: history_to_view is the only thing in the pass that changes the live view (zp &00 &01 &B0 &B1 &B2 &B3 &BA &BB), it runs only inside the pending_n<>0 loop, no store in src/ writes those bytes between render's view_to_buffer(2) and here (prebuild's writes are before it and undone inside it; game.6502's are the logic's scroll, not run during a render), so the restore would copy back what is already there. The pending_n<>0 paths (loop exit by BNE, as before) still restore. ",
+   "relies_on": "Layout: SKIP 3 = -3 (JSR view_to_buffer); .lives_drawn stays &9334. Page crossings unchanged: BEQ scrolled still crosses (taken, +1) as in the control; BNE view_restore_c1 does not. Measured in a scratch build (pcprof seed 1, passes 500-1100): render 20422 -> 20304 (-118).",
+   "file_written": "build/grind/r3/opt-b84d55ff8866.json"
+  },
+  {
+   "window": "b84d55ff8866",
+   "file": "src/render.6502",
+   "line": 486,
+   "old": "    JSR take_off\n    LDY ren_k\n    BNE taking_off\n",
+   "new": "    LDA need,X                      \\ take_off's own first test, inline: most entries stay as they are\n    BPL toff_skip_c4\n    JSR take_off\n.toff_skip_c4\n    LDY ren_k\n    BNE taking_off\n",
+   "summary": "Only the take_off loop: test need,X inline and skip the JSR/RTS and take_off's second test for entries that stay as they are. +4 bytes (not padded: the window has no dead spot to give back), so every later address in bank 4's render slides by 4. Alternative to the first candidate (a subset of it) and the only one that moves code; use the first if the slide is a problem.",
+   "claim": {
+    "cycles_per_execution": 12.0,
+    "executions_a_pass": 5.3,
+    "cycles_a_pass": 42.0,
+    "bytes": -4
+   },
+   "equivalence": "take_off starts LDA need,X / BPL out ... out: RTS; BPL taken returns with A=need,X (bit 7 clear), X, Y unchanged; the loop's next instructions LDY ren_k / BNE taking_off read nothing of A (and at the exit, .taken_off, LDA pending_n overwrites it). Inline, the same test skips the JSR to the same LDY. Bit 7 set: the JSR as before, take_off tests again (6 cycles extra, about once a pass). Net per pass: 5.3 skips x 12 - 1 real call x 6 = 57 (from the measured BPL: 7.3 calls a pass, 5.3 taken, 2.0 not; one of the 2.0 is the player's call at line 478).",
+   "relies_on": "Slides every later address by +4 bytes (need is zero page: LDA zp,X 2 bytes + BPL 2): the window's branches stay in their pages (BNE taking_off &92EE -> &92DD, BEQ lives_drawn &932C -> &9338 in a DEBUG_LIVES build) but code after render's put_on may start crossing pages; measured in a scratch DEBUG_LIVES build (pcprof seed 1, passes 500-1100): render 20422 -> 20380 = -42 a pass, not the -57 of the arithmetic, so the slide costs about 15 a pass.",
+   "file_written": "build/grind/r3/opt-b84d55ff8866.json"
+  }
+ ]
+}

@@ -1,0 +1,52 @@
+window bb1a4c500726: src/render.6502 lines 2385-2434, 32 instructions, 311.3 cycles a pass measured (wait excluded)
+
+ 2385     10.2     STA rec_sl,Y                                                                           ;| A=? X=?≡$58 Y=?≡$67 C=? Z=? N=? V=? | [rec_sl,y]=? | in:AXY out:XY
+ 2386      8.2     LDA movers_screen_address_high,X                                                       ;| A=? X=?≡$58 Y=?≡$67 C=? Z=? N=? V=? | [$13CC,x]=? | in:XY out:AXY
+ 2387     10.2     STA rec_sh,Y                                                                           ;| A=? X=?≡$58 Y=?≡$67 C=? Z=? N=? V=? | [rec_sh,y]=? | in:AXY out:AXY
+ 2388      6.1     PHY                             \ and where that is in the world (BUGS #7): the view in;| A=? X=?≡$58 Y=?≡$67 C=? Z=? N=? V=? | in:AXY out:AX
+ 2389      8.2     LDY movers_screen_address_low,X \ zero page is this screen's now; A = the high byte (rec_sh);| A=? X=?≡$58 Y=?≡$67 C=? Z=? N=? V=? | [$13AA,x]=? | in:AX out:AY
+ 2390      4.1     TAX                                                                                    ;| A=? X=?≡$58 Y=? C=? Z=? N=? V=? | in:AY out:XY
+ 2391      4.1     TYA                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XY out:AX
+ 2392     12.2     JSR world_of_address                                                                   ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AX out:V
+ 2393      8.1     PLY                                                                                    ;| A=0..7 X=? Y=? C=? Z=? N=0 V=? | in:V out:YV
+ 2394      6.1     LDA wa_x_lo                                                                            ;| A=0..7 X=? Y=? C=? Z=? N=? V=? | $60=? | in:YV out:AYV
+ 2395     10.2     STA rec_wxl,Y                                                                          ;| A=?≡$60 X=? Y=? C=? Z=? N=? V=? | [rec_wxl,y]=? | in:AYV out:YV
+ 2396      6.1     LDA wa_x_hi                                                                            ;| A=?≡$60 X=? Y=? C=? Z=? N=? V=? | $5F=? | in:YV out:AYV
+ 2397     10.2     STA rec_wxh,Y                                                                          ;| A=?≡$5F X=? Y=? C=? Z=? N=? V=? | [rec_wxh,y]=? | in:AYV out:YV
+ 2398      6.1     LDA wa_y                                                                               ;| A=?≡$5F X=? Y=? C=? Z=? N=? V=? | $57=? | in:YV out:AYV
+ 2399     10.2     STA rec_wy,Y                                                                           ;| A=?≡$57 X=? Y=? C=? Z=? N=? V=? | [rec_wy,y]=? | in:AYV out:AV
+ 2400     12.2     RTS                                                                                    ;| A=?≡$57 X=? Y=? C=? Z=? N=? V=? | in:AV out:AV
+ 2401          
+ 2402          \ world_of_address: AX = a screen address; wa_x (16 bits) and wa_y = the world column and the y
+ 2403          \ (movers_y's sense: &C7 at the top row) of that byte, by the view in zero page (its screen
+ 2404          \ start and viewport_left). A character row is &280 bytes: the row is guessed from the offset's
+ 2405          \ high byte (wa_rows_guess, out by at most one) and settled against wa_rows_base.
+ 2406          \ BUGS #10: a mover clipped at the view's left edge (x 1-11 left of viewport_left) has its
+ 2407          \ address left of its row's first column, which is the end of the row above (column 69-79) - or,
+ 2408          \ in the first row, the ring's hidden 48 columns past the last (row 25): placed there it would be
+ 2409          \ 80 columns right and 8 lines up. Column 69-79 is the row above only if the mover is not left of
+ 2410          \ the view (dm_slot = its slot: its x, 80 columns left of that place if it is); row 25 is always
+ 2411          \ the first row's left. Its place is then the address's column in the row below, left of the
+ 2412          \ view (draw_mover clips by x from the address, so it draws in that row). At the right edge
+ 2413          \ nothing wraps: a mover goes on only with x <= viewport_right, so its address is in its row
+ 2414          \ (BUGS #7's explosion, drawn 6 columns right of its x, could land at the start of the row
+ 2415          \ below, and would be placed there: where it is drawn).
+ 2416          .world_of_address
+ 2417          {
+ 2418      8.1     SEC                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AX out:AXC
+ 2419     12.2     SBC screen_start_address_low                                                           ;| A=? X=? Y=? C=1 Z=? N=? V=? | $00=? | in:AXC out:AXC
+ 2420     12.2     STA wa_off                                                                             ;| A=? X=? Y=? C=? Z=? N=? V=? | $49=? | in:AXC out:XC
+ 2421      8.1     TXA                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XC out:AC
+ 2422     12.2     SBC screen_start_address_high                                                          ;| A=? X=? Y=? C=? Z=? N=? V=? | $01=? | in:AC out:A
+ 2423      8.1     AND #&3F                        \ round the 16K screen                                 ;| A=? X=? Y=? C=? Z=? N=? V=? | in:A out:A
+ 2424     12.2     STA wa_off + 1                                                                         ;| A=0..63 X=? Y=? C=? Z=? N=0 V=? | $4A=? | in:A out:A
+ 2425      8.1     TAX                                                                                    ;| A=0..63 X=? Y=? C=? Z=? N=0 V=? | in:A out:X
+ 2426     20.3     LDY wa_rows_guess,X                                                                    ;| A=0..63 X=0..63 Y=? C=? Z=? N=0 V=? | [$A0F5,x]=? | in:X out:XY
+ 2427     12.2     LDA wa_off                      \ at or past the next row's start: that row            ;| A=0..63 X=0..63 Y=? C=? Z=? N=? V=? | $49=? | in:XY out:AXY
+ 2428     16.3     CMP wa_rows_base_lo + 1,Y                                                              ;| A=?≡$49 X=0..63 Y=? C=? Z=? N=? V=? | [$A136,y]=? | in:AXY out:XYC
+ 2429      8.1     TXA                             \ wa_off + 1: X still holds it                         ;| A=?≡$49 X=0..63 Y=? C=? Z=? N=? V=? | in:XYC out:AXYC
+ 2430     16.3     SBC wa_rows_base_hi + 1,Y                                                              ;| A=0..63 X=0..63 Y=? C=? Z=? N=0 V=? | [$A151,y]=? | in:AXYC out:XYC
+ 2431     12.1     BCC row_known                                                                          ;| A=? X=0..63 Y=? C=? Z=? N=? V=? | in:XYC out:XY
+ 2432      0.2     INY                                                                                    ;| A=? X=0..63 Y=? C=1 Z=? N=? V=? | in:XY out:XY
+ 2433          .row_known
+ 2434     12.2     LDA wa_off                      \ the column: (offset - the row's start) / 8           ;| A=? X=0..63 Y=? C=? Z=? N=? V=? | $49=? | in:XY out:AXY

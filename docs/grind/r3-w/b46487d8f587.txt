@@ -1,0 +1,40 @@
+window b46487d8f587: src/render.6502 lines 1206-1243, 32 instructions, 298.6 cycles a pass measured (wait excluded)
+
+ 1206     22.8     STA list_x1_hi,X                                                                       ;| A=? X=?≡$53 Y=?≡$5D C=? Z=? N=? V=? | [list_x1_hi,x]=? | in:AXY out:XY
+ 1207     13.7     LDA list_x_lo                   \ x2 = x + width + 1                                   ;| A=? X=?≡$53 Y=?≡$5D C=? Z=? N=? V=? | $54=? | in:XY out:AXY
+ 1208      9.1     SEC                             \ (the +1)                                             ;| A=?≡$54 X=?≡$53 Y=?≡$5D C=? Z=? N=? V=? | in:AXY out:AXYC
+ 1209     18.3     ADC mover_types_width_table,Y                                                          ;| A=?≡$54 X=?≡$53 Y=?≡$5D C=1 Z=? N=? V=? | [$DA55,y]=? | in:AXYC out:AXC
+ 1210     22.8     STA list_x2_lo,X                                                                       ;| A=? X=?≡$53 Y=?≡$5D C=? Z=? N=? V=? | [list_x2_lo,x]=? | in:AXC out:XC
+ 1211     13.7     LDA list_x_hi                                                                          ;| A=? X=?≡$53 Y=?≡$5D C=? Z=? N=? V=? | $55=? | in:XC out:AXC
+ 1212      9.1     ADC #0                                                                                 ;| A=?≡$55 X=?≡$53 Y=?≡$5D C=? Z=? N=? V=? | in:AXC out:AX
+ 1213     22.8     STA list_x2_hi,X                                                                       ;| A=? X=?≡$53 Y=?≡$5D C=? Z=? N=? V=? | [list_x2_hi,x]=? | in:AX out:A
+ 1214     27.4     RTS                                                                                    ;| A=? X=?≡$53 Y=?≡$5D C=? Z=? N=? V=? | in:A out:A
+ 1215          }
+ 1216          
+ 1217          \ widen entry list_n (slot ren_i, recorded) to cover its live rectangle as well
+ 1218          .widen_by_live
+ 1219          {
+ 1220      5.9     LDA list_n                                                                             ;| A=? X=?≡$4D Y=? C=? Z=? N=? V=1 | $53=? | in:- out:A
+ 1221      5.9     PHA                                                                                    ;| A=?≡$53 X=?≡$4D Y=? C=? Z=? N=? V=1 | in:A out:-
+ 1222      3.9     LDA #MOVER_SLOTS                \ build the live one in the spare entry...             ;| A=?≡$53 X=?≡$4D Y=? C=? Z=? N=? V=1 | in:- out:A
+ 1223      5.9     STA list_n                                                                             ;| A=$22 X=?≡$4D Y=? C=? Z=0 N=0 V=1 | $53=? | in:A out:-
+ 1224     11.8     JSR list_live                                                                          ;| A=$22 X=?≡$4D Y=? C=? Z=0 N=0 V=1 | in:- out:-
+ 1225      7.9     PLX                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:- out:X
+ 1226      5.9     STX list_n                      \ ...and take the union                                ;| A=? X=? Y=? C=? Z=? N=? V=? | $53=? | in:X out:X
+ 1227      3.9     LDY #MOVER_SLOTS                                                                       ;| A=? X=? Y=? C=? Z=? N=? V=? | in:X out:XY
+ 1228      7.9     LDA list_x1_lo,Y                                                                       ;| A=? X=? Y=$22 C=? Z=0 N=0 V=? | [list_x1_lo,y]=? | in:XY out:AXY
+ 1229      7.9     CMP list_x1_lo,X                                                                       ;| A=? X=? Y=$22 C=? Z=? N=? V=? | [list_x1_lo,x]=? | in:AXY out:XYC
+ 1230      7.9     LDA list_x1_hi,Y                                                                       ;| A=? X=? Y=$22 C=? Z=? N=? V=? | [list_x1_hi,y]=? | in:XYC out:AXYC
+ 1231      7.9     SBC list_x1_hi,X                                                                       ;| A=? X=? Y=$22 C=? Z=? N=? V=? | [list_x1_hi,x]=? | in:AXYC out:XYC
+ 1232      5.3     BCS x1_kept                                                                            ;| A=? X=? Y=$22 C=? Z=? N=? V=? | in:XYC out:XY
+ 1233      2.3     LDA list_x1_lo,Y                                                                       ;| A=? X=? Y=$22 C=0 Z=? N=? V=? | [list_x1_lo,y]=? | in:XY out:AXY
+ 1234      2.8     STA list_x1_lo,X                                                                       ;| A=? X=? Y=$22 C=0 Z=? N=? V=? | [list_x1_lo,x]=? | in:AXY out:XY
+ 1235      2.3     LDA list_x1_hi,Y                                                                       ;| A=? X=? Y=$22 C=0 Z=? N=? V=? | [list_x1_hi,y]=? | in:XY out:AXY
+ 1236      2.8     STA list_x1_hi,X                                                                       ;| A=? X=? Y=$22 C=0 Z=? N=? V=? | [list_x1_hi,x]=? | in:AXY out:XY
+ 1237          .x1_kept
+ 1238      7.9     LDA list_x2_lo,X                                                                       ;| A=? X=? Y=$22 C=? Z=? N=? V=? | [list_x2_lo,x]=? | in:XY out:AXY
+ 1239      7.9     CMP list_x2_lo,Y                                                                       ;| A=? X=? Y=$22 C=? Z=? N=? V=? | [list_x2_lo,y]=? | in:AXY out:XYC
+ 1240      7.9     LDA list_x2_hi,X                                                                       ;| A=? X=? Y=$22 C=? Z=? N=? V=? | [list_x2_hi,x]=? | in:XYC out:AXYC
+ 1241      7.9     SBC list_x2_hi,Y                                                                       ;| A=? X=? Y=$22 C=? Z=? N=? V=? | [list_x2_hi,y]=? | in:AXYC out:XYC
+ 1242      4.7     BCS x2_kept                                                                            ;| A=? X=? Y=$22 C=? Z=? N=? V=? | in:XYC out:XY
+ 1243      4.6     LDA list_x2_lo,Y                                                                       ;| A=? X=? Y=$22 C=0 Z=? N=? V=? | [list_x2_lo,y]=? | in:XY out:AXY

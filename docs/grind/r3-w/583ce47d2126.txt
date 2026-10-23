@@ -1,0 +1,42 @@
+window 583ce47d2126: src/render.6502 lines 523-562, 32 instructions, 200.6 cycles a pass measured (wait excluded)
+
+  523              LDA HUD_KEY                                                                            ;| A=? X=?≡$56 Y=$FF C=? Z=? N=? V=? | $95=? | in:X out:AX
+  524              STA buf_lives,X                                                                        ;| A=?≡$95 X=?≡$56 Y=$FF C=? Z=? N=? V=? | [buf_lives,x]=? | in:AX out:-
+  525          .lives_drawn
+  526          
+  527              \ ---- 6. put on: slot order, the player last; ANDY paged over bank 4's first 4K ----
+  528      2.0     LDA #&84                                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | in:- out:A
+  529      3.0     STA os_ram_copy_of_currently_selected_rom                                              ;| A=$84 X=? Y=? C=? Z=0 N=1 V=? | $F4=? | in:A out:A
+  530      4.0     STA romsel                                                                             ;| A=$84 X=? Y=? C=? Z=0 N=1 V=? | romsel=? | in:A out:-
+  531      2.0     LDY #0                                                                                 ;| A=$84 X=? Y=? C=? Z=0 N=1 V=? | in:- out:Y
+  532      4.0     LDA act                         \ the player (slot 0) goes on last: when listed, it is first;| A=$84 X=? Y=$00 C=? Z=1 N=0 V=? | act=? | in:Y out:AYZ
+  533      2.0     BNE put_on_test                                                                        ;| A=?≡act X=? Y=$00 C=? Z=? N=? V=? | in:AYZ out:AY
+  534      2.0     INY                                                                                    ;| A=$00≡act X=? Y=$00 C=? Z=1 N=0 V=? | in:AY out:AY
+  535          .put_on_test
+  536      3.0     CPY act_n                       \ (unsigned: act_n may be 0 with a stale player entry) ;| A=?≡act X=? Y=0..1 C=? Z=0 N=? V=? | $4F=? | in:AY out:AYC
+  537      2.0     BCS put_on_player                                                                      ;| A=?≡act X=? Y=0..1 C=? Z=? N=? V=? | in:AYC out:AY
+  538          .putting_on
+  539     25.1     LDX act,Y                                                                              ;| A=? X=? Y=? C=0 Z=? N=? V=? | [act,y]=? | in:AY out:AXY
+  540     25.1     BIT need,X                      \ V = bit 6, it goes on: put_on's own test, done here  ;| A=? X=? Y=? C=0 Z=? N=? V=? | [$1F,x]=? | in:AXY out:AXYV
+  541     17.6     BVC next_put_on                                                                        ;| A=? X=? Y=? C=0 Z=? N=? V=? | in:AXYV out:AXY
+  542      3.6     PHY                             \ 65C02 opcode                                         ;| A=? X=? Y=? C=0 Z=? N=? V=1 | in:XY out:X
+  543      7.2     JSR put_on.going_on                                                                    ;| A=? X=? Y=? C=0 Z=? N=? V=1 | in:X out:A
+  544      4.8     PLY                             \ 65C02 opcode                                         ;| A=? X=? Y=? C=? Z=? N=? V=? | in:A out:AY
+  545          .next_put_on
+  546     12.6     INY                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AY out:AY
+  547     18.8     CPY act_n                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | $4F=? | in:AY out:AYC
+  548     17.8     BCC putting_on                                                                         ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AYC out:AY
+  549          .put_on_player
+  550      2.0     LDX #0                                                                                 ;| A=? X=? Y=? C=1 Z=? N=? V=? | in:A out:AX
+  551      6.0     JSR put_on                                                                             ;| A=? X=$00 Y=? C=1 Z=1 N=0 V=? | in:AX out:V
+  552      2.0     LDA #&04                                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | in:V out:AV
+  553      3.0     STA os_ram_copy_of_currently_selected_rom                                              ;| A=$04 X=? Y=? C=? Z=0 N=0 V=? | $F4=? | in:AV out:AV
+  554      4.0     STA romsel                                                                             ;| A=$04 X=? Y=? C=? Z=0 N=0 V=? | romsel=? | in:AV out:V
+  555          .player_done
+  556      3.0     LDA back                        \ for the vsync interrupt to show, at the pass lock's field;| A=$04 X=? Y=? C=? Z=0 N=0 V=? | $56=? | in:V out:AV
+  557      4.0     STA flip_screen                                                                        ;| A=?≡$56 X=? Y=? C=? Z=? N=? V=? | $2A48=? | in:AV out:V
+  558      3.0     LDA crtc_start_address_high                                                            ;| A=?≡$56 X=? Y=? C=? Z=? N=? V=? | $B0=? | in:V out:AV
+  559      4.0     STA flip_crtc_hi                                                                       ;| A=?≡$B0 X=? Y=? C=? Z=? N=? V=? | $2A49=? | in:AV out:V
+  560      3.0     LDA crtc_start_address_low                                                             ;| A=?≡$B0 X=? Y=? C=? Z=? N=? V=? | $B1=? | in:V out:AV
+  561      4.0     STA flip_crtc_lo                                                                       ;| A=?≡$B1 X=? Y=? C=? Z=? N=? V=? | $2A4A=? | in:AV out:V
+  562      6.0     JSR cpu_sees_main                                                                      ;| A=?≡$B1 X=? Y=? C=? Z=? N=? V=? | in:V out:V

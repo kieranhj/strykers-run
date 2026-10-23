@@ -1,0 +1,36 @@
+window a969e1cb0bde: src/game.6502 lines 1535-1568, 31 instructions, 140.5 cycles a pass measured (wait excluded)
+
+ 1535      0.8     TAX                                                                                    ;| A=0..3 X=? Y=0..1 C=? Z=? N=0 V=? | in:AYV out:AXYV
+ 1536      1.1     PHA                                                                                    ;| A=0..3 X=0..3 Y=0..1 C=? Z=? N=0 V=? | in:AXYV out:XYV
+ 1537      2.3     JSR ground_square               \ layer 4: multiply_A_by_X_2f1e's A x X from a table (HAZEL);| A=0..3 X=0..3 Y=0..1 C=? Z=? N=0 V=? | in:XYV out:YV
+ 1538      1.5     PLA                                                                                    ;| A=? X=0..3 Y=0..1 C=? Z=? N=? V=? | in:YV out:AYV
+ 1539      0.8     TAX                                                                                    ;| A=0..3 X=0..3 Y=0..1 C=? Z=? N=0 V=? | in:AYV out:XYV
+ 1540      0.8     CLC                             \ layer 5: for ground_rows' ADC, and the C = 0 edge_left_loop takes on entry;| A=0..3 X=0..3 Y=0..1 C=? Z=? N=0 V=? | in:XYV out:XYCV
+ 1541      1.5     LDA column_buffer + 9                                                                  ;| A=0..3 X=0..3 Y=0..1 C=0 Z=? N=0 V=? | $0309=? | in:XYCV out:AXYNZCV
+ 1542      0.8     BNE leave_1c4e                  \ Don't add ground if a bridge is present              ;| A=?≡$0309 X=0..3 Y=0..1 C=0 Z=? N=? V=? | in:AXYNZCV out:AXYNZCV
+ 1543      0.7     LDY #&13                                                                               ;| A=$00≡$0309 X=0..3 Y=0..1 C=0 Z=1 N=0 V=? | in:XC out:XYC
+ 1544      1.4     LDA column_buffer + 21                                                                 ;| A=$00≡$0309 X=0..3 Y=$13 C=0 Z=0 N=0 V=? | $0315=? | in:XYC out:XYZC
+ 1545      0.7     BNE ground_rows                 \ Don't add ground edge if runway present              ;| A=?≡$0315 X=0..3 Y=$13 C=0 Z=? N=? V=? | in:XYZC out:XYC
+ 1546      1.4     LDA ground_edge_bottom_pixel_values,X                                                  ;| A=$00≡$0315 X=0..3 Y=$13 C=0 Z=1 N=0 V=? | [$1885,x]=? | in:XC out:AXC
+ 1547      1.4     STA column_buffer + 22                                                                 ;| A=? X=0..3 Y=$13 C=0 Z=? N=? V=? | $0316=? | in:AXC out:XC
+ 1548      1.4     LDA column_buffer + 23                                                                 ;| A=? X=0..3 Y=$13 C=0 Z=? N=? V=? | $0317=? | in:XC out:AXC
+ 1549      1.4     AND ground_edge_masks,X                                                                ;| A=?≡$0317 X=0..3 Y=$13 C=0 Z=? N=? V=? | [$188D,x]=? | in:AXC out:AXC
+ 1550      1.4     EOR ground_edge_top_pixel_values,X                                                     ;| A=? X=0..3 Y=$13 C=0 Z=? N=? V=? | [$1889,x]=? | in:AXC out:AC
+ 1551      1.4     STA column_buffer + 23                                                                 ;| A=? X=0..3 Y=$13 C=0 Z=? N=? V=? | $0317=? | in:AC out:C
+ 1552      0.7     LDY #&15                                                                               ;| A=? X=0..3 Y=$13 C=0 Z=? N=? V=? | in:C out:YC
+ 1553          .ground_rows                        \ Layer 5 (BUGS #1 fixed): the type's rows from a fixed texture (ground_columns),
+ 1554      0.7     TYA                             \ not the one the original read from zero page &0000-&001E: X = t * t + Y;| A=? X=0..3 Y={$13,$15} C=0 Z=0 N=? V=? | in:YC out:AYC
+ 1555      1.1     ADC result_low                  \ ground_square's t * t; C = 0 (the CLC above), and no carry out;| A={$13,$15} X=0..3 Y={$13,$15} C=0 Z=0 N=0 V=? | $C5=? | in:AYC out:AYCV
+ 1556      0.7     TAX                                                                                    ;| A=? X=0..3 Y={$13,$15} C=? Z=? N=? V=? | in:AYCV out:XYCV
+ 1557          .add_ground_to_column_buffer_loop   \ step 2 (grind): two rows a turn, Y odd at the top (&15 or &13)
+ 1558     15.8     LDA ground_columns,X                                                                   ;| A=? X=? Y={1,3,5,7,9,$0B,$0D,$0F,$11,$13,$15} C=? Z=? N=? V=? | [$0C53,x]=? | in:XYCV out:AXYCV
+ 1559     19.7     STA column_buffer,Y             \ Add ground to column buffe                           ;| A=? X=? Y={1,3,5,7,9,$0B,$0D,$0F,$11,$13,$15} C=? Z=? N=? V=? | [column_buffer,y]=? | in:AXYCV out:XYCV
+ 1560      7.9     DEX                                                                                    ;| A=? X=? Y={1,3,5,7,9,$0B,$0D,$0F,$11,$13,$15} C=? Z=? N=? V=? | in:XYCV out:XYCV
+ 1561      7.9     DEY                                                                                    ;| A=? X=? Y={1,3,5,7,9,$0B,$0D,$0F,$11,$13,$15} C=? Z=? N=? V=? | in:XYCV out:XYCV
+ 1562     15.8     LDA ground_columns,X                                                                   ;| A=? X=? Y={0,2,4,6,8,$0A,$0C,$0E,$10,$12,$14} C=? Z=? N=0 V=? | [$0C53,x]=? | in:XYCV out:AXYCV
+ 1563     19.7     STA column_buffer,Y                                                                    ;| A=? X=? Y={0,2,4,6,8,$0A,$0C,$0E,$10,$12,$14} C=? Z=? N=? V=? | [column_buffer,y]=? | in:AXYCV out:AXYCV
+ 1564      7.9     DEX                                                                                    ;| A=? X=? Y={0,2,4,6,8,$0A,$0C,$0E,$10,$12,$14} C=? Z=? N=? V=? | in:AXYCV out:AXYCV
+ 1565      7.9     DEY                                                                                    ;| A=? X=? Y={0,2,4,6,8,$0A,$0C,$0E,$10,$12,$14} C=? Z=? N=? V=? | in:AXYCV out:AXYNZCV
+ 1566     11.5     BPL add_ground_to_column_buffer_loop                                                   ;| A=? X=? Y={1,3,5,7,9,$0B,$0D,$0F,$11,$13,$FF} C=? Z=0 N=? V=? | in:AXYNZCV out:AXYNZCV
+ 1567          .leave_1c4e
+ 1568      2.3     RTS                                                                                    ;| A=? X=? Y={0,1,$FF} C=? Z=0 N=? V=? | in:AXYNZCV out:AXYNZCV

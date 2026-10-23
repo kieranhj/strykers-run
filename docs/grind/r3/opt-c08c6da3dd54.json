@@ -1,0 +1,38 @@
+{
+ "candidates": [
+  {
+   "window": "c08c6da3dd54",
+   "file": "src/game.6502",
+   "file_written": "build/grind/r3/opt-c08c6da3dd54.json",
+   "line": 2202,
+   "old": "    LDA edge_x_low\n    SEC\n    SBC mover_x_low\n    BEQ leave_with_sprite_address_and_carry_set\n    STA columns_to_clip_from_left   \\ n: zero on entry (both callers zero it), as n INCs left it\n    TAX\n    LDA edge_x_low\n    STA mover_x_low                 \\ + n, as n INCs left it\n    SEC\n.clip_flipped_column_c1\n    LDA &CE\n    SBC (&CE)                       \\ 65C02 opcode: move back a column of sprite data (C = 1)",
+   "new": "    LDA edge_x_low\n    TAY                             \\ Grind: edge_x_low kept in Y (free here: the exits reload it from &CE)\n    SEC\n    SBC mover_x_low\n    BEQ leave_with_sprite_address_and_carry_set\n    STA columns_to_clip_from_left   \\ n: zero on entry (both callers zero it), as n INCs left it\n    TAX\n    STY mover_x_low                 \\ + n, as n INCs left it\n    SEC\n    LDA &CE                         \\ Grind: once, here; the loop leaves A = the new &CE (STA keeps it, BCS/DEC/SEC/DEX/BNE do not touch A)\n.clip_flipped_column_c1\n    SBC (&CE)                       \\ 65C02 opcode: move back a column of sprite data (C = 1)",
+   "summary": "Candidate 1's hoist plus TAY/STY: edge_x_low is loaded once and kept in Y for the store to mover_x_low (TAY+STY is 3 bytes, 5 cycles; LDA zp+STA zp was 4 bytes, 6 cycles). Saves 1 byte and 1 cycle a call besides the hoist; the BEQ-exit path (never in the profile) pays TAY's 2 cycles. Overlaps candidate 1; best if the gate accepts the 1-byte shift.",
+   "claim": {
+    "cycles_per_execution": 1,
+    "executions_a_pass": 0.13,
+    "cycles_a_pass": 1.8,
+    "bytes": 1
+   },
+   "equivalence": "Candidate 1's argument for the hoist. Plus: Y = edge_x_low after the TAY; nothing between TAY and STY writes Y (SEC, SBC, BEQ, STA, TAX), and edge_x_low is not written there, so STY mover_x_low stores what LDA edge_x_low/STA stored. Y is not read by this routine before its exits (both exits LDY &CE) and is not live in at entry (the annotation shows in:- at the first LDA; callers' Y is the old LDY &CE result, dead), so clobbering Y is invisible; it ends as &CE as before on both exits. Flags: the old LDA edge_x_low set N,Z that nothing read (the SBC after the SEC sets them again); A after the old STA was edge_x_low but the next A write is LDA &CE (or SBC's result), and the new code's A is likewise rewritten by SBC before any read. C: TAY, STY do not touch it; the SEC before the SBC is kept.",
+   "relies_on": "Removes 1 byte at &1C55, so everything after in game.6502 moves down 1 byte until the next fixed anchor: the hot code at check_if_mover_is_on_screen (&1CA0, SEC/RTS branch targets, all on page &1C with in-page branches) stays on its page but its 3 abs,X table reads are to HAZEL tables (unaffected). I could not count page crossings for code beyond that (the whole remaining main block moves 1 byte), so the gate must measure it; if it comes out slower, use candidate 1, which moves nothing. The BEQ path saves nothing and pays 2 cycles, taken about 0 times a pass in the profile."
+  },
+  {
+   "window": "c08c6da3dd54",
+   "file": "src/game.6502",
+   "file_written": "build/grind/r3/opt-c08c6da3dd54.json",
+   "line": 2210,
+   "old": "    SEC\n.clip_flipped_column_c1\n    LDA &CE\n    SBC (&CE)                       \\ 65C02 opcode: move back a column of sprite data (C = 1)",
+   "new": "    SEC\n    LDA &CE                         \\ Grind: once, here; the loop leaves A = the new &CE (STA keeps it, BCS/DEC/SEC/DEX/BNE do not touch A)\n.clip_flipped_column_c1\n    SBC (&CE)                       \\ 65C02 opcode: move back a column of sprite data (C = 1)",
+   "summary": "Hoist the flipped clip loop's LDA &CE out of the loop: after the first column the loop leaves A = the new &CE (STA &CE stores A, and BCS, DEC &CF, SEC, DEX, BNE leave A alone), so the next SBC (&CE) can follow directly. 3 cycles off every column after the first; same bytes, no code moves. Alternative to candidate 2 (overlaps it); candidate 2 includes this.",
+   "claim": {
+    "cycles_per_execution": 3,
+    "executions_a_pass": 0.54,
+    "cycles_a_pass": 1.6,
+    "bytes": 0
+   },
+   "equivalence": "Old loop head: LDA &CE (A = &CE), SBC (&CE), STA &CE. Entry: the SEC then LDA &CE (LDA leaves C=1), so the first SBC sees C=1 and A=&CE exactly as before; the SEC/LDA order is free (LDA does not touch C). Back edge (BNE after DEX): A was last written by SBC and STA &CE stored that A, so A = &CE; both paths to DEX (BCS taken; or DEC &CF then SEC) leave A alone (DEC mem and SEC do not touch A; DEX does not). C = 1 on both paths as before. So the old reload LDA &CE would load the value A already holds, and it set only N/Z, which SBC overwrites. &CF and the pointer are updated as before. Exit and registers after the loop: LDY &CE / LDX &CF reload; A on exit was &CE (the last LDA) and is still &CE (before: last LDA &CE then SBC result, = &CE stored, same value). Same bytes (LDA moves, 2 bytes), nothing after moves. The only reference to clip_flipped_column_c1 is the BNE inside the loop (grep'd src/ and tools/).",
+   "relies_on": "No bytes change, so no page crossing moves. The loop (&1C5A-&1C66) stays on page &1C; the BNE back edge stays in-page. Relies on no other code entering at clip_flipped_column_c1 (only the BNE) and A being untouched by DEC &CF/SEC/DEX/BNE. The measurement is 2.0 cycles a pass on the old LDA &CE (0.67 executions) against 0.13 calls a pass (LDA edge_x_low, 0.4 cycles), so about 0.54 saved executions."
+  }
+ ]
+}

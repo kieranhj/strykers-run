@@ -1,0 +1,45 @@
+window a214f69da82a: src/game.6502 lines 2838-2880, 32 instructions, 115.6 cycles a pass measured (wait excluded)
+
+ 2838      0.0     SEC                             \ Leave with carry set to indicate hostile collision   ;| A=? X=? Y=?≡$03 C=? Z=? N=? V=? | in:YV out:YCV
+ 2839      0.1     RTS                                                                                    ;| A=? X=? Y=?≡$03 C=1 Z=? N=? V=? | in:YCV out:YCV
+ 2840          .leave_not_hostile_clc_g8c37       \ grind: from the C = 1 paths (BEQ after CMP #&8C, BCS after CMP #&0C)
+ 2841      0.0     CLC                             \ Leave with carry clear to indicate not hostile       ;| A={$0C,$0D,$0E,$0F,$10,$11,$12,$8C} X=? Y=?≡$03 C=1 Z=? N=? V=? | in:YV out:YCV
+ 2842          .leave_with_carry_clear_242d       \ grind: reached only by BCC (C = 0 already): the CLC skipped
+ 2843     10.5     RTS                                                                                    ;| A=? X=? Y=?≡$03 C=0 Z=? N=? V=? | in:YCV out:YCV
+ 2844          
+ 2845          .move_mover_left
+ 2846      2.0     LDA mover_x_low                                                                        ;| A=? X=? Y=? C=? Z=? N=? V=? | $F8=? | in:- out:A
+ 2847      1.3     SEC                                                                                    ;| A=?≡$F8 X=? Y=? C=? Z=? N=? V=? | in:A out:AC
+ 2848      2.0     SBC x_delta                                                                            ;| A=?≡$F8 X=? Y=? C=1 Z=? N=? V=? | $7C=? | in:AC out:AC
+ 2849      1.3     TAX                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AC out:XC
+ 2850      2.0     LDY &C5                         \ grind: the high byte less the borrow, without A      ;| A=? X=? Y=? C=? Z=? N=? V=? | $C5=? | in:XC out:XYC
+ 2851      2.0     BCS mml_high_done_g8c37                                                                ;| A=? X=? Y=?≡$C5 C=? Z=? N=? V=? | in:XYC out:XY
+ 2852      0.0     DEY                                                                                    ;| A=? X=? Y=?≡$C5 C=0 Z=? N=? V=? | in:XY out:XY
+ 2853          .mml_high_done_g8c37
+ 2854      3.9     JSR check_for_collision_after_horizontal_move\ Returns carry set if hostile collision occurred;| A=? X=? Y=? C=? Z=? N=? V=? | in:XY out:AXCV
+ 2855      1.3     BCS skip_changing_screen_address_2447                                                  ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXCV out:AXCV
+ 2856      2.0     LDY x_delta                                                                            ;| A=? X=? Y=? C=0 Z=? N=? V=? | $7C=? | in:AXCV out:AXYCV
+ 2857      1.3     DEY                                                                                    ;| A=? X=? Y=?≡$7C C=0 Z=? N=? V=? | in:AXYCV out:AXYNCV
+ 2858      1.3     BMI skip_changing_screen_address_2447                                                  ;| A=? X=? Y=? C=0 Z=? N=? V=? | in:AXYNCV out:AXYCV
+ 2859      3.9     JSR subtract_delta_from_screen_address_in_AX                                           ;| A=? X=? Y=0..127 C=0 Z=? N=0 V=? | in:AXY out:AXCV
+ 2860          .skip_changing_screen_address_2447
+ 2861      2.0     STA mover_screen_address_low                                                           ;| A=? X=? Y=? C=? Z=? N=? V=? | $C2=? | in:AXCV out:XCV
+ 2862      2.0     STX mover_screen_address_high                                                          ;| A=? X=? Y=? C=? Z=? N=? V=? | $C3=? | in:XCV out:CV
+ 2863      2.0     JMP use_viewport_right_as_edge  \ *** JSR use_viewport_right_as_edge : RTS in standard version;| A=? X=? Y=? C=? Z=? N=? V=? | in:CV out:CV
+ 2864          
+ 2865          
+ 2866          .move_mover_up    \ # Called with A = mover_y
+ 2867      3.3     CLC                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:A out:AC
+ 2868      4.9     ADC y_delta                                                                            ;| A=? X=? Y=? C=0 Z=? N=? V=? | $7D=? | in:AC out:A
+ 2869      4.9     STA mover_y                                                                            ;| A=? X=? Y=? C=? Z=? N=? V=? | $F9=? | in:A out:-
+ 2870          .check_for_collision_after_vertical_move   \ grind: move_mover_up falls in here; move_mover_down JSRs here
+ 2871      5.2     LDX mover_to_update                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | $03=? | in:- out:X
+ 2872      6.9     LDY movers_x_high,X                                                                    ;| A=? X=?≡$03 Y=? C=? Z=? N=? V=? | [$1366,x]=? | in:X out:XY
+ 2873      6.9     LDA movers_x_low,X                                                                     ;| A=? X=?≡$03 Y=? C=? Z=? N=? V=? | [$1344,x]=? | in:XY out:AY
+ 2874     10.3     JSR check_for_mover_collision_with_movers\ Returns carry set if collision, X = mover collided with;| A=? X=?≡$03 Y=? C=? Z=? N=? V=? | in:AY out:XCV
+ 2875     10.3     JSR check_for_hostile_collision \ Returns carry set if collision was hostile           ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XCV out:YCV
+ 2876      3.4     BCS vertical_collision_b245f                                                           ;| A=? X=? Y=? C=? Z=? N=? V=? | in:YCV out:YCV
+ 2877          .no_collision
+ 2878      6.9     LDX movers_screen_address_high,Y                                                       ;| A=? X=? Y=? C=0 Z=? N=? V=? | [$13CC,y]=? | in:YCV out:XYCV
+ 2879      6.9     LDA movers_screen_address_low,Y                                                        ;| A=? X=? Y=? C=0 Z=? N=? V=? | [$13AA,y]=? | in:XYCV out:AXCV
+ 2880      5.2     LDY y_delta                                                                            ;| A=? X=? Y=? C=0 Z=? N=? V=? | $7D=? | in:AXCV out:AXYNZCV

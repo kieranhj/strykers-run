@@ -1,0 +1,55 @@
+{
+ "candidates": [
+  {
+   "window": "804258469426",
+   "file": "src/render_zp.6502",
+   "line": 121,
+   "old": "    STA &9F\n    LDA zp_save + 18\n    STA &A0\n    LDA zp_save + 19\n    STA &B0\n    LDA zp_save + 20\n    STA &B1\n    LDA zp_save + 21\n    \\ &B2/&B3/&BA/&BB (the viewport) need nothing: render's buffer_to_view (slot 2) put back\n    \\ the values saved here (A = zp_save + 21, unused)\n    LDA zp_save + 23\n    STA &B4\n    LDA zp_save + 24\n    STA &B5\n    LDA zp_save + 25\n    STA &B6\n",
+   "new": "    \\ &B2/&B3/&BA/&BB (the viewport) need nothing: render's buffer_to_view (slot 2) put back\n    \\ the values saved here; &B0/&B1 (the CRTC start) likewise (history_to_view, the only other\n    \\ writer, is followed by that buffer_to_view); &9F, &A0, &B6 the renderer never writes, nor the\n    \\ interrupt: nothing to give back (zp_save + 17, + 18, + 19, + 20, + 21, + 25 unused)\n    LDA zp_save + 23\n    STA &B4\n    LDA zp_save + 24\n    STA &B5\n",
+   "summary": "Drop the restores of &9F, &A0, &B0, &B1, &B6 (the renderer leaves them as it found them: never written, or put back by buffer_to_view) and the dead LDA zp_save + 21: 5 load/store pairs gone. Supersedes the other two (overlapping alternatives). Leaves line 120's LDA zp_save + 17 (outside the window) dead: dropping it too is a further 4 cycles, 3 bytes.",
+   "claim": {
+    "cycles_per_execution": 35,
+    "executions_a_pass": 1.0,
+    "cycles_a_pass": 35.0,
+    "bytes": 25
+   },
+   "equivalence": "restore_game_zp has one caller (render's closing JMP, render.6502 line 563) and save_game_zp one (line 338, after prebuild and kc_build); between them only render's own code runs (the one game.6502 routine it calls, check_if_mover_is_on_screen, writes no zero page), and the vsync interrupt writes only field_count, game_over_cooldown, shown_screen and its own variables. &9F top_palette_value, &A0 firing_frame, &B6 delta_low/first_mover/target: no write to them anywhere in the renderer family (names and literals grepped over src/, the symbol dump has no other assignment at those addresses), so their restore stores back the byte already there. &B0/&B1 crtc_start_address_high/low: written in the renderer only by buffer_to_view and history_to_view; history_to_view has one caller (apply_entries), always followed by .scrolled's buffer_to_view slot 2, which stores back what view_to_buffer slot 2 took at line 348, and nothing between save_game_zp (338) and that view_to_buffer writes them; nothing after line 515 writes them (put_on, ren_plot_lives and player_done only read). So at restore time &B0/&B1 already hold the saved values and the restore is a no-op. The dead LDA zp_save + 21 only set A, N, Z, which the next LDA sets again (A and flags not live). Exit state: A = zp_save + 33 and the flags of that load, as before; no label inside the window.",
+   "relies_on": "Page crossings: none moved that matter. The window has no branches or indexed reads; restore_game_zp (&8D95 in the unshifted build) is followed only by render_bss_zero (start-up, run once), so nothing hot slides; the tail code is 25 bytes shorter. Facts relied on: render.6502 lines 338 (save_game_zp), 348 (view_to_buffer slot 2), 501 (history_to_view, only caller), 515 (buffer_to_view slot 2), 563 (JMP restore_game_zp, only caller); renderer never writes top_palette_value/firing_frame/delta_low (grep; zplive 2026-10-22, 6000 frames seed 1, shows the renderer writing none of &9F &A0 &B0 &B1 &B6 even though &A0/&B0/&B1 are logic-live); the interrupt does not write them; zp_save + 17..20 and + 25 stay written by save_game_zp (harmless, outside window).",
+   "file_written": "build/grind/r3/opt-804258469426.json"
+  },
+  {
+   "window": "804258469426",
+   "file": "src/render_zp.6502",
+   "line": 121,
+   "old": "    STA &9F\n    LDA zp_save + 18\n    STA &A0\n    LDA zp_save + 19\n    STA &B0\n    LDA zp_save + 20\n    STA &B1\n    LDA zp_save + 21\n    \\ &B2/&B3/&BA/&BB (the viewport) need nothing: render's buffer_to_view (slot 2) put back\n    \\ the values saved here (A = zp_save + 21, unused)\n    LDA zp_save + 23\n    STA &B4\n    LDA zp_save + 24\n    STA &B5\n    LDA zp_save + 25\n    STA &B6\n",
+   "new": "    LDA zp_save + 19\n    STA &B0\n    LDA zp_save + 20\n    STA &B1\n    \\ &B2/&B3/&BA/&BB (the viewport) need nothing: render's buffer_to_view (slot 2) put back\n    \\ the values saved here; &9F, &A0, &B6 the renderer never writes, nor the interrupt: nothing\n    \\ to give back (zp_save + 17, + 18, + 21, + 25 unused)\n    LDA zp_save + 23\n    STA &B4\n    LDA zp_save + 24\n    STA &B5\n",
+   "summary": "Alternative to the first: drop only the restores of &9F, &A0, &B6 (bytes the renderer never writes at all) and the dead LDA zp_save + 21; keeps &B0/&B1, so it does not rely on the buffer_to_view argument.",
+   "claim": {
+    "cycles_per_execution": 21,
+    "executions_a_pass": 1.0,
+    "cycles_a_pass": 21.0,
+    "bytes": 15
+   },
+   "equivalence": "As the first for &9F, &A0, &B6: restore_game_zp's only caller is render's closing JMP, save_game_zp's only caller is at line 338, only render's own code runs between them, the interrupt does not write these, and no renderer-family source writes them (grep of names and literals; no other assignment at those addresses in the symbol dump), so restoring stores back the byte already there. &B0/&B1 are still restored. The dead LDA zp_save + 21 only set A, N, Z, set again by the next LDA. Exit A and flags as before.",
+   "relies_on": "As the first: no branch or indexed read in the window, only render_bss_zero (run once at start-up) follows restore_game_zp, so no hot page crossing moves; line 120's LDA zp_save + 17 (outside the window) becomes dead. Relies on the renderer never writing &9F/&A0/&B6 (grep; zplive written-set 2026-10-22).",
+   "file_written": "build/grind/r3/opt-804258469426.json"
+  },
+  {
+   "window": "804258469426",
+   "file": "src/render_zp.6502",
+   "line": 121,
+   "old": "    STA &9F\n    LDA zp_save + 18\n    STA &A0\n    LDA zp_save + 19\n    STA &B0\n    LDA zp_save + 20\n    STA &B1\n    LDA zp_save + 21\n    \\ &B2/&B3/&BA/&BB (the viewport) need nothing: render's buffer_to_view (slot 2) put back\n    \\ the values saved here (A = zp_save + 21, unused)\n    LDA zp_save + 23\n    STA &B4\n    LDA zp_save + 24\n    STA &B5\n    LDA zp_save + 25\n    STA &B6\n",
+   "new": "    STA &9F\n    LDA zp_save + 18\n    STA &A0\n    LDA zp_save + 19\n    STA &B0\n    LDA zp_save + 20\n    STA &B1\n    \\ &B2/&B3/&BA/&BB (the viewport) need nothing: render's buffer_to_view (slot 2) put back\n    \\ the values saved here (zp_save + 21 unused)\n    LDA zp_save + 23\n    STA &B4\n    LDA zp_save + 24\n    STA &B5\n    LDA zp_save + 25\n    STA &B6\n",
+   "summary": "Only the dead LDA zp_save + 21 (A is not live; the next LDA overwrites it): no behaviour change at all. Overlaps the other two; the safe fallback.",
+   "claim": {
+    "cycles_per_execution": 4,
+    "executions_a_pass": 1.0,
+    "cycles_a_pass": 4.0,
+    "bytes": 3
+   },
+   "equivalence": "LDA zp_save + 21 only sets A, N and Z; the next instruction is LDA zp_save + 23, which sets all three again, and the window annotation shows A not live (out:V) and no flag live. No branch targets or entries between the two (the label is restore_game_zp at the top only; grep shows only JMP restore_game_zp).",
+   "relies_on": "No page crossing moves that matters: three bytes shorter, only render_bss_zero (start-up only) follows. No labels inside the window.",
+   "file_written": "build/grind/r3/opt-804258469426.json"
+  }
+ ]
+}

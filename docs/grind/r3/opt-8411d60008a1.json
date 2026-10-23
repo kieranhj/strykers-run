@@ -1,0 +1,38 @@
+{
+ "candidates": [
+  {
+   "window": "8411d60008a1",
+   "file": "src/render.6502",
+   "line": 271,
+   "old": "    LDA screen_start_address_low\r\n    STA buf_ss_lo,X\r\n    LDA screen_start_address_high\r\n    STA buf_ss_hi,X\r\n    LDA crtc_start_address_low\r\n    STA buf_crtc_lo,X\r\n    LDA crtc_start_address_high\r\n    STA buf_crtc_hi,X\r\n    LDA viewport_left_low\r\n    STA buf_vl_lo,X\r\n    LDA viewport_left_high\r\n    STA buf_vl_hi,X\r\n    LDA viewport_right_low\r\n    STA buf_vr_lo,X\r\n    LDA viewport_right_high\r\n    STA buf_vr_hi,X\r\n    RTS",
+   "new": "    CPX #2                          \\ only slot 2 is ever read (buffer_to_view is only called with X = 2, and\r\n    BCC vtb_gate_done               \\ buf_vl_lo/hi + 2 in render): a call for screen 0 or 1 has nothing to store\r\n    LDA screen_start_address_low\r\n    STA buf_ss_lo + 2\r\n    LDA screen_start_address_high\r\n    STA buf_ss_hi + 2\r\n    LDA crtc_start_address_low\r\n    STA buf_crtc_lo + 2\r\n    LDA crtc_start_address_high\r\n    STA buf_crtc_hi + 2\r\n    LDA viewport_left_low\r\n    STA buf_vl_lo + 2\r\n    LDA viewport_left_high\r\n    STA buf_vl_hi + 2\r\n    LDA viewport_right_low\r\n    STA buf_vr_lo + 2\r\n    LDA viewport_right_high\r\n    STA buf_vr_hi + 2\r\n.vtb_gate_done\r\n    RTS",
+   "summary": "Skip the dead stores: only slot 2 is read, so a call with X < 2 (render line 517 each pass, and render_reset) returns at once, and the X = 2 call uses absolute stores (4 cycles, not 5). Alternative to the next candidate (overlaps it); this one wins by 47 cycles a pass but grows the routine by 4 bytes.",
+   "claim": {
+    "cycles_per_execution": 31.5,
+    "executions_a_pass": 2,
+    "cycles_a_pass": 63,
+    "bytes": -4
+   },
+   "equivalence": "buf_ss/crtc/vl/vr are read only by buffer_to_view (render.6502 line 515, always LDX #2 first, at .scrolled) and render's lives zone (LDA buf_vl_lo + 2 / buf_vl_hi + 2); grep of src/ and tools/ finds no other reader, no pointer to them, no (buf_*),Y use. view_to_buffer is called three times: render_reset X=1,0 (stores never read), render line 348 X=2 (the only stores that matter, written before any read of slot 2 in a pass: 395 and 515 come after it), and line 517 X=back (0/1) straight after buffer_to_view loaded all eight live values from slot 2, so the live view equals slot 2 and a store to slot 2 would change nothing, a store to slot 0/1 is never read. Registers: A is clobbered as before, X and Y unchanged (callers use X=back at 518, Y at 510..); no caller reads flags after the RTS (render_reset DEX, 348 LDX, 517 LDX/LDA). The gate CPX #2 / BCC: X=2 falls through and stores everything to slot 2 as before; X=0/1 branches to the RTS. Branch range: 8 LDA zp + 8 STA abs = 40 bytes, in range.",
+   "relies_on": "Per pass: before 2 x (8x3 + 8x5 + 6) = 140 cycles; after X=2: 2+2+24+32+6 = 66, X=1/0: 2+3+6 = 11, total 77, saving 63. Adds 4 bytes to bank 4's renderer code from view_to_buffer on: moves every later label (buffer_to_view, history_to_view, render and the rest of the renderer up to PAD_END, 797 bytes free) 4 bytes up, so page crossings of later hot branches and indexed table reads inside the renderer may change; the branch to vtb_gate_done stays inside page &91 (view_to_buffer is &916E.., ends well before &9200, now about &91A2) and is taken without a page cross. The stores are absolute, no page-cross penalty. Not a data move: the buf_* tables are untouched.",
+   "file_written": "build/grind/r3/opt-8411d60008a1.json"
+  },
+  {
+   "window": "8411d60008a1",
+   "file": "src/render.6502",
+   "line": 271,
+   "old": "    LDA screen_start_address_low\r\n    STA buf_ss_lo,X\r\n    LDA screen_start_address_high\r\n    STA buf_ss_hi,X\r\n    LDA crtc_start_address_low\r\n    STA buf_crtc_lo,X\r\n    LDA crtc_start_address_high\r\n    STA buf_crtc_hi,X\r\n    LDA viewport_left_low\r\n    STA buf_vl_lo,X\r\n    LDA viewport_left_high\r\n    STA buf_vl_hi,X\r\n    LDA viewport_right_low\r\n    STA buf_vr_lo,X\r\n    LDA viewport_right_high\r\n    STA buf_vr_hi,X\r\n    RTS",
+   "new": "                                    \\ slot 2 always: nothing reads slots 0 and 1, and the one call with X = back follows buffer_to_view,\r\n                                    \\ so the live view is slot 2's already; absolute stores are a cycle cheaper than ,X\r\n    LDA screen_start_address_low\r\n    STA buf_ss_lo + 2\r\n    LDA screen_start_address_high\r\n    STA buf_ss_hi + 2\r\n    LDA crtc_start_address_low\r\n    STA buf_crtc_lo + 2\r\n    LDA crtc_start_address_high\r\n    STA buf_crtc_hi + 2\r\n    LDA viewport_left_low\r\n    STA buf_vl_lo + 2\r\n    LDA viewport_left_high\r\n    STA buf_vl_hi + 2\r\n    LDA viewport_right_low\r\n    STA buf_vr_lo + 2\r\n    LDA viewport_right_high\r\n    STA buf_vr_hi + 2\r\n    RTS",
+   "summary": "Same size, 16 cycles a pass: every store is absolute into slot 2 (STA abs is 4 cycles, STA abs,X 5). The call for screen back writes slot 2 with the live view, which equals slot 2 there. Alternative to the first candidate (overlaps it); no byte moves, so no page boundary shifts.",
+   "claim": {
+    "cycles_per_execution": 8,
+    "executions_a_pass": 2,
+    "cycles_a_pass": 16,
+    "bytes": 0
+   },
+   "equivalence": "buf_ss/crtc/vl/vr are read only by buffer_to_view (render.6502 line 515, always LDX #2 first, at .scrolled) and render's lives zone (LDA buf_vl_lo + 2 / buf_vl_hi + 2); grep of src/ and tools/ finds no other reader, no pointer to them, no (buf_*),Y use. view_to_buffer is called three times: render_reset X=1,0 (stores never read), render line 348 X=2 (the only stores that matter, written before any read of slot 2 in a pass: 395 and 515 come after it), and line 517 X=back (0/1) straight after buffer_to_view loaded all eight live values from slot 2, so the live view equals slot 2 and a store to slot 2 would change nothing, a store to slot 0/1 is never read. Registers: A is clobbered as before, X and Y unchanged (callers use X=back at 518, Y at 510..); no caller reads flags after the RTS (render_reset DEX, 348 LDX, 517 LDX/LDA). No gate: the X=0/1 calls store the live view into slot 2: at line 517 it is the value slot 2 holds (buffer_to_view just copied slot 2 to the live view, nothing between changes it); at render_reset slot 2 is rewritten at line 348 before any read in the pass (buf_vl_lo + 2 at 395 and buffer_to_view at 515 both come after 348).",
+   "relies_on": "Same byte count (STA abs and STA abs,X are both 3 bytes), so no later label moves and no page crossing changes; no indexed read involved. The slot-2 stores are into bank 4 workspace (&BC42 on), not in shadow RAM, and ACCCON's X bit does not touch them.",
+   "file_written": "build/grind/r3/opt-8411d60008a1.json"
+  }
+ ]
+}

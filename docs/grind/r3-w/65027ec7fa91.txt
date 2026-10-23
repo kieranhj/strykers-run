@@ -1,0 +1,30 @@
+window 65027ec7fa91: src/game.6502 lines 5821-5848, 25 instructions, 120.6 cycles a pass measured (wait excluded)
+
+ 5821      5.3     STA unused_0076                                                                        ;| A=$01 X=? Y=0..31 C=0 Z=0 N=0 V=? | $76=? | in:AXY out:XY
+ 5822      7.1     LDA ru_lo                                                                              ;| A=$01 X=? Y=0..31 C=0 Z=0 N=0 V=? | $0A9F=? | in:XY out:AXY
+ 5823      3.5     AND #&F8                        \ line 0 of this cell, then up those cells             ;| A=?≡$0A9F X=? Y=0..31 C=0 Z=? N=? V=? | in:AXY out:AXY
+ 5824      3.5     SEC                                                                                    ;| A=0..248 %xxxxx000 X=? Y=0..31 C=0 Z=? N=? V=? | in:AXY out:AXYC
+ 5825      7.1     SBC ru_cells_lo,Y                                                                      ;| A=0..248 %xxxxx000 X=? Y=0..31 C=1 Z=? N=? V=? | [$0A8F,y]=? | in:AXYC out:AXYCV
+ 5826      7.1     STA ru_lo                       \ L1, a multiple of 8 (ru_cells_lo is &00 or &80)      ;| A=? X=? Y=0..31 C=? Z=? N=? V=? | $0A9F=? | in:AXYCV out:XYCV
+ 5827      3.5     TXA                                                                                    ;| A=? X=? Y=0..31 C=? Z=? N=? V=? | in:XYCV out:AXYNZCV
+ 5828      7.1     SBC ru_cells_hi,Y                                                                      ;| A=? X=? Y=0..31 C=? Z=? N=? V=? | [$0A97,y]=? | in:AXYNZCV out:AXYNZCV
+ 5829      3.5     CMP #&40                        \ round the 16K screen                                 ;| A=? X=? Y=? C=? Z=? N=? V=? | in:A out:AC
+ 5830      5.1     BCS ru_in_ring                                                                         ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AC out:AC
+ 5831      0.4     ADC #&40                                                                               ;| A=0..63 X=? Y=? C=0 Z=? N=? V=? | in:AC out:A
+ 5832          .ru_in_ring
+ 5833      7.1     LDY ru_lo                       \ step 2 (grind): the high byte first. C: no borrow from L1 - &79;| A=64..255 X=? Y=? C=? Z=? N=? V=? | $0A9F=? | in:A out:AY
+ 5834      3.5     CPY #&80                        \ (L1 >= &79 is L1 >= &80)                             ;| A=64..255 X=? Y=?≡$0A9F C=? Z=? N=? V=? | in:AY out:AC
+ 5835      3.5     SBC #&02                        \ as the subroutine's SBC delta_high: the same N V Z C ;| A=64..255 X=? Y=?≡$0A9F C=? Z=? N=? V=? | in:AC out:AV
+ 5836      3.5     CMP #&40                        \ round the 16K screen                                 ;| A=61..253 X=? Y=?≡$0A9F C=1 Z=0 N=? V=? | in:AV out:ACV
+ 5837      5.1     BCS ru_in_ring_2                                                                       ;| A=61..253 X=? Y=?≡$0A9F C=? Z=? N=? V=? | in:ACV out:ACV
+ 5838      0.4     ADC #&40                                                                               ;| A=61..63 X=? Y=?≡$0A9F C=0 Z=? N=? V=? | in:AC out:ACV
+ 5839          .ru_in_ring_2
+ 5840      3.5     TAX                                                                                    ;| A=64..253 X=? Y=?≡$0A9F C=? Z=? N=? V=? | in:ACV out:XCV
+ 5841      7.1     LDA ru_d                        \ then &0279 up, and up the rest of the rows inside that cell:;| A=64..253 X=64..253 Y=?≡$0A9F C=? Z=0 N=? V=? | $0AA0=? | in:XCV out:AXCV
+ 5842      3.5     AND #&07                        \ (L1 - &79) AND &F8 = L1 EOR &80, with its line 7 - (d AND 7);| A=?≡$0AA0 X=64..253 Y=?≡$0A9F C=? Z=? N=? V=? | in:AXCV out:AXCV
+ 5843      3.5     EOR #&87                        \ (C and V stay as the crossing left them)             ;| A=0..7 X=64..253 Y=?≡$0A9F C=? Z=? N=0 V=? | in:AXCV out:AXCV
+ 5844      7.1     EOR ru_lo                                                                              ;| A=128..135 X=64..253 Y=?≡$0A9F C=? Z=0 N=1 V=? | $0A9F=? | in:AXCV out:AXCV
+ 5845          .ru_done                            \ the rows inside the cell: A = the low byte
+ 5846      3.6     TAY                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXCV out:AXYNZCV
+ 5847      5.4     STZ unused_0076                 \ 65C02 opcode; 0 (Z and N are read by no caller)      ;| A=? X=? Y=? C=? Z=? N=? V=? | $76=? | in:AXYNZCV out:AXYNZCV
+ 5848     10.7     RTS                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXYNZCV out:AXYNZCV

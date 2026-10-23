@@ -1,0 +1,55 @@
+{
+ "candidates": [
+  {
+   "window": "531720f8fe89",
+   "file": "src/render_zp.6502",
+   "line": 61,
+   "old": "    LDA &B2\n    STA zp_save + 21\n    LDA &B3\n    STA zp_save + 22\n    LDA &B4\n    STA zp_save + 23\n    LDA &B5\n    STA zp_save + 24\n    LDA &B6\n    STA zp_save + 25\n    LDA &B7\n    STA zp_save + 26\n    LDA &B8\n    STA zp_save + 27\n    LDA &B9\n    STA zp_save + 28\n    LDA &BA\n    STA zp_save + 29\n    LDA &BB\n    STA zp_save + 30",
+   "new": "    LDA &B4\n    STA zp_save + 23\n    LDA &B5\n    STA zp_save + 24\n    LDA &B6\n    STA zp_save + 25\n    LDA &B7\n    STA zp_save + 26\n    LDA &B8\n    STA zp_save + 27\n    LDA &B9\n    STA zp_save + 28",
+   "summary": "save_game_zp: drop the saves of viewport_left_low (&B2, slot 21), viewport_right_low (&B3, 22), viewport_left_high (&BA, 29) and viewport_right_high (&BB, 30); restore_game_zp stopped reading them (G0257) so the four copies are dead stores. 28 cycles, 20 bytes a pass. Alternatives: the two halves below overlap this.",
+   "claim": {
+    "cycles_per_execution": 28.0,
+    "executions_a_pass": 1.0,
+    "cycles_a_pass": 28.0,
+    "bytes": 20
+   },
+   "equivalence": "Each removed LDA zp / STA zp_save+k pair only copies a zero-page byte into zp_save+k; the LDA changes A, which is overwritten by the next pair's LDA (and the last LDA before RTS belongs to a later pair), flags are dead (RTS, caller's JSR save_game_zp is followed by LDA shown_screen). No instruction ever reads zp_save+k for the removed k, so deleting the pair changes only an unread byte of the renderer's workspace.",
+   "relies_on": "zp_save + 21/22/29/30 are never read: grep zp_save over src/ and tools/ finds only render_zp.6502 (restore_game_zp has no load of +22, +29, +30; its LDA zp_save + 21 is a dead load whose A is overwritten by the next LDA, and is in accepted G0257's text). The slots keep their numbers (zp_save + n unchanged for the others, the holes stay unused like +12/+13), so no data moves. render's .scrolled/buffer_to_view with X=2 puts &B2/&B3/&BA/&BB back from buf_vl_lo/vr_lo/vl_hi/vr_hi slot 2 (view_to_buffer saved them at the start), as G0257 relied on. Page crossings: save_game_zp is straight-line code with no branches and no indexed reads; it sits before restore_game_zp (abs loads, straight line) and render_bss_zero (run once at start-up), so sliding the following bytes down 10 or 20 moves no hot branch or table read. Reads of the saved bytes elsewhere: none.",
+   "file_written": "build/grind/r3/opt-531720f8fe89.json"
+  },
+  {
+   "window": "531720f8fe89",
+   "file": "src/render_zp.6502",
+   "line": 61,
+   "old": "    LDA &B2\n    STA zp_save + 21\n    LDA &B3\n    STA zp_save + 22",
+   "new": "",
+   "summary": "Alternative (overlaps the first candidate): drop only the saves of &B2 and &B3 (slots 21, 22).",
+   "claim": {
+    "cycles_per_execution": 14.0,
+    "executions_a_pass": 1.0,
+    "cycles_a_pass": 14.0,
+    "bytes": 10
+   },
+   "equivalence": "Each removed LDA zp / STA zp_save+k pair only copies a zero-page byte into zp_save+k; the LDA changes A, which is overwritten by the next pair's LDA (and the last LDA before RTS belongs to a later pair), flags are dead (RTS, caller's JSR save_game_zp is followed by LDA shown_screen). No instruction ever reads zp_save+k for the removed k, so deleting the pair changes only an unread byte of the renderer's workspace.",
+   "relies_on": "zp_save + 21/22/29/30 are never read: grep zp_save over src/ and tools/ finds only render_zp.6502 (restore_game_zp has no load of +22, +29, +30; its LDA zp_save + 21 is a dead load whose A is overwritten by the next LDA, and is in accepted G0257's text). The slots keep their numbers (zp_save + n unchanged for the others, the holes stay unused like +12/+13), so no data moves. render's .scrolled/buffer_to_view with X=2 puts &B2/&B3/&BA/&BB back from buf_vl_lo/vr_lo/vl_hi/vr_hi slot 2 (view_to_buffer saved them at the start), as G0257 relied on. Page crossings: save_game_zp is straight-line code with no branches and no indexed reads; it sits before restore_game_zp (abs loads, straight line) and render_bss_zero (run once at start-up), so sliding the following bytes down 10 or 20 moves no hot branch or table read. Reads of the saved bytes elsewhere: none.",
+   "file_written": "build/grind/r3/opt-531720f8fe89.json"
+  },
+  {
+   "window": "531720f8fe89",
+   "file": "src/render_zp.6502",
+   "line": 77,
+   "old": "    LDA &BA\n    STA zp_save + 29\n    LDA &BB\n    STA zp_save + 30",
+   "new": "",
+   "summary": "Alternative (overlaps the first candidate): drop only the saves of &BA and &BB (slots 29, 30).",
+   "claim": {
+    "cycles_per_execution": 14.0,
+    "executions_a_pass": 1.0,
+    "cycles_a_pass": 14.0,
+    "bytes": 10
+   },
+   "equivalence": "Each removed LDA zp / STA zp_save+k pair only copies a zero-page byte into zp_save+k; the LDA changes A, which is overwritten by the next pair's LDA (and the last LDA before RTS belongs to a later pair), flags are dead (RTS, caller's JSR save_game_zp is followed by LDA shown_screen). No instruction ever reads zp_save+k for the removed k, so deleting the pair changes only an unread byte of the renderer's workspace.",
+   "relies_on": "zp_save + 21/22/29/30 are never read: grep zp_save over src/ and tools/ finds only render_zp.6502 (restore_game_zp has no load of +22, +29, +30; its LDA zp_save + 21 is a dead load whose A is overwritten by the next LDA, and is in accepted G0257's text). The slots keep their numbers (zp_save + n unchanged for the others, the holes stay unused like +12/+13), so no data moves. render's .scrolled/buffer_to_view with X=2 puts &B2/&B3/&BA/&BB back from buf_vl_lo/vr_lo/vl_hi/vr_hi slot 2 (view_to_buffer saved them at the start), as G0257 relied on. Page crossings: save_game_zp is straight-line code with no branches and no indexed reads; it sits before restore_game_zp (abs loads, straight line) and render_bss_zero (run once at start-up), so sliding the following bytes down 10 or 20 moves no hot branch or table read. Reads of the saved bytes elsewhere: none.",
+   "file_written": "build/grind/r3/opt-531720f8fe89.json"
+  }
+ ]
+}

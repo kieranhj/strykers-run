@@ -1,0 +1,35 @@
+window d00aca9ad5a4: src/render.6502 lines 2015-2047, 32 instructions, 194.8 cycles a pass measured (wait excluded)
+
+ 2015      4.9     STY rb_index                                                                           ;| A=$00 X=? Y=? C=0 Z=1 N=0 V=? | $5E=? | in:Y out:Y
+ 2016      6.5     LDA save_end_lo,Y               \ the walk ends when v_ptr + 8 is the block's end      ;| A=$00 X=? Y=? C=0 Z=1 N=0 V=? | [save_end_lo,y]=? | in:Y out:AY
+ 2017      3.3     SEC                                                                                    ;| A=? X=? Y=? C=0 Z=? N=? V=? | in:AY out:AYC
+ 2018      3.3     SBC #8                                                                                 ;| A=? X=? Y=? C=1 Z=? N=? V=? | in:AYC out:AYC
+ 2019      4.9     STA rb_end                                                                             ;| A=? X=? Y=? C=? Z=? N=? V=? | $45=? | in:AYC out:YC
+ 2020      6.5     LDA save_end_hi,Y                                                                      ;| A=? X=? Y=? C=? Z=? N=? V=? | [save_end_hi,y]=? | in:YC out:AYC
+ 2021      3.3     SBC #0                                                                                 ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AYC out:AY
+ 2022      4.9     STA rb_end + 1                                                                         ;| A=? X=? Y=? C=? Z=? N=? V=? | $46=? | in:AY out:Y
+ 2023      6.5     LDA save_start_lo,Y             \ the header: where parts 2 and 3 start                ;| A=? X=? Y=? C=? Z=? N=? V=? | [save_start_lo,y]=? | in:Y out:AY
+ 2024      4.9     STA v_ptr                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | $C4=? | in:AY out:Y
+ 2025      6.5     LDA save_start_hi,Y                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | [save_start_hi,y]=? | in:Y out:A
+ 2026      4.9     STA v_ptr + 1                                                                          ;| A=? X=? Y=? C=? Z=? N=? V=? | $C5=? | in:A out:-
+ 2027      3.3     LDY #3                          \ the four bytes, unrolled                             ;| A=? X=? Y=? C=? Z=? N=? V=? | in:- out:Y
+ 2028      8.2     LDA (v_ptr),Y                                                                          ;| A=? X=? Y=$03 C=? Z=0 N=0 V=? | [($C4),y]=? | in:Y out:AY
+ 2029      4.9     STA rb_part2 + 3                                                                       ;| A=? X=? Y=$03 C=? Z=? N=? V=? | $44=? | in:AY out:Y
+ 2030      3.3     DEY                                                                                    ;| A=? X=? Y=$03 C=? Z=? N=? V=? | in:Y out:Y
+ 2031      8.2     LDA (v_ptr),Y                                                                          ;| A=? X=? Y=$02 C=? Z=0 N=0 V=? | [($C4),y]=? | in:Y out:AY
+ 2032      4.9     STA rb_part2 + 2                                                                       ;| A=? X=? Y=$02 C=? Z=? N=? V=? | $43=? | in:AY out:Y
+ 2033      3.3     DEY                                                                                    ;| A=? X=? Y=$02 C=? Z=? N=? V=? | in:Y out:Y
+ 2034      8.2     LDA (v_ptr),Y                                                                          ;| A=? X=? Y=$01 C=? Z=0 N=0 V=? | [($C4),y]=? | in:Y out:A
+ 2035      4.9     STA rb_part2 + 1                                                                       ;| A=? X=? Y=$01 C=? Z=? N=? V=? | $42=? | in:A out:-
+ 2036      8.2     LDA (v_ptr)                     \ 65C02 opcode                                         ;| A=? X=? Y=$01 C=? Z=? N=? V=? | [($C4)]=? | in:- out:A
+ 2037      4.9     STA rb_part2                                                                           ;| A=? X=? Y=$01 C=? Z=? N=? V=? | $41=? | in:A out:-
+ 2038      3.3     LDX #2                          \ part 3, then part 2: from its start to rb_end        ;| A=? X=? Y=$01 C=? Z=? N=? V=? | in:- out:X
+ 2039          .each_part
+ 2040     13.1     LDA rb_part2,X                                                                         ;| A=? X={0,2} Y=? C=? Z=? N=0 V=? | [$41,x]=? | in:X out:AX
+ 2041     13.1     ORA rb_part2 + 1,X                                                                     ;| A=? X={0,2} Y=? C=? Z=? N=? V=? | [$42,x]=? | in:AX out:XZ
+ 2042      7.6     BEQ no_part                                                                            ;| A=? X={0,2} Y=? C=? Z=? N=? V=? | in:XZ out:X
+ 2043      6.6     LDY rb_index                    \ v_ptr = its start - 8                                ;| A=1..255 X={0,2} Y=? C=? Z=0 N=? V=? | $5E=? | in:X out:XY
+ 2044      8.8     LDA save_start_lo,Y                                                                    ;| A=1..255 X={0,2} Y=?≡$5E C=? Z=? N=? V=? | [save_start_lo,y]=? | in:XY out:AXY
+ 2045      4.4     CLC                                                                                    ;| A=? X={0,2} Y=?≡$5E C=? Z=? N=? V=? | in:AXY out:AXYC
+ 2046      8.8     ADC rb_part2,X                                                                         ;| A=? X={0,2} Y=?≡$5E C=0 Z=? N=? V=? | [$41,x]=? | in:AXYC out:AXYC
+ 2047      6.6     STA v_ptr                       \ v_ptr is dead here: set to the result below          ;| A=? X={0,2} Y=?≡$5E C=? Z=? N=? V=? | $C4=? | in:AXYC out:XYC

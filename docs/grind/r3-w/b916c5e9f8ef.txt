@@ -1,0 +1,43 @@
+window b916c5e9f8ef: src/game.6502 lines 3576-3616, 32 instructions, 368.3 cycles a pass measured (wait excluded)
+
+ 3576      1.0     BCS cm_left_known                                                                      ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXYCV out:AXYV
+ 3577      0.3     INC A                           \ 65C02 opcode: &FF -> 0, Z set, N clear, as LDA #0 left them;| A=? X=? Y=? C=0 Z=? N=? V=? | in:AXYV out:AXYV
+ 3578      0.6     STA cm_left_low                                                                        ;| A=? X=? Y=? C=0 Z=? N=? V=? | $2F83=? | in:AXYV out:AXYV
+ 3579          .cm_left_known
+ 3580     25.4     STA cm_left_high                                                                       ;| A=? X=? Y=? C=? Z=? N=? V=? | $2F84=? | in:AXYV out:XYV
+ 3581     38.0     RTS                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XYV out:XYV
+ 3582          
+ 3583          .calculate_mover_x_max_and_y_max
+ 3584      4.9     LDA &C5                                                                                ;| A=? X=? Y=? C=? Z=? N=? V=? | $C5=? | in:X out:AX
+ 3585      4.9     STA mover_x_max_high                                                                   ;| A=?≡$C5 X=? Y=? C=? Z=? N=? V=? | $C6=? | in:AX out:X
+ 3586     20.4     LDA movers_type_and_colour,X    \ grind: get_mover_X_type_and_height inlined (JSR calculate_mover_x_max_and_y_max + 4 lands here);| A=? X=? Y=? C=? Z=? N=? V=? | [$1300,x]=? | in:X out:AX
+ 3587     10.2     AND #&7F                                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AX out:AX
+ 3588     10.2     TAY                                                                                    ;| A=0..127 X=? Y=? C=? Z=? N=0 V=? | in:AX out:XY
+ 3589     20.4     LDA movers_frame_and_flip,X                                                            ;| A=0..127 X=? Y=0..127 C=? Z=? N=0 V=? | [$1322,x]=? | in:XY out:AXY
+ 3590     10.2     AND #&7F                                                                               ;| A=? X=? Y=0..127 C=? Z=? N=? V=? | in:AXY out:AXY
+ 3591     10.2     CMP #&0D                        \ MOVER_TYPE_SKELETON                                  ;| A=0..127 X=? Y=0..127 C=? Z=? N=0 V=? | in:AXY out:XYZ
+ 3592     10.2     BEQ cmxy_skeleton_height        \ the common case falls through                        ;| A=0..127 X=? Y=0..127 C=? Z=? N=? V=? | in:XYZ out:XY
+ 3593     20.4     LDA mover_types_height_table,Y                                                         ;| A=0..127 X=? Y=0..127 C=? Z=0 N=? V=? | [$DA71,y]=? | in:XY out:AXY
+ 3594          .cmxy_add_height
+ 3595     10.2     CLC                                                                                    ;| A=? X=? Y=0..127 C=? Z=? N=? V=? | in:AXY out:AXYC
+ 3596     15.3     ADC mover_y                                                                            ;| A=? X=? Y=0..127 C=0 Z=? N=? V=? | $F9=? | in:AXYC out:AXY
+ 3597     15.3     STA mover_y_max                                                                        ;| A=? X=? Y=0..127 C=? Z=? N=? V=? | $C9=? | in:AXY out:XY
+ 3598     20.4     LDA mover_types_width_table,Y                                                          ;| A=? X=? Y=0..127 C=? Z=? N=? V=? | [$DA55,y]=? | in:XY out:AXY
+ 3599     10.2     CLC                                                                                    ;| A=? X=? Y=0..127 C=? Z=? N=? V=? | in:AXY out:AXYC
+ 3600     15.3     ADC mover_x_low                                                                        ;| A=? X=? Y=0..127 C=0 Z=? N=? V=? | $F8=? | in:AXYC out:AXYNZCV
+ 3601     15.3     BCC skip_overflow_287c                                                                 ;| A=? X=? Y=0..127 C=? Z=? N=? V=? | in:AXYNZCV out:AXYNZCV
+ 3602      0.1     INC mover_x_max_high                                                                   ;| A=? X=? Y=0..127 C=1 Z=? N=? V=? | $C6=? | in:AXYCV out:AXYNZCV
+ 3603          .skip_overflow_287c
+ 3604     15.3     STA mover_x_max_low                                                                    ;| A=? X=? Y=0..127 C=? Z=? N=? V=? | $C7=? | in:AXYNZCV out:AXYNZCV
+ 3605     30.6     RTS                                                                                    ;| A=? X=? Y=0..127 C=? Z=? N=? V=? | in:AXYNZCV out:AXYNZCV
+ 3606          .cmxy_skeleton_height
+ 3607              LDA #&11                                                                               ;| A=$0D X=? Y=0..127 C=1 Z=1 N=0 V=? | in:XY out:AXY
+ 3608              BRA cmxy_add_height             \ 65C02 opcode                                         ;| A=$11 X=? Y=0..127 C=1 Z=0 N=0 V=? | in:AXY out:AXY
+ 3609          
+ 3610          .check_for_player_collision_with_mover_Y
+ 3611      9.8     JSR get_mover_Y_x_and_y                                                                ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XY out:X
+ 3612      9.9     JSR calculate_mover_x_max_and_y_max                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:X out:AYV
+ 3613      3.3     LDX #&00                        \ MOVER_PLAYER                                         ;| A=? X=? Y=0..127 C=? Z=? N=? V=? | in:AYV out:AXYNZV
+ 3614      4.9     BEQ check_for_collision_with_mover                                                     ;| A=? X=$00 Y=0..127 C=? Z=1 N=0 V=? | always | in:AXYNZV out:AXYNZV
+ 3615          .cfc_a_leave_clear                  \ grind: a CLC/RTS in this page, so the BEQ below does not cross into the next
+ 3616      4.8     CLC                             \ Leave with carry clear to indicate no collision      ;| A=? X=0..11 Y=? C=1 Z=1 N=0 V=? | in:AXYNZV out:AXYNZCV

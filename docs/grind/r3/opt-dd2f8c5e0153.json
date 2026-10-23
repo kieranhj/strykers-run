@@ -1,0 +1,38 @@
+{
+ "candidates": [
+  {
+   "window": "dd2f8c5e0153",
+   "file": "src/render.6502",
+   "line": 1410,
+   "old": "    PHA\n    LDA v_ptr\n    SEC\nbase_lo = * + 1\n    SBC #0                          \\ self-modified: the block's start - 8\nheader_lo = * + 1\n    STA &FFFF,X                     \\ self-modified: the header\n    LDA v_ptr + 1\nbase_hi = * + 1\n    SBC #0\nheader_hi = * + 1\n    STA &FFFF,X\n    PLA\n",
+   "claim": {
+    "cycles_per_execution": 1,
+    "executions_a_pass": 2.2,
+    "cycles_a_pass": 2.2,
+    "bytes": -2
+   },
+   "file_written": "build/grind/r3/opt-dd2f8c5e0153.json",
+   "new": "    STA stop_y                  \\ A kept in stop_y (dead here), not on the stack\n    LDA v_ptr\n    SEC\nbase_lo = * + 1\n    SBC #0                          \\ self-modified: the block's start - 8\nheader_lo = * + 1\n    STA &FFFF,X                     \\ self-modified: the header\n    LDA v_ptr + 1\nbase_hi = * + 1\n    SBC #0\nheader_hi = * + 1\n    STA &FFFF,X\n    LDA stop_y\n",
+   "summary": "mark_part keeps A in stop_y (&C6, renderer scratch dead at this point) instead of PHA/PLA: STA zp + LDA zp = 6 cycles against 3 + 4 = 7 on each of 2.2 calls a pass; +2 bytes.",
+   "equivalence": "mark_part's only job beyond the header stores is to hand A back unchanged. PHA/PLA keep it on the stack; STA tmp/LDA tmp keep it in a zero-page byte instead. Register results are identical on every path: A = the entry A (LDA sets N and Z from it as PLA did), X and Y untouched by the replacement, C as the second SBC left it (neither PLA nor LDA zp touches C), V unchanged. The stack is no longer used (S at exit as at entry either way). The only new fact: stop_y is dead across the call. stop_y is written only by draw_column (once per part, before its byte loop reads it); the only readers are that loop's CPY; mark_part has two callers (draw_mover's part two and part three, each followed directly by JSR ren_draw_sprite), no other code in src/ reads or writes the byte during or between them, interrupts do not touch &C0-&CD while the renderer runs (v_ptr = &C4 is live across the whole of put_on in the same way), and it is not in zp_save/restore_game_zp (render_zp.6502 saves only &C0 of the range), so writing it extra cannot change what the logic finds after a render beyond what draw_column's own writes already do.",
+   "relies_on": "Page crossings: mark_part2/3 stay at the same addresses (&9A23-&9A29) and the BRA stays inside its page; the body grows by 2 bytes so draw_mover and everything after it in bank 4 slides up 2. Checked on the DEBUG_LIVES bench listing against pc-seed1/pc-right: only two conditional branches change their cross/no-cross status for a +2 slide, both from crossing to not crossing (BEQ in_hazel at &9CFC, 10,707 cycles in the profiles; BEQ gathered at &9EFD, 3,694), so the slide cannot cost there; no other branch moves across a page. Hot indexed table reads that sit after the slide and whose base moves by 2 (straight_sprite_hi/lo &A4E4/&A498, sprite_column_count &A366, ck_* &A3xx-&A4xx, wa_rows_* &A0F5-&A151, raise_cells_* &9D8B/&9D93) could change crossing counts by a few indices either way; the gate measures that. The tail of put_on and the JMP record_live are unchanged."
+  },
+  {
+   "window": "dd2f8c5e0153",
+   "file": "src/render.6502",
+   "line": 1410,
+   "old": "    PHA\n    LDA v_ptr\n    SEC\nbase_lo = * + 1\n    SBC #0                          \\ self-modified: the block's start - 8\nheader_lo = * + 1\n    STA &FFFF,X                     \\ self-modified: the header\n    LDA v_ptr + 1\nbase_hi = * + 1\n    SBC #0\nheader_hi = * + 1\n    STA &FFFF,X\n    PLA\n",
+   "claim": {
+    "cycles_per_execution": 1,
+    "executions_a_pass": 2.2,
+    "cycles_a_pass": 2.2,
+    "bytes": -2
+   },
+   "file_written": "build/grind/r3/opt-dd2f8c5e0153.json",
+   "new": "    STA rows_m1                 \\ A kept in rows_m1 (dead here), not on the stack\n    LDA v_ptr\n    SEC\nbase_lo = * + 1\n    SBC #0                          \\ self-modified: the block's start - 8\nheader_lo = * + 1\n    STA &FFFF,X                     \\ self-modified: the header\n    LDA v_ptr + 1\nbase_hi = * + 1\n    SBC #0\nheader_hi = * + 1\n    STA &FFFF,X\n    LDA rows_m1\n",
+   "summary": "As candidate 1 but with rows_m1 (&CB) as the temporary instead of stop_y, in case a reviewer prefers it (draw_column writes rows_m1 before every read). Alternative to candidate 1 (same lines).",
+   "equivalence": "mark_part's only job beyond the header stores is to hand A back unchanged. PHA/PLA keep it on the stack; STA tmp/LDA tmp keep it in a zero-page byte instead. Register results are identical on every path: A = the entry A (LDA sets N and Z from it as PLA did), X and Y untouched by the replacement, C as the second SBC left it (neither PLA nor LDA zp touches C), V unchanged. The stack is no longer used (S at exit as at entry either way). The only new fact: rows_m1 is dead across the call. rows_m1 is written only by draw_column (once per part, before its byte loop reads it); the only readers are that loop's CPY; mark_part has two callers (draw_mover's part two and part three, each followed directly by JSR ren_draw_sprite), no other code in src/ reads or writes the byte during or between them, interrupts do not touch &C0-&CD while the renderer runs (v_ptr = &C4 is live across the whole of put_on in the same way), and it is not in zp_save/restore_game_zp (render_zp.6502 saves only &C0 of the range), so writing it extra cannot change what the logic finds after a render beyond what draw_column's own writes already do. (rows_m1 is written at draw_column's .more path before any read, and by restore_block's column walk, which is a different phase.)",
+   "relies_on": "Page crossings: mark_part2/3 stay at the same addresses (&9A23-&9A29) and the BRA stays inside its page; the body grows by 2 bytes so draw_mover and everything after it in bank 4 slides up 2. Checked on the DEBUG_LIVES bench listing against pc-seed1/pc-right: only two conditional branches change their cross/no-cross status for a +2 slide, both from crossing to not crossing (BEQ in_hazel at &9CFC, 10,707 cycles in the profiles; BEQ gathered at &9EFD, 3,694), so the slide cannot cost there; no other branch moves across a page. Hot indexed table reads that sit after the slide and whose base moves by 2 (straight_sprite_hi/lo &A4E4/&A498, sprite_column_count &A366, ck_* &A3xx-&A4xx, wa_rows_* &A0F5-&A151, raise_cells_* &9D8B/&9D93) could change crossing counts by a few indices either way; the gate measures that. The tail of put_on and the JMP record_live are unchanged."
+  }
+ ]
+}

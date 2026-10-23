@@ -1,0 +1,34 @@
+window 2ddf03aaaadd: src/render.6502 lines 1350-1381, 32 instructions, 174.8 cycles a pass measured (wait excluded)
+
+ 1350      4.9     LDY dm_index                                                                           ;| A=? X=?≡$56 Y=? C=? Z=? N=? V=? | $67=? | in:X out:XY
+ 1351      6.5     LDA arena_top_lo,X              \ the block starts at the arena's top: its header there,;| A=? X=?≡$56 Y=?≡$67 C=? Z=? N=? V=? | [arena_top_lo,x]=? | in:XY out:AXY
+ 1352      8.2     STA save_start_lo,Y             \ where parts 2 and 3 start (0: none)                  ;| A=? X=?≡$56 Y=?≡$67 C=? Z=? N=? V=? | [save_start_lo,y]=? | in:AXY out:AXY
+ 1353      6.5     STA mark_part.header_lo                                                                ;| A=? X=?≡$56 Y=?≡$67 C=? Z=? N=? V=? | mark_part.header_lo=? | in:AXY out:AXY
+ 1354      3.3     SEC                             \ v_ptr = the start - 4: the first column's record goes at;| A=? X=?≡$56 Y=?≡$67 C=? Z=? N=? V=? | in:AXY out:AXYC
+ 1355      3.3     SBC #4                          \ v_ptr + 8, after the header (draw_column)            ;| A=? X=?≡$56 Y=?≡$67 C=1 Z=? N=? V=? | in:AXYC out:AXYC
+ 1356      4.9     STA v_ptr                                                                              ;| A=? X=?≡$56 Y=?≡$67 C=? Z=? N=? V=? | $C4=? | in:AXYC out:XYC
+ 1357      6.5     LDA arena_top_hi,X                                                                     ;| A=? X=?≡$56 Y=?≡$67 C=? Z=? N=? V=? | [arena_top_hi,x]=? | in:XYC out:AXYC
+ 1358      8.2     STA save_start_hi,Y                                                                    ;| A=? X=?≡$56 Y=?≡$67 C=? Z=? N=? V=? | [save_start_hi,y]=? | in:AXYC out:AXC
+ 1359      6.5     STA mark_part.header_lo + 1                                                            ;| A=? X=?≡$56 Y=?≡$67 C=? Z=? N=? V=? | mark_part.header_lo+1=? | in:AXC out:AXC
+ 1360      3.3     SBC #0                                                                                 ;| A=? X=?≡$56 Y=?≡$67 C=? Z=? N=? V=? | in:AXC out:AXC
+ 1361      4.9     STA v_ptr + 1                                                                          ;| A=? X=?≡$56 Y=?≡$67 C=? Z=? N=? V=? | $C5=? | in:AXC out:XC
+ 1362      4.9     LDA v_ptr                       \ mark_part's base: the start - 8 (C = 1: the high byte did not borrow);| A=? X=?≡$56 Y=?≡$67 C=? Z=? N=? V=? | $C4=? | in:XC out:AXC
+ 1363      3.3     SBC #4                                                                                 ;| A=?≡$C4 X=?≡$56 Y=?≡$67 C=? Z=? N=? V=? | in:AXC out:AXC
+ 1364      6.5     STA mark_part.base_lo                                                                  ;| A=? X=?≡$56 Y=?≡$67 C=? Z=? N=? V=? | mark_part.base_lo=? | in:AXC out:XC
+ 1365      4.9     LDA v_ptr + 1                                                                          ;| A=? X=?≡$56 Y=?≡$67 C=? Z=? N=? V=? | $C5=? | in:XC out:AXC
+ 1366      3.3     SBC #0                                                                                 ;| A=?≡$C5 X=?≡$56 Y=?≡$67 C=? Z=? N=? V=? | in:AXC out:AXC
+ 1367      6.5     STA mark_part.base_hi                                                                  ;| A=? X=?≡$56 Y=?≡$67 C=? Z=? N=? V=? | mark_part.base_hi=? | in:AXC out:XC
+ 1368      6.5     LDA arena_top_lo,X                                                                     ;| A=? X=?≡$56 Y=?≡$67 C=? Z=? N=? V=? | [arena_top_lo,x]=? | in:XC out:AXC
+ 1369      3.3     ADC #0                          \ C = 1 (no borrow above): the start + 1               ;| A=? X=?≡$56 Y=?≡$67 C=? Z=? N=? V=? | in:AXC out:AXC
+ 1370      6.5     STA mark_part.header_hi                                                                ;| A=? X=?≡$56 Y=?≡$67 C=? Z=? N=? V=? | mark_part.header_hi=? | in:AXC out:XC
+ 1371      6.5     LDA arena_top_hi,X                                                                     ;| A=? X=?≡$56 Y=?≡$67 C=? Z=? N=? V=? | [arena_top_hi,x]=? | in:XC out:AC
+ 1372      3.3     ADC #0                                                                                 ;| A=? X=?≡$56 Y=?≡$67 C=? Z=? N=? V=? | in:AC out:A
+ 1373      6.5     STA mark_part.header_hi + 1                                                            ;| A=? X=?≡$56 Y=?≡$67 C=? Z=? N=? V=? | mark_part.header_hi+1=? | in:A out:-
+ 1374      3.3     LDA #0                                                                                 ;| A=? X=?≡$56 Y=?≡$67 C=? Z=? N=? V=? | in:- out:A
+ 1375      3.3     LDY #7                          \ the header, at v_ptr + 4 to + 7                      ;| A=$00 X=?≡$56 Y=?≡$67 C=? Z=1 N=0 V=? | in:A out:AY
+ 1376      9.8     STA (v_ptr),Y                                                                          ;| A=$00 X=?≡$56 Y=$07 C=? Z=0 N=0 V=? | [($C4),y]=? | in:AY out:AY
+ 1377      3.3     DEY                                                                                    ;| A=$00 X=?≡$56 Y=$07 C=? Z=0 N=0 V=? | in:AY out:AY
+ 1378      9.8     STA (v_ptr),Y                                                                          ;| A=$00 X=?≡$56 Y=$06 C=? Z=0 N=0 V=? | [($C4),y]=? | in:AY out:AY
+ 1379      3.3     DEY                                                                                    ;| A=$00 X=?≡$56 Y=$06 C=? Z=0 N=0 V=? | in:AY out:AY
+ 1380      9.8     STA (v_ptr),Y                                                                          ;| A=$00 X=?≡$56 Y=$05 C=? Z=0 N=0 V=? | [($C4),y]=? | in:AY out:AY
+ 1381      3.3     DEY                                                                                    ;| A=$00 X=?≡$56 Y=$05 C=? Z=0 N=0 V=? | in:AY out:AY

@@ -102,38 +102,39 @@
     STA s_ptr
     LDA sky_rh,X
     STA s_ptr + 1
-    LDA sky_rn,X
-    STA sky_n
-    EOR #&FF
-    SEC
-    ADC #8
-    STA sky_skip
     LDA sky_rt,X
     ORA sky_ry,X
     TAY
-    LDA sky_skip
+    LDA sky_rn,X
+    STA sky_n
+    DEC A                           \ 65C02 opcode: n is 1 to 8, so 8 - n = (n - 1) EOR 7
+    EOR #7
+    STA sky_skip                    \ (A = 8 - n and Z for the caller: no reload)
     RTS
+    SKIP 1                          \ (so the code after stays at its addresses)
 
 \ sky_draw: helicopter sky_s's image over the rectangle's columns drawn: a whole character row four
 \ bytes a loop, a part row's cells from an entry into eight lines unrolled
 .sky_draw
 {
+    LDA sky_s                       \ the OR below: 4 for helicopter 1 (sky_s is 0 or 1), 0 for helicopter 0
+    ASL A
+    ASL A
+    STA g93_or + 1                  \ self-modified
     LDA sky_d1
     ASL A
     ASL A
     ASL A
     STA sky_j8
     LDX #0
+    CLC                             \ (clear to the add below: next_row's CPX leaves it so, X below sky_nq)
 .row
     STX sky_q
     LDA sky_rb,X                    \ the image: its block, + 8 * the first column drawn
-    LDY sky_s
-    BEQ h0
-    ORA #4
-.h0
+.g93_or
+    ORA #0                          \ self-modified: sky_s * 4
     TAY
     LDA sky_blk_lo,Y
-    CLC
     ADC sky_j8
     STA d_ptr
     LDA sky_blk_hi,Y
@@ -148,20 +149,47 @@
 .rc_ok
     JSR sky_row
     BNE part
-.whole
-    LDA (d_ptr),Y
-    STA (s_ptr),Y
+    LDA d_ptr                       \ a whole row: the four copies' operands set from the pointers
+    STA sdw_l1 + 1
+    STA sdw_l2 + 1
+    STA sdw_l3 + 1
+    STA sdw_l4 + 1
+    LDA d_ptr + 1
+    STA sdw_l1 + 2
+    STA sdw_l2 + 2
+    STA sdw_l3 + 2
+    STA sdw_l4 + 2
+    LDA s_ptr
+    STA sdw_s1 + 1
+    STA sdw_s2 + 1
+    STA sdw_s3 + 1
+    STA sdw_s4 + 1
+    LDA s_ptr + 1
+    STA sdw_s1 + 2
+    STA sdw_s2 + 2
+    STA sdw_s3 + 2
+    STA sdw_s4 + 2
+.sdw_l1
+    LDA &FFFF,Y                     \ self-modified: the image
+.sdw_s1
+    STA &FFFF,Y                     \ self-modified: the screen
     DEY
-    LDA (d_ptr),Y
-    STA (s_ptr),Y
+.sdw_l2
+    LDA &FFFF,Y
+.sdw_s2
+    STA &FFFF,Y
     DEY
-    LDA (d_ptr),Y
-    STA (s_ptr),Y
+.sdw_l3
+    LDA &FFFF,Y
+.sdw_s3
+    STA &FFFF,Y
     DEY
-    LDA (d_ptr),Y
-    STA (s_ptr),Y
+.sdw_l4
+    LDA &FFFF,Y
+.sdw_s4
+    STA &FFFF,Y
     DEY
-    BPL whole
+    BPL sdw_l1
     BMI next_row                    \ (always)
 .part                               \ A = 8 - lines: in at line8 + 5 * that
     ASL A
@@ -186,8 +214,7 @@ NEXT
     TAY
     BPL cell
 .next_row
-    LDX sky_q
-    INX
+    INX                             \ X is still the row (sky_row and the cells leave it)
     CPX sky_nq
     BEQ done
     JMP row
@@ -203,8 +230,13 @@ NEXT
     STX sky_q
     JSR sky_row
     BNE cell
-    LDA #0
-.whole
+.whole                              \ A = 0 (sky_row left sky_skip, and Z is set)
+    STA (s_ptr),Y
+    DEY
+    STA (s_ptr),Y
+    DEY
+    STA (s_ptr),Y
+    DEY
     STA (s_ptr),Y
     DEY
     BPL whole

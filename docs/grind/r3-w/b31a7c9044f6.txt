@@ -1,0 +1,32 @@
+window b31a7c9044f6: src/render.6502 lines 1585-1614, 27 instructions, 325.7 cycles a pass measured (wait excluded)
+
+ 1585     17.4     LDA straight_sprite_hi,X                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | [$A4E4,x]=? | in:XY out:AXYZ
+ 1586     12.6     BNE known                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXYZ out:AXY
+ 1587              RTS                             \ an unused table entry                                ;| A=$00 X=? Y=? C=? Z=1 N=0 V=? | in:- out:-
+ 1588          .known
+ 1589     12.6     STA col_ptr + 1                                                                        ;| A=1..255 X=? Y=? C=? Z=0 N=? V=? | $C8=? | in:AXY out:XY
+ 1590     16.8     LDA straight_sprite_lo,X                                                               ;| A=1..255 X=? Y=? C=? Z=0 N=? V=? | [sfx_tick.channel,x]=? | in:XY out:AXY
+ 1591     12.6     STA col_ptr                                                                            ;| A=? X=? Y=? C=? Z=? N=? V=? | $C7=? | in:AXY out:XY
+ 1592     16.8     LDA sprite_column_count,X                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | [$A366,x]=? | in:XY out:AY
+ 1593     12.6     STA ds_c                        \ columns left                                         ;| A=? X=? Y=? C=? Z=? N=? V=? | $CC=? | in:AY out:AY
+ 1594     12.6     STA ds_n                                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | $68=? | in:AY out:AY
+ 1595     12.6     STZ ds_clip                     \ 65C02 opcode: whether any column can be clipped: not if;| A=? X=? Y=? C=? Z=? N=? V=? | $51=? | in:AY out:AY
+ 1596     12.6     LDX dm_jmin                     \ jmin is 0 and jmax n - 1 or more (X: the sprite, done with);| A=? X=? Y=? C=? Z=? N=? V=? | $5A=? | in:AY out:AYZ
+ 1597      8.6     BNE clips                                                                              ;| A=? X=?≡$5A Y=? C=? Z=? N=? V=? | in:AYZ out:AY
+ 1598     12.1     CMP dm_jmax                     \ A = n: no clip if n <= jmax                          ;| A=? X=$00≡$5A Y=? C=? Z=1 N=0 V=? | $5C=? | in:AY out:YZC
+ 1599     11.7     BCC no_clip                                                                            ;| A=? X=$00≡$5A Y=? C=? Z=? N=? V=? | in:YZC out:YZ
+ 1600      0.9     BEQ no_clip                                                                            ;| A=? X=$00≡$5A Y=? C=1 Z=? N=? V=? | in:YZ out:Y
+ 1601          .clips
+ 1602      2.7     DEC ds_clip                     \ &FF                                                  ;| A=? X=?≡$5A Y=? C=? Z=0 N=? V=? | $51=? | in:Y out:Y
+ 1603          .no_clip
+ 1604     12.6     LDA dm_scr_lo                   \ the part's bottom, raised once                       ;| A=? X=?≡$5A Y=? C=? Z=? N=? V=? | $66=? | in:Y out:AY
+ 1605     12.6     LDX dm_scr_hi                   \ Y: still the rows it is raised                       ;| A=?≡$66 X=?≡$5A Y=? C=? Z=? N=? V=? | $65=? | in:AY out:AXY
+ 1606     25.2     JSR raise_address                                                                      ;| A=?≡$66 X=?≡$65 Y=? C=? Z=? N=? V=? | in:AXY out:AXV
+ 1607     12.6     STA b_ptr                       \ the cell (its line cleared below)                    ;| A=? X=? Y=? C=? Z=? N=? V=? | $C9=? | in:AXV out:AXV
+ 1608      8.4     AND #&07                                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AXV out:AXV
+ 1609     12.6     STA ds_line                                                                            ;| A=0..7 X=? Y=? C=? Z=? N=0 V=? | $CD=? | in:AXV out:AXV
+ 1610     21.0     TRB b_ptr                       \ 65C02 opcode: b_ptr AND &F8                          ;| A=0..7 X=? Y=? C=? Z=? N=0 V=? | $C9=? | in:AXV out:XV
+ 1611     12.6     STX b_ptr + 1                                                                          ;| A=0..7 X=? Y=? C=? Z=? N=0 V=? | $CA=? | in:XV out:V
+ 1612     12.6     LDA ds_clip                     \ step 2 layer 4: a part that cannot be clipped may be one of;| A=0..7 X=? Y=? C=? Z=? N=0 V=? | $51=? | in:V out:AZV
+ 1613      9.0     BNE generic                     \ the player's kinds compiled to code (tools/compiled.py), or;| A=?≡$51 X=? Y=? C=? Z=? N=? V=? | in:AZV out:AV
+ 1614     11.0     LDA dm_slot                     \ a big part's kind built at run time (src/kindcache.6502,;| A=$00≡$51 X=? Y=? C=? Z=1 N=0 V=? | $58=? | in:V out:AZV

@@ -1,0 +1,38 @@
+{
+ "candidates": [
+  {
+   "window": "9804b54d30e4",
+   "file": "src/game.6502",
+   "line": 2037,
+   "old": "    CLC\n    ADC screen_address_low\n    STA screen_address_low\n    BCC c1_walk_high_kept       \\ grind: no carry, the high byte stands (always &40-&7F: no wrap to do)\n    LDA screen_address_high\n    ADC #&00\n    BPL screen_in_range\n    SEC                             \\ round the 16K screen, as add_delta_to_screen_address_in_AX\n    SBC #&40\n.screen_in_range\n    STA screen_address_high\n.c1_walk_high_kept\n    LDA #&08                        \\ the column step's delta (deltas_*_table[0])\n    STA delta_low\n    STZ delta_high                  \\ 65C02 opcode\n.walked\n    RTS\n",
+   "new": "    ADC screen_address_low          \\ grind: C = 0 from the third ASL (steps <= 12, 8 * steps < 256): no CLC\n    STA screen_address_low\n    BCC c1_walk_high_kept       \\ grind: no carry, the high byte stands (always &40-&7F: no wrap to do)\n    LDA screen_address_high\n    ADC #&00\n    BPL screen_in_range\n    SEC                             \\ round the 16K screen, as add_delta_to_screen_address_in_AX\n    SBC #&40\n.screen_in_range\n    STA screen_address_high\n.c1_walk_high_kept\n    LDA #&08                        \\ the column step's delta (deltas_*_table[0])\n    STA delta_low\n    STZ delta_high                  \\ 65C02 opcode\n.walked\n    RTS\nIF GAMEPLAY_ANY = 0                 \\ grind: the removed CLC's byte, so everything after stays where it was\n    SKIP 1\nENDIF\n",
+   "summary": "Drop the CLC after the three ASLs (C is already 0 because steps <= 12), and keep the byte as unexecuted SKIP 1 after RTS so every address after walked is unchanged (no page-crossing slide). Alternative to the next candidate (overlaps all of it).",
+   "claim": {
+    "cycles_per_execution": 2,
+    "executions_a_pass": 3.7,
+    "cycles_a_pass": 7.4,
+    "bytes": 0
+   },
+   "equivalence": "ADC screen_address_low runs with C=0 either way, so A, C, N, V, Z and the STA/BCC that follow are identical on every path; no other path reaches the ADC (the line before is ASL A, the label steps_known is above the BEQ). All lines after are unchanged. The SKIP 1 only pads: nothing executes it (it follows RTS) and nothing reads it (data tables are not addressed relative to walked). In GAMEPLAY_ANY builds the pad is omitted and the code after slides down 1 byte, as those builds already drop other padding.",
+   "relies_on": "walk_column's single caller path: steps_known is reached only from walk_column (BNE steps_known at moved_on and walk_beyond_steps, fall through from INX) with X = steps and A = steps (TXA) non-zero (BEQ walked). steps <= 12: on an unflipped sprite steps = min(n-1,d) <= n-1, flipped steps = n or d+1 < n, n = sprite_column_count - columns clipped <= 12 for every sprite plot_mover can draw (animation_table values 00-2D,33,34,3E,40-43 and mover_types_third_sprite 09,0C,0E,20 have counts <= &0C; the only count with bit 7 set, sprite &32 = &82, is in neither table; the flipped n = 0 case is taken out by BEQ walked at INX/BEQ before steps_known, and the walk_column comment says at most 13 columns). So A < 32 and the third ASL shifts out bit 5 = 0: C = 0 exactly as the CLC made it. The annotation shows C=? because analyse.py cannot bound A (1..255). Page crossings: none moved in the shipping/bench build (get_mover_sprite_and_screen_addresses stays &1B63, walked moves &1B62 -> &1B61, a RTS target; the BCC c1_walk_high_kept at &1B4E and BEQ walked stay inside page &1B; checked by building: listing shows get_mover... at &1B63 unchanged). Saves 2 cycles at each of ~3.7 executions a pass (the CLC line's measured 7.4 cycles a pass).",
+   "file_written": "build/grind/r3/opt-9804b54d30e4.json"
+  },
+  {
+   "window": "9804b54d30e4",
+   "file": "src/game.6502",
+   "line": 2037,
+   "old": "    CLC\n    ADC screen_address_low\n    STA screen_address_low\n    BCC c1_walk_high_kept       \\ grind: no carry, the high byte stands (always &40-&7F: no wrap to do)\n    LDA screen_address_high\n    ADC #&00\n    BPL screen_in_range\n    SEC                             \\ round the 16K screen, as add_delta_to_screen_address_in_AX\n    SBC #&40\n.screen_in_range\n    STA screen_address_high\n.c1_walk_high_kept\n    LDA #&08                        \\ the column step's delta (deltas_*_table[0])\n    STA delta_low\n    STZ delta_high                  \\ 65C02 opcode\n.walked\n    RTS\n",
+   "new": "    ADC screen_address_low          \\ grind: C = 0 from the third ASL (steps <= 12, 8 * steps < 256): no CLC\n    STA screen_address_low\n    BCC c1_walk_high_kept       \\ grind: no carry, the high byte stands (always &40-&7F: no wrap to do)\n    LDA screen_address_high\n    ADC #&00\n    BPL screen_in_range\n    SBC #&3F                        \\ round the 16K screen, as add_delta_to_screen_address_in_AX (grind: C = 0 here, so as SEC, SBC #&40)\n.screen_in_range\n    STA screen_address_high\n.c1_walk_high_kept\n    LDA #&08                        \\ the column step's delta (deltas_*_table[0])\n    STA delta_low\n    STZ delta_high                  \\ 65C02 opcode\n.walked\n    RTS\n",
+   "summary": "Drop the CLC (steps <= 12, so C = 0 after the ASLs) and turn SEC; SBC #&40 into SBC #&3F on the screen-wrap path (C = 0 there), 2 bytes smaller with no padding: code after slides down 2 bytes. Alternative to the previous candidate (overlaps it).",
+   "claim": {
+    "cycles_per_execution": 2,
+    "executions_a_pass": 3.7,
+    "cycles_a_pass": 7.4,
+    "bytes": 2
+   },
+   "equivalence": "CLC removal as in the previous candidate. SEC; SBC #&40 vs SBC #&3F with C=0: A - &3F - 1 = A - &40, and the carry out, N, V, Z are identical because the subtrahend plus borrow is the same &40 in the same ALU operation. C = 0 on entry to that SBC: it is reached only by BPL not taken after ADC #&00 with carry-in 1 (from BCC not taken), so the result is high+1 with N=1, which for high <= &FF means the sum is &80..&FF with no carry out (a carry out would give a result below &01 with N=0). The wrap path measures 0.0 cycles a pass, so its 2 cycles are not the claim.",
+   "relies_on": "walk_column's single caller path: steps_known is reached only from walk_column (BNE steps_known at moved_on and walk_beyond_steps, fall through from INX) with X = steps and A = steps (TXA) non-zero (BEQ walked). steps <= 12: on an unflipped sprite steps = min(n-1,d) <= n-1, flipped steps = n or d+1 < n, n = sprite_column_count - columns clipped <= 12 for every sprite plot_mover can draw (animation_table values 00-2D,33,34,3E,40-43 and mover_types_third_sprite 09,0C,0E,20 have counts <= &0C; the only count with bit 7 set, sprite &32 = &82, is in neither table; the flipped n = 0 case is taken out by BEQ walked at INX/BEQ before steps_known, and the walk_column comment says at most 13 columns). So A < 32 and the third ASL shifts out bit 5 = 0: C = 0 exactly as the CLC made it. The annotation shows C=? because analyse.py cannot bound A (1..255). Page crossings: slides everything after walked down 2 bytes (get_mover_sprite_and_screen_addresses &1B63 -> &1B61), and so every hot branch and indexed code up to the fixed &3400 region; I did not count each, the gate must (the first candidate avoids the slide). Gain is the same 7.4 cycles a pass as the first; the second change is a rare path.",
+   "file_written": "build/grind/r3/opt-9804b54d30e4.json"
+  }
+ ]
+}

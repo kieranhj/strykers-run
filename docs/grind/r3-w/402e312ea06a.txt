@@ -1,0 +1,39 @@
+window 402e312ea06a: src/lib/sfx50.6502 lines 22-58, 32 instructions, 135.4 cycles a pass measured (wait excluded)
+
+   22      8.0     LDA sfx_request                 \ any request this tick? (most ticks have none: 19 cycles, not 28);| A=$05 X=? Y=? C=? Z=0 N=0 V=? | $2A42=? | in:CV out:ACV
+   23      8.0     ORA sfx_request + 1                                                                    ;| A=?≡$2A42 X=? Y=? C=? Z=? N=? V=? | $2A43=? | in:ACV out:ACV
+   24      8.0     ORA sfx_request + 2                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | $2A44=? | in:ACV out:ACV
+   25      8.0     ORA sfx_request + 3                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | $2A45=? | in:ACV out:ZCV
+   26      5.9     BEQ sfx_t_req_none                                                                     ;| A=? X=? Y=? C=? Z=? N=? V=? | in:ZCV out:CV
+   27      0.1     LDX #3                          \ the requests first, all four channels (no effect's first ramp;| A=1..255 X=? Y=? C=? Z=0 N=? V=? | in:CV out:XCV
+   28          .sfx_t_req_each                     \ is empty, so this writes nothing to the chip)
+   29      0.9     LDA sfx_request,X                                                                      ;| A=? X=0..3 Y=? C=? Z=? N=0 V=? | [$2A42,x]=? | in:XCV out:AXZCV
+   30      0.6     BEQ sfx_t_req_next                                                                     ;| A=? X=0..3 Y=? C=? Z=? N=? V=? | in:AXZCV out:AXCV
+   31      0.4     STZ sfx_request,X               \ (a request in between these two is lost: the next replaces it);| A=1..255 X=0..3 Y=? C=? Z=0 N=? V=? | [$2A42,x]=? | in:AXCV out:AXCV
+   32      0.1     TAY                             \ E + 1: the tables are read one byte early            ;| A=1..255 X=0..3 Y=? C=? Z=0 N=? V=? | in:AXCV out:XYCV
+   33      0.3     LDA sfx_effect_lo - 1,Y                                                                ;| A=1..255 X=0..3 Y=1..255 C=? Z=0 N=? V=? | [$A67D,y]=? | in:XYCV out:AXYCV
+   34      0.4     STA sfx_ptr_lo,X                                                                       ;| A=? X=0..3 Y=1..255 C=? Z=? N=? V=? | [$A5CB,x]=? | in:AXYCV out:XYCV
+   35      0.3     LDA sfx_effect_hi - 1,Y                                                                ;| A=? X=0..3 Y=1..255 C=? Z=? N=? V=? | [$A685,y]=? | in:XYCV out:AXCV
+   36      0.4     STA sfx_ptr_hi,X                                                                       ;| A=? X=0..3 Y=1..255 C=? Z=? N=? V=? | [$A5CF,x]=? | in:AXCV out:AXCV
+   37      0.4     STA sfx_noise_written,X         \ the noise control is written when it changes: not yet (an address's high byte, never 0-7);| A=? X=0..3 Y=1..255 C=? Z=? N=? V=? | [$A5EB,x]=? | in:AXCV out:XCV
+   38      0.4     JSR sfx_next_ramp                                                                      ;| A=? X=0..3 Y=1..255 C=? Z=? N=? V=? | in:XCV out:XCV
+   39          .sfx_t_req_next
+   40      0.4     DEX                                                                                    ;| A=? X=0..3 Y=? C=? Z=? N=? V=? | in:XCV out:XNCV
+   41      0.6     BPL sfx_t_req_each                                                                     ;| A=? X={0,1,2,$FF} Y=? C=? Z=? N=? V=? | in:XNCV out:XCV
+   42          .sfx_t_req_none
+   43      4.0     LDX #3                          \ then each channel's step                             ;| A=? X=? Y=? C=? Z=? N=? V=? | in:CV out:XCV
+   44          .channel
+   45     32.0     LDA sfx_n,X                                                                            ;| A=? X=0..3 Y=? C=? Z=? N=0 V=? | [$A5D3,x]=? | in:XCV out:XZCV
+   46     22.3     BEQ next                                                                               ;| A=? X=0..3 Y=? C=? Z=? N=? V=? | in:XZCV out:XCV
+   47     10.3     JSR sfx_output                                                                         ;| A=1..255 X=0..3 Y=? C=? Z=0 N=? V=? | in:X out:X
+   48      6.9     LDA sfx_dp,X                    \ the period steps (16 bits, the step sign-extended)   ;| A=16..255 %xxx1xxxx X=0..3 Y=$00 C=? Z=1 N=0 V=? | [$A5DF,x]=? | in:X out:AXN
+   49      4.9     BPL up                                                                                 ;| A=? X=0..3 Y=$00 C=? Z=? N=? V=? | in:AXN out:AX
+   50      0.4     CLC                             \ the step negative (its high byte &FF): a carry leaves the high byte;| A=128..255 X=0..3 Y=$00 C=? Z=? N=1 V=? | in:AX out:AXC
+   51      0.8     ADC sfx_p_lo,X                                                                         ;| A=128..255 X=0..3 Y=$00 C=0 Z=? N=1 V=? | [$A5D7,x]=? | in:AXC out:AXC
+   52      1.0     STA sfx_p_lo,X                                                                         ;| A=? X=0..3 Y=$00 C=? Z=? N=? V=? | [$A5D7,x]=? | in:AXC out:XC
+   53      0.6     BCS sfx_pa_clc                                                                         ;| A=? X=0..3 Y=$00 C=? Z=? N=? V=? | in:XC out:XC
+   54      0.0     DEC sfx_p_hi,X                  \ no carry: the high byte less 1                       ;| A=? X=0..3 Y=$00 C=0 Z=? N=? V=? | [$A5DB,x]=? | in:XC out:XC
+   55      0.0     BRA sfx_pa_c0                   \ 65C02 opcode; C = 0                                  ;| A=? X=0..3 Y=$00 C=0 Z=? N=? V=? | in:XC out:XC
+   56          .up
+   57      3.0     CLC                                                                                    ;| A=0..127 X=0..3 Y=$00 C=? Z=? N=0 V=? | in:AX out:AXC
+   58      6.0     ADC sfx_p_lo,X                                                                         ;| A=0..127 X=0..3 Y=$00 C=0 Z=? N=0 V=? | [$A5D7,x]=? | in:AXC out:AXC

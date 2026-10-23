@@ -1,0 +1,38 @@
+window cb2f3f0ab573: src/game.6502 lines 2072-2107, 32 instructions, 175.4 cycles a pass measured (wait excluded)
+
+ 2072      6.9     LDA mover_x_low                 \ check_mover_x_against_viewport_left, inline: grind, one 16-bit;| A=? X=? Y=? C=? Z=? N=? V=? | $F8=? | in:XY out:AXY
+ 2073      6.9     CMP viewport_left_low           \ compare, C = mover_x >= viewport_left (A, V not read after);| A=?≡$F8 X=? Y=? C=? Z=? N=? V=? | $B2=? | in:AXY out:XYC
+ 2074      6.9     LDA &C5                                                                                ;| A=?≡$F8 X=? Y=? C=? Z=? N=? V=? | $C5=? | in:XYC out:AXYC
+ 2075      6.9     SBC viewport_left_high                                                                 ;| A=?≡$C5 X=? Y=? C=? Z=? N=? V=? | $BA=? | in:AXYC out:XYCV
+ 2076      6.8     BCS set_sprite_address          \ carry set if mover_x >= viewport_left                ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XYCV out:XYCV
+ 2077      0.6     JSR clip_unflipped_mover_loop   \ Returns carry set                                    ;| A=? X=? Y=? C=0 Z=? N=? V=? | in:XYV out:XYCV
+ 2078      0.3     BCS set_sprite_address          \ Always branches                                      ;| A=? X=? Y=? C=1 Z=1 N=0 V=? | always | in:XYCV out:XYCV
+ 2079          .is_flipped_1f25
+ 2080      4.2     STZ pixel_table_address_low     \ 65C02 opcode                                         ;| A=128..255 X=? Y=? C=? Z=? N=1 V=? | $B8=? | in:XV out:XV
+ 2081      5.5     LDY flipped_mover_sprite_addresses_low_table,X                                         ;| A=128..255 X=? Y=? C=? Z=? N=1 V=? | [$148C,x]=? | in:XV out:XYV
+ 2082      4.2     STY &CE                                                                                ;| A=128..255 X=? Y=? C=? Z=? N=? V=? | $CE=? | in:XYV out:XYV
+ 2083      5.5     LDA flipped_mover_sprite_addresses_high_table,X                                        ;| A=128..255 X=? Y=? C=? Z=? N=? V=? | [$1440,x]=? | in:XYV out:AYV
+ 2084      2.8     TAX                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AYV out:XYV
+ 2085      4.1     STX &CF                                                                                ;| A=? X=? Y=? C=? Z=? N=? V=? | $CF=? | in:XYV out:XYV
+ 2086      8.3     JSR check_mover_x_against_viewport_left                                                ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XYV out:XYCV
+ 2087      4.0     BCS set_sprite_address                                                                 ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XYCV out:XYCV
+ 2088      0.8     JSR clip_flipped_mover_loop                                                            ;| A=? X=? Y=? C=0 Z=? N=? V=? | in:- out:XYCV
+ 2089          .set_sprite_address
+ 2090     11.1     STY unpack_column_of_sprite + 1                                                        ;| A=? X=? Y=? C=1 Z=? N=? V=? | $05=? | in:XYCV out:XCV
+ 2091     11.1     STX unpack_column_of_sprite + 2                                                        ;| A=? X=? Y=? C=1 Z=? N=? V=? | $06=? | in:XCV out:CV
+ 2092     11.1     LDY mover                                                                              ;| A=? X=? Y=? C=1 Z=? N=? V=? | $79=? | in:CV out:YCV
+ 2093     14.7     LDX movers_screen_address_high,Y                                                       ;| A=? X=? Y=?≡$79 C=1 Z=? N=? V=? | [$13CC,y]=? | in:YCV out:XYCV
+ 2094     14.8     LDA movers_screen_address_low,Y                                                        ;| A=? X=? Y=?≡$79 C=1 Z=? N=? V=? | [$13AA,y]=? | in:XYCV out:AXCV
+ 2095     11.1     LDY columns_to_clip_from_left                                                          ;| A=? X=? Y=?≡$79 C=1 Z=? N=? V=? | $CD=? | in:AXCV out:AXYZCV
+ 2096     10.8     BEQ leave_1f55                                                                         ;| A=? X=? Y=?≡$CD C=1 Z=? N=? V=? | in:AXYZCV out:AXYCV
+ 2097          .adjust_screen_address_loop         \ Y = columns_to_clip_from_left (non-zero): AX + 8 a column
+ 2098      2.6     CLC                             \ grind: add_delta_to_screen_address_in_AX's &0008, inline;| A=? X=? Y=1..255 C=? Z=0 N=? V=? | in:AXY out:AXYC
+ 2099      2.6     ADC #&08                                                                               ;| A=? X=? Y=1..255 C=0 Z=0 N=? V=? | in:AXYC out:AXYCV
+ 2100      3.8     BCC adjust_same_page                                                                   ;| A=? X=? Y=1..255 C=? Z=? N=? V=? | in:AXYCV out:AXYCV
+ 2101      0.1     INX                                                                                    ;| A=? X=? Y=1..255 C=1 Z=? N=? V=? | in:AXYCV out:AXYNCV
+ 2102      0.1     BPL adjust_same_page                                                                   ;| A=? X=? Y=1..255 C=1 Z=? N=? V=? | in:AXYNCV out:AXYCV
+ 2103              LDX #&40                        \ &7F + 1: round the 16K screen (the high byte is &00-&7F);| A=? X=128..255 Y=1..255 C=1 Z=? N=1 V=? | in:AYCV out:AXYCV
+ 2104          .adjust_same_page
+ 2105      2.6     DEY                                                                                    ;| A=? X=? Y=1..255 C=? Z=? N=? V=? | in:AXYCV out:AXYZCV
+ 2106      3.6     BNE adjust_screen_address_loop                                                         ;| A=? X=? Y=0..254 C=? Z=? N=? V=? | in:AXYZCV out:AXYCV
+ 2107      0.7     STY columns_to_clip_from_left   \ 0, as the DEC loop left it                           ;| A=? X=? Y=$00 C=? Z=1 N=0 V=? | $CD=? | in:AXYCV out:AXYCV

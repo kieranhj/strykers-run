@@ -1543,16 +1543,16 @@ ENDIF
     LDA os_rom + 8192,X             \ *** Use ROM as pseudo-random stream for ground
     AND #&03
     TAX
-    PHA
-    JSR ground_square               \ layer 4: multiply_A_by_X_2f1e's A x X from a table (HAZEL)
-    PLA
-    TAX
-    CLC                             \ layer 5: for ground_rows' ADC, and the C = 0 edge_left_loop takes on entry
-    LDA column_buffer + 9
+    JSR ground_square               \ layer 4: multiply_A_by_X_2f1e's A x X from a table (HAZEL); leaves A = X * X (its LDA squares,X; nothing after it touches A)
+    CLC                             \ layer 5: for the ADC, and the C = 0 edge_left_loop takes on entry
+    LDY column_buffer + 9           \ step 2 (grind): Y, not A, so A = t * t stays; Y is dead (the callers load it next)
     BNE leave_1c4e                  \ Don't add ground if a bridge is present
+    ADC #LO(ground_columns)         \ step 2 (grind): the loads' base patched into the loop (below), t * t + ground_columns
+    STA ground_load_a + 1           \ (one page, ASSERTed after the table; C = 0 out, no carry)
+    STA ground_load_b + 1
     LDY #&13
     LDA column_buffer + 21
-    BNE ground_rows                 \ Don't add ground edge if runway present
+    BNE add_ground_to_column_buffer_loop    \ Don't add ground edge if runway present
     LDA ground_edge_bottom_pixel_values,X
     STA column_buffer + 22
     LDA column_buffer + 23
@@ -1560,22 +1560,22 @@ ENDIF
     EOR ground_edge_top_pixel_values,X
     STA column_buffer + 23
     LDY #&15
-.ground_rows                        \ Layer 5 (BUGS #1 fixed): the type's rows from a fixed texture (ground_columns),
-    TYA                             \ not the one the original read from zero page &0000-&001E: X = t * t + Y
-    ADC result_low                  \ ground_square's t * t; C = 0 (the CLC above), and no carry out
-    TAX
-.add_ground_to_column_buffer_loop   \ step 2 (grind): two rows a turn, Y odd at the top (&15 or &13)
-    LDA ground_columns,X
+.add_ground_to_column_buffer_loop   \ step 2 (grind): two rows a turn, Y odd at the top (&15 or &13); Layer 5 (BUGS #1 fixed): the type's rows from a fixed texture (ground_columns + t * t + Y)
+.ground_load_a
+    LDA ground_columns,Y            \ operand low byte patched above
     STA column_buffer,Y             \ Add ground to column buffe
-    DEX
     DEY
-    LDA ground_columns,X
+.ground_load_b
+    LDA ground_columns,Y            \ operand low byte patched above
     STA column_buffer,Y
-    DEX
     DEY
     BPL add_ground_to_column_buffer_loop
 .leave_1c4e
     RTS
+IF GAMEPLAY_ANY = 0
+    SKIP 1                          \ step 2 (grind): never run; keeps the padding after it where it was
+ENDIF
+ASSERT LO(ground_columns) + 9 + 21 < &100, "ground_columns + t * t + Y stays in its page"
 IF GAMEPLAY_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
     SKIP 3                          \ layer 5: never executed; keeps ground_left_x_low and what follows where they were
 ENDIF
@@ -1768,6 +1768,10 @@ ENDIF
     JSR add_delta_to_screen_address_in_AX
     BRA to_next_row                 \ 65C02 opcode
 
+.edge_go_right_b3a9                 \ grind: the right edge leaves from here (edge_right sets Y itself before any read)
+    JMP edge_right
+.edge_leave_a1                      \ grind: an RTS in this page for the BNEs below (leave_1e0f is over the page, 4 cycles taken)
+    RTS
 .calculate_screen_addresses_for_movers_on_edge
     \ Step 2 (layer 3, D): a mover whose x high byte cannot put its edge on the screen's
     \ (equal for the right edge; equal or one less for the left, the width being under 256)
@@ -1776,12 +1780,9 @@ ENDIF
     \ mover), the last (&21) taken in full by a tail call: Y is left &21, the flags as it
     \ leaves them (both callers go on to add_movers_to_column_buffer, then load X and Y)
     \ Layer 4: the right edge by x low byte, unrolled, in HAZEL (src/scroll_hazel.6502 edge_right)
-    LDY #&00                        \ MOVER_FIRST                               # Bug: player is never on edge, so should be &01
     LDX &CF                         \ Zero for left edge, non-zero for right edge
-    BEQ edge_left_loop
-    JMP edge_right
-.edge_leave_a1                      \ grind: an RTS in this page for the BNEs below (leave_1e0f is over the page, 4 cycles taken)
-    RTS
+    BNE edge_go_right_b3a9
+    LDY #&00                        \ MOVER_FIRST (left edge only)              # Bug: player is never on edge, so should be &01
 .edge_left_loop                     \ C = 0 here: on entry (ground_square's CLC, via add_ground_to_column_buffer) and from the BCC
     LDA movers_x_high,Y             \ the left edge: x or x + 1 (mod 256), so x - edge_x_high - 1 is &FF or &FE
     SBC edge_x_high
@@ -1928,6 +1929,10 @@ not_white = leave_1e3e - 4                \ plot_mover's BCS not_white + 4 lands
     CMP #&87                        \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_SOLDIER
     BEQ pm_not_white_g0b1b
     INC pixel_table_address_high    \ Use white pixel table for most enemies
+IF GAMEPLAY_ANY = 0
+    BRA pm_not_white_g0b1b
+    SKIP 0
+ENDIF
 .pm_not_white_g0b1b
     AND #&7F                        \ A = mover type
     STA &7A
@@ -1936,7 +1941,6 @@ not_white = leave_1e3e - 4                \ plot_mover's BCS not_white + 4 lands
     BCS not_white + 4
     JSR get_mover_sprite_and_screen_addresses
     JSR plot_mover_sprite           \ Plot first part of mover (e.g. player's legs)
-    LDY mover
     LDA movers_x_low,Y              \ get_mover_Y_x without &C5: still movers_x_high,Y from the first
     STA mover_x_low
     LDX &7A
@@ -1950,21 +1954,20 @@ not_white = leave_1e3e - 4                \ plot_mover's BCS not_white + 4 lands
     LDA sprites_y_offset,X
     STA y_offset
     LDA &7A
-    CLC
-    ADC #&1C                        \ *** Use mover types &1c - &37 for second part of mover
+    ADC #&1C                        \ *** Use mover types &1c - &37 for second part of mover (C = 0: the ADC above is at most 63 + &1E)
     TAX
     JSR get_mover_sprite_and_screen_addresses
     LDY y_offset
-    JSR subtract_Y_rows_from_screen_address_in_AX
+    STY unused_0076
+    JSR rows_up                     \ subtract_Y_rows_from_screen_address_in_AX without its JMP (rows_up copes with 0 rows)
     JSR plot_mover_sprite           \ Plot second part of mover (e.g. player's torso)
-    LDY mover
-    JSR get_mover_Y_x
+    LDA movers_x_low,Y              \ get_mover_Y_x without &C5 (still movers_x_high,Y); Y is still mover (walk_column ends with it)
+    STA mover_x_low
     LDX &7A
-    LDA mover_types_parts,X         \ ***
-    BNE leave_1f08                  \ *** Leave if the mover only uses two sprites
+    CPX #&05                        \ types 0-4 are the three-part ones (mover_types_parts is 0 only there)
+    BCS leave_1f08                  \ *** Leave if the mover only uses two sprites
     LDA y_offset
-    CLC
-    ADC #&08
+    ADC #&08                        \ C = 0: the CPX fell through
     STA y_offset
     STZ sprite_data_offset          \ 65C02 opcode
     LDA mover_types_third_sprite,X
@@ -2007,17 +2010,17 @@ walk_d = walk_ptr + 1
 .walk_column
     LDY mover
     LDX plot_sprite
+    LDA viewport_right_low
+    SEC
+    SBC mover_x_low
+    STA walk_d                      \ d (low bytes, as the plotter compares them)
     LDA sprite_column_count,X       \ (bank 4, which plot_mover pages in)
     CLC
     ADC movers_x_low,Y              \ less the columns clipped at the left:
     CLC                             \ (C = 0: one more taken off)
     SBC mover_x_low                 \ count - (mover_x_low - movers_x_low) - 1
-    TAX                             \ n - 1 (n: columns from here)
-    LDA viewport_right_low
-    SEC
-    SBC mover_x_low
-    STA walk_d                      \ d (low bytes, as the plotter compares them)
-    CPX walk_d
+    TAX                             \ n - 1 (n: columns from here), kept in A too
+    CMP walk_d                      \ A = X = n - 1 against d
     BCC moved_on                    \ n - 1 < d: the common case
     CLC                             \ (Z kept)
     BEQ moved_on                    \ n - 1 = d: the same sums
@@ -2032,7 +2035,7 @@ walk_d = walk_ptr + 1
     INX
     BNE steps_known                 \ always
 .moved_on
-    TXA                             \ C = 0
+    \ A = n - 1 (CMP's operand), C = 0 on both entries
     ADC mover_x_low
     STA mover_x_low                 \ + min(n - 1, d)
     LDA pixel_table_address_low     \ the steps: n - 1, or n flipped (within d + 1 here)
@@ -2044,15 +2047,13 @@ walk_d = walk_ptr + 1
     ASL A                           \ 8 * steps (at most 13 columns)
     ASL A
     ASL A
-    CLC
-    ADC screen_address_low
+    ADC screen_address_low          \ grind: C = 0 from the third ASL (steps <= 12, 8 * steps < 256): no CLC
     STA screen_address_low
     BCC c1_walk_high_kept       \ grind: no carry, the high byte stands (always &40-&7F: no wrap to do)
     LDA screen_address_high
     ADC #&00
     BPL screen_in_range
-    SEC                             \ round the 16K screen, as add_delta_to_screen_address_in_AX
-    SBC #&40
+    SBC #&3F                        \ round the 16K screen, as add_delta_to_screen_address_in_AX (grind: C = 0 here, so as SEC, SBC #&40)
 .screen_in_range
     STA screen_address_high
 .c1_walk_high_kept
@@ -2122,13 +2123,12 @@ walk_d = walk_ptr + 1
     RTS                             \ Leave with AX = mover_screen_address
 
 .check_mover_x_against_viewport_left
+    LDA mover_x_low                 \ grind: one 16-bit compare, as the unflipped path's inline one:
+    CMP viewport_left_low           \ C = mover_x >= viewport_left (A, N, Z, V not read after)
     LDA &C5
-    CMP viewport_left_high
-    BNE leave_1f60
-    LDA mover_x_low
-    CMP viewport_left_low
-.leave_1f60
+    SBC viewport_left_high
     RTS                             \ Leave with carry set if mover_x >= viewport_left
+    SKIP 2                          \ grind: never run; keeps add_movers_to_column_buffer and all after it in place
 
 .add_movers_to_column_buffer
     \ Step 2 (layer 2): the edge column is scenery only; the renderer draws the movers that
@@ -2210,16 +2210,16 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     STZ pixel_table_address_low     \ 65C02 opcode: zero to use flipped pixel table
 .clip_flipped_mover_loop            \ Grind: the n = edge_x_low - mover_x_low columns counted in X
     LDA edge_x_low
+    TAY                             \ Grind: edge_x_low kept in Y (free here: the exits reload it from &CE)
     SEC
     SBC mover_x_low
     BEQ leave_with_sprite_address_and_carry_set
     STA columns_to_clip_from_left   \ n: zero on entry (both callers zero it), as n INCs left it
     TAX
-    LDA edge_x_low
-    STA mover_x_low                 \ + n, as n INCs left it
+    STY mover_x_low                 \ + n, as n INCs left it
     SEC
+    LDA &CE                         \ Grind: once, here; the loop leaves A = the new &CE (STA keeps it, BCS/DEC/SEC/DEX/BNE do not touch A)
 .clip_flipped_column_c1
-    LDA &CE
     SBC (&CE)                       \ 65C02 opcode: move back a column of sprite data (C = 1)
     STA &CE
     BCS skip_page_2054
@@ -2781,20 +2781,18 @@ ENDIF                               \ shooting pose for this update only, as a g
     LDA #&80
     STA hostile_mover               \ Set to negative to indicate no hostile mover
     STA mover_had_hostile_collision \ Set to negative to indicate no hostile collision
-    LDY mover_to_update             \ grind: get_mover_type inlined (Y = &03, A = type)
+    LDY mover_to_update             \ grind: get_mover_type inlined (Y = &03, A = type); its Z (Y = 0 is the player) replaces TYA
+    BNE am_common_e3fb              \ grind: not the player (Z from the LDY)
+    LDA player_helicopter           \ *** Zero if player not in helicopter
+    BEQ am_common_e3fb              \ *** (the helicopter test first: it and the skeleton test only skip, so the order is free)
+    LDA helicopter_fuel_high        \ ***
+    BMI skip_animation              \ *** Don't animate player helicopter if out of fuel
+.am_common_e3fb
     LDA movers_type_and_colour,Y
     AND #&7F
     CMP #&0D                        \ MOVER_TYPE_SKELETON
     BEQ skip_animation
     TAX
-    TYA                             \ ***
-    BNE not_player_23b1             \ ***
-.is_player_23a9    \ ***
-    LDA player_helicopter           \ *** Zero if player not in helicopter
-    BEQ not_player_23b1             \ ***
-    LDA helicopter_fuel_high        \ ***
-    BMI skip_animation              \ *** Don't animate player helicopter if out of fuel
-.not_player_23b1
     LDA movers_frame_and_flip,Y     \ grind: the next frame kept in A and compared with the type's
     AND #&7F                        \ frame count in place (frames, &C6, no longer written: nothing
     INC A                           \ 65C02 opcode; else reads it)
@@ -2807,6 +2805,9 @@ ENDIF                               \ shooting pose for this update only, as a g
 .skip_animation
     LDA movers_y,Y
     RTS
+IF GAMEPLAY_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
+    EQUB &EA                        \ spare (grind): the byte freed, kept so move_mover_right and all after stay put
+ENDIF
 
 .move_mover_right
     LDA mover_x_low
@@ -2846,9 +2847,10 @@ ENDIF                               \ shooting pose for this update only, as a g
     RTS
 
 .check_for_hostile_collision
-    LDA movers_type_and_colour,X
     LDY mover_to_update
-    BCC leave_with_carry_clear_242d \ Carry is clear if no collision occurred
+    BCC leave_with_carry_clear_242d \ Carry is clear if no collision occurred (grind: before the type is loaded; A is dead on this exit)
+    LDA movers_type_and_colour,X
+    CPY #&00                        \ grind: Z for the player test (the LDA overwrote the LDY's)
     BNE not_player_241b
 .is_player_2411
     CMP #&0F                        \ MOVER_TYPE_BULLET; layer 5 (BUGS #13): was MOVER_TYPE_SKELETON, so skeletons
@@ -2973,6 +2975,7 @@ ENDIF
     INX
     INX
     BRA move_mover_set_43fa
+    SKIP 5                          \ grind: the 5 bytes the high-byte store below drops, so that the code after this routine keeps its address
 
 .unplot_and_move_mover
     LDY mover_to_update
@@ -2996,14 +2999,12 @@ ENDIF
     STA y_edge_size_and_direction   \ ***
     BMI move_mover_y_down_43fa      \ (y_delta AND &7F = y_delta when going up)
 .move_mover_set_43fa
-    LDA #HI(move_mover_up_and_right)
-    STA move_mover_routine_address_high
     STX move_mover_routine_address_low
     JSR animate_mover               \ Returns A = mover_y
 move_mover_routine_address_low = * + 1
-move_mover_routine_address_high = * + 2
-    JSR &FFFF                       \ Move mover up or down, then right or left
-\ #     actually JSR move_mover_routine_address
+    JSR move_mover_up_and_right     \ Move mover up or down, then right or left: grind: only the low byte is
+                                    \ self-modified, the four routines sharing a page (ASSERTed above), so the
+                                    \ high byte is the one assembled here and is never stored
     LDY mover_to_update
     LDA mover_x_low
     STA movers_x_low,Y
@@ -3036,11 +3037,12 @@ move_mover_routine_address_high = * + 2
     LDA x_delta
     BEQ to_scroll_screen_right + 3
     LDA flip
-    BPL to_scroll_screen_right
-    JMP scroll_screen_left
+    BMI to_scroll_screen_left_76cf  \ grind: right, the common case, falls through to its tail call
 .to_scroll_screen_right
     JMP scroll_screen_right         \ grind: a tail call; the RTS (to_scroll_screen_right + 3) stays
     RTS
+.to_scroll_screen_left_76cf
+    JMP scroll_screen_left
 
 .use_player_position_for_mover_Y
     LDX movers_screen_address_high
@@ -3441,41 +3443,45 @@ IF GAMEPLAY_ANY = 0                 \ (gameplay builds: um_next in moved_0a20, d
     ASSERT HI(um_next - 1) == HI(um_next + 8)   \ um_next - 1,Y/X (1-9) must not cross a page
 ENDIF
 .um_populate
-    LDX #&02
-    STX movers_to_update_count
+    \ grind: the chain's three movers go to the slots in processing order, their raster ys sorted as they
+    \ stand now (stable: a tie keeps the chain order, as the search for the topmost one, a later slot
+    \ winning a tie, found it). Slot 0 is movers_to_update_count (&C1: the loop counter is gone with the
+    \ loop; read before any update_mover). The raster y copies and the FF marks go too: nothing else reads
+    \ them. In order is the usual case: two compares, nothing moved.
     LDY movers_to_update_base
-    LDA movers_raster_y,Y
-    STA movers_to_update_raster_y + 2
-    STY movers_to_update + 2
+    STY movers_to_update_count      \ slot 0 = the base
     LDX um_next - 1,Y
-    LDA movers_raster_y,X
-    STA movers_to_update_raster_y + 1
-    STX movers_to_update + 1
+    STX movers_to_update + 1        \ slot 1 = the next
     LDY um_next - 1,X
+    STY movers_to_update + 2        \ slot 2 = the next after
+    LDA um_next - 1,Y
+    STA movers_to_update_base
+.umsort_loop                        \ X = slot 1's mover, Y = slot 2's
     LDA movers_raster_y,Y
-    STA movers_to_update_raster_y
-    STY movers_to_update
-    LDX um_next - 1,Y
-    STX movers_to_update_base
-.update_movers_loop
-    LDX #&02                        \ grind: the last slot holding the lowest raster y, as the
-    LDA movers_to_update_raster_y + 1 \ original's search found it (a later slot wins a tie)
-    CMP movers_to_update_raster_y + 2
-    BCS find_topmost_check_slot_0   \ slot 1 >= slot 2: slot 2 stays
-    DEX                             \ slot 1 < slot 2: slot 1
-.find_topmost_check_slot_0
-    LDA movers_to_update_raster_y
-    CMP movers_to_update_raster_y,X
-    BCS found_topmost_mover         \ slot 0 >= the candidate: the candidate stays
-    LDX #&00
-.found_topmost_mover
-    LDA #&FF
-    STA movers_to_update_raster_y,X \ Set to maximum value to prevent being found again
-    LDY movers_to_update,X
-    STY mover_to_update
+    CMP movers_raster_y,X
+    BCS umsort_slot_0               \ slot 2 >= slot 1: in order
+    STY movers_to_update + 1        \ exchange slots 1 and 2
+    STX movers_to_update + 2
+    LDX movers_to_update + 1        \ X = slot 1's mover again
+.umsort_slot_0
+    LDY movers_to_update_count
+    LDA movers_raster_y,X
+    CMP movers_raster_y,Y
+    BCS umsort_done                 \ slot 1 >= slot 0: in order (Y = slot 0's mover)
+    STX movers_to_update_count      \ exchange slots 0 and 1, then slots 1 and 2 again
+    STY movers_to_update + 1
+    LDX movers_to_update + 1
+    LDY movers_to_update + 2
+    BRA umsort_loop
+.umsort_done
+    STY mover_to_update             \ slot 0 (Y)
     JSR update_mover                \ Update mover
-    DEC movers_to_update_count
-    BPL update_movers_loop
+    LDY movers_to_update + 1
+    STY mover_to_update
+    JSR update_mover
+    LDY movers_to_update + 2
+    STY mover_to_update
+    JSR update_mover
     LDA helicopter_to_update
     TAY
     EOR #&01                        \ Update enemy helicopters alternately
@@ -3523,8 +3529,8 @@ ENDIF
     AND #&7F
     TAY
     LDA movers_frame_and_flip,X
-    AND #&7F
-    CMP #&0D                        \ MOVER_TYPE_SKELETON
+    EOR #&0D                        \ grind: MOVER_TYPE_SKELETON (&0D, either flip): frame AND &7F = &0D <=> (frame EOR &0D) ASL 1 = 0
+    ASL A                           \ (C is dead on every exit: its one caller CLCs before it next reads it)
     BEQ skeleton_height             \ grind: the common case falls through
 .use_height_table
     LDA mover_types_height_table,Y
@@ -3573,13 +3579,15 @@ ENDIF
 cm_full_below_operand = * + 1
     CPX #&00                        \ actually CPX #(last_mover + 3), set above
     BCC check_in_full
-cm_x_max_low_operand = * + 1
-    LDA #&00                        \ actually LDA #mover_x_max_low, set above: right of the range: x > the range's right (the original's
-    CMP movers_x_low,X              \ own first test)
 cm_x_max_high_operand = * + 1
-    LDA #&00                        \ actually LDA #mover_x_max_high, set above
-    SBC movers_x_high,X
-    BCC cm_right_next               \ grind: right of the range: the hot path, taken
+    LDA #&00                        \ actually LDA #mover_x_max_high, set above: right of the range: x > the range's right (the original's
+    CMP movers_x_high,X             \ own first test), the high bytes first: the common case is decided here
+    BCC cm_right_next               \ grind: right of the range by a page or more: the hot path, taken
+    BNE cm_not_right                \ the range's right is a page or more right of x: not right of it
+cm_x_max_low_operand = * + 1
+    LDA #&00                        \ actually LDA #mover_x_max_low, set above: the same page: the low bytes
+    CMP movers_x_low,X
+    BCC cm_right_next               \ grind: right of the range: x > the range's right
 .cm_not_right
     LDA movers_x_low,X              \ left of it even at the widest type: x < its left - &0B
     CMP cm_left_low
@@ -3655,22 +3663,22 @@ cm_x_max_high_operand = * + 1
     CPX mover_to_update
     BEQ cfc_a_leave_clear
 .check_for_collision_with_mover
+    LDA mover_x_max_low             \ grind: x <= mover_x_max (16-bit) first: it needs no type lookup and fails
+    CMP movers_x_low,X              \ 5,213 of the 13,260 checks a 1,000 passes (seed 1, passes 500-1500), the right
+    LDA mover_x_max_high            \ edge below only 6,404 and after the JSR, the loads and the stores
+    SBC movers_x_high,X
+    BCC leave_with_carry_as_is      \ C=0: no collision
     JSR get_mover_X_type_and_height
     STA &78
     LDA mover_types_width_table,Y
     STA &7A
-    CLC                             \ grind: the right edge first (x + width >= mover_x, 16-bit), the test more movers fail
+    CLC                             \ the right edge (x + width >= mover_x, 16-bit)
     ADC movers_x_low,X
     TAY
     LDA movers_x_high,X
     ADC #0                          \ (x + width) high, wrapping as the original's INY did
     CPY mover_x_low
     SBC &C5
-    BCC leave_with_carry_as_is      \ C=0: no collision
-    LDA mover_x_max_low             \ then x <= mover_x_max (16-bit)
-    CMP movers_x_low,X
-    LDA mover_x_max_high
-    SBC movers_x_high,X
     BCC leave_with_carry_as_is      \ C=0: no collision
     LDA movers_y,X
     CMP mover_y_max
@@ -3990,12 +3998,12 @@ ENDIF                               \ (an enemy's bullet into a friendly soldier
     JSR get_mover_frame_and_flip
 .calculate_mover_x_max_from_offset
     LDX &C5
+    LDA frame_and_flip              \ grind: the flip into C instead of N: the ADC below runs with C=0 and the SBC with C=1,
+    ASL A                           \ so neither needs its CLC/SEC (Y, was LDY frame_and_flip, is dead after: every caller reloads it)
     LDA mover_x_low
-    LDY frame_and_flip
-    BMI is_flipped_2aa5
+    BCS is_flipped_2aa5
 .not_flipped_2a9a
-    CLC
-    ADC mover_x_offset
+    ADC mover_x_offset              \ C=0 from the ASL
     STA mover_x_max_low             \ Leave with mover_x_max = mover_x + x_offset,
     STX mover_x_max_high            \ mover_x = mover_x if unflipped
     BCS skip_overflow_2aa0          \ grind: the carry (never measured) taken, not the common case
@@ -4005,31 +4013,35 @@ ENDIF                               \ (an enemy's bullet into a friendly soldier
     RTS
 .is_flipped_2aa5
     STA mover_x_max_low             \ Leave with mover_x_max = mover_x,
-    STX mover_x_max_high            \ grind: stored here, not before the BMI (the unflipped path stores its own)
-    SEC                             \ mover_x = mover_x - x_offset if flipped
-    SBC mover_x_offset
+    STX mover_x_max_high            \ grind: stored here, not before the BCS (the unflipped path stores its own)
+    SBC mover_x_offset              \ mover_x = mover_x - x_offset if flipped (C=1 from the ASL)
     STA mover_x_low
-    BCS set_mover_x
+    BCC cmx_borrow_c894             \ grind: the borrow (a quarter of the flips) out of line, so the common no-borrow case falls to the RTS
+    RTS
+.cmx_borrow_c894
     DEC &C5                         \ grind: was DEX/STX &C5 (X is dead after: every caller reloads it)
-.set_mover_x
     RTS
 
 .check_for_collision_with_friends
     JSR set_cm_left
     LDX #&0B                        \ MOVER_LAST_ENEMY_HELICOPTER
 .check_for_collision_with_non_bullet_movers_loop
+    INX                             \ grind: X = &0C; the DEX below makes it &0B (flags dead: CPX sets them)
+.fr1_next                           \ grind: a mover the prefilter passes over (X >= 2) comes back here
+    DEX
+.fr1_head
     CPX #&02                        \ step 2 (layer 3): a mover that cannot be in range is passed
     BCC friends_in_full                  \ over, except in the last two checks
     LDA mover_x_max_low             \ right of the range: x > the range's right (the original's
     CMP movers_x_low,X              \ own first test)
     LDA mover_x_max_high
     SBC movers_x_high,X
-    BCC consider_next_mover_2abe
+    BCC fr1_next                    \ X >= 2, so X >= 1 after the DEX
     LDA movers_x_low,X              \ left of it even at the widest type: x < its left - &0B
     CMP cm_left_low
     LDA movers_x_high,X
     SBC cm_left_high
-    BCC consider_next_mover_2abe
+    BCC fr1_next                    \ X >= 2, so X >= 1 after the DEX
 .friends_in_full
     JSR check_for_mover_collision_with_mover_X
     BCC consider_next_mover_2abe
@@ -4037,7 +4049,7 @@ ENDIF                               \ (an enemy's bullet into a friendly soldier
     BCC leave_2ac2                  \ Leave with carry clear to indicate hostile collision
 .consider_next_mover_2abe
     DEX
-    BPL check_for_collision_with_non_bullet_movers_loop
+    BPL fr1_head
     SEC                             \ Leave with carry set to indicate no hostile collision
 .leave_2ac2
     RTS
@@ -4069,6 +4081,57 @@ ENDIF                               \ (an enemy's bullet into a friendly soldier
     STZ unfriendly_targets_found
     LDX #&FF
     STX target                      \ Set to negative to indicate no target found by default
+IF SKY_MODE
+    LDA mover_x_low                 \ grind: set_cm_left inlined, its results stored straight into the left test's immediates
+    SEC
+    SBC #MOVER_WIDEST
+    STA stf_left_low_operand_ve
+    LDA &C5                         \ no borrow (C=1): the high byte as it is
+    BCC stf_cm_borrow_ve
+.stf_cm_known_ve
+    STA stf_left_high_operand_ve
+    LDX #&0A                        \ MOVER_LAST_ENEMY_HELICOPTER - 1: the prefilter's index is one below the mover's
+    BRA search_pf_test_ve           \ grind: into the first test (the DEX below is for the others)
+.stf_cm_borrow_ve
+    SBC #0                          \ a borrow (C=0): one less, C clear if that is below 0
+    BCS stf_cm_known_ve
+    INC A                           \ &FF -> 0
+    STA stf_left_low_operand_ve
+    BRA stf_cm_known_ve
+IF LO(*) >= &E0
+    SKIP &100 - LO(*)               \ grind: never run; the loop below starts on a page boundary, so no hot branch crosses a page
+ENDIF
+.search_for_target_loop             \ grind: every way here is just after a DEX (consider_next_enemy's, found_target_2b1f's), whose Z this is
+    BEQ search_in_full              \ X = 0, the last mover: in full
+.search_prefilter_next             \ grind: the prefilter's loop: X = the mover - 1 (X >= 1 on entry, so the DEX leaves it >= 0)
+    DEX
+    BEQ search_pf_inx_ve            \ grind: X = 0: mover 1, which is always checked in full
+.search_pf_test_ve
+stf_x_max_high_operand_s = * + 1
+    LDA #&00                        \ actually LDA #mover_x_max_high, set above: right of the range: x > the range's right (the original's
+    CMP movers_x_high + 1,X         \ own first test), the high bytes first
+    BCC search_prefilter_next
+    BNE stf_left_test_s             \ the range's right is a page or more right of x
+    LDA mover_x_max_low
+    CMP movers_x_low + 1,X
+    BCC search_prefilter_next
+.stf_left_test_s
+    LDA movers_x_low + 1,X          \ left of it even at the widest type: x < its left - &0B
+stf_left_low_operand_ve = * + 1
+    CMP #&00                        \ actually CMP #cm_left_low, set above
+    LDA movers_x_high + 1,X
+stf_left_high_operand_ve = * + 1
+    SBC #&00                        \ actually SBC #cm_left_high, set above
+    BCC search_prefilter_next
+.search_pf_inx_ve
+    INX                             \ grind: X = the mover
+.search_in_full
+    JSR check_for_mover_collision_with_mover_X\ Returns carry set if collision, i.e. mover in range
+    BCS search_hit_g493a            \ grind: a miss (most checks) falls through to the DEX
+.consider_next_enemy
+    DEX
+    BPL search_for_target_loop
+ELSE
     JSR set_cm_left                 \ (leaves X alone)
     LDX #&0C                        \ MOVER_LAST_ENEMY_HELICOPTER + 1: the DEX makes it &0B
 .search_prefilter_next             \ grind: a mover the prefilter passes over (X >= 2) comes back here
@@ -4096,6 +4159,7 @@ stf_x_max_high_operand_s = * + 1
 .consider_next_enemy
     DEX
     BPL search_for_target_loop
+ENDIF
 .search_done
     LDX target
     BPL check_if_friendly           \ Leave with carry clear if unfriendly target found (grind: in a branch's reach here)
@@ -4400,12 +4464,15 @@ ENDIF
     CMP flip_target
     BNE no_flip
     BIT flip_pending
-    BPL no_flip
 IF HUD_RUPTURE
+    BPL no_flip
     LDA flip_crtc_lo                \ decision 67: the next frame is the HUD's; M's start is set in it
     LDX flip_crtc_hi
     JSR rup_set_m_start
 ELSE
+    BMI irq1_flip_go                \ grind: pending at a match (every flip field): taken (3), BPL's untaken 2 + 1
+    JMP no_flip                     \ not pending (a stale match 256 fields on): no flip. These 3 bytes pay for the
+.irq1_flip_go                       \ 3 the toggle below saves, so nothing after moves
     LDA #&0C                        \ R12: Displayed screen start address register (high)
     STA crtc_reg
     LDA flip_crtc_hi
@@ -4420,10 +4487,9 @@ IF HUD_RUPTURE
     STA shown_screen
 ELSE
     LDA acccon
-    AND #&FE
-    ORA flip_screen
+    EOR #&01                        \ grind: D toggles: flip_screen is always the screen not shown (render: back = shown_screen EOR 1)
     STA acccon                      \ D: which RAM the video shows
-    AND #&01                        \ = flip_screen (0 or 1): the D bit just ORed in
+    AND #&01                        \ = flip_screen (0 or 1): the D bit just toggled to
     STA shown_screen
 ENDIF
     STZ flip_pending                \ 65C02 opcode
@@ -4537,17 +4603,16 @@ ELSE
     LDA keys,Y                      \ the key's INKEY number
 ENDIF
     EOR #&FF                        \ INKEY number -> internal key number (check_for_keypress, inlined)
-    TAX                             \ keydown_int (src/lib/keydown.6502) inlined: X = the key number
-    LDA #&03                        \ KBD_LATCH_OFF: latch line 3 = 0
+    LDX #&03                        \ KBD_LATCH_OFF: latch line 3 = 0 (A keeps the key number: no TAX; X is dead after)
     SEI                             \ every caller runs with I = 0 (the play loop), so CLI after
-    STA sysvia_orb                  \ stop the free-running scan...
-    LDA #&7F                        \ KBD_DDRA_SCAN: PA0-PA6 out, PA7 in
-    STA sysvia_ddra                 \ every key: the interrupt's sound writes set DDRA too
-    STX sysvia_ora_nh               \ ask about this key
+    STX sysvia_orb                  \ stop the free-running scan...
+    LDX #&7F                        \ KBD_DDRA_SCAN: PA0-PA6 out, PA7 in
+    STX sysvia_ddra                 \ every key: the interrupt's sound writes set DDRA too
+    STA sysvia_ora_nh               \ ask about this key (A = the key number)
     LDA sysvia_ora_nh               \ PA7 is the answer
     ASL A                           \ C = down (PA7)
-    LDA #&0B                        \ KBD_LATCH_ON
-    STA sysvia_orb                  \ ...and hand it back
+    LDX #&0B                        \ KBD_LATCH_ON
+    STX sysvia_orb                  \ ...and hand it back
     CLI
 IF GAMEPLAY_RUN
     ROL keys_pressed_bitmap
@@ -4875,30 +4940,35 @@ ENDIF
     BNE leave_3168
     LDA #&08                        \ FRAME_GUN_DOWN
     BNE replot_mover                \ Always branches
-
-.update_mover    \ grind: check_if_mover_can_be_updated inlined; the paths that do not update leave by RTS (C is dead in update_mover's caller)
-    JSR get_mover_Y_x_and_y         \ the mover's x (mover_x_low, &C5) for the test below, as the overlap test got it
-    CLC                             \ layer 5 (BUGS #13): the overlap test is below, past the skeletons
-    LDX viewport_right_high         \ and explosions (the player walks through them now, and one under
-    LDA viewport_right_low          \ the player stood frozen: KC, 2026-10-21); C = 0 for the ADC
-    ADC #&0A
-    BCC um0db5_skip_overflow
-    INX
-.um0db5_skip_overflow
-    CPX &C5
-    BCC leave_3160
-    BNE um0db5_is_on_screen
-    CMP mover_x_low                 \ If the mover is beyond the right edge of the screen,
-    BCC leave_3160                  \ leave: no update required
-.um0db5_is_on_screen
-    LDY mover_to_update
-    LDA movers_type_and_colour,Y
-    AND #&7F
-    CMP #&0D                        \ MOVER_TYPE_SKELETON: below it, update
-    BCC um0db5_update
+.um7747_not_below_skeleton          \ out of line (after the always-taken branch above), so the common case falls into um0db5_update
     CMP #&13                        \ MOVER_TYPE_MINE: mines are updated too
     BCS um0db5_update
     JMP animate_explosion_or_skeleton\ Explosion or skeleton: animate it and leave (its RTS returns from update_mover)
+IF GAMEPLAY_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
+    EQUB &00, &00, &00                  \ never run: keeps the bytes after it where they were (page crossings)
+ENDIF
+
+.update_mover    \ grind: check_if_mover_can_be_updated inlined; the paths that do not update leave by RTS (C is dead in update_mover's caller)
+    \ grind (7747fe52d41f): the x test straight off the tables, with no get_mover_Y_x_and_y. Y = mover_to_update (1-9): update_movers is the only
+    \ caller and loads it just before the JSR, and nothing here changes Y. mover_x_low, &C5 and mover_y are not set on the paths that leave or
+    \ animate: every reader of them sets them first (check_for_player_collision_with_mover_Y, plot_mover, update_enemy_helicopter's first call)
+    ASSERT HI(movers_x_high + 1) == HI(movers_x_high + 9)
+    ASSERT HI(movers_x_low + 1) == HI(movers_x_low + 9)
+    LDA #&F5
+    CMP viewport_right_low          \ C = 1 unless viewport_right_low + &0A carries out (c = 0 then)
+    LDA movers_x_high,Y             \ layer 5 (BUGS #13): the overlap test is below, past the skeletons and explosions (the player walks
+    SBC viewport_right_high         \ through them now, and one under the player stood frozen: KC, 2026-10-21); x_high - right_high - carry
+    BCC um0db5_is_on_screen         \ borrow: x_high is below the high byte of right + &0A: on screen
+    BNE leave_3160                  \ above it: beyond the right edge of the screen, leave: no update required
+    LDA viewport_right_low          \ the same: C = 1 here, so right_low + &0A
+    ADC #&09
+    CMP movers_x_low,Y              \ If the mover is beyond the right edge of the screen,
+    BCC leave_3160                  \ leave: no update required
+.um0db5_is_on_screen
+    LDA movers_type_and_colour,Y
+    AND #&7F
+    CMP #&0D                        \ MOVER_TYPE_SKELETON: below it, update (the common case falls through)
+    BCS um7747_not_below_skeleton
 .um0db5_update
     LDX mover_to_update
     JSR check_for_player_collision_with_mover_Y\ Returns carry set if collision
@@ -5392,16 +5462,15 @@ ENDIF
 \ the vsync interrupt restores ROMSEL from), runs the code, pages X's back; keeps the code's carry.
 \ Here because the renderer in bank 4 cannot page another bank over itself.
 .compiled_call
-    STX compiled_back
     STA os_ram_copy_of_currently_selected_rom
     STA romsel
 compiled_vec = * + 1                \ self-modified: the entry (also compiled_direct's vector)
     JSR &0000
-compiled_back = * + 1               \ self-modified: the ROMSEL to come back to
-    LDA #&00
+    TXA                             \ grind: X = the ROMSEL to come back to, kept by the kinds (no X in tools/compiled.py's code) and the interrupt (PHX/PLX)
     STA os_ram_copy_of_currently_selected_rom
     STA romsel
     RTS
+    EQUB &00, &00, &00, &00         \ grind: pad, so nothing after moves
 IF SKY_MODE
     INCLUDE "sky_main.6502"         \ the enemy helicopters over the sky (src/sky.6502 its take_off half)
 ELSE
@@ -5972,33 +6041,24 @@ ENDIF
     LDA #&02
     STA delta_high
     LSR A                           \ 1: unused_0076's last row, counted off below (C: SEC next)
-    STA unused_0076
     LDA ru_lo
     AND #&F8                        \ line 0 of this cell, then up those cells
     SEC
     SBC ru_cells_lo,Y
-    STA ru_lo                       \ L1, a multiple of 8 (ru_cells_lo is &00 or &80)
+    STA unused_0076                 \ L1, a multiple of 8 (ru_cells_lo is &00 or &80); the rows are counted (the one read of &76 is done): scratch
     TXA
-    SBC ru_cells_hi,Y
-    CMP #&40                        \ round the 16K screen
-    BCS ru_in_ring
-    ADC #&40
-.ru_in_ring
-    LDY ru_lo                       \ step 2 (grind): the high byte first. C: no borrow from L1 - &79
-    CPY #&80                        \ (L1 >= &79 is L1 >= &80)
-    SBC #&02                        \ as the subroutine's SBC delta_high: the same N V Z C
-    CMP #&40                        \ round the 16K screen
-    BCS ru_in_ring_2
-    ADC #&40
-.ru_in_ring_2
+    SBC ru_cells_hi,Y               \ X is &40-&7F: less at most &11 and a borrow, &2E-&7F
+    LDY unused_0076
+    CPY #&80                        \ (L1 >= &79 is L1 >= &80): C = no borrow from L1 - &79
+    SBC #&02                        \ as the subroutine's SBC delta_high
+    ORA #&40                        \ round the 16K screen: &2B-&7F; below &40 add &40, else keep = set bit 6 (one wrap for the pair: the first leaves &40-&7F)
     TAX
     LDA ru_d                        \ then &0279 up, and up the rest of the rows inside that cell:
     AND #&07                        \ (L1 - &79) AND &F8 = L1 EOR &80, with its line 7 - (d AND 7)
-    EOR #&87                        \ (C and V stay as the crossing left them)
-    EOR ru_lo
+    EOR #&87
+    EOR unused_0076
 .ru_done                            \ the rows inside the cell: A = the low byte
-    TAY
-    STZ unused_0076                 \ 65C02 opcode; 0 (Z and N are read by no caller)
+    TAY                             \ (C, V, Z, N are read by no caller; unused_0076 is written by both entries' callers before it is read)
     RTS
 .ru_cells_lo                        \ n character rows: n * &280
     EQUB &00, &80, &00, &80, &00, &80, &00, &80

@@ -1,0 +1,35 @@
+window b06744326724: src/render.6502 lines 2048-2080, 32 instructions, 212.2 cycles a pass measured (wait excluded)
+
+ 2048      8.8     LDA save_start_hi,Y                                                                    ;| A=? X={0,2} Y=?≡$5E C=? Z=? N=? V=? | [save_start_hi,y]=? | in:XYC out:AXC
+ 2049      8.8     ADC rb_part2 + 1,X                                                                     ;| A=? X={0,2} Y=?≡$5E C=? Z=? N=? V=? | [$42,x]=? | in:AXC out:AX
+ 2050      6.6     STA rb_p8 + 1                                                                          ;| A=? X={0,2} Y=?≡$5E C=? Z=? N=? V=? | $48=? | in:AX out:X
+ 2051      6.6     LDA v_ptr                                                                              ;| A=? X={0,2} Y=?≡$5E C=? Z=? N=? V=? | $C4=? | in:X out:AX
+ 2052      4.4     SEC                                                                                    ;| A=?≡$C4 X={0,2} Y=?≡$5E C=? Z=? N=? V=? | in:AX out:AXC
+ 2053      4.4     SBC #8                                                                                 ;| A=?≡$C4 X={0,2} Y=?≡$5E C=1 Z=? N=? V=? | in:AXC out:AXC
+ 2054      6.6     STA v_ptr                                                                              ;| A=? X={0,2} Y=?≡$5E C=? Z=? N=? V=? | $C4=? | in:AXC out:AXC
+ 2055      6.6     PHA                             \ the part's start - 8 kept on the stack, not in rb_p8 ;| A=? X={0,2} Y=?≡$5E C=? Z=? N=? V=? | in:AXC out:XC
+ 2056      6.6     LDA rb_p8 + 1                                                                          ;| A=? X={0,2} Y=?≡$5E C=? Z=? N=? V=? | $48=? | in:XC out:AXC
+ 2057      4.4     SBC #0                                                                                 ;| A=?≡$48 X={0,2} Y=?≡$5E C=? Z=? N=? V=? | in:AXC out:AX
+ 2058      6.6     STA v_ptr + 1                                                                          ;| A=? X={0,2} Y=?≡$5E C=? Z=? N=? V=? | $C5=? | in:AX out:AX
+ 2059      6.6     PHA                                                                                    ;| A=? X={0,2} Y=?≡$5E C=? Z=? N=? V=? | in:AX out:X
+ 2060      6.6     PHX                                                                                    ;| A=? X={0,2} Y=?≡$5E C=? Z=? N=? V=? | in:X out:-
+ 2061     13.3     JSR columns                                                                            ;| A=? X={0,2} Y=?≡$5E C=? Z=? N=? V=? | in:- out:-
+ 2062      8.8     PLX                                                                                    ;| A=? X=? Y=? C=1 Z=1 N=0 V=? | in:- out:X
+ 2063      8.8     PLA                             \ the part before ends where this one starts           ;| A=? X={0,2} Y=? C=1 Z=? N=0 V=? | in:X out:AX
+ 2064      6.6     STA rb_end + 1                                                                         ;| A=? X={0,2} Y=? C=1 Z=? N=? V=? | $46=? | in:AX out:X
+ 2065      8.8     PLA                                                                                    ;| A=? X={0,2} Y=? C=1 Z=? N=? V=? | in:X out:AX
+ 2066      6.6     STA rb_end                                                                             ;| A=? X={0,2} Y=? C=1 Z=? N=? V=? | $45=? | in:AX out:X
+ 2067          .no_part
+ 2068      6.5     DEX                                                                                    ;| A=? X={0,2} Y=? C=? Z=? N=? V=? | in:X out:X
+ 2069      6.5     DEX                                                                                    ;| A=? X={1,$FF} Y=? C=? Z=0 N=? V=? | in:X out:XN
+ 2070      9.8     BPL each_part                                                                          ;| A=? X={0,$FE} Y=? C=? Z=? N=? V=? | in:XN out:X
+ 2071      4.9     LDY rb_index                    \ part 1: after the header, v_ptr = the start + 4 - 8  ;| A=? X=$FE Y=? C=? Z=0 N=1 V=? | $5E=? | in:- out:Y
+ 2072      6.5     LDA save_start_lo,Y                                                                    ;| A=? X=$FE Y=?≡$5E C=? Z=? N=? V=? | [save_start_lo,y]=? | in:Y out:AY
+ 2073      3.3     SEC                                                                                    ;| A=? X=$FE Y=?≡$5E C=? Z=? N=? V=? | in:AY out:AYC
+ 2074      3.3     SBC #4                                                                                 ;| A=? X=$FE Y=?≡$5E C=1 Z=? N=? V=? | in:AYC out:AYC
+ 2075      4.9     STA v_ptr                                                                              ;| A=? X=$FE Y=?≡$5E C=? Z=? N=? V=? | $C4=? | in:AYC out:YC
+ 2076      6.5     LDA save_start_hi,Y                                                                    ;| A=? X=$FE Y=?≡$5E C=? Z=? N=? V=? | [save_start_hi,y]=? | in:YC out:AC
+ 2077      3.3     SBC #0                                                                                 ;| A=? X=$FE Y=?≡$5E C=? Z=? N=? V=? | in:AC out:A
+ 2078      4.9     STA v_ptr + 1                                                                          ;| A=? X=$FE Y=?≡$5E C=? Z=? N=? V=? | $C5=? | in:A out:-
+ 2079      9.8     JSR columns                                                                            ;| A=? X=$FE Y=?≡$5E C=? Z=? N=? V=? | in:- out:-
+ 2080      4.9     LDY rb_index                                                                           ;| A=? X=? Y=? C=1 Z=1 N=0 V=? | $5E=? | in:- out:Y

@@ -1,0 +1,42 @@
+window c3098deefe5f: src/game.6502 lines 3970-4009, 32 instructions, 246.1 cycles a pass measured (wait excluded)
+
+ 3970     10.3     CPX #&02                        \ step 2 (layer 3): a mover that cannot be in range is passed;| A=? X=0..11 Y=? C=? Z=? N=0 V=? | in:XYV out:XYCV
+ 3971     11.2     BCC friends_in_full                  \ over, except in the last two checks             ;| A=? X=0..11 Y=? C=? Z=? N=? V=? | in:XYCV out:XYV
+ 3972     13.0     LDA mover_x_max_low             \ right of the range: x > the range's right (the original's;| A=? X=2..11 Y=? C=1 Z=? N=0 V=? | $C7=? | in:XY out:AXY
+ 3973     17.3     CMP movers_x_low,X              \ own first test)                                      ;| A=?≡$C7 X=2..11 Y=? C=1 Z=? N=? V=? | [$1344,x]=? | in:AXY out:XYC
+ 3974     13.0     LDA mover_x_max_high                                                                   ;| A=?≡$C7 X=2..11 Y=? C=? Z=? N=? V=? | $C6=? | in:XYC out:AXYC
+ 3975     17.3     SBC movers_x_high,X                                                                    ;| A=?≡$C6 X=2..11 Y=? C=? Z=? N=? V=? | [$1366,x]=? | in:AXYC out:XYCV
+ 3976     12.5     BCC consider_next_mover_2abe                                                           ;| A=? X=2..11 Y=? C=? Z=? N=? V=? | in:XYCV out:XYV
+ 3977      2.2     LDA movers_x_low,X              \ left of it even at the widest type: x < its left - &0B;| A=? X=2..11 Y=? C=1 Z=? N=? V=? | [$1344,x]=? | in:XY out:AXY
+ 3978      2.2     CMP cm_left_low                                                                        ;| A=? X=2..11 Y=? C=1 Z=? N=? V=? | $2F83=? | in:AXY out:XYC
+ 3979      2.2     LDA movers_x_high,X                                                                    ;| A=? X=2..11 Y=? C=? Z=? N=? V=? | [$1366,x]=? | in:XYC out:AXYC
+ 3980      2.2     SBC cm_left_high                                                                       ;| A=? X=2..11 Y=? C=? Z=? N=? V=? | $2F84=? | in:AXYC out:XYCV
+ 3981      1.4     BCC consider_next_mover_2abe                                                           ;| A=? X=2..11 Y=? C=? Z=? N=? V=? | in:XYCV out:XYV
+ 3982          .friends_in_full
+ 3983      6.3     JSR check_for_mover_collision_with_mover_X                                             ;| A=? X=0..11 Y=? C=? Z=? N=? V=? | in:XYV out:XYCV
+ 3984      3.0     BCC consider_next_mover_2abe                                                           ;| A=? X=0..11 Y=? C=? Z=? N=? V=? | in:XYCV out:XYV
+ 3985      0.9     JSR check_if_friendly           \ Returns carry set if friendly                        ;| A=? X=0..11 Y=? C=1 Z=? N=? V=? | in:XV out:XYCV
+ 3986      0.4     BCC leave_2ac2                  \ Leave with carry clear to indicate hostile collision ;| A=0..254 X=0..11 Y=? C=? Z=? N=? V=? | in:XYCV out:XYCV
+ 3987          .consider_next_mover_2abe
+ 3988     10.1     DEX                                                                                    ;| A=? X=0..11 Y=? C=? Z=? N=? V=? | in:XYV out:XYNV
+ 3989     14.8     BPL check_for_collision_with_non_bullet_movers_loop                                    ;| A=? X={0,1,2,3,4,5,6,7,8,9,$0A,$FF} Y=? C=? Z=? N=? V=? | in:XYNV out:XYV
+ 3990      0.7     SEC                             \ Leave with carry set to indicate no hostile collision;| A=? X=$FF Y=? C=? Z=0 N=1 V=? | in:XYV out:XYCV
+ 3991          .leave_2ac2
+ 3992      2.7     RTS                                                                                    ;| A=? X={0,1,2,3,4,5,6,7,8,9,$0A,$0B,$FF} Y=? C=? Z=? N=? V=? | in:XYCV out:XYCV
+ 3993          
+ 3994          .check_if_friendly
+ 3995      5.1     LDY mover_to_update                                                                    ;| A=? X=0..127 Y=? C=? Z=? N=? V=? | $03=? | in:XV out:XYV
+ 3996      6.8     LDA movers_type_and_colour,X                                                           ;| A=? X=0..127 Y=?≡$03 C=? Z=? N=? V=? | [$1300,x]=? | in:XYV out:AXYV
+ 3997      3.4     CMP #&0D                        \ MOVER_TYPE_SKELETON                       # Skeletons are friendly;| A=? X=0..127 Y=?≡$03 C=? Z=? N=? V=? | in:AXYV out:AXYZCV
+ 3998      3.4     BEQ leave_with_carry_set_2ad2                                                          ;| A=? X=0..127 Y=?≡$03 C=? Z=? N=? V=? | in:AXYZCV out:AXYCV
+ 3999      6.8     EOR movers_type_and_colour,Y    \ Otherwise check if movers are same colour            ;| A=? X=0..127 Y=?≡$03 C=? Z=0 N=? V=? | [$1300,y]=? | in:AXYV out:AXYV
+ 4000      3.4     EOR #&80                        \ grind: C = NOT bit 7 of the difference:              ;| A=? X=0..127 Y=?≡$03 C=? Z=? N=? V=? | in:AXYV out:AXYV
+ 4001      3.4     ASL A                           \ set if friendly, clear if unfriendly                 ;| A=? X=0..127 Y=?≡$03 C=? Z=? N=? V=? | in:AXYV out:AXYCV
+ 4002          .leave_with_carry_set_2ad2          \ grind: both branches here arrive with C=1
+ 4003     21.9     RTS                                                                                    ;| A=? X=0..127 Y=? C=? Z=? N=? V=? | in:AXYCV out:AXYCV
+ 4004          
+ 4005          .search_for_target_with_offset
+ 4006      8.1     STA mover_x_offset                                                                     ;| A={$22,$28} X=? Y=? C=? Z=0 N=0 V=? | $81=? | in:AV out:V
+ 4007     16.3     JSR get_mover_x_and_y                                                                  ;| A={$22,$28} X=? Y=? C=? Z=0 N=0 V=? | in:V out:YV
+ 4008     16.3     JSR check_if_mover_Y_is_on_screen\ Returns carry set if mover is not on screen         ;| A=? X=? Y=? C=? Z=? N=? V=? | in:YV out:AXYCV
+ 4009      7.4     BCS leave_with_carry_set_2ad2   \ If so, leave with carry set to indicate no target found;| A=? X=0..127 Y=? C=? Z=? N=? V=? | in:AXYCV out:AXYCV

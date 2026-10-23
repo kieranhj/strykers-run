@@ -45,16 +45,15 @@
     LDA sfx_n,X
     BEQ next
     JSR sfx_output
+    CLC                             \ both paths add with C = 0 (LDA and BPL keep C)
     LDA sfx_dp,X                    \ the period steps (16 bits, the step sign-extended)
     BPL up
-    CLC                             \ the step negative (its high byte &FF): a carry leaves the high byte
-    ADC sfx_p_lo,X
+    ADC sfx_p_lo,X                  \ the step negative (its high byte &FF): a carry leaves the high byte
     STA sfx_p_lo,X
     BCS sfx_pa_clc
     DEC sfx_p_hi,X                  \ no carry: the high byte less 1
     BRA sfx_pa_c0                   \ 65C02 opcode; C = 0
 .up
-    CLC
     ADC sfx_p_lo,X
     STA sfx_p_lo,X
     BCC sfx_pa_c0                   \ C = 0
@@ -63,17 +62,12 @@
     CLC
 .sfx_pa_c0
     LDA sfx_dv,X                    \ the amplitude steps, kept between 0 and 15
-    BMI down
-    ADC sfx_v,X                     \ (C = 0 on every path here)
-    BCC v_known
-    LDA #&F8
-    BNE v_known                     \ always
-.down
-    ADC sfx_v,X
-    BCS v_known
-    LDA #0
+    BPL c1_nonneg                   \ (the data's steps are 0 or negative)
+    ADC sfx_v,X                     \ negative step (C = 0 on every path here)
+    BCC c1_clamp0
 .v_known
     STA sfx_v,X
+.c1_same
     DEC sfx_n,X
     BNE next
     JSR sfx_next_ramp
@@ -81,17 +75,25 @@
     DEX
     BPL channel
     RTS
+.c1_nonneg
+    BEQ c1_same                     \ no step: sfx_v stays
+    ADC sfx_v,X
+    BCC v_known
+    LDA #&F8
+    BNE v_known                     \ always
+.c1_clamp0
+    LDA #0
+    BRA v_known
 }
 
 \ X = channel: its next ramp, from sfx_ptr; at the end, the channel is silenced.
 .sfx_next_ramp
 {
-    LDA sfx_ptr_lo,X
-    STA ramp + 1
-    LDA sfx_ptr_hi,X
-    STA ramp + 2
-    LDY #0
-    JSR ramp
+    LDA sfx_ptr_hi,X                \ the ramp's first byte inline too (not by JSR ramp): Y = its low byte
+    STA nr_c1_b0 + 2
+    LDY sfx_ptr_lo,X
+.nr_c1_b0
+    LDA &FF00,Y                     \ self-modified: the ramp's page
     BEQ ended
     STA sfx_n,X
     LDA sfx_ptr_hi,X                \ the other five bytes inline: each load's operand is the ramp's
@@ -143,55 +145,64 @@
     AND #&0F
     ORA sfx_channel_bits,X
     JSR sfx_write
-    LDA sfx_p_hi,X                  \ ...then its high 6 bits, the period >> 4: the high nibble of
-    EOR sfx_p_lo,X                  \ the period's low byte with the low nibble of its high byte
-    AND #&0F
-    EOR sfx_p_lo,X
-    ASL A                           \ nibbles swapped
-    ADC #&80
-    ROL A
-    ASL A
-    ADC #&80
-    ROL A
-    AND #&3F
-    JSR sfx_write.ddra_set_c046b    \ DDRA still &FF from the low byte's write (interrupts off)
-    LDA sfx_v,X                     \ the tone's amplitude, DDRA still &FF (.amplitude below: the noise's)
-    LSR A
-    LSR A
-    LSR A
-    LSR A
-    EOR #&1F                        \ the chip takes attenuation; &10: an amplitude latch byte
-    ORA sfx_channel_bits,X
+    JSR sfx_write.ddra_set_c046b    \ the high byte, ready in A from the low byte's write (DDRA still &FF); this
+    CMP sfx_noise_written,X         \ write's pulse works the amplitude out: A = v >> 4. What the chip has (a tone
+    BEQ sfx_write.g1_rts             \ channel's slot of the noise control's array; a request left a high byte,
+    STA sfx_noise_written,X         \ never 0-15): unchanged, nothing to send
+    EOR g1_att_bits,X                \ the chip takes attenuation, &10: an amplitude latch byte: (n EOR &1F) OR channel
     BRA sfx_write.ddra_set_c046b    \ 65C02 opcode
+.g1_att_bits
+    EQUB &9F, &BF, &DF, &FF         \ channel bits OR &1F
 .amplitude
     LDA sfx_v,X
     LSR A
     LSR A
     LSR A
     LSR A
-    EOR #&1F                        \ the chip takes attenuation; &10: an amplitude latch byte
-    ORA sfx_channel_bits,X
+    EOR g1_att_bits,X
 noise = sfx_write.noise             \ after sfx_write's RTS
 }
     \ falls through
-\ A to the chip, as MOS 3.20 writes it (&F5E6). Keeps X.
+\ A to the chip, as MOS 3.20 writes it (&F5E6). Keeps X. The byte for the next write is worked out
+\ while the write enable is low (the MOS's delay there): after sfx_write, A = a tone's high byte (from the
+\ period just stepped); after ddra_set_c046b, A = the amplitude v >> 4. Meant for sfx_output's tone; other
+\ callers ignore A. No wait after the write enable goes high (the MOS's LDY #4 loop, 21 cycles; the lines
+\ below it are no longer reached): the next write enable falls at least 20 cycles later (a tone's low byte,
+\ its high byte: an RTS, a JSR and two stores), the chip needing 32 of its 4 MHz clocks, 16 cycles.
 .sfx_write
 {
     LDY #&FF
     STY sysvia_ddra
+    STA sysvia_ora_nh
+    STZ sysvia_orb                  \ latch line 0 low: write enable
+    LDA sfx_p_hi,X                  \ a tone's high byte: the period >> 4: C = bit 0 of the period's high byte,
+    LSR A                           \ A = its bit 1 in bit 0 with the low byte's bits 7-4 above (the rest
+    EOR sfx_p_lo,X                  \ of the low nibble is dropped below)
+    AND #&01
+    EOR sfx_p_lo,X
+    ROR A                           \ the two bits of the high byte enter at the top and the low byte's
+    ROR A                           \ high nibble comes down beside them: &00 &00 h1 h0 l7-l4
+    LSR A
+    LSR A
+    BRA g1_fin                       \ 65C02 opcode
 .ddra_set_c046b                     \ entered with DDRA already &FF (sfx_output's tone)
     STA sysvia_ora_nh
     STZ sysvia_orb                  \ latch line 0 low: write enable
-    LDY #2
+    LDA sfx_v,X                     \ the amplitude, n = v >> 4
+    LSR A
+    LSR A
+    LSR A
+    LSR A
+.g1_fin
+    LDY #&08
+    STY sysvia_orb                  \ and high again
+.g1_rts
+    RTS
 .wait_low
     DEY
     BNE wait_low
-    LDY #&08
-    STY sysvia_orb                  \ and high again
-    LDY #4
-.wait_high
-    DEY
-    BNE wait_high
+    LDA #&08
+    STA sysvia_orb                  \ and high again (Y is still 0)
     RTS
 .noise                              \ sfx_output's noise channel (its BEQ noise lands here)
     LDA sfx_p_lo,X                  \ noise: only when it changes (writing it restarts the noise)

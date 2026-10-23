@@ -1,0 +1,38 @@
+{
+ "candidates": [
+  {
+   "window": "4a5651c9d909",
+   "file": "src/render.6502",
+   "line": 845,
+   "old": "    BMI wrap                        \\ the hot path falls through\n    STA edge_screen_address_high\n    BRA group                       \\ 65C02 opcode\n.wrap\n    EOR #&C0                        \\ &80-&82 -> &40-&42: - &40\n    STA edge_screen_address_high\n    BRA group                       \\ 65C02 opcode\n.done\n    RTS",
+   "new": "    STA edge_screen_address_high    \\ stored before the test (STA keeps N): a wrapped &80-&82 is mended below\n    BPL group                       \\ the hot path: N = 0 (A = &40-&7F), straight back\n.wrap\n    EOR #&C0                        \\ &80-&82 -> &40-&42: - &40\n    STA edge_screen_address_high\n    BRA group                       \\ 65C02 opcode\n.done\n    RTS\n    SKIP 2                          \\ keeps every later address as it was (no page moves)",
+   "summary": "Store the row's high byte before the wrap test and loop on BPL (STA leaves ADC's N alone): the hot path loses the untaken BMI and the BRA, 8 cycles become 6. The wrapped path stores the unwrapped value first and mends it. SKIP 2 after the RTS keeps all later code at its old address.",
+   "claim": {
+    "cycles_per_execution": 2,
+    "executions_a_pass": 17.5,
+    "cycles_a_pass": 33.5,
+    "bytes": 0
+   },
+   "equivalence": "Hot path (hi = &40-&7F after ADC #2, N=0): old BMI not taken, STA hi, BRA group; new STA hi, BPL taken to group: same hi stored, same registers (A = hi, X, Y untouched), flags dead at group (LDY #0 first). Wrap path (N=1, A=&80-&82): old BMI taken, EOR #&C0, STA, BRA group; new STA stores the unwrapped A, BPL not taken, falls to EOR, STA overwrites it, BRA group: final hi identical. The transient hi (&80-&82) in &86 is read by nothing in between (no instruction between the two STAs; edge_screen_address is not used by any interrupt code: grep shows only game.6502 set_edge/ column code and render.6502). The done exit is before this code and unchanged. Cost on the wrap path rises by 2 (0.77 times a pass measured). BPL group is -0x4A bytes back, in range.",
+   "relies_on": "Page crossings: BPL (ends &96B8 before, now &96B6) and group (&9670) are both in page &96, so the taken branch costs 3 with no page penalty (the old BRA likewise). The SKIP 2 after RTS keeps .hist_dst_hi onward at their old addresses (&96BF) so no later table, branch or indexed read moves across a page. Needs STA zp to leave flags unchanged (it does) and edge_screen_address_high to be read by no interrupt (grep: no).",
+   "file_written": "build/grind/r3/opt-4a5651c9d909.json"
+  },
+  {
+   "window": "4a5651c9d909",
+   "file": "src/render.6502",
+   "line": 845,
+   "old": "    BMI wrap                        \\ the hot path falls through\n    STA edge_screen_address_high\n    BRA group                       \\ 65C02 opcode",
+   "new": "    STA edge_screen_address_high    \\ stored before the test (STA keeps N): a wrapped &80-&82 is mended at .wrap\n    BPL group                       \\ the hot path: N = 0 (A = &40-&7F), straight back",
+   "summary": "Same as candidate 1 without the SKIP 2: 2 bytes smaller, but every later address in bank 4's renderer moves down 2 bytes (alternative to candidate 1; overlapping).",
+   "claim": {
+    "cycles_per_execution": 2,
+    "executions_a_pass": 17.5,
+    "cycles_a_pass": 33.5,
+    "bytes": 2
+   },
+   "equivalence": "As candidate 1; .wrap, .done and the rest of the block are unchanged and follow the BPL directly.",
+   "relies_on": "Moves everything after write_column (hist_dst_hi/hist_src_hi from &96BF to &96BD, add_scroll_zone onward, to the end of render.6502) 2 bytes lower: page crossings of later hot branches and indexed reads may change (not counted); within the block BPL and group stay in page &96.",
+   "file_written": "build/grind/r3/opt-4a5651c9d909.json"
+  }
+ ]
+}

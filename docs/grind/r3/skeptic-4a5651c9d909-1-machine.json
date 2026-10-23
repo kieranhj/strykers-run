@@ -1,0 +1,7 @@
+{
+ "refuted": true,
+ "reason": "The window change itself is right (hot path STA zp 3 + BPL taken 3 = 6 vs BMI 2 + STA 3 + BRA 3 = 8, same page &96; wrap path 13 vs 11; STA keeps N; 2 bytes saved), but the candidate leaves the 2-byte shift of everything after it uncounted, and the lens requires counting it. Built in a scratch copy (default flags) and diffed the listings against the unchanged build: four branches change their page crossing. Two get dearer: record_differs' BNE out (&9FFC, pc &9FFE -> &A02C, now crosses: +1 each time it is taken, per mover record compared) and close_over_overlaps' BRA listed (&97FD, now crosses: +1 on every going_on). Two get cheaper: BNE shown (&97ED) and BPL each_part (&9DFD). Every bank-4 table after it also moves 2 bytes (sprite_column_count, sky_blk_lo/hi, straight_sprite_lo/hi, ck_*, wa_rows_*, raise_cells_*, sky_heights), and so does the straight sprites' data, which is read through (zp),Y, so its page crossings change sprite by sprite. None of this is counted, so the net cycles a pass are unknown and could be below the claimed 33.5 or even negative. Candidate 0 (the same change with SKIP 2) keeps every later address and avoids all of this.",
+ "cycles_per_execution_recounted": 2,
+ "bytes_recounted": 2,
+ "file_written": "build/grind/r3/skeptic-4a5651c9d909-1-machine.json"
+}

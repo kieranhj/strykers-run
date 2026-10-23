@@ -1,0 +1,42 @@
+window 974cf5c1cc74: src/render.6502 lines 446-485, 32 instructions, 509.2 cycles a pass measured (wait excluded)
+
+  446     15.2     JSR record_differs              \ (keeps X, Y)                                         ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XY out:XYZ
+  447      7.0     BNE stale                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XYZ out:XY
+  448      2.4     LDA rec_wxl,Y                   \ where it was drawn (BUGS #7)                         ;| A=? X=? Y=? C=? Z=1 N=? V=? | [rec_wxl,y]=? | in:Y out:AY
+  449      1.8     STA span_x_lo                                                                          ;| A=? X=? Y=? C=? Z=? N=? V=? | $6F=? | in:AY out:Y
+  450      2.4     LDA rec_wxh,Y                                                                          ;| A=? X=? Y=? C=? Z=? N=? V=? | [rec_wxh,y]=? | in:Y out:AY
+  451      1.8     STA span_x_hi                                                                          ;| A=? X=? Y=? C=? Z=? N=? V=? | $72=? | in:AY out:Y
+  452      2.4     LDA rec_type,Y                                                                         ;| A=? X=? Y=? C=? Z=? N=? V=? | [REN_BASE,y]=? | in:Y out:A
+  453      1.2     AND #&7F                        \ width_of_type_A, inline                              ;| A=? X=? Y=? C=? Z=? N=? V=? | in:A out:A
+  454      1.2     TAX                                                                                    ;| A=0..127 X=? Y=? C=? Z=? N=0 V=? | in:A out:X
+  455      2.4     LDA mover_types_width_table,X                                                          ;| A=0..127 X=0..127 Y=? C=? Z=? N=0 V=? | [$DA55,x]=? | in:X out:A
+  456      3.6     JSR span_in_zone                                                                       ;| A=? X=0..127 Y=? C=? Z=? N=? V=? | in:A out:C
+  457      1.8     LDX ren_i                       \ (keeps C) X = ren_i on every path into stale and listed;| A=? X=? Y=? C=? Z=? N=? V=? | $4D=? | in:C out:XC
+  458      1.7     BCC listed                                                                             ;| A=? X=?≡$4D Y=? C=? Z=? N=? V=? | in:XC out:X
+  459          .stale
+  460      4.1     LDA #&80                                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | in:X out:AX
+  461      8.1     STA need,X                                                                             ;| A=$80 X=? Y=? C=? Z=0 N=1 V=? | [$1F,x]=? | in:AX out:X
+  462          .listed
+  463     21.8     LDY act_n                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | $4F=? | in:X out:XY
+  464     14.5     TXA                                                                                    ;| A=? X=? Y=?≡$4F C=? Z=? N=? V=? | in:XY out:AXY
+  465     36.4     STA act,Y                                                                              ;| A=? X=? Y=?≡$4F C=? Z=? N=? V=? | [act,y]=? | in:AXY out:X
+  466     36.4     INC act_n                                                                              ;| A=? X=? Y=?≡$4F C=? Z=? N=? V=? | $4F=? | in:X out:X
+  467          .classified                         \ X = ren_i on every path in
+  468     67.9     INX                                                                                    ;| A=? X=? Y=? C=? Z=? N=? V=? | in:X out:X
+  469     67.9     CPX #MOVER_SLOTS                                                                       ;| A=? X=? Y=? C=? Z=? N=? V=? | in:X out:XZ
+  470    100.9     BNE classify                                                                           ;| A=? X=? Y=? C=? Z=? N=? V=? | in:XZ out:X
+  471          
+  472              \ ---- 2. what goes on; 3. what overlaps it comes off and goes back on too ----
+  473      6.0     JSR mark_to_draw                                                                       ;| A=? X=$22 Y=? C=1 Z=1 N=0 V=? | in:- out:-
+  474      6.0     JSR close_over_overlaps                                                                ;| A=? X=? Y=? C=1 Z=1 N=0 V=? | in:- out:-
+  475          
+  476              \ ---- 4. take off: the player first (drawn last), then the movers from the last slot down ----
+  477      2.0     LDX #0                                                                                 ;| A=$00 X=? Y=? C=1 Z=1 N=0 V=? | in:- out:X
+  478      6.0     JSR take_off                                                                           ;| A=$00 X=$00 Y=? C=1 Z=1 N=0 V=? | in:X out:-
+  479      3.0     LDY act_n                                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | $4F=? | in:- out:YZ
+  480      2.0     BEQ taken_off                                                                          ;| A=? X=? Y=?≡$4F C=? Z=? N=? V=? | in:YZ out:Y
+  481          .taking_off
+  482     14.5     DEY                                                                                    ;| A=? X=? Y=1..255 C=? Z=0 N=? V=? | in:Y out:Y
+  483     21.8     STY ren_k                                                                              ;| A=? X=? Y=0..254 C=? Z=? N=? V=? | $4E=? | in:Y out:Y
+  484     29.1     LDX act,Y                                                                              ;| A=? X=? Y=0..254 C=? Z=? N=? V=? | [act,y]=? | in:Y out:XZ
+  485     15.5     BEQ taken_off                   \ the player: first in the list, already off           ;| A=? X=? Y=0..254 C=? Z=? N=? V=? | in:XZ out:X

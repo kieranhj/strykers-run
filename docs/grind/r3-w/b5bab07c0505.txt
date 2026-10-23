@@ -1,0 +1,47 @@
+window b5bab07c0505: src/game.6502 lines 3486-3530, 32 instructions, 611.1 cycles a pass measured (wait excluded)
+
+ 3486     61.5     LDA movers_type_and_colour,X                                                           ;| A=? X=? Y=? C=? Z=? N=? V=? | [$1300,x]=? | in:X out:AX
+ 3487     30.8     AND #&7F                                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AX out:AX
+ 3488     30.8     TAY                                                                                    ;| A=0..127 X=? Y=? C=? Z=? N=0 V=? | in:AX out:XY
+ 3489     61.5     LDA movers_frame_and_flip,X                                                            ;| A=0..127 X=? Y=0..127 C=? Z=? N=0 V=? | [$1322,x]=? | in:XY out:AXY
+ 3490     30.8     AND #&7F                                                                               ;| A=? X=? Y=0..127 C=? Z=? N=? V=? | in:AXY out:AXY
+ 3491     30.8     CMP #&0D                        \ MOVER_TYPE_SKELETON                                  ;| A=0..127 X=? Y=0..127 C=? Z=? N=0 V=? | in:AXY out:XYZ
+ 3492     30.8     BEQ skeleton_height             \ grind: the common case falls through                 ;| A=0..127 X=? Y=0..127 C=? Z=? N=? V=? | in:XYZ out:XY
+ 3493          .use_height_table
+ 3494     61.6     LDA mover_types_height_table,Y                                                         ;| A=0..127 X=? Y=0..127 C=? Z=0 N=? V=? | [$DA71,y]=? | in:XY out:AXY
+ 3495     92.3     RTS                                                                                    ;| A=? X=? Y=0..127 C=? Z=? N=? V=? | in:AXY out:AXY
+ 3496          .skeleton_height
+ 3497              LDA #&11                                                                               ;| A=$0D X=? Y=0..127 C=1 Z=1 N=0 V=? | in:XY out:AXY
+ 3498              RTS                                                                                    ;| A=$11 X=? Y=0..127 C=1 Z=0 N=0 V=? | in:AXY out:AXY
+ 3499          
+ 3500          .check_for_mover_Y_collision_with_player    \ # Called with X = 0 (MOVER_PLAYER)
+ 3501      0.2     JSR get_mover_Y_x_and_y                                                                ;| A=$0E X=$00 Y=?≡$03 C=? Z=1 N=0 V=? | in:XY out:AX
+ 3502      0.1     TAY                                                                                    ;| A=? X=$00 Y=? C=? Z=? N=? V=? | in:AX out:XY
+ 3503      0.1     LDA mover_x_low                                                                        ;| A=? X=$00 Y=? C=? Z=? N=? V=? | $F8=? | in:XY out:AXYZ
+ 3504      0.1     BNE set_first_mover             \ Always branches                                      ;| A=?≡$F8 X=$00 Y=? C=? Z=? N=? V=? | in:AXYZ out:AXY
+ 3505          .check_for_mover_collision_with_movers
+ 3506      6.9     LDX #&17                        \ MOVER_LAST_PROJECTILE                                ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AY out:AXY
+ 3507          .set_first_mover
+ 3508     10.4     STX first_mover                                                                        ;| A=? X={0,$17} Y=? C=? Z=0 N=? V=? | $B6=? | in:AXY out:AY
+ 3509      6.9     LDX #&FF                        \ MOVER_PLAYER - 1                                     ;| A=? X={0,$17} Y=? C=? Z=0 N=? V=? | in:AY out:AXY
+ 3510     10.4     STX last_mover                                                                         ;| A=? X=$FF Y=? C=? Z=0 N=1 V=? | $B7=? | in:AXY out:AY
+ 3511     10.4     LDX mover_to_update                                                                    ;| A=? X=$FF Y=? C=? Z=0 N=1 V=? | $03=? | in:AY out:AXY
+ 3512     10.4     STA mover_x_low                                                                        ;| A=? X=?≡$03 Y=? C=? Z=? N=? V=? | $F8=? | in:AXY out:XY
+ 3513     10.4     STY &C5                                                                                ;| A=? X=?≡$03 Y=? C=? Z=? N=? V=? | $C5=? | in:XY out:XY
+ 3514     10.4     STY mover_x_max_high            \ grind: what calculate_mover_x_max_and_y_max's first two do;| A=? X=?≡$03 Y=? C=? Z=? N=? V=? | $C6=? | in:XY out:X
+ 3515     20.8     JSR calculate_mover_x_max_and_y_max + 4 \ past LDA &C5 : STA mover_x_max_high (2 + 2 bytes);| A=? X=?≡$03 Y=? C=? Z=? N=? V=? | in:X out:-
+ 3516     10.4     LDX first_mover                                                                        ;| A=? X=? Y=0..127 C=? Z=? N=? V=? | $B6=? | in:- out:X
+ 3517          .check_for_mover_collision_with_range_of_movers
+ 3518              \ Step 2 (layer 3): a mover right of the range, or left of it even at the widest type, cannot
+ 3519              \ collide, and is passed over without check_for_mover_collision_with_mover_X looking up its
+ 3520              \ type, width and height - except in the last two checks: the last one that runs (the last
+ 3521              \ is skipped if it is mover_to_update) leaves A, Y, &78 and &7A as the original did. Worked
+ 3522              \ out once a search: those two are X < last_mover + 3; the left edge is the range's left
+ 3523              \ less the widest type (0 if that is below 0). A and C here are the loop's to set.
+ 3524     10.4     LDA last_mover                                                                         ;| A=? X=? Y=? C=? Z=? N=? V=? | $B7=? | in:X out:AX
+ 3525      6.9     CLC                                                                                    ;| A=?≡$B7 X=? Y=? C=? Z=? N=? V=? | in:AX out:AXC
+ 3526      6.9     ADC #3                                                                                 ;| A=?≡$B7 X=? Y=? C=0 Z=? N=? V=? | in:AXC out:AX
+ 3527     13.9     STA cm_full_below_operand       \ grind: cm_full_below lives in the CPX's operand      ;| A=? X=? Y=? C=? Z=? N=? V=? | cm_full_below_operand=? | in:AX out:X
+ 3528     10.4     LDA mover_x_max_low             \ grind: and the range's right (low) in the LDA's      ;| A=? X=? Y=? C=? Z=? N=? V=? | $C7=? | in:X out:AX
+ 3529     13.8     STA cm_x_max_low_operand                                                               ;| A=?≡$C7 X=? Y=? C=? Z=? N=? V=? | cm_x_max_low_operand=? | in:AX out:X
+ 3530     10.4     LDA mover_x_max_high            \ grind: and its right (high) in the SBC's LDA (nothing in the loop writes it);| A=?≡$C7 X=? Y=? C=? Z=? N=? V=? | $C6=? | in:X out:AX

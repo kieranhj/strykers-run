@@ -1,0 +1,21 @@
+{
+ "candidates": [
+  {
+   "window": "a214f69da82a",
+   "file": "src/game.6502",
+   "line": 2874,
+   "old": "    JSR check_for_mover_collision_with_movers\\ Returns carry set if collision, X = mover collided with\n    JSR check_for_hostile_collision \\ Returns carry set if collision was hostile\n    BCS vertical_collision_b245f\n.no_collision\n",
+   "new": "    JSR check_for_mover_collision_with_movers\\ Returns carry set if collision, X = mover collided with\n    LDY mover_to_update             \\ grind: Y as check_for_hostile_collision leaves it (LDY leaves C alone)\n    BCC no_collision                \\ grind: no collision is not hostile: skip the call (it only returns C = 0)\n    JSR check_for_hostile_collision \\ Returns carry set if collision was hostile\n    BCS vertical_collision_b245f\n.no_collision\n",
+   "summary": "In the vertical move, skip the check_for_hostile_collision call when check_for_mover_collision_with_movers found no collision (C = 0): the call only does LDA/LDY and returns C = 0; load Y = mover_to_update directly and branch to no_collision.",
+   "claim": {
+    "cycles_per_execution": 18,
+    "executions_a_pass": 1.72,
+    "cycles_a_pass": 31,
+    "bytes": -4
+   },
+   "equivalence": "Original no-collision path (C=0 from check_for_mover_collision_with_movers): JSR check_for_hostile_collision does LDA movers_type_and_colour,X (A, N, Z clobbered), LDY mover_to_update, BCC leave_with_carry_clear_242d -> RTS with C=0, Y=mover_to_update; then BCS not taken, falls into no_collision, which reloads X and A from tables indexed by Y and overwrites N/Z/A/X. New: LDY mover_to_update (C untouched), BCC taken straight to no_collision with the same Y, C=0, same memory. Nothing else is written on that path (hit_type and hostile_mover are only stored on the C=1 hostile path). Collision path (C=1): LDY is harmless (hostile loads Y itself from mover_to_update), BCC not taken, JSR/BCS identical to before, so hostile/not-hostile results, hit_type, hostile_mover and the vertical_collision_b245f path are unchanged. move_mover_up falls in and move_mover_down JSRs here; both get the same exits and the RTS from no_collision/vertical_collision is unchanged. Collision path costs 2 cycles more (BCC not taken) and is rare. no_collision label is referenced only here (grep).",
+   "relies_on": "Page crossings: the block 2083-20A8 and its taken branches (BCC no_collision, BEQ skip_changing_screen_address_245f, BRA back) all stay inside page &20 after the 4-byte slide (checked on build/strykers.lst addresses); code from 20A5 on slides by 4, the next page boundary at &2100 only straddles move_mover_y_down_43fa's BRA, which already crosses (20EB->210B) and is cold. check_for_mover_collision_with_movers returns with C = 1 only on collision (C=0 on no collision, CLC at its end), and LDY does not affect C. 4 bytes more in main RAM below &3400 (unused_3400_original has 193 free in unshifted gameplay builds; the gate's ASSERTs check it). Y dead after check_for_mover_collision_with_movers (reloaded anyway).",
+   "file_written": "build/grind/r3/opt-a214f69da82a.json"
+  }
+ ]
+}

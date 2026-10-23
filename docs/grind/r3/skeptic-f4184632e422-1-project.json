@@ -1,0 +1,6 @@
+{
+ "refuted": true,
+ "reason": "Does not fit its region (SKILL.md Room). The new code is 51 bytes for the old 13 (+38). In the plain/shipping build sky_edges.6502 sits under ANDY, and main.6502 has ASSERT * <= &9000 + PAD_START. build/strykers.lst puts sky_col_zero's RTS at &8FE2 and the SKIP &9000 + PAD_START - * at &8FE3, so only 29 bytes are free. PAD_START = (SHIFT AND &FF00)*(1-SHIFT_END) is 0 in the shipping build and also in the -Shift 256 -ShiftEnd bench layout. The candidate itself says the fast path 'straddles &9000', which means past the ASSERT, inside render.6502's org. In gameplay builds sky_edges is at bank 4's end: build/strykers-gameplay.lst has the RTS at &B3F5, then SKIP PAD_END against ASSERT * <= REN_BASE (&B400), so only 10 bytes are free. Both builds fail to assemble. The 'free SKIP after sky_edges' it relies on is the gap up to &9000, not room it can grow into. The logic itself checks out. sky_col_row sets sky_stop = Y0 - sky_rn,X with X unchanged, so rn = 8 stores exactly the same 8 bytes. A, C and Z at the exit are the same as before. Y differs (Y0-7 against Y0-8), but Y is dead: sky_edges .left/.right reload it, and sky_off reloads it with LDY sky_idx. sky_rn is in bank 4 workspace (&B4xx+), readable under ROMSEL &04. It is refuted on space alone.",
+ "cycles_per_execution_recounted": 40,
+ "bytes_recounted": 38
+}

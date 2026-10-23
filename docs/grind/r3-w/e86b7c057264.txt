@@ -1,0 +1,38 @@
+window e86b7c057264: src/render.6502 lines 2435-2470, 32 instructions, 326.2 cycles a pass measured (wait excluded)
+
+ 2435      8.1     SEC                                                                                    ;| A=?≡$49 X=0..63 Y=? C=? Z=? N=? V=? | in:AXY out:AXYC
+ 2436     16.3     SBC wa_rows_base_lo,Y                                                                  ;| A=?≡$49 X=0..63 Y=? C=1 Z=? N=? V=? | [$A135,y]=? | in:AXYC out:AXYC
+ 2437     12.2     PHA                             \ the offset in the row, low byte                      ;| A=? X=0..63 Y=? C=? Z=? N=? V=? | in:AXYC out:XYC
+ 2438      8.1     TXA                             \ X = wa_off + 1 still                                 ;| A=? X=0..63 Y=? C=? Z=? N=? V=? | in:XYC out:AYC
+ 2439     16.3     SBC wa_rows_base_hi,Y           \ high byte 0..2: the offset is under &280             ;| A=0..63 X=0..63 Y=? C=? Z=? N=0 V=? | [$A150,y]=? | in:AYC out:AY
+ 2440      8.1     LSR A                           \ C = bit 0 of it, A = bit 1                           ;| A=? X=0..63 Y=? C=? Z=? N=? V=? | in:AY out:AYC
+ 2441      8.1     TAX                                                                                    ;| A=0..127 X=0..63 Y=? C=? Z=? N=0 V=? | in:AYC out:XYC
+ 2442     16.3     PLA                                                                                    ;| A=0..127 X=0..127 Y=? C=? Z=? N=0 V=? | in:XYC out:AXYC
+ 2443      8.1     ROR A                                                                                  ;| A=? X=0..127 Y=? C=? Z=? N=? V=? | in:AXYC out:AXY
+ 2444      8.1     CPX #1                          \ C = bit 1                                            ;| A=? X=0..127 Y=? C=? Z=? N=? V=? | in:AXY out:AYC
+ 2445      8.1     ROR A                                                                                  ;| A=? X=0..127 Y=? C=? Z=? N=? V=? | in:AYC out:AY
+ 2446      8.1     LSR A                           \ the column, 0..&4F                                   ;| A=? X=0..127 Y=? C=? Z=? N=? V=? | in:AY out:AY
+ 2447      8.1     CMP #80 - 11                    \ BUGS #10: 69-79 may be a mover left of the view      ;| A=0..127 X=0..127 Y=? C=? Z=? N=0 V=? | in:AY out:AYC
+ 2448      8.8     BCS late_column                 \ (and C clear on the way on, for the add)             ;| A=0..127 X=0..127 Y=? C=? Z=? N=? V=? | in:AYC out:AYC
+ 2449          .column_known
+ 2450     10.3     ADC viewport_left_low                                                                  ;| A=0..68 X=0..127 Y=? C=0 Z=? N=? V=? | $B2=? | in:AYC out:AYC
+ 2451     10.3     STA wa_x_lo                                                                            ;| A=? X=0..127 Y=? C=? Z=? N=? V=? | $60=? | in:AYC out:YC
+ 2452     10.3     LDA viewport_left_high                                                                 ;| A=? X=0..127 Y=? C=? Z=? N=? V=? | $BA=? | in:YC out:AYC
+ 2453      6.8     ADC #0                                                                                 ;| A=?≡$BA X=0..127 Y=? C=? Z=? N=? V=? | in:AYC out:AY
+ 2454     10.3     STA wa_x_hi                                                                            ;| A=? X=0..127 Y=? C=? Z=? N=? V=? | $5F=? | in:AY out:Y
+ 2455          .y_of_row
+ 2456      8.1     TYA                             \ y = &C7 - (row * 8 + the line in the cell)           ;| A=? X=? Y=? C=? Z=? N=? V=? | in:Y out:A
+ 2457      8.1     ASL A                                                                                  ;| A=? X=? Y=? C=? Z=? N=? V=? | in:A out:A
+ 2458      8.1     ASL A                                                                                  ;| A=0..254 %xxxxxxx0 X=? Y=? C=? Z=? N=? V=? | in:A out:A
+ 2459      8.1     ASL A                           \ C = 0: row <= 25                                     ;| A=0..252 %xxxxxx00 X=? Y=? C=? Z=? N=? V=? | in:A out:AC
+ 2460      8.1     EOR #&FF                                                                               ;| A=0..248 %xxxxx000 X=? Y=? C=? Z=? N=? V=? | in:AC out:AC
+ 2461      8.1     ADC #&C8                        \ &C7 - row * 8, its low 3 bits 111; C clear only for row 25;| A=7..255 %xxxxx111 X=? Y=? C=? Z=0 N=? V=? | in:AC out:ACV
+ 2462      8.1     BCC row_25                                                                             ;| A=? X=? Y=? C=? Z=? N=? V=? | in:ACV out:ACV
+ 2463          .y_known
+ 2464     12.2     STA wa_y                                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | $57=? | in:AV out:V
+ 2465     12.2     LDA wa_off                                                                             ;| A=? X=? Y=? C=? Z=? N=? V=? | $49=? | in:V out:AV
+ 2466      8.1     AND #&07                                                                               ;| A=?≡$49 X=? Y=? C=? Z=? N=? V=? | in:AV out:AV
+ 2467     20.3     TRB wa_y                        \ less the line in the cell (65C02 opcode)             ;| A=0..7 X=? Y=? C=? Z=? N=0 V=? | $57=? | in:AV out:V
+ 2468     24.4     RTS                                                                                    ;| A=0..7 X=? Y=? C=? Z=? N=0 V=? | in:V out:V
+ 2469          .late_column                        \ A = the column, 69-79; C set
+ 2470      1.3     CLC                                                                                    ;| A=69..127 X=0..127 Y=? C=1 Z=? N=? V=? | in:AY out:AYC

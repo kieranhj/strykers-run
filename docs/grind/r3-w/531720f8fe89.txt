@@ -1,0 +1,34 @@
+window 531720f8fe89: src/render_zp.6502 lines 55-86, 32 instructions, 111.9 cycles a pass measured (wait excluded)
+
+   55      3.0     LDA &A0                                                                                ;| A=?≡$9F X=? Y=? C=? Z=? N=? V=? | $A0=? | in:- out:A
+   56      4.0     STA zp_save + 18                                                                       ;| A=?≡$A0 X=? Y=? C=? Z=? N=? V=? | $BC12=? | in:A out:-
+   57      3.0     LDA &B0                                                                                ;| A=?≡$A0 X=? Y=? C=? Z=? N=? V=? | $B0=? | in:- out:A
+   58      4.0     STA zp_save + 19                                                                       ;| A=?≡$B0 X=? Y=? C=? Z=? N=? V=? | $BC13=? | in:A out:-
+   59      3.0     LDA &B1                                                                                ;| A=?≡$B0 X=? Y=? C=? Z=? N=? V=? | $B1=? | in:- out:A
+   60      4.0     STA zp_save + 20                                                                       ;| A=?≡$B1 X=? Y=? C=? Z=? N=? V=? | $BC14=? | in:A out:-
+   61      3.0     LDA &B2                                                                                ;| A=?≡$B1 X=? Y=? C=? Z=? N=? V=? | $B2=? | in:- out:A
+   62      4.0     STA zp_save + 21                                                                       ;| A=?≡$B2 X=? Y=? C=? Z=? N=? V=? | $BC15=? | in:A out:-
+   63      3.0     LDA &B3                                                                                ;| A=?≡$B2 X=? Y=? C=? Z=? N=? V=? | $B3=? | in:- out:A
+   64      4.0     STA zp_save + 22                                                                       ;| A=?≡$B3 X=? Y=? C=? Z=? N=? V=? | $BC16=? | in:A out:-
+   65      3.0     LDA &B4                                                                                ;| A=?≡$B3 X=? Y=? C=? Z=? N=? V=? | $B4=? | in:- out:A
+   66      4.0     STA zp_save + 23                                                                       ;| A=?≡$B4 X=? Y=? C=? Z=? N=? V=? | $BC17=? | in:A out:-
+   67      3.0     LDA &B5                                                                                ;| A=?≡$B4 X=? Y=? C=? Z=? N=? V=? | $B5=? | in:- out:A
+   68      4.0     STA zp_save + 24                                                                       ;| A=?≡$B5 X=? Y=? C=? Z=? N=? V=? | $BC18=? | in:A out:-
+   69      3.0     LDA &B6                                                                                ;| A=?≡$B5 X=? Y=? C=? Z=? N=? V=? | $B6=? | in:- out:A
+   70      4.0     STA zp_save + 25                                                                       ;| A=?≡$B6 X=? Y=? C=? Z=? N=? V=? | $BC19=? | in:A out:-
+   71      3.0     LDA &B7                                                                                ;| A=?≡$B6 X=? Y=? C=? Z=? N=? V=? | $B7=? | in:- out:A
+   72      4.0     STA zp_save + 26                                                                       ;| A=?≡$B7 X=? Y=? C=? Z=? N=? V=? | $BC1A=? | in:A out:-
+   73      3.0     LDA &B8                                                                                ;| A=?≡$B7 X=? Y=? C=? Z=? N=? V=? | $B8=? | in:- out:A
+   74      4.0     STA zp_save + 27                                                                       ;| A=?≡$B8 X=? Y=? C=? Z=? N=? V=? | $BC1B=? | in:A out:-
+   75      3.0     LDA &B9                                                                                ;| A=?≡$B8 X=? Y=? C=? Z=? N=? V=? | $B9=? | in:- out:A
+   76      4.0     STA zp_save + 28                                                                       ;| A=?≡$B9 X=? Y=? C=? Z=? N=? V=? | $BC1C=? | in:A out:-
+   77      3.0     LDA &BA                                                                                ;| A=?≡$B9 X=? Y=? C=? Z=? N=? V=? | $BA=? | in:- out:A
+   78      4.0     STA zp_save + 29                                                                       ;| A=?≡$BA X=? Y=? C=? Z=? N=? V=? | $BC1D=? | in:A out:-
+   79      3.0     LDA &BB                                                                                ;| A=?≡$BA X=? Y=? C=? Z=? N=? V=? | $BB=? | in:- out:A
+   80      4.0     STA zp_save + 30                                                                       ;| A=?≡$BB X=? Y=? C=? Z=? N=? V=? | $BC1E=? | in:A out:-
+   81      3.0     LDA &C0                                                                                ;| A=?≡$BB X=? Y=? C=? Z=? N=? V=? | $C0=? | in:- out:A
+   82      4.0     STA zp_save + 31                                                                       ;| A=?≡$C0 X=? Y=? C=? Z=? N=? V=? | $BC1F=? | in:A out:-
+   83      3.0     LDA &F8                                                                                ;| A=?≡$C0 X=? Y=? C=? Z=? N=? V=? | $F8=? | in:- out:A
+   84      4.0     STA zp_save + 32                                                                       ;| A=?≡$F8 X=? Y=? C=? Z=? N=? V=? | $BC20=? | in:A out:-
+   85      3.0     LDA &F9                                                                                ;| A=?≡$F8 X=? Y=? C=? Z=? N=? V=? | $F9=? | in:- out:A
+   86      4.0     STA zp_save + 33                                                                       ;| A=?≡$F9 X=? Y=? C=? Z=? N=? V=? | $BC21=? | in:A out:-

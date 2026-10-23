@@ -1,0 +1,42 @@
+window 4967539e373c: src/render.6502 lines 1474-1513, 32 instructions, 93.0 cycles a pass measured (wait excluded)
+
+ 1474              RTS                             \ the mover starts right of the viewport               ;| A=? X=?≡$58 Y=? C=1 Z=? N=? V=? | in:C out:C
+ 1475          .left_of_view
+ 1476      0.5     BEQ jmin_low                    \ high 0: the low byte is it                           ;| A=? X=?≡$58 Y=? C=1 Z=? N=? V=? | in:XZC out:XC
+ 1477              LDA #&FF                                                                               ;| A=1..255 X=?≡$58 Y=? C=1 Z=0 N=? V=? | in:X out:AX
+ 1478              BRA jmin_store                  \ 65C02 opcode                                         ;| A=$FF X=?≡$58 Y=? C=1 Z=0 N=1 V=? | in:AX out:AX
+ 1479          .jmin_low
+ 1480      0.5     LDA viewport_left_low           \ C set (BCS): the low byte again                      ;| A=$00 X=?≡$58 Y=? C=1 Z=1 N=0 V=? | $B2=? | in:XC out:AXC
+ 1481      0.6     SBC movers_x_low,X                                                                     ;| A=?≡$B2 X=?≡$58 Y=? C=1 Z=? N=? V=? | [$1344,x]=? | in:AXC out:AX
+ 1482          .jmin_store
+ 1483      0.5     STA dm_jmin                                                                            ;| A=? X=?≡$58 Y=? C=? Z=? N=? V=? | $5A=? | in:AX out:X
+ 1484      0.5     BRA jmin_done                   \ 65C02 opcode                                         ;| A=? X=?≡$58 Y=? C=? Z=? N=? V=? | in:X out:X
+ 1485          .not_right_of_view
+ 1486      6.5     BEQ jmax_done                                                                          ;| A=? X=?≡$58 Y=? C=1 Z=? N=? V=? | in:Z out:-
+ 1487              LDA #&FF                                                                               ;| A=1..255 X=?≡$58 Y=? C=1 Z=0 N=? V=? | in:- out:A
+ 1488              STA dm_jmax                                                                            ;| A=$FF X=?≡$58 Y=? C=1 Z=0 N=1 V=? | $5C=? | in:A out:-
+ 1489          .jmax_done
+ 1490              \ the tables: pixels by colour and flip, masks by flip (plot_mover and
+ 1491              \ get_mover_type_and_colour's rules: most enemies white)
+ 1492      4.4     LDY #HI(unflipped_green_pixel_table)                                                   ;| A={0,$FF} X=?≡$58 Y=? C=1 Z=? N=? V=? | in:- out:Y
+ 1493      6.5     LDA dm_typecol                                                                         ;| A={0,$FF} X=?≡$58 Y=$04 C=1 Z=0 N=0 V=? | $6D=? | in:Y out:AYN
+ 1494      5.8     BPL green                                                                              ;| A=?≡$6D X=?≡$58 Y=$04 C=1 Z=? N=? V=? | in:AYN out:AY
+ 1495      1.5     CMP #&85                        \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_MISSILE;| A=128..255≡$6D X=?≡$58 Y=$04 C=1 Z=? N=1 V=? | in:AY out:AYZ
+ 1496      1.5     BEQ green                                                                              ;| A=128..255≡$6D X=?≡$58 Y=$04 C=? Z=? N=? V=? | in:AYZ out:AY
+ 1497      1.5     CMP #&95                        \ MOVER_TYPE_ENEMY | MOVER_TYPE_HEAVY_GUN and above    ;| A=128..255≡$6D X=?≡$58 Y=$04 C=? Z=0 N=? V=? | in:AY out:AYC
+ 1498      2.2     BCS green                                                                              ;| A=128..255≡$6D X=?≡$58 Y=$04 C=? Z=? N=? V=? | in:AYC out:AY
+ 1499      0.1     CMP #&87                        \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_SOLDIER;| A=128..148≡$6D X=?≡$58 Y=$04 C=0 Z=? N=? V=? | in:AY out:AYZ
+ 1500      0.1     BEQ green                                                                              ;| A=128..148≡$6D X=?≡$58 Y=$04 C=? Z=? N=? V=? | in:AYZ out:AY
+ 1501      0.1     INY                             \ white: the next page                                 ;| A={$80,$81,$82,$83,$84,$85,$86,$88,$89,$8A,$8B,$8C,$8D,$8E,$8F,$90,$91,$92,$93,$94}≡$6D X=?≡$58 Y=$04 C=? Z=0 N=? V=? | in:AY out:AY
+ 1502          .green
+ 1503      8.7     STY draw_column.pix_operand + 1                                                        ;| A=?≡$6D X=?≡$58 Y=4..5 C=? Z=? N=? V=? | draw_column.pix_operand+1=? | in:AY out:AY
+ 1504      8.7     STY draw_column.pix_operand_2 + 1                                                      ;| A=?≡$6D X=?≡$58 Y=4..5 C=? Z=? N=? V=? | draw_column.pix_operand_2+1=? | in:AY out:A
+ 1505      6.5     BIT dm_flip                                                                            ;| A=?≡$6D X=?≡$58 Y=4..5 C=? Z=? N=? V=? | $50=? | in:A out:N
+ 1506      5.1     BMI flipped                                                                            ;| A=?≡$6D X=?≡$58 Y=4..5 C=? Z=? N=? V=? | in:N out:-
+ 1507      2.8     LDA #LO(unflipped_green_pixel_table)                                                   ;| A=?≡$6D X=?≡$58 Y=4..5 C=? Z=? N=0 V=? | in:- out:A
+ 1508      5.7     STA draw_column.pix_operand                                                            ;| A=$40 X=?≡$58 Y=4..5 C=? Z=0 N=0 V=? | draw_column.pix_operand=? | in:A out:A
+ 1509      5.7     STA draw_column.pix_operand_2                                                          ;| A=$40 X=?≡$58 Y=4..5 C=? Z=0 N=0 V=? | draw_column.pix_operand_2=? | in:A out:-
+ 1510      2.8     LDA #LO(unflipped_mask_table)                                                          ;| A=$40 X=?≡$58 Y=4..5 C=? Z=0 N=0 V=? | in:- out:A
+ 1511      5.7     STA draw_column.mask_operand                                                           ;| A=$C0 X=?≡$58 Y=4..5 C=? Z=0 N=1 V=? | draw_column.mask_operand=? | in:A out:A
+ 1512      5.7     STA draw_column.mask_operand_2                                                         ;| A=$C0 X=?≡$58 Y=4..5 C=? Z=0 N=1 V=? | draw_column.mask_operand_2=? | in:A out:-
+ 1513      2.8     LDA #HI(unflipped_mask_table)                                                          ;| A=$C0 X=?≡$58 Y=4..5 C=? Z=0 N=1 V=? | in:- out:A

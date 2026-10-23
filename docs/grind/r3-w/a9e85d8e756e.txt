@@ -1,0 +1,40 @@
+window a9e85d8e756e: src/render.6502 lines 1718-1755, 32 instructions, 460.5 cycles a pass measured (wait excluded)
+
+ 1718     18.8     TXA                             \ ...raised by its first row                           ;| A=?≡$CA X=? Y=$08 C=? Z=? N=? V=? | in:X out:AXN
+ 1719     35.4     BPL raised                                                                             ;| A=? X=? Y=$08 C=? Z=? N=? V=? | in:AXN out:AX
+ 1720          .up_cell                            \ X = the line, negative: a cell up for each 8
+ 1721      3.4     LDA s_ptr                                                                              ;| A=? X=? Y=$08 C=? Z=? N=? V=? | $C2=? | in:X out:AX
+ 1722      2.3     SEC                                                                                    ;| A=?≡$C2 X=? Y=$08 C=? Z=? N=? V=? | in:AX out:AXC
+ 1723      2.3     SBC #&80                                                                               ;| A=?≡$C2 X=? Y=$08 C=1 Z=? N=? V=? | in:AXC out:AXC
+ 1724      3.4     STA s_ptr                                                                              ;| A=? X=? Y=$08 C=? Z=? N=? V=? | $C2=? | in:AXC out:XC
+ 1725      3.4     LDA s_ptr + 1                                                                          ;| A=? X=? Y=$08 C=? Z=? N=? V=? | $C3=? | in:XC out:AXC
+ 1726      2.3     SBC #&02                                                                               ;| A=?≡$C3 X=? Y=$08 C=? Z=? N=? V=? | in:AXC out:AX
+ 1727      2.3     CMP #&40                                                                               ;| A=? X=? Y=$08 C=? Z=? N=? V=? | in:AX out:AXC
+ 1728      3.4     BCS up_in_ring                                                                         ;| A=? X=? Y=$08 C=? Z=? N=? V=? | in:AXC out:AXC
+ 1729      0.1     ADC #&40                                                                               ;| A=0..63 X=? Y=$08 C=0 Z=? N=? V=? | in:AXC out:AX
+ 1730          .up_in_ring
+ 1731      3.4     STA s_ptr + 1                                                                          ;| A=64..255 X=? Y=$08 C=? Z=? N=? V=? | $C3=? | in:AX out:X
+ 1732      2.3     TXA                                                                                    ;| A=64..255 X=? Y=$08 C=? Z=? N=? V=? | in:X out:A
+ 1733      2.3     CLC                                                                                    ;| A=? X=? Y=$08 C=? Z=? N=? V=? | in:A out:AC
+ 1734      2.3     ADC #8                                                                                 ;| A=? X=? Y=$08 C=0 Z=? N=? V=? | in:AC out:AC
+ 1735      2.3     TAX                                                                                    ;| A=? X=? Y=$08 C=? Z=? N=? V=? | in:AC out:AXC
+ 1736      2.3     BCC up_cell                                                                            ;| A=? X=? Y=$08 C=? Z=? N=? V=? | in:AXC out:AX
+ 1737          .raised                             \ A = X = the line of the lowest byte drawn
+ 1738     28.2     ORA s_ptr                       \ the record's address                                 ;| A=? X=? Y=$08 C=? Z=? N=? V=? | $C2=? | in:AX out:AX
+ 1739     18.8     LDY #9                                                                                 ;| A=? X=? Y=$08 C=? Z=? N=? V=? | in:AX out:AXY
+ 1740     56.4     STA (v_ptr),Y                                                                          ;| A=? X=? Y=$09 C=? Z=0 N=0 V=? | [($C4),y]=? | in:AXY out:XY
+ 1741     18.8     INY                                                                                    ;| A=? X=? Y=$09 C=? Z=0 N=0 V=? | in:XY out:XY
+ 1742     28.2     LDA s_ptr + 1                                                                          ;| A=? X=? Y=$0A C=? Z=0 N=0 V=? | $C3=? | in:XY out:AXY
+ 1743     56.4     STA (v_ptr),Y                                                                          ;| A=?≡$C3 X=? Y=$0A C=? Z=? N=? V=? | [($C4),y]=? | in:AXY out:X
+ 1744     28.2     LDA v_ptr                       \ the cells after it                                   ;| A=?≡$C3 X=? Y=$0A C=? Z=? N=? V=? | $C4=? | in:X out:AX
+ 1745     18.8     CLC                                                                                    ;| A=?≡$C4 X=? Y=$0A C=? Z=? N=? V=? | in:AX out:AXC
+ 1746     18.8     ADC #11                                                                                ;| A=?≡$C4 X=? Y=$0A C=0 Z=? N=? V=? | in:AXC out:AXC
+ 1747     28.2     STA v_ptr                                                                              ;| A=? X=? Y=$0A C=? Z=? N=? V=? | $C4=? | in:AXC out:XC
+ 1748     27.9     BCC save_on_page                \ C = 0 on the common path                             ;| A=? X=? Y=$0A C=? Z=? N=? V=? | in:XC out:XC
+ 1749      1.6     INC v_ptr + 1                                                                          ;| A=? X=? Y=$0A C=1 Z=? N=? V=? | $C5=? | in:X out:X
+ 1750      0.6     CLC                             \ (the page-crossing path: C was 1)                    ;| A=? X=? Y=$0A C=1 Z=? N=? V=? | in:X out:XC
+ 1751          .save_on_page                       \ C = 0 here (TXA, TAY, EOR leave it)
+ 1752              \ the data: the byte for line Y of the first cell is data[count - 1 - (line - Y)], so
+ 1753              \ d_ptr = the column + 2 + count - 1 - line = col_ptr - 1 - line = col_ptr + (line EOR &FF) - &100
+ 1754     18.8     TXA                                                                                    ;| A=? X=? Y=$0A C=0 Z=? N=? V=? | in:XC out:AC
+ 1755     18.8     TAY                             \ Y = the line                                         ;| A=? X=? Y=$0A C=0 Z=? N=? V=? | in:AC out:AYC

@@ -1,0 +1,21 @@
+{
+ "candidates": [
+  {
+   "window": "09d7d96f1cf9",
+   "file": "src/game.6502",
+   "line": 5312,
+   "old": "    STX compiled_back\n    STA os_ram_copy_of_currently_selected_rom\n    STA romsel\ncompiled_vec = * + 1                \\ self-modified: the entry (also compiled_direct's vector)\n    JSR &0000\ncompiled_back = * + 1               \\ self-modified: the ROMSEL to come back to\n    LDA #&00\n    STA os_ram_copy_of_currently_selected_rom\n    STA romsel\n    RTS",
+   "new": "    STA os_ram_copy_of_currently_selected_rom\n    STA romsel\ncompiled_vec = * + 1                \\ self-modified: the entry (also compiled_direct's vector)\n    JSR &0000\n    TXA                             \\ grind: X = the ROMSEL to come back to, kept by the kinds (no X in tools/compiled.py's code) and the interrupt (PHX/PLX)\n    STA os_ram_copy_of_currently_selected_rom\n    STA romsel\n    RTS\n    EQUB &00, &00, &00, &00         \\ grind: pad, so nothing after moves",
+   "summary": "compiled_call: the kinds never touch X, so the ROMSEL to come back to stays in X across the JSR; drop the self-modified STX compiled_back / LDA #&00 pair for a TXA (4 cycles an execution), padded so nothing after moves.",
+   "claim": {
+    "cycles_per_execution": 4,
+    "executions_a_pass": 3,
+    "cycles_a_pass": 12,
+    "bytes": 0
+   },
+   "equivalence": "Old: STX stores X into the LDA #'s operand, the LDA # reloads it into A after the JSR, so A = X at the first STA either way. New: TXA gives A = X directly, valid iff X is unchanged across JSR (vec). The callee is one of tools/compiled.py's draw or restore kinds in banks 5-7 (compiled_call has only two callers, render.6502 compiled_part and the restore path, both pass LDX #&84 / #&04 before the JSR and take X from nowhere after); grep of src/compiled_bank5/6/7.6502 finds no LDX/STX/INX/DEX/TAX/TXA/CPX/,X/JSR (only JMP compiled_unsafe_N, whose body is SEC, RTS), and tools/compiled.py emits no X-using instruction. An interrupt during the call (irq1_handler PHX/PLX, and the MOS) preserves X. Flags: LDA #&00 left Z=1 N=0, TXA leaves N,Z from X; annotations show N, Z, A dead at the RTS (out:XYCV) and both callers branch only on carry (BCS unsafe, or fall into columns); carry and V untouched by both, Y untouched. The STA order (MOS copy first, then ROMSEL) is unchanged. compiled_back had no other reference in src/, tools/ or docs/ (checked). The 4 pad bytes after the RTS keep every later address unchanged (the 5 bytes of STX+LDA# become 1 and the 4 pad bytes bring the total back).",
+   "relies_on": "Code in banks 5-7 (generated) never changes X, and has no JSR; if tools/compiled.py ever emits an X use, this breaks. No page crossing moves: nothing after the RTS moves (padded), the window start is unchanged; the only crossing in the window is the code running from &2FEE across &3000 (RTS at &3000 now at &2FFA...&2FFD region) with no branches or indexed reads in it, so the 3 cycles of RTS and a following byte are unaffected. Same RAM, ROMSEL, and MOS copy writes as before.",
+   "file_written": "build/grind/r3/opt-09d7d96f1cf9.json"
+  }
+ ]
+}

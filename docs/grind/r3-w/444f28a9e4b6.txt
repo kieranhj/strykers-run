@@ -1,0 +1,32 @@
+window 444f28a9e4b6: src/render.6502 lines 1441-1470, 27 instructions, 182.6 cycles a pass measured (wait excluded)
+
+ 1441      6.5     LDX dm_slot                                                                            ;| A=0..1 X=? Y=? C=? Z=? N=0 V=? | $58=? | in:- out:X
+ 1442      8.7     LDA movers_type_and_colour,X                                                           ;| A=0..1 X=?≡$58 Y=? C=? Z=? N=? V=? | [$1300,x]=? | in:X out:AX
+ 1443      6.5     STA dm_typecol                                                                         ;| A=? X=?≡$58 Y=? C=? Z=? N=? V=? | $6D=? | in:AX out:AX
+ 1444      4.4     AND #&7F                                                                               ;| A=? X=?≡$58 Y=? C=? Z=? N=? V=? | in:AX out:AX
+ 1445      6.5     STA dm_type                                                                            ;| A=0..127 X=?≡$58 Y=? C=? Z=? N=0 V=? | $61=? | in:AX out:X
+ 1446      8.7     LDA movers_frame_and_flip,X                                                            ;| A=0..127 X=?≡$58 Y=? C=? Z=? N=0 V=? | [$1322,x]=? | in:X out:AX
+ 1447      6.5     STA dm_flip                     \ bit 7                                                ;| A=? X=?≡$58 Y=? C=? Z=? N=? V=? | $50=? | in:AX out:AX
+ 1448      4.4     AND #&3F                                                                               ;| A=? X=?≡$58 Y=? C=? Z=? N=? V=? | in:AX out:AX
+ 1449      6.5     STA dm_frame                                                                           ;| A=0..63 X=?≡$58 Y=? C=? Z=? N=0 V=? | $63=? | in:AX out:X
+ 1450      8.7     LDA movers_screen_address_low,X                                                        ;| A=0..63 X=?≡$58 Y=? C=? Z=? N=0 V=? | [$13AA,x]=? | in:X out:AX
+ 1451      6.5     STA dm_scr_lo                                                                          ;| A=? X=?≡$58 Y=? C=? Z=? N=? V=? | $66=? | in:AX out:X
+ 1452      8.7     LDA movers_screen_address_high,X                                                       ;| A=? X=?≡$58 Y=? C=? Z=? N=? V=? | [$13CC,x]=? | in:X out:AX
+ 1453      6.5     STA dm_scr_hi                                                                          ;| A=? X=?≡$58 Y=? C=? Z=? N=? V=? | $65=? | in:AX out:X
+ 1454              \ the visible columns, j from 0 at the mover's left: jmin = viewport_left - x if the mover
+ 1455              \ starts left of it, else 0; jmax = viewport_right - x (255 if further)
+ 1456      6.5     LDA viewport_left_low                                                                  ;| A=? X=?≡$58 Y=? C=? Z=? N=? V=? | $B2=? | in:X out:AX
+ 1457      4.4     SEC                                                                                    ;| A=?≡$B2 X=?≡$58 Y=? C=? Z=? N=? V=? | in:AX out:AXC
+ 1458      8.7     SBC movers_x_low,X                                                                     ;| A=?≡$B2 X=?≡$58 Y=? C=1 Z=? N=? V=? | [$1344,x]=? | in:AXC out:XC
+ 1459      6.5     LDA viewport_left_high          \ (the low byte only for its borrow: left_of_view redoes it);| A=? X=?≡$58 Y=? C=? Z=? N=? V=? | $BA=? | in:XC out:AXC
+ 1460      8.7     SBC movers_x_high,X                                                                    ;| A=?≡$BA X=?≡$58 Y=? C=? Z=? N=? V=? | [$1366,x]=? | in:AXC out:XZC
+ 1461      4.5     BCS left_of_view                \ viewport_left >= x                                   ;| A=? X=?≡$58 Y=? C=? Z=? N=? V=? | in:XZC out:XZC
+ 1462      6.1     STZ dm_jmin                     \ 65C02 opcode                                         ;| A=? X=?≡$58 Y=? C=0 Z=? N=? V=? | $5A=? | in:X out:X
+ 1463          .jmin_done
+ 1464      6.5     LDA viewport_right_low                                                                 ;| A=? X=?≡$58 Y=? C=? Z=? N=? V=? | $B3=? | in:X out:AX
+ 1465      4.4     SEC                                                                                    ;| A=?≡$B3 X=?≡$58 Y=? C=? Z=? N=? V=? | in:AX out:AXC
+ 1466      8.7     SBC movers_x_low,X                                                                     ;| A=?≡$B3 X=?≡$58 Y=? C=1 Z=? N=? V=? | [$1344,x]=? | in:AXC out:AXC
+ 1467      6.5     STA dm_jmax                                                                            ;| A=? X=?≡$58 Y=? C=? Z=? N=? V=? | $5C=? | in:AXC out:XC
+ 1468      6.5     LDA viewport_right_high                                                                ;| A=? X=?≡$58 Y=? C=? Z=? N=? V=? | $BB=? | in:XC out:AXC
+ 1469      8.7     SBC movers_x_high,X                                                                    ;| A=?≡$BB X=?≡$58 Y=? C=? Z=? N=? V=? | [$1366,x]=? | in:AXC out:ZC
+ 1470      6.5     BCS not_right_of_view                                                                  ;| A=? X=?≡$58 Y=? C=? Z=? N=? V=? | in:ZC out:Z

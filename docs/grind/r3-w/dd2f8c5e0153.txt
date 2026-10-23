@@ -1,0 +1,44 @@
+window dd2f8c5e0153: src/render.6502 lines 1382-1423, 28 instructions, 176.8 cycles a pass measured (wait excluded)
+
+ 1382      9.8     STA (v_ptr),Y                                                                          ;| A=$00 X=?≡$56 Y=$04 C=? Z=0 N=0 V=? | [($C4),y]=? | in:AY out:-
+ 1383      9.8     JSR draw_mover                  \ (draw_column moves v_ptr on)                         ;| A=$00 X=?≡$56 Y=$04 C=? Z=0 N=0 V=? | in:- out:-
+ 1384      4.9     LDX back                        \ the block ends after the last cell: v_ptr + 8        ;| A=? X=? Y=? C=? Z=? N=? V=? | $56=? | in:- out:X
+ 1385      4.9     LDY dm_index                                                                           ;| A=? X=?≡$56 Y=? C=? Z=? N=? V=? | $67=? | in:X out:XY
+ 1386      4.9     LDA v_ptr                                                                              ;| A=? X=?≡$56 Y=?≡$67 C=? Z=? N=? V=? | $C4=? | in:XY out:AXY
+ 1387      3.3     CLC                                                                                    ;| A=?≡$C4 X=?≡$56 Y=?≡$67 C=? Z=? N=? V=? | in:AXY out:AXYC
+ 1388      3.3     ADC #8                                                                                 ;| A=?≡$C4 X=?≡$56 Y=?≡$67 C=0 Z=? N=? V=? | in:AXYC out:AXYC
+ 1389      8.2     STA arena_top_lo,X                                                                     ;| A=? X=?≡$56 Y=?≡$67 C=? Z=? N=? V=? | [arena_top_lo,x]=? | in:AXYC out:AXYC
+ 1390      8.2     STA save_end_lo,Y                                                                      ;| A=? X=?≡$56 Y=?≡$67 C=? Z=? N=? V=? | [save_end_lo,y]=? | in:AXYC out:XYC
+ 1391      4.9     LDA v_ptr + 1                                                                          ;| A=? X=?≡$56 Y=?≡$67 C=? Z=? N=? V=? | $C5=? | in:XYC out:AXYC
+ 1392      3.3     ADC #0                                                                                 ;| A=?≡$C5 X=?≡$56 Y=?≡$67 C=? Z=? N=? V=? | in:AXYC out:AXY
+ 1393      8.2     STA arena_top_hi,X                                                                     ;| A=? X=?≡$56 Y=?≡$67 C=? Z=? N=? V=? | [arena_top_hi,x]=? | in:AXY out:AY
+ 1394      8.2     STA save_end_hi,Y                                                                      ;| A=? X=?≡$56 Y=?≡$67 C=? Z=? N=? V=? | [save_end_hi,y]=? | in:AY out:Y
+ 1395      4.9     LDX dm_slot                                                                            ;| A=? X=?≡$56 Y=?≡$67 C=? Z=? N=? V=? | $58=? | in:Y out:XY
+ 1396      4.9     JMP record_live                 \ X = slot, Y = slot + boff (its RTS returns from put_on);| A=? X=?≡$58 Y=?≡$67 C=? Z=? N=? V=? | in:XY out:XY
+ 1397          }
+ 1398          
+ 1399          \ mark_part2, mark_part3: the part about to be drawn starts at v_ptr + 8 (its first record),
+ 1400          \ as an offset from the block's start (base = the start - 8), into the block's header (put_on
+ 1401          \ set the operands). Keeps A and Y; X = 0 or 2 (both callers go straight on to
+ 1402          \ ren_draw_sprite, which sets X from A before reading it).
+ 1403          .mark_part3
+ 1404      2.2     LDX #2                                                                                 ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AY out:AXY
+ 1405      3.3     BRA mark_part                   \ 65C02 opcode                                         ;| A=? X=$02 Y=? C=? Z=0 N=0 V=? | in:AXY out:AXY
+ 1406          .mark_part2
+ 1407      2.2     LDX #0                                                                                 ;| A=? X=? Y=? C=? Z=? N=? V=? | in:AY out:AXY
+ 1408          .mark_part
+ 1409          {
+ 1410      6.6     PHA                                                                                    ;| A=? X={0,2} Y=? C=? Z=? N=0 V=? | in:AXY out:XY
+ 1411      6.6     LDA v_ptr                                                                              ;| A=? X={0,2} Y=? C=? Z=? N=0 V=? | $C4=? | in:XY out:AXY
+ 1412      4.4     SEC                                                                                    ;| A=?≡$C4 X={0,2} Y=? C=? Z=? N=? V=? | in:AXY out:AXYC
+ 1413          base_lo = * + 1
+ 1414      4.4     SBC #0                          \ self-modified: the block's start - 8                 ;| A=?≡$C4 X={0,2} Y=? C=1 Z=? N=? V=? | in:AXYC out:AXYC
+ 1415          header_lo = * + 1
+ 1416     11.1     STA &FFFF,X                     \ self-modified: the header                            ;| A=? X={0,2} Y=? C=? Z=? N=? V=? | [$FFFF,x]=? | in:AXYC out:XYC
+ 1417      6.6     LDA v_ptr + 1                                                                          ;| A=? X={0,2} Y=? C=? Z=? N=? V=? | $C5=? | in:XYC out:AXYC
+ 1418          base_hi = * + 1
+ 1419      4.4     SBC #0                                                                                 ;| A=?≡$C5 X={0,2} Y=? C=? Z=? N=? V=? | in:AXYC out:AXY
+ 1420          header_hi = * + 1
+ 1421     11.1     STA &FFFF,X                                                                            ;| A=? X={0,2} Y=? C=? Z=? N=? V=? | [$FFFF,x]=? | in:AXY out:Y
+ 1422      8.9     PLA                                                                                    ;| A=? X={0,2} Y=? C=? Z=? N=? V=? | in:Y out:AY
+ 1423     13.3     RTS                                                                                    ;| A=? X={0,2} Y=? C=? Z=? N=? V=? | in:AY out:AY

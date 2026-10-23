@@ -1,0 +1,37 @@
+window d16292689f7e: src/game.6502 lines 3408-3442, 32 instructions, 215.8 cycles a pass measured (wait excluded)
+
+ 3408      2.0     LDX #&02                                                                               ;| A=? X=? Y=? C=? Z=? N=? V=? | in:- out:X
+ 3409      3.0     STX movers_to_update_count                                                             ;| A=? X=$02 Y=? C=? Z=0 N=0 V=? | $C1=? | in:X out:-
+ 3410      3.0     LDY movers_to_update_base                                                              ;| A=? X=$02 Y=? C=? Z=0 N=0 V=? | $C0=? | in:- out:Y
+ 3411      4.0     LDA movers_raster_y,Y                                                                  ;| A=? X=$02 Y=?≡$C0 C=? Z=? N=? V=? | [$13EE,y]=? | in:Y out:AY
+ 3412      4.0     STA movers_to_update_raster_y + 2                                                      ;| A=? X=$02 Y=?≡$C0 C=? Z=? N=? V=? | $247E=? | in:AY out:Y
+ 3413      4.0     STY movers_to_update + 2                                                               ;| A=? X=$02 Y=?≡$C0 C=? Z=? N=? V=? | $247B=? | in:Y out:Y
+ 3414      4.0     LDX um_next - 1,Y                                                                      ;| A=? X=$02 Y=?≡$C0 C=? Z=? N=? V=? | [$23EE,y]=? | in:Y out:X
+ 3415      4.0     LDA movers_raster_y,X                                                                  ;| A=? X=? Y=?≡$C0 C=? Z=? N=? V=? | [$13EE,x]=? | in:X out:AX
+ 3416      4.0     STA movers_to_update_raster_y + 1                                                      ;| A=? X=? Y=?≡$C0 C=? Z=? N=? V=? | $247D=? | in:AX out:X
+ 3417      4.0     STX movers_to_update + 1                                                               ;| A=? X=? Y=?≡$C0 C=? Z=? N=? V=? | $247A=? | in:X out:X
+ 3418      4.0     LDY um_next - 1,X                                                                      ;| A=? X=? Y=?≡$C0 C=? Z=? N=? V=? | [$23EE,x]=? | in:X out:Y
+ 3419      4.0     LDA movers_raster_y,Y                                                                  ;| A=? X=? Y=? C=? Z=? N=? V=? | [$13EE,y]=? | in:Y out:AY
+ 3420      4.0     STA movers_to_update_raster_y                                                          ;| A=? X=? Y=? C=? Z=? N=? V=? | $247C=? | in:AY out:Y
+ 3421      4.0     STY movers_to_update                                                                   ;| A=? X=? Y=? C=? Z=? N=? V=? | $2479=? | in:Y out:Y
+ 3422      4.0     LDX um_next - 1,Y                                                                      ;| A=? X=? Y=? C=? Z=? N=? V=? | [$23EE,y]=? | in:Y out:X
+ 3423      3.0     STX movers_to_update_base                                                              ;| A=? X=? Y=? C=? Z=? N=? V=? | $C0=? | in:X out:-
+ 3424          .update_movers_loop
+ 3425      6.0     LDX #&02                        \ grind: the last slot holding the lowest raster y, as the;| A=? X=? Y=? C=? Z=? N=? V=? | in:- out:X
+ 3426     12.0     LDA movers_to_update_raster_y + 1 \ original's search found it (a later slot wins a tie);| A=? X=$02 Y=? C=? Z=0 N=0 V=? | $247D=? | in:X out:AX
+ 3427     12.0     CMP movers_to_update_raster_y + 2                                                      ;| A=?≡$247D X=$02 Y=? C=? Z=? N=? V=? | $247E=? | in:AX out:XC
+ 3428      8.0     BCS find_topmost_check_slot_0   \ slot 1 >= slot 2: slot 2 stays                       ;| A=?≡$247D X=$02 Y=? C=? Z=? N=? V=? | in:XC out:X
+ 3429      2.0     DEX                             \ slot 1 < slot 2: slot 1                              ;| A=0..254≡$247D X=$02 Y=? C=0 Z=? N=? V=? | in:X out:X
+ 3430          .find_topmost_check_slot_0
+ 3431     12.0     LDA movers_to_update_raster_y                                                          ;| A=?≡$247D X=1..2 Y=? C=? Z=? N=? V=? | $247C=? | in:X out:AX
+ 3432     12.0     CMP movers_to_update_raster_y,X                                                        ;| A=?≡$247C X=1..2 Y=? C=? Z=? N=? V=? | [$247C,x]=? | in:AX out:XC
+ 3433      8.0     BCS found_topmost_mover         \ slot 0 >= the candidate: the candidate stays         ;| A=?≡$247C X=1..2 Y=? C=? Z=? N=? V=? | in:XC out:X
+ 3434      2.0     LDX #&00                                                                               ;| A=0..254≡$247C X=1..2 Y=? C=0 Z=? N=? V=? | in:- out:X
+ 3435          .found_topmost_mover
+ 3436      6.0     LDA #&FF                                                                               ;| A=?≡$247C X=0..2 Y=? C=? Z=? N=? V=? | in:X out:AX
+ 3437     15.0     STA movers_to_update_raster_y,X \ Set to maximum value to prevent being found again    ;| A=$FF X=0..2 Y=? C=? Z=0 N=1 V=? | [$247C,x]=? | in:AX out:X
+ 3438     12.0     LDY movers_to_update,X                                                                 ;| A=$FF X=0..2 Y=? C=? Z=0 N=1 V=? | [$2479,x]=? | in:X out:Y
+ 3439      9.0     STY mover_to_update                                                                    ;| A=$FF X=0..2 Y=? C=? Z=? N=? V=? | $03=? | in:Y out:Y
+ 3440     18.0     JSR update_mover                \ Update mover                                         ;| A=$FF X=0..2 Y=? C=? Z=? N=? V=? | in:Y out:-
+ 3441     15.0     DEC movers_to_update_count                                                             ;| A=? X=? Y=? C=? Z=? N=? V=? | $C1=? | in:- out:N
+ 3442      8.0     BPL update_movers_loop                                                                 ;| A=? X=? Y=? C=? Z=? N=? V=? | in:N out:-

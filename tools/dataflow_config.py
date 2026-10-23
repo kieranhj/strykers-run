@@ -128,8 +128,8 @@ ISR_POINTER_STORES = {} if CONTEXT == 'play' else {
     # update_scrolltext's initialise_scrolltext_buffer, which points
     # text_screen_address at scrolltext_buffer (&89EE, 24 bytes; generous)
     _at('src/bank5.6502', 'plot_title_screen_character_row_loop', 'STA (text_screen_address),Y'): (0x89EE, 0x8AFF),
-    # scroll_scrolltext: target_address = &7480, &4E columns of 8 bytes
-    _at('src/bank5.6502', 'scroll_scrolltext_byte_loop', 'STA (target_address),Y'): (0x7400, 0x77FF),
+    # (scroll_scrolltext's STA (target_address),Y went at decision 57: the interrupt runs scroll_pixel,
+    # and update_scrolltext is called only at the title's start-up.)
 }
 
 # Bytes a handler pushes on entry and pulls back before it leaves, so the

@@ -1,0 +1,43 @@
+window 572a5f9269fe: src/game.6502 lines 4317-4356, 32 instructions, 175.8 cycles a pass measured (wait excluded)
+PROTECTED lines: raster timing: the cycles from the vsync interrupt to the User VIA T1 write and the palette writes place the palette split (decision 22, tools/split.mjs); a cycle saved here moves the split
+
+ 4317      4.0 PROTECTED     LDA #&29                                                                               ;| A=$00 X=? Y=? C=1 Z=1 N=0 V=? | in:- out:A
+ 4318     12.0 PROTECTED     STA usrvia_t1ch                 \ User VIA timer 1 counter MSB                         ;| A=$29 X=? Y=? C=1 Z=0 N=0 V=? | usrvia_t1ch=? | in:A out:-
+ 4319      6.0 PROTECTED     LDA top_palette_value           \ ***                                                  ;| A=$29 X=? Y=? C=1 Z=0 N=0 V=? | $9F=? | in:- out:A
+ 4320      8.0     STA ula_palette                 \ video ULA palette register                           ;| A=?≡$9F X=? Y=? C=1 Z=? N=? V=? | ula_palette=? | in:A out:-
+ 4321     10.0     DEC game_over_cooldown                                                                 ;| A=?≡$9F X=? Y=? C=1 Z=? N=? V=? | $96=? | in:- out:-
+ 4322              \ Step 2 (decision 14): count fields, and in play keep vsync from the MOS. On the title
+ 4323              \ (irq_owned clear) the MOS acknowledges it as before: OSBYTE 19 and its events need it.
+ 4324     10.0     INC field_count                                                                        ;| A=?≡$9F X=? Y=? C=1 Z=? N=? V=? | $90=? | in:- out:-
+ 4325              \ Step 2 (layer 2): at the field the pass lock chose, show the screen the renderer finished:
+ 4326              \ its CRTC start and ACCCON's D bit, both in vertical blanking, for the next frame.
+ 4327      6.0     LDA field_count                                                                        ;| A=?≡$9F X=? Y=? C=1 Z=? N=? V=? | $90=? | in:- out:A
+ 4328      8.0     CMP flip_target                                                                        ;| A=?≡$90 X=? Y=? C=1 Z=? N=? V=? | $2A47=? | in:A out:AZC
+ 4329      6.0     BNE no_flip                                                                            ;| A=?≡$90 X=? Y=? C=? Z=? N=? V=? | in:AZC out:AC
+ 4330      4.0     BIT flip_pending                                                                       ;| A=?≡$90 X=? Y=? C=1 Z=1 N=0 V=? | $2A46=? | in:AC out:ANC
+ 4331      2.0     BPL no_flip                                                                            ;| A=?≡$90 X=? Y=? C=1 Z=? N=? V=? | in:ANC out:AC
+ 4332      2.0     LDA #&0C                        \ R12: Displayed screen start address register (high)  ;| A=?≡$90 X=? Y=? C=1 Z=? N=1 V=? | in:C out:AC
+ 4333      6.0     STA crtc_reg                                                                           ;| A=$0C X=? Y=? C=1 Z=0 N=0 V=? | crtc_reg=? | in:AC out:C
+ 4334      4.0     LDA flip_crtc_hi                                                                       ;| A=$0C X=? Y=? C=1 Z=0 N=0 V=? | $2A49=? | in:C out:AC
+ 4335      6.0     STA crtc_data                                                                          ;| A=?≡$2A49 X=? Y=? C=1 Z=? N=? V=? | crtc_data=? | in:AC out:C
+ 4336      2.0     LDA #&0D                        \ R13                                                  ;| A=?≡$2A49 X=? Y=? C=1 Z=? N=? V=? | in:C out:AC
+ 4337      6.0     STA crtc_reg                                                                           ;| A=$0D X=? Y=? C=1 Z=0 N=0 V=? | crtc_reg=? | in:AC out:C
+ 4338      4.0     LDA flip_crtc_lo                                                                       ;| A=$0D X=? Y=? C=1 Z=0 N=0 V=? | $2A4A=? | in:C out:AC
+ 4339      6.0     STA crtc_data                                                                          ;| A=?≡$2A4A X=? Y=? C=1 Z=? N=? V=? | crtc_data=? | in:AC out:C
+ 4340      4.0     LDA acccon                                                                             ;| A=?≡$2A4A X=? Y=? C=1 Z=? N=? V=? | acccon=? | in:C out:AC
+ 4341      2.0     AND #&FE                                                                               ;| A=?≡acccon X=? Y=? C=1 Z=? N=? V=? | in:AC out:AC
+ 4342      4.0     ORA flip_screen                                                                        ;| A=0..254 %xxxxxxx0 X=? Y=? C=1 Z=? N=? V=? | $2A48=? | in:AC out:AC
+ 4343      4.0     STA acccon                      \ D: which RAM the video shows                         ;| A=? X=? Y=? C=1 Z=? N=? V=? | acccon=? | in:AC out:AC
+ 4344      2.0     AND #&01                        \ = flip_screen (0 or 1): the D bit just ORed in       ;| A=? X=? Y=? C=1 Z=? N=? V=? | in:AC out:AC
+ 4345      4.0     STA shown_screen                                                                       ;| A=0..1 X=? Y=? C=1 Z=? N=0 V=? | $2A4B=? | in:AC out:AC
+ 4346      4.0     STZ flip_pending                \ 65C02 opcode                                         ;| A=0..1 X=? Y=? C=1 Z=? N=0 V=? | $2A46=? | in:AC out:AC
+ 4347          .no_flip
+ 4348      8.0     BIT irq_owned                                                                          ;| A=? X=? Y=? C=? Z=? N=? V=? | $2A41=? | in:AC out:NCV
+ 4349      4.0     BPL leave_irq1_handler                                                                 ;| A=? X=? Y=? C=? Z=? N=? V=? | in:NCV out:CV
+ 4350      4.0     LDA #&02                        \ acknowledge CA1 (vsync) ourselves                    ;| A=? X=? Y=? C=? Z=? N=1 V=? | in:CV out:ACV
+ 4351     12.0     STA sysvia_ifr                  \ System VIA interrupt flag register                   ;| A=$02 X=? Y=? C=? Z=0 N=0 V=? | sysvia_ifr=? | in:ACV out:CV
+ 4352              \ Step 2 (layer 3, decision 25): the sound effects, a step a field (src/lib/sfx50.6502, in
+ 4353              \ bank 5); the MOS's 100 Hz tick is off in play. Whatever is paged comes back: every bank
+ 4354              \ switch in play writes &F4 before ROMSEL, so &F4 is right whenever this can come in.
+ 4355      6.0     LDA os_ram_copy_of_currently_selected_rom                                              ;| A=$02 X=? Y=? C=? Z=0 N=0 V=? | $F4=? | in:CV out:ACV
+ 4356      6.0     PHA                                                                                    ;| A=?≡$F4 X=? Y=? C=? Z=? N=? V=? | in:ACV out:CV

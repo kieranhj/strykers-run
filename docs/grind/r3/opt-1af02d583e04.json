@@ -1,0 +1,21 @@
+{
+ "candidates": [
+  {
+   "window": "1af02d583e04",
+   "file": "src/game.6502",
+   "line": 1963,
+   "old": "    JSR get_sprite_and_screen_addresses_for_frame_A\n    LDY y_offset\n    JSR subtract_Y_rows_from_screen_address_in_AX\n",
+   "new": "    JSR get_sprite_and_screen_addresses_for_frame_A\n    LDY y_offset\n    STY unused_0076                 \\ grind: y_offset >= 8 here (below), so subtract_Y_rows_from_screen_address_in_AX's BEQ\n    JSR rows_up                     \\ never branches: its STY and its JMP rows_up, in line, a JSR for the JSR + JMP\n",
+   "summary": "Third mover part: call rows_up directly (STY unused_0076 in line) instead of JSR subtract_Y_rows_from_screen_address_in_AX -> STY -> BEQ -> JMP rows_up. y_offset here is sprites_y_offset[i] + 8 and never 0, so the BEQ never branches.",
+   "claim": {
+    "cycles_per_execution": 5,
+    "executions_a_pass": 0.68,
+    "cycles_a_pass": 3.4,
+    "bytes": -2
+   },
+   "equivalence": "Old: JSR subtract (6), STY unused_0076 (3), BEQ not taken (2), JMP rows_up (3) then rows_up's RTS returns to plot_mover_sprite. New: STY unused_0076 (3), JSR rows_up (6), same RTS. Registers at rows_up entry: A = address low, X = address high as before; Y = y_offset in both (rows_up never reads Y: PLY/TAY overwrite it). unused_0076 = y_offset in both. Exit state identical (A=Y=low, X=high, unused_0076=0, delta_low/high as rows_up leaves them); stack balanced (rows_up's PHP/PLP|PLY pair). The only path the removed BEQ served is y_offset = 0 (A, X untouched, unused_0076 = 0). That cannot happen here: y_offset = ((sprites_y_offset + idx) + 8) & 255 with idx = (frame AND &3F) + mover_types_second_sprite_offset[type] = frame AND &3F for the 3-part types (0-4: offset 0), so idx is 0..63, and sprites_y_offset (34 bytes) + player_helicopters_type (10) + player_helicopters_initial_x_low (10) + _x_high (10) are contiguous = exactly 64 bytes, whose values are all <= &EC; so the byte + 8 is >= 8 and <= &F4, never 0 (a mod-256 wrap needs a byte >= &F8). For real frames (0..5) it is &12-&14. rows_up is in moved_0a20 (a separate rephased section), reachable by JSR as by the old JMP. subtract_Y_rows... itself unchanged (its other callers: lines 1948, 2883, 4221).",
+   "relies_on": "Code in game.6502 after 1AE7 slides up 2 bytes (the SKIP 13 after RTS is fixed, so walk_column and all main-block code to the unused_3400_original SKIP move +2; moved_0a20 and rows_up do not move). Page crossings checked on the bench listing (strykers-debug_lives.lst): of all branches from &1AEA to &3400 only 7 change crossing status under +2, all measured at 0 or under ~0.01 executions a pass (22f5, 26f4, 26fb, 1d02, 28fc, 2cfc, 2dfd); walk_column (&1B0D-&1B62) and the hot branches stay in page &1B. Indexed reads of tables in the slid region: um_next-1,Y (&23ee: Y=16,17 start to cross, ~1 read a pass each) and movers_*_x_low/flags-1,Y (&2BFB-&2C0D, under 3 cycles a pass of reads) are the only ones whose crossing can change; movers_to_update tables (&2479/&247C) and keys (&2A75) stay clear of a boundary. Worst case cost a fraction of a cycle a pass against 3.4 saved. Needs unused_0076 to stay the count rows_up reads (zero page, unchanged), and the gameplay builds (no SKIP 13) shift the same way. If the bench gate shows a loss from a crossing, the candidate loses; no alternative offered because the BEQ-keeping variant is +4 bytes for 3 cycles.",
+   "file_written": "build/grind/r3/opt-1af02d583e04.json"
+  }
+ ]
+}

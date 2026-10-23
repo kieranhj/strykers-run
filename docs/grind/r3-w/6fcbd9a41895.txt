@@ -1,0 +1,41 @@
+window 6fcbd9a41895: src/render.6502 lines 1167-1205, 32 instructions, 254.2 cycles a pass measured (wait excluded)
+
+ 1167     12.2     JSR world_of_address                                                                   ;| A=? X=? Y=?≡$4D C=? Z=? N=? V=? | in:AX out:-
+ 1168      6.1     LDA wa_x_lo                                                                            ;| A=0..7 X=? Y=? C=? Z=? N=0 V=? | $60=? | in:- out:A
+ 1169      6.1     STA list_x_lo                                                                          ;| A=?≡$60 X=? Y=? C=? Z=? N=? V=? | $54=? | in:A out:-
+ 1170      6.1     LDA wa_x_hi                                                                            ;| A=?≡$60 X=? Y=? C=? Z=? N=? V=? | $5F=? | in:- out:A
+ 1171      6.1     STA list_x_hi                                                                          ;| A=?≡$5F X=? Y=? C=? Z=? N=? V=? | $55=? | in:A out:-
+ 1172      6.1     LDX list_n                                                                             ;| A=?≡$5F X=? Y=? C=? Z=? N=? V=? | $53=? | in:- out:X
+ 1173      6.1     LDA wa_y                                                                               ;| A=?≡$5F X=?≡$53 Y=? C=? Z=? N=? V=? | $57=? | in:X out:AX
+ 1174          }
+ 1175              \ falls through
+ 1176          .list_finish                        \ A = y; list_type, list_x: entry X's rectangle
+ 1177          {
+ 1178      9.1     SEC                             \ y1 = y - 2 (or 0)                                    ;| A=? X=?≡$53 Y=? C=? Z=? N=? V=? | in:AX out:AXC
+ 1179      9.1     SBC #2                                                                                 ;| A=? X=?≡$53 Y=? C=1 Z=? N=? V=? | in:AXC out:AXC
+ 1180      9.1     BCC y_low                                                                              ;| A=? X=?≡$53 Y=? C=? Z=? N=? V=? | in:AXC out:AXC
+ 1181     22.8     STA list_y1,X                                                                          ;| A=? X=?≡$53 Y=? C=1 Z=? N=? V=? | [list_y1,x]=? | in:AXC out:AXC
+ 1182     13.7     LDY list_type                                                                          ;| A=? X=?≡$53 Y=? C=1 Z=? N=? V=? | $5D=? | in:AXC out:AXYC
+ 1183     18.3     ADC mover_types_height_table,Y  \ C set: y - 2 + height + 1                            ;| A=? X=?≡$53 Y=?≡$5D C=1 Z=? N=? V=? | [$DA71,y]=? | in:AXYC out:AXYC
+ 1184      9.1     BCS y2_top                                                                             ;| A=? X=?≡$53 Y=?≡$5D C=? Z=? N=? V=? | in:AXYC out:AXYC
+ 1185      9.1     ADC #3                          \ y2 = y + height + 2 (or &FF)                         ;| A=? X=?≡$53 Y=?≡$5D C=0 Z=? N=? V=? | in:AXYC out:AXYC
+ 1186     13.7     BCC y2_ok                                                                              ;| A=? X=?≡$53 Y=?≡$5D C=? Z=? N=? V=? | in:AXYC out:AXYC
+ 1187              BCS y2_top                      \ always                                               ;| A=? X=?≡$53 Y=?≡$5D C=1 Z=? N=? V=? | always | in:AXYC out:AXYC
+ 1188          .y_low                              \ y < 2: A = y - 2 + 256, C clear
+ 1189              ADC #2                          \ A = y, C set                                         ;| A=? X=?≡$53 Y=? C=0 Z=? N=? V=? | in:AXC out:AXC
+ 1190              STZ list_y1,X                   \ 65C02 opcode                                         ;| A=? X=?≡$53 Y=? C=? Z=? N=? V=? | [list_y1,x]=? | in:AXC out:AXC
+ 1191              LDY list_type                                                                          ;| A=? X=?≡$53 Y=? C=? Z=? N=? V=? | $5D=? | in:AXC out:AXYC
+ 1192              ADC mover_types_height_table,Y  \ y + height + 1                                       ;| A=? X=?≡$53 Y=?≡$5D C=? Z=? N=? V=? | [$DA71,y]=? | in:AXYC out:AXYC
+ 1193              BCS y2_top                                                                             ;| A=? X=?≡$53 Y=?≡$5D C=? Z=? N=? V=? | in:AXYC out:AXYC
+ 1194              INC A                           \ 65C02 opcode                                         ;| A=? X=?≡$53 Y=?≡$5D C=0 Z=? N=? V=? | in:AXYC out:AXYZC
+ 1195              BNE y2_ok                       \ wrapped to 0: y + height + 2 = 256                   ;| A=? X=?≡$53 Y=?≡$5D C=0 Z=? N=? V=? | in:AXYZC out:AXYC
+ 1196          .y2_top
+ 1197              LDA #&FF                                                                               ;| A=? X=?≡$53 Y=?≡$5D C=? Z=? N=? V=? | in:XY out:AXY
+ 1198              CLC                                                                                    ;| A=$FF X=?≡$53 Y=?≡$5D C=? Z=0 N=1 V=? | in:AXY out:AXYC
+ 1199          .y2_ok
+ 1200     22.8     STA list_y2,X                   \ C clear on every path                                ;| A=? X=?≡$53 Y=?≡$5D C=0 Z=? N=? V=? | [list_y2,x]=? | in:AXYC out:XYC
+ 1201     13.7     LDA list_x_lo                   \ x1 = x - 1                                           ;| A=? X=?≡$53 Y=?≡$5D C=0 Z=? N=? V=? | $54=? | in:XYC out:AXYC
+ 1202      9.1     SBC #0                          \ (C clear: the - 1)                                   ;| A=?≡$54 X=?≡$53 Y=?≡$5D C=0 Z=? N=? V=? | in:AXYC out:AXYC
+ 1203     22.8     STA list_x1_lo,X                                                                       ;| A=? X=?≡$53 Y=?≡$5D C=? Z=? N=? V=? | [list_x1_lo,x]=? | in:AXYC out:XYC
+ 1204     13.7     LDA list_x_hi                                                                          ;| A=? X=?≡$53 Y=?≡$5D C=? Z=? N=? V=? | $55=? | in:XYC out:AXYC
+ 1205      9.1     SBC #0                                                                                 ;| A=?≡$55 X=?≡$53 Y=?≡$5D C=? Z=? N=? V=? | in:AXYC out:AXY
