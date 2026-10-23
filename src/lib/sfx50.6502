@@ -63,17 +63,12 @@
     CLC
 .sfx_pa_c0
     LDA sfx_dv,X                    \ the amplitude steps, kept between 0 and 15
-    BMI down
-    ADC sfx_v,X                     \ (C = 0 on every path here)
-    BCC v_known
-    LDA #&F8
-    BNE v_known                     \ always
-.down
-    ADC sfx_v,X
-    BCS v_known
-    LDA #0
+    BPL c1_nonneg                   \ (the data's steps are 0 or negative)
+    ADC sfx_v,X                     \ negative step (C = 0 on every path here)
+    BCC c1_clamp0
 .v_known
     STA sfx_v,X
+.c1_same
     DEC sfx_n,X
     BNE next
     JSR sfx_next_ramp
@@ -81,6 +76,15 @@
     DEX
     BPL channel
     RTS
+.c1_nonneg
+    BEQ c1_same                     \ no step: sfx_v stays
+    ADC sfx_v,X
+    BCC v_known
+    LDA #&F8
+    BNE v_known                     \ always
+.c1_clamp0
+    LDA #0
+    BRA v_known
 }
 
 \ X = channel: its next ramp, from sfx_ptr; at the end, the channel is silenced.

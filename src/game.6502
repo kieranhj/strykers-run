@@ -3972,18 +3972,22 @@ ENDIF                               \ (an enemy's bullet into a friendly soldier
     JSR set_cm_left
     LDX #&0B                        \ MOVER_LAST_ENEMY_HELICOPTER
 .check_for_collision_with_non_bullet_movers_loop
+    INX                             \ grind: X = &0C; the DEX below makes it &0B (flags dead: CPX sets them)
+.fr1_next                           \ grind: a mover the prefilter passes over (X >= 2) comes back here
+    DEX
+.fr1_head
     CPX #&02                        \ step 2 (layer 3): a mover that cannot be in range is passed
     BCC friends_in_full                  \ over, except in the last two checks
     LDA mover_x_max_low             \ right of the range: x > the range's right (the original's
     CMP movers_x_low,X              \ own first test)
     LDA mover_x_max_high
     SBC movers_x_high,X
-    BCC consider_next_mover_2abe
+    BCC fr1_next                    \ X >= 2, so X >= 1 after the DEX
     LDA movers_x_low,X              \ left of it even at the widest type: x < its left - &0B
     CMP cm_left_low
     LDA movers_x_high,X
     SBC cm_left_high
-    BCC consider_next_mover_2abe
+    BCC fr1_next                    \ X >= 2, so X >= 1 after the DEX
 .friends_in_full
     JSR check_for_mover_collision_with_mover_X
     BCC consider_next_mover_2abe
@@ -3991,7 +3995,7 @@ ENDIF                               \ (an enemy's bullet into a friendly soldier
     BCC leave_2ac2                  \ Leave with carry clear to indicate hostile collision
 .consider_next_mover_2abe
     DEX
-    BPL check_for_collision_with_non_bullet_movers_loop
+    BPL fr1_head
     SEC                             \ Leave with carry set to indicate no hostile collision
 .leave_2ac2
     RTS
