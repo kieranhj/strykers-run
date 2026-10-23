@@ -1165,9 +1165,9 @@ c1_rec = * + 1
 \ list entry list_n for slot ren_i: its live rectangle
 .list_live
 {
+    TXA                             \ X = ren_i on entry (both callers)
+    TAY
     LDX list_n
-    LDY ren_i
-    TYA
     STA list_slot,X
     STY dm_slot                     \ world_of_address's slot (BUGS #10); put_on sets its own
     LDA movers_type_and_colour,Y
@@ -2151,8 +2151,7 @@ ENDIF
     CLC
     ADC #11
     STA v_ptr
-    BCC kind_on_page
-    INC v_ptr + 1
+    BCS kop_next_page               \ the hot path falls through
 .kind_on_page
     LDA (v_ptr)                     \ 65C02 opcode
     STA &C0
@@ -2176,6 +2175,9 @@ ENDIF
 .hazel_restore
     JSR hazel_restore               \ self-modified: the kind's restore
     JMP columns
+.kop_next_page                      \ v_ptr + 11 crossed a page (rare): off the hot path
+    INC v_ptr + 1
+    BRA kind_on_page                \ 65C02 opcode
 IF SKY_MODE = 0
 .cached                             \ X = the slot
     JSR kc_restore
