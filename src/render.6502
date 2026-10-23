@@ -1062,23 +1062,23 @@ c1_rec = * + 1
     BEQ gathered
     STY ren_k
     LDX act,Y
-    STX ren_i
     TXA                             \ C = 0: CPY act_n found Y < act_n
     ADC boff
     TAY
     LDA rec_xh,Y
     CMP #&FF
     BNE shown
-    LDA need,X
-    AND #&40
-    BNE going_on
+    BIT need,X                      \ 65C02 opcode: V = need bit 6 (X = slot still)
+    BVS going_on
     LDY ren_k                       \ not listed: the loop's tail, kept in gather's page
     INY
     BRA gather                      \ 65C02 opcode
 .going_on
+    STX ren_i                       \ ren_i is read only from here on: list_live's
     JSR list_live                   \ going on, not shown: where it goes
     BRA listed                      \ 65C02 opcode
 .shown
+    STX ren_i                       \ list_recorded's caller's X, and what widen_by_live reads
     JSR list_recorded               \ where it is shown...
     LDX ren_i
     BIT need,X                      \ 65C02 opcode: V = need bit 6
