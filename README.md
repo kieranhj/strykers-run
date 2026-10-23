@@ -38,6 +38,7 @@ preservation; it does not include the original disc images or the disassembly it
 | **The optimised version** (step 2, in progress: a steady 25 Hz, no flicker) | `main` | `make`, or `.\build.ps1` | `build/strykers.ssd` |
 | **The original**, byte for byte the Stairway to Hell disc's game | the tag `step1-byte-identical-rebuild` (`762a0d2`) | `make original`, or the tag's own `build.ps1` in a worktree of it (below) | `build/strykers-original.ssd` |
 | **The gameplay variations** (decisions 43-69: a recharging shield, lives that respawn, a timer, a game rules screen, a run key, vehicles that take hits, dithered hills, the HUD as a CRTC rupture with the score and progress, their own sounds) | `main` | `make gameplay`, or `.\build.ps1 -Gameplay` (add `RELEASE=1` / `-Release` for testers) | `build/strykers-gameplay.ssd` |
+| **The release disc**: both, behind the original release's menu (1 the original, faster; 2 Redux) | `main` | `make release-disc`, or `.\build.ps1 -ReleaseDisc` (both `-Release`) | `build/strykers-release.ssd` |
 
 `make original` exports the tag's `src/` and `tools/` into `build/original/` (`git archive`, so it
 needs a clone with its tags: `git fetch --tags`), assembles them with the flags the tag's
@@ -124,10 +125,12 @@ sideways RAM banks.
 
 ## Playing
 
-The latest work-in-progress builds run in the browser, in jsbeeb as a Master 128: the optimised
-game,
-<https://bbc.xania.org/?disc=https://bitshifters.github.io/content/wip/strykers-run-wip.ssd&autoboot&model=Master>,
-and the gameplay variations,
+The latest work-in-progress builds run in the browser, in jsbeeb as a Master 128: both games on one
+disc behind the original release's menu (1 the original, faster; 2 Redux),
+<https://bbc.xania.org/?disc=https://bitshifters.github.io/content/wip/strykers-run-release-wip.ssd&autoboot&model=Master>;
+the optimised game alone,
+<https://bbc.xania.org/?disc=https://bitshifters.github.io/content/wip/strykers-run-wip.ssd&autoboot&model=Master>;
+and the gameplay variations alone,
 <https://bbc.xania.org/?disc=https://bitshifters.github.io/content/wip/strykers-run-gameplay-wip.ssd&autoboot&model=Master>.
 
 | Key | |

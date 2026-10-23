@@ -1,4 +1,4 @@
-# Brief: `gameplay-shield` into `main` (DONE, 2026-10-23), and one release disc with both games (PLAN)
+# Brief: `gameplay-shield` into `main` (DONE, 2026-10-23), and one release disc with both games (BUILT, 2026-10-23; KC to see it)
 
 KC, 2026-10-23: "start planning the merge into main - we can reuse the disk menu from the original
 release that has space for two options - (1) original game + performance improvements (2) redux
@@ -73,6 +73,27 @@ release-disc` makes `build/strykers-release.ssd` (both builds `-Release`). The s
   single-build discs; at least frontend on both choices, and one passlock against each single disc.
 - `tools/compare.py`-style: each directory's files byte-identical to its single-build disc's.
 - The WIP: one link for the release disc; the two current WIP discs stay as they are until KC says.
+
+## What was built (2026-10-23)
+
+- **The layout changed from section 3:** `$.` holds only the menu's three files (the disc's own
+  `!BOOT` is the menu's), the original in `O.`, Redux in `R.`. MENU (`src/menu.bas`) takes 1 or 2 (or
+  `!` / `"`, as the original's did), goes to MODE 7, `*DIR O` or `*DIR R`, then `*RUN !BOOT`: that
+  build's own boot file (its machine check, its stamp, `*TV255,1`, `*FX200,3`, `*RUN SRRUN`), so
+  nothing in either build changed. 21 files, 701 sectors of 800.
+- **MSCREEN** (`src/mscreen.bin`, the Stairway to Hell disc's, `releasedisc.py --extract`): a copier
+  of 19 character rows of 312 bytes (the mapping in `tools/releasedisc.py`, all 5,928 bytes measured
+  against the reference's screen in jsbeeb). The box's text is the artist's own narrow font, not the
+  MOS's: `releasedisc.py` cuts its letters from the box's four lines and draws the ones it lacks (g,
+  l, comma, f, R, u, x) in the same style, then redraws the two choices: **"(1) Original, faster"**
+  and **"(2) Redux"** ("the original, faster" runs 7 pixels past the box).
+- `build.ps1 -ReleaseDisc` / `make release-disc` -> `build/strykers-release.ssd` (both `-Release`);
+  the two scripts' discs byte-identical.
+- **Checked** (jsbeeb 2.10.2): `tools/menutest.mjs`: the menu's picture 0 of 5,928 bytes differing
+  from what `releasedisc.py` drew; 1 loads `O.`'s game (its first 2K in memory equal to `O.MGAME`'s;
+  the two games differ in 67 of those bytes) to its title, 2 `R.`'s; each directory's files
+  byte-identical to its single disc's; a game started from each choice plays (screenshots).
+- The WIP: `strykers-run-release-wip.ssd`.
 
 ## Questions for KC
 

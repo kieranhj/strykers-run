@@ -10,13 +10,26 @@
 #   .\build.ps1 -Shift 256 -ShiftEnd   its control: the same padding where it moves nothing
 #   .\build.ps1 -Gameplay              every GAMEPLAY_ flag (decisions 43-50): the gameplay disc,
 #                                      build\strykers-gameplay.ssd (with -Release for testers)
+#   .uild.ps1 -ReleaseDisc           both, -Release, behind the original release's menu (tools/releasedisc.py):
+#                                      build\strykers-release.ssd, 1 the original in O., 2 Redux in R.
 #
 # Every -D symbol the source reads is passed on every build (Baron cannot default one).
 # The Makefile is the same build for POSIX systems and produces the same image; a change to the
 # pipeline has to land in both. The original disc is the tag step1-byte-identical-rebuild (README.md).
 # Tools: baron from $env:BARON, then bin\baron.exe, then the PATH. Put machine-specific paths in
 # local.ps1 beside this file (gitignored); it is run first if it exists.
-param([switch]$Release, [switch]$Compare, [switch]$NoCompare, [int]$Shift = 0, [switch]$ShiftEnd, [string[]]$Define = @(), [switch]$Gameplay)
+param([switch]$Release, [switch]$Compare, [switch]$NoCompare, [int]$Shift = 0, [switch]$ShiftEnd, [string[]]$Define = @(), [switch]$Gameplay, [switch]$ReleaseDisc)
+if ($ReleaseDisc) {
+    & $PSCommandPath -Release
+    & $PSCommandPath -Release -Gameplay
+    Push-Location $PSScriptRoot
+    try {
+        & python tools\releasedisc.py build\strykers.ssd build\strykers-gameplay.ssd build\strykers-release.ssd
+        if ($LASTEXITCODE -ne 0) { throw "releasedisc.py failed ($LASTEXITCODE)" }
+        (Get-FileHash 'build\strykers-release.ssd' -Algorithm SHA256).Hash.ToLower() | ForEach-Object { "       sha256 $_" }
+    } finally { Pop-Location }
+    return
+}
 if ($Gameplay) { $Define += @('GAMEPLAY_SHIELD', 'GAMEPLAY_LIVES', 'GAMEPLAY_TIMER', 'GAMEPLAY_OPTIONS', 'GAMEPLAY_RUN', 'GAMEPLAY_JUMP', 'GAMEPLAY_FIRE', 'GAMEPLAY_ARMOUR', 'DITHER_HILLS', 'HUD_RUPTURE') }
 
 $ErrorActionPreference = 'Stop'

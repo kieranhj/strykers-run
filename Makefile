@@ -116,7 +116,7 @@ FINDBARON = baron="$(BARON)"; \
 # Prints a file's SHA256 the way build.ps1 does (sha256sum is not on a Mac).
 SHA256 = $(PYTHON) -c "import hashlib, sys; print('       sha256', hashlib.sha256(open(sys.argv[1], 'rb').read()).hexdigest())"
 
-.PHONY: all debug release gameplay original clean help
+.PHONY: all debug release gameplay release-disc original clean help
 
 # The options become a name and a set of -D flags here, in the shell, exactly
 # as build.ps1 makes them; the stamp runs; then a second make builds the image.
@@ -183,6 +183,13 @@ release:
 # (make gameplay RELEASE=1 for testers), as build.ps1 -Gameplay. NAME= names any build's files
 gameplay:
 	@$(MAKE) DEFINES=GAMEPLAY_SHIELD,GAMEPLAY_LIVES,GAMEPLAY_TIMER,GAMEPLAY_OPTIONS,GAMEPLAY_RUN,GAMEPLAY_JUMP,GAMEPLAY_FIRE,GAMEPLAY_ARMOUR,DITHER_HILLS,HUD_RUPTURE NAME=strykers-gameplay all
+
+# Both, RELEASE=1, behind the original release's menu (tools/releasedisc.py): build/strykers-release.ssd,
+# 1 the original (directory O), 2 Redux (R); as build.ps1 -ReleaseDisc
+release-disc:
+	@$(MAKE) RELEASE=1 all
+	@$(MAKE) RELEASE=1 gameplay
+	$(PYTHON) tools/releasedisc.py $(BUILD)/strykers.ssd $(BUILD)/strykers-gameplay.ssd $(BUILD)/strykers-release.ssd
 
 # Only reached when the .config is missing and the image was asked for by
 # name (`make build/strykers.ssd`); `all` always stamps first.

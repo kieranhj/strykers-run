@@ -30,6 +30,7 @@ of every agreed decision, `BUGS.md` the bug log. The method is beeb-port-kit's (
 ```powershell
 .\build.ps1             # build/strykers.ssd (not compared: step 2's code differs from the reference)
 .\build.ps1 -Compare    # then tools/compare.py against the reference (-NoCompare: accepted, the default)
+.\build.ps1 -ReleaseDisc   # both -Release builds behind the original release's menu: build/strykers-release.ssd (make release-disc)
 .\build.ps1 -Release
 ```
 
@@ -58,6 +59,7 @@ screenshots go in `build/shots/`, and anything else is a session's scratch: dele
 | `bank4.6502`..`bank7.6502` | sideways RAM: `DATA1` (bank 4), `DATA2` (bank 5, from `&8400`: title, high scores, music), `DATA3` (bank 6), `DATA4` (bank 7) |
 | `title.6502`, `title_data.6502` | `SCREEN`, the loading picture (scope `title`) |
 | `loader.6502` | `SRRUN`, `!BOOT`, `INFO` |
+| `menu.bas`, `mscreen.bin` | the release disc's menu (`tools/releasedisc.py`, `docs/briefs/release-disc.md`): the original release's `MENU` in BASIC, its choices `*DIR O` / `*DIR R` then that directory's `!BOOT`; its `MSCREEN` picture as the Stairway to Hell disc has it (the two choices redrawn at build time) |
 | `zp.6502` | zero-page names (several per address: the game reuses zero page) and fixed workspace |
 | `os.6502` | MOS calls, vectors, hardware registers |
 | `lib/boot_stamp.6502` | the kit's stamp macros |
@@ -102,6 +104,7 @@ disassembly's `actually`/`also` notes say what an operand really is.
 - `tools/tracediff.mjs CONTROL SHIFTED SHIFT [@FRAME]` - the first instruction or screen write that differs, both stopped there, from each build's `entry_point` (`DUMP=05` shows the bytes at a zero-page pointer)
 - `tools/profile.mjs DISC [FROM] [FRAMES]`, `tools/speed.mjs DISC` - passes/s, fields per pass, flat profile; speed with RIGHT held
 - `tools/irqprofile.mjs DISC [FROM] [FRAMES]` - every interrupt by the VIA source it serviced, its cycles by MOS subroutine (nesting handled: the MOS's tick re-enables interrupts)
+- `tools/releasedisc.py ORIGINAL.ssd REDUX.ssd OUT.ssd`, `tools/menutest.mjs RELEASE.ssd` - the release disc: both builds in directories O and R behind the original release's menu (its picture's two choices redrawn in the artist's font); booted, the menu's picture byte for byte, each choice loading its own directory's game to its title
 - `tools/frontend.mjs DISC` - title, instructions, define controls, pause, high score entry, toggles, two games: 15 checks (17 on a `GAMEPLAY_RUN` build: the run key defined and used), plus the MOS state handed over and back
 - `tools/credits.mjs DISC [FIELDS]` - the title's credit line field by field against both lines at every shift (decision 60)
 - `tools/scrolltext.mjs DISC [FIELDS]` - the title's scroll text field by field: each change a one-pixel shift, every 2 fields, the MOS's clock unharmed (decision 57)
