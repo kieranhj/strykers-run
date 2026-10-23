@@ -1,7 +1,8 @@
 # Plan
 
-What is left, most pressing first: what waits on KC, then the gameplay variations' open items, then the level editor, then the ideas (KC has not ranked them). What has
-landed is in `docs/done.md`, with the numbers that say so.
+What is left, most pressing first: what waits on KC, then the gameplay variations' open items,
+then the level editor, then the ideas (KC has not ranked them). What has landed is in
+`docs/done.md`, with the numbers that say so.
 
 ## Waiting on KC
 
