@@ -1818,7 +1818,7 @@ pix_operand = * + 1
     BRA byte                        \ 65C02 opcode (C = 0, as the byte loop needs)
 .last_cell                          \ A = line - rows left + 1: the last line drawn
     DEC A                           \ 65C02 opcode: the line below it
-    STA stop_y
+    STA ede5_stop_imm               \ self-modified: the CPY below's operand (stop_y's zero page byte, no longer read)
 .part_byte
     LDA (d_ptr),Y
     TAX
@@ -1830,7 +1830,8 @@ pix_operand_2 = * + 1
     EOR &FFFF,X                     \ self-modified, as pix_operand
     STA (s_ptr),Y
     DEY
-    CPY stop_y
+ede5_stop_imm = * + 1
+    CPY #0                          \ self-modified: the line below the last one drawn (set at .last_cell)
     BNE part_byte
 .next_c                             \ C = 1: the loop's CPY found Y = stop_y, or .next set it
     DEC ds_c
