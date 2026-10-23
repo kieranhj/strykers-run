@@ -993,45 +993,46 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     RTS
 }
 
-.width_of_type_A                    \ A = movers_type_and_colour -> A = width; keeps Y
-    AND #&7F
-    TAX
-    LDA mover_types_width_table,X
-    RTS
 
 \ ---- what goes on, and what overlaps it --------------------------------------------------
 \ mark_to_draw: need bit 6 for every live slot on screen (the logic's view) that this screen
 \ does not show, or is taking off.
 .mark_to_draw
 {
-    LDY #0
-.each
-    CPY act_n                       \ in the body Y < act_n, so C clear
-    BEQ done
-    STY ren_k
+    LDA render.classify_xh          \ the records' x high for this screen: rec_xh + boff, as classify's operand has it
+    STA c1_rec
+    LDY act_n                       \ the list from its end (each slot is judged alone, so the order is free)
+.each                               \ next's way back in: Y = the entry just done (it stored its index - 1), + 1
+    DEY
+    BMI done
     LDX act,Y
+    LDA viewport_right_low          \ check_if_mover_is_on_screen's right edge, first and inline (a slot that
+    CMP movers_x_low,X              \ is off the right changes nothing, shown or not, and most are): right - x,
+    LDA viewport_right_high         \ 16 bits
+    SBC movers_x_high,X
+    BCC each                        \ x > right: not on screen
     LDA need,X
-    BMI not_shown                   \ coming off: goes back on if still there
-    TXA
-    ADC boff                        \ C clear (CPY act_n with Y < act_n)
-    TAY
-    LDA rec_xh,Y
+    BMI c1_cand                     \ coming off: goes back on if still there
+c1_rec = * + 1
+    LDA rec_xh,X                    \ self-modified: rec_xh + boff
     INC A                           \ 65C02 opcode: &FF (not shown) -> 0
-    BNE next                        \ shown and staying
-.not_shown
-    STX ren_i
-.candidate
-    LDA movers_x_high,X             \ X = ren_i on both ways in
-    BMI next                        \ no mover in the slot
-    STA &C5                         \ get_mover_Y_x, inline and by X
-    LDA movers_x_low,X
+    BNE each                        \ shown and staying
+.c1_cand                            \ not shown here, or coming off: it may go on
+    LDA movers_x_low,X              \ C = 1 from here to the JSR: the right test's
     STA mover_x_low
+    LDA movers_x_high,X
+    BMI each                        \ no mover in the slot
+    PHY                             \ the index: the callee takes Y (the x high) and X (the type)
+    TAY
     LDA movers_type_and_colour,X
     AND #&7F
     TAX
-    JSR check_if_mover_is_on_screen \ carry set if not
-    BCS next
-    LDX ren_i
+    JSR is_left_c1_3d13             \ the left edge, past check_if_mover_is_on_screen's right one: carry set if not
+    PLY                             \ (keeps C)
+    BCS each
+    LDX act,Y                       \ the slot
+    DEY                             \ next's index (it takes the INY and each the DEY)
+    STY ren_k
     LDA need,X
     ORA #&40
     STA need,X
