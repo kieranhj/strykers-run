@@ -1496,21 +1496,22 @@ ENDIF
 .jmin_store
     STA dm_jmin
     BRA jmin_done                   \ 65C02 opcode
-.not_right_of_view
-    BEQ jmax_done
+.jmax_big_a1
     LDA #&FF
     STA dm_jmax
+    BRA jmax_done                   \ 65C02 opcode
+.not_right_of_view
+    BNE jmax_big_a1                 \ high > 0: jmax 255 (never in the profiles: the hot path falls through)
 .jmax_done
     \ the tables: pixels by colour and flip, masks by flip (plot_mover and
     \ get_mover_type_and_colour's rules: most enemies white)
     LDY #HI(unflipped_green_pixel_table)
     LDA dm_typecol
     BPL green
-    CMP #&85                        \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_MISSILE
-    BEQ green
     CMP #&95                        \ MOVER_TYPE_ENEMY | MOVER_TYPE_HEAVY_GUN and above
     BCS green
-    CMP #&87                        \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_SOLDIER
+    AND #&FD                        \ &85 (MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_MISSILE) and &87
+    CMP #&85                        \ (... _WITH_SOLDIER) differ only in bit 1
     BEQ green
     INY                             \ white: the next page
 .green
