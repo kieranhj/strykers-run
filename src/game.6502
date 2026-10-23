@@ -4798,30 +4798,35 @@ ENDIF
     BNE leave_3168
     LDA #&08                        \ FRAME_GUN_DOWN
     BNE replot_mover                \ Always branches
-
-.update_mover    \ grind: check_if_mover_can_be_updated inlined; the paths that do not update leave by RTS (C is dead in update_mover's caller)
-    JSR get_mover_Y_x_and_y         \ the mover's x (mover_x_low, &C5) for the test below, as the overlap test got it
-    CLC                             \ layer 5 (BUGS #13): the overlap test is below, past the skeletons
-    LDX viewport_right_high         \ and explosions (the player walks through them now, and one under
-    LDA viewport_right_low          \ the player stood frozen: KC, 2026-10-21); C = 0 for the ADC
-    ADC #&0A
-    BCC um0db5_skip_overflow
-    INX
-.um0db5_skip_overflow
-    CPX &C5
-    BCC leave_3160
-    BNE um0db5_is_on_screen
-    CMP mover_x_low                 \ If the mover is beyond the right edge of the screen,
-    BCC leave_3160                  \ leave: no update required
-.um0db5_is_on_screen
-    LDY mover_to_update
-    LDA movers_type_and_colour,Y
-    AND #&7F
-    CMP #&0D                        \ MOVER_TYPE_SKELETON: below it, update
-    BCC um0db5_update
+.um7747_not_below_skeleton          \ out of line (after the always-taken branch above), so the common case falls into um0db5_update
     CMP #&13                        \ MOVER_TYPE_MINE: mines are updated too
     BCS um0db5_update
     JMP animate_explosion_or_skeleton\ Explosion or skeleton: animate it and leave (its RTS returns from update_mover)
+IF GAMEPLAY_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
+    EQUB &00, &00, &00                  \ never run: keeps the bytes after it where they were (page crossings)
+ENDIF
+
+.update_mover    \ grind: check_if_mover_can_be_updated inlined; the paths that do not update leave by RTS (C is dead in update_mover's caller)
+    \ grind (7747fe52d41f): the x test straight off the tables, with no get_mover_Y_x_and_y. Y = mover_to_update (1-9): update_movers is the only
+    \ caller and loads it just before the JSR, and nothing here changes Y. mover_x_low, &C5 and mover_y are not set on the paths that leave or
+    \ animate: every reader of them sets them first (check_for_player_collision_with_mover_Y, plot_mover, update_enemy_helicopter's first call)
+    ASSERT HI(movers_x_high + 1) == HI(movers_x_high + 9)
+    ASSERT HI(movers_x_low + 1) == HI(movers_x_low + 9)
+    LDA #&F5
+    CMP viewport_right_low          \ C = 1 unless viewport_right_low + &0A carries out (c = 0 then)
+    LDA movers_x_high,Y             \ layer 5 (BUGS #13): the overlap test is below, past the skeletons and explosions (the player walks
+    SBC viewport_right_high         \ through them now, and one under the player stood frozen: KC, 2026-10-21); x_high - right_high - carry
+    BCC um0db5_is_on_screen         \ borrow: x_high is below the high byte of right + &0A: on screen
+    BNE leave_3160                  \ above it: beyond the right edge of the screen, leave: no update required
+    LDA viewport_right_low          \ the same: C = 1 here, so right_low + &0A
+    ADC #&09
+    CMP movers_x_low,Y              \ If the mover is beyond the right edge of the screen,
+    BCC leave_3160                  \ leave: no update required
+.um0db5_is_on_screen
+    LDA movers_type_and_colour,Y
+    AND #&7F
+    CMP #&0D                        \ MOVER_TYPE_SKELETON: below it, update (the common case falls through)
+    BCS um7747_not_below_skeleton
 .um0db5_update
     LDX mover_to_update
     JSR check_for_player_collision_with_mover_Y\ Returns carry set if collision

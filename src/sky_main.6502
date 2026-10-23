@@ -148,20 +148,47 @@
 .rc_ok
     JSR sky_row
     BNE part
-.whole
-    LDA (d_ptr),Y
-    STA (s_ptr),Y
+    LDA d_ptr                       \ a whole row: the four copies' operands set from the pointers
+    STA sdw_l1 + 1
+    STA sdw_l2 + 1
+    STA sdw_l3 + 1
+    STA sdw_l4 + 1
+    LDA d_ptr + 1
+    STA sdw_l1 + 2
+    STA sdw_l2 + 2
+    STA sdw_l3 + 2
+    STA sdw_l4 + 2
+    LDA s_ptr
+    STA sdw_s1 + 1
+    STA sdw_s2 + 1
+    STA sdw_s3 + 1
+    STA sdw_s4 + 1
+    LDA s_ptr + 1
+    STA sdw_s1 + 2
+    STA sdw_s2 + 2
+    STA sdw_s3 + 2
+    STA sdw_s4 + 2
+.sdw_l1
+    LDA &FFFF,Y                     \ self-modified: the image
+.sdw_s1
+    STA &FFFF,Y                     \ self-modified: the screen
     DEY
-    LDA (d_ptr),Y
-    STA (s_ptr),Y
+.sdw_l2
+    LDA &FFFF,Y
+.sdw_s2
+    STA &FFFF,Y
     DEY
-    LDA (d_ptr),Y
-    STA (s_ptr),Y
+.sdw_l3
+    LDA &FFFF,Y
+.sdw_s3
+    STA &FFFF,Y
     DEY
-    LDA (d_ptr),Y
-    STA (s_ptr),Y
+.sdw_l4
+    LDA &FFFF,Y
+.sdw_s4
+    STA &FFFF,Y
     DEY
-    BPL whole
+    BPL sdw_l1
     BMI next_row                    \ (always)
 .part                               \ A = 8 - lines: in at line8 + 5 * that
     ASL A

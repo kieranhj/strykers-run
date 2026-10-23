@@ -416,7 +416,6 @@ ENDIF
     ASSERT (LO(rec_xh) AND &40) = 0 AND LO(rec_xh) + 64 + MOVER_SLOTS <= &100
     LDX #0
 .classify
-    STX ren_i
     STZ need,X
 classify_xh = * + 1
     LDA rec_xh,X                    \ self-modified: rec_xh + boff
@@ -433,9 +432,10 @@ classify_xh = * + 1
 .near_screen
     INC A                           \ 65C02 opcode
     CMP viewport_left_high
-    BCC classified                  \ left of it
-    BRA listed                      \ 65C02 opcode
+    BCS listed                      \ not left of it
+    BRA classified                  \ 65C02 opcode: left of it
 .shown_y
+    STX ren_i                       \ read back after span_in_zone (the shown path only)
     TXA                             \ Y = slot + boff for .shown (slot < 64: OR is the add)
     ORA boff
     TAY
