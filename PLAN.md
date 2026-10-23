@@ -43,8 +43,9 @@ Left:
   than the original (35 deaths against 175); whether 3 lives is enough for a person wants a
   playtest, or a count of the hits nobody could avoid (a floor).
 - **KC's review** of play: the rewind's speed and distance, the timer's bonus (10 points a second).
-- **Merging into `main`**, when KC says: then one disc with both builds and a boot menu, for a
-  release (the brief, "Discs").
+- **Merging into `main`, and the release disc** (KC, 2026-10-23: the original release's menu, "(1)
+  original game + performance improvements (2) redux version with gameplay improvements"):
+  `docs/briefs/release-disc.md`, a plan with four questions for KC.
 - **Room** is nearly gone on the gameplay disc (above): the next feature there starts by moving
   something out of bank 4 or HAZEL. Five of grind round 3's candidates are off the gameplay disc
   for room (G0426, G0483, G0464, G0502, G0557, under `GAMEPLAY_ANY`: merge `dbeeebf`); room in
