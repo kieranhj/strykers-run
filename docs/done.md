@@ -215,6 +215,12 @@ and costs are `docs/briefs/gameplay-shield.md`.
   at the right (a percent each 74 columns; 100 at the headquarters over the whole world). Work a
   pass 32,519.8 with all of it (pcprof, seed 1, 2026-10-23). `tools/shieldtest.mjs` reads the bar's
   place from the build.
+- **Its own sounds** (decision 69): the shield's hit a metallic tink, its refill a tone rising with the
+  bar to full (208 to 625 Hz), the run spent and ready again a falling and a rising blip, in place of
+  the original's they borrowed. Passlock identical to the build without them; shieldtest and
+  runmeter check them.
+- **KC's choices settled** (2026-10-23): bullets keep the original's behaviour (through SAM launchers
+  and dying enemies); the game rules keep their defaults.
 - Speed: with every flag but the rupture, 6 late frames of 1,998 against 5 with every flag off
   (passbench, seed 1, unshifted `DEBUG_LIVES` builds, 2026-10-21).
 

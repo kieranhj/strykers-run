@@ -13,7 +13,7 @@ then the level editor, then the ideas (KC has not ranked them). What has landed 
 - **Which ideas to build** (below): each changes how the original plays (rule 1), so each needs a
   decision first.
 
-## Room (the listings of 2026-10-23, after grind round 3)
+## Room (the listings of 2026-10-23, after grind round 3; the gameplay disc after decision 69)
 
 Free bytes by region, read off `build/strykers.lst` (the shipping disc) and
 `build/strykers-gameplay.lst` (every gameplay flag). Any change that adds code or data in play
@@ -24,10 +24,10 @@ starts by finding room; the renderer reads only the first three while it draws.
 | main block, below `&3400` (`SKIP unused_3400_original`; the gameplay disc's runs past it) | 97 | 10 |
 | bank 4, before `REN_BASE` (`SKIP PAD_END`) | 98 | 26 |
 | HAZEL, `hazel_b` below `&E000` | 48 | 1 |
-| bank 4 under ANDY (`SKIP &9000 + PAD_START - *`) | 149 | 133 |
-| `moved_0a20` (to `&0D00`; gameplay: to `vehicle_hits`, under `HUD_ROW`) | 159 | 21 |
-| bank 5: its `&8000` block / before its music / at its end | - / 28 / 9 | 14 / 141 / 3 |
-| bank 6 / bank 7, at their ends | 530 / 481 | 26 / 42 |
+| bank 4 under ANDY (`SKIP &9000 + PAD_START - *`) | 149 | 87 |
+| `moved_0a20` (to `&0D00`; gameplay: to `vehicle_hits`, under `HUD_ROW`) | 159 | 14 |
+| bank 5: its `&8000` block / before its music / at its end | - / 28 / 9 | 14 / 108 / 3 |
+| bank 6 / bank 7, at their ends | 530 / 481 | 26 / 33 |
 | the start-up code's carrier in the save arena (`arena_carried_end`) | 43 | 135 |
 | `MGAME` under the loading picture (`mgame_end`'s ASSERT) | 223 | 176 |
 
@@ -39,9 +39,6 @@ variation is a flag, off by default (flags off: byte-identical to `main`); `buil
 built is in `docs/done.md`; the design, checks and costs in `docs/briefs/gameplay-shield.md`.
 
 Left:
-- **KC's choices:** the run meter's two sounds (now the landing's and the jump's, placeholders);
-  whether bullets should destroy SAM launchers or stop at dying enemies (both pass through, as in
-  the original).
 - **Difficulty** (`docs/difficulty.md`, 2026-10-21): the bot finds the gameplay disc far kinder
   than the original (35 deaths against 175); whether 3 lives is enough for a person wants a
   playtest, or a count of the hits nobody could avoid (a floor).
