@@ -3537,13 +3537,15 @@ ENDIF
 cm_full_below_operand = * + 1
     CPX #&00                        \ actually CPX #(last_mover + 3), set above
     BCC check_in_full
-cm_x_max_low_operand = * + 1
-    LDA #&00                        \ actually LDA #mover_x_max_low, set above: right of the range: x > the range's right (the original's
-    CMP movers_x_low,X              \ own first test)
 cm_x_max_high_operand = * + 1
-    LDA #&00                        \ actually LDA #mover_x_max_high, set above
-    SBC movers_x_high,X
-    BCC cm_right_next               \ grind: right of the range: the hot path, taken
+    LDA #&00                        \ actually LDA #mover_x_max_high, set above: right of the range: x > the range's right (the original's
+    CMP movers_x_high,X             \ own first test), the high bytes first: the common case is decided here
+    BCC cm_right_next               \ grind: right of the range by a page or more: the hot path, taken
+    BNE cm_not_right                \ the range's right is a page or more right of x: not right of it
+cm_x_max_low_operand = * + 1
+    LDA #&00                        \ actually LDA #mover_x_max_low, set above: the same page: the low bytes
+    CMP movers_x_low,X
+    BCC cm_right_next               \ grind: right of the range: x > the range's right
 .cm_not_right
     LDA movers_x_low,X              \ left of it even at the widest type: x < its left - &0B
     CMP cm_left_low
