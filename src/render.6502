@@ -2128,6 +2128,7 @@ lo_imm = * + 1
     BCS last_cell
     EOR #&FF
     STA rows_m1
+    TAX                             \ the rows after this cell, less 1, kept in X for the test below (neither loop touches X)
 .byte
     LDA (v_ptr),Y
     STA (s_ptr),Y
@@ -2138,25 +2139,26 @@ lo_imm = * + 1
     STA s_ptr
     LDA s_ptr + 1
     SBC #&02                        \ (high &40-&7F: no borrow, C = 1 after)
-    AND #&3F                        \ ...round the 16K (&3D-&7D to &40-&7F)
-    ORA #&40
+    ORA #&40                        \ ...round the 16K (&3D-&3F to &7D-&7F; no AND: the draw's rule, as .draw_column's)
     STA s_ptr + 1
     LDA v_ptr                       \ ...the save block 8 on (C = 1: ADC #7 adds 8)
     ADC #7
     STA v_ptr
     LDY #7
-    BCC cell
+    BCC g0a9b_a_test                \ Y = 7 and X = rows_m1 already (the hot path: the next cell is the last)
     INC v_ptr + 1
-    BRA cell                        \ 65C02 opcode
 .last_cell                          \ rows_m1 = Y - the last line: rows_m1 + 1 bytes to put back
     LDX rows_m1                     \ (X is free in columns: .more reloads it)
+.g0a9b_a_test
+    CPX #8                          \ from last_cell here: rows_m1 <= Y <= 7, so C = 0. From the next cell (Y = 7):
+    BCS cell                        \ rows_m1 >= 8 means the column goes on: the full test above
 .part_byte
     LDA (v_ptr),Y
     STA (s_ptr),Y
     DEY
     DEX
     BPL part_byte
-    JMP columns
+    BRA columns                     \ 65C02 opcode
 .compiled                           \ its entry: the kind, then the part's bottom left cell
 IF SKY_MODE = 0
     CMP #KC_MARK                    \ (or a cached part's: src/kindcache.6502)
