@@ -531,10 +531,10 @@ ENDIF
     LDA #&84
     STA os_ram_copy_of_currently_selected_rom
     STA romsel
-    LDY #0
-    LDA act                         \ the player (slot 0) goes on last: when listed, it is first
-    BNE put_on_test
-    INY
+    LDY #1                          \ the player (slot 0) goes on last: when listed, it is first
+    LDA act
+    BEQ put_on_test
+    DEY
 .put_on_test
     CPY act_n                       \ (unsigned: act_n may be 0 with a stale player entry)
     BCS put_on_player
@@ -542,27 +542,30 @@ ENDIF
     LDX act,Y
     BIT need,X                      \ V = bit 6, it goes on: put_on's own test, done here
     BVC next_put_on
-    PHY                             \ 65C02 opcode
+    STY ren_k                       \ ren_k is dead here (take_off's and the scroll's)
     JSR put_on.going_on
-    PLY                             \ 65C02 opcode
+    LDY ren_k
 .next_put_on
     INY
     CPY act_n
     BCC putting_on
 .put_on_player
+    BIT need                        \ the player (slot 0): V = bit 6, it goes on (put_on's own test, done here)
+    BVC pon_player_off
     LDX #0
-    JSR put_on
+    JSR put_on.going_on
+.pon_player_off
     LDA #&04
     STA os_ram_copy_of_currently_selected_rom
     STA romsel
 .player_done
-    LDA back                        \ for the vsync interrupt to show, at the pass lock's field
-    STA flip_screen
-    LDA crtc_start_address_high
-    STA flip_crtc_hi
-    LDA crtc_start_address_low
-    STA flip_crtc_lo
-    JSR cpu_sees_main
+    LDX back                        \ for the vsync interrupt to show, at the pass lock's field
+    STX flip_screen
+    LDX crtc_start_address_high
+    STX flip_crtc_hi
+    LDX crtc_start_address_low
+    STX flip_crtc_lo
+    TRB acccon                      \ A = &04: X = 0, the CPU sees main again (cpu_sees_main as one read-modify-write; I = 0, as cpu_sees_back's CLI left it)
     JMP restore_game_zp
 }
 
@@ -1972,39 +1975,35 @@ pix_operand_2 = * + 1
     AND #&07                        \ the line in the cell
 rows_imm = * + 1
     CMP #&00                        \ self-modified: rows
-    BCC up
-lo_imm = * + 1
-    LDA #&00                        \ self-modified: lo. It stays in the cell (C = 1)
-    SBC rows_imm
-    RTS                             \ X is still hi
+    BCS ra_stay_g3969               \ the line is in the cell: no crossing (the rarer path)
 .up                                 \ d = rows - line - 1: 0 is the cell above's bottom line
-    STX ra_hi
-    EOR #&FF                        \ C = 0 from the BCC
+    STX ra_hi                       \ hi parked: X is the index below
+    EOR #&FF                        \ C = 0 from the BCS not taken
     ADC rows_imm
-    TAY
+    TAY                             \ Y = d
+    LSR A
+    LSR A
+    LSR A
+    TAX                             \ X = cells up, less 1
+    TYA
     EOR lo_imm                      \ lo AND &F8, OR the line it ends on: 7 - (d AND 7)
     AND #&07
     EOR #&07
     EOR lo_imm
-    STA ra_lo
-    TYA
-    LSR A
-    LSR A
-    LSR A
-    TAY                             \ cells up, less 1
-    LDA ra_lo
     SEC
-    SBC raise_cells_lo,Y
-    STA ra_lo
+    SBC raise_cells_lo,X
+    TAY                             \ Y = the low byte; C = no borrow
     LDA ra_hi
-    SBC raise_cells_hi,Y
-    CMP #&40                        \ round the 16K screen
-    BCS in_ring
-    ADC #&40
-.in_ring
+    SBC raise_cells_hi,X
+    ORA #&40                        \ round the 16K screen: hi - up is above &2A, hi is &40-&7F
     TAX
-    LDA ra_lo
+    TYA
     RTS
+.ra_stay_g3969
+lo_imm = * + 1
+    LDA #&00                        \ self-modified: lo. It stays in the cell (C = 1)
+    SBC rows_imm
+    RTS                             \ X is still hi
 }
 .raise_cells_lo                     \ (n + 1) character rows: (n + 1) * &280
     EQUB &80, &00, &80, &00, &80, &00, &80, &00
