@@ -1771,8 +1771,7 @@ ENDIF
     STA d_ptr + 1
 .cell                               \ Y = the line it starts on: does the column end in this cell?
     TYA
-    SEC
-    SBC rows_m1                     \ line - (rows left - 1)
+    SBC rows_m1                     \ line - (rows left - 1) (C = 1 already: the ADC #&FF above carried, col_ptr + 1 being 1 or more)
     BCS last_cell                   \ 0 or more: it ends here
     EOR #&FF                        \ no: rows left after this cell, less 1: rows - line - 2
     STA rows_m1
