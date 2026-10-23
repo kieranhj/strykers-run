@@ -2077,8 +2077,7 @@ lo_imm = * + 1
     BPL each_part
     LDY rb_index                    \ part 1: after the header, v_ptr = the start + 4 - 8
     LDA save_start_lo,Y
-    SEC
-    SBC #4
+    SBC #4                          \ C = 1 here: the header's SBC #0 carry, or JSR columns' last CMP
     STA v_ptr
     LDA save_start_hi,Y
     SBC #0
