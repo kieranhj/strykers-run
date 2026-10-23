@@ -1996,17 +1996,17 @@ walk_d = walk_ptr + 1
 .walk_column
     LDY mover
     LDX plot_sprite
+    LDA viewport_right_low
+    SEC
+    SBC mover_x_low
+    STA walk_d                      \ d (low bytes, as the plotter compares them)
     LDA sprite_column_count,X       \ (bank 4, which plot_mover pages in)
     CLC
     ADC movers_x_low,Y              \ less the columns clipped at the left:
     CLC                             \ (C = 0: one more taken off)
     SBC mover_x_low                 \ count - (mover_x_low - movers_x_low) - 1
-    TAX                             \ n - 1 (n: columns from here)
-    LDA viewport_right_low
-    SEC
-    SBC mover_x_low
-    STA walk_d                      \ d (low bytes, as the plotter compares them)
-    CPX walk_d
+    TAX                             \ n - 1 (n: columns from here), kept in A too
+    CMP walk_d                      \ A = X = n - 1 against d
     BCC moved_on                    \ n - 1 < d: the common case
     CLC                             \ (Z kept)
     BEQ moved_on                    \ n - 1 = d: the same sums
@@ -2021,7 +2021,7 @@ walk_d = walk_ptr + 1
     INX
     BNE steps_known                 \ always
 .moved_on
-    TXA                             \ C = 0
+    \ A = n - 1 (CMP's operand), C = 0 on both entries
     ADC mover_x_low
     STA mover_x_low                 \ + min(n - 1, d)
     LDA pixel_table_address_low     \ the steps: n - 1, or n flipped (within d + 1 here)
@@ -2807,9 +2807,10 @@ ENDIF                               \ shooting pose for this update only, as a g
     RTS
 
 .check_for_hostile_collision
-    LDA movers_type_and_colour,X
     LDY mover_to_update
-    BCC leave_with_carry_clear_242d \ Carry is clear if no collision occurred
+    BCC leave_with_carry_clear_242d \ Carry is clear if no collision occurred (grind: before the type is loaded; A is dead on this exit)
+    LDA movers_type_and_colour,X
+    CPY #&00                        \ grind: Z for the player test (the LDA overwrote the LDY's)
     BNE not_player_241b
 .is_player_2411
     CMP #&0F                        \ MOVER_TYPE_BULLET; layer 5 (BUGS #13): was MOVER_TYPE_SKELETON, so skeletons
