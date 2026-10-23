@@ -3500,6 +3500,9 @@ ENDIF
     JSR render_pass                 \ Step 2 (layer 2): draw this pass into the hidden screen
     SEI                             \ the field chosen and the flip armed before a vsync can pass
     LDA field_count                 \ grind: the next field (field_count + 1), or the one after if no
+IF FLIP_NEXT_VSYNC
+    BRA flip_next_field_eb41b       \ experiment (KC, 2026-10-23): always the next field; a pass is still one step, so the game runs fast
+ENDIF
     CMP pass_start                  \ field has gone by since the last flip - the same as pass_start + 2
     BNE flip_next_field_eb41b       \ (1 field gone: pass_start + 2 = field_count + 1; 2 or more: the next)
     INC A                           \ 65C02 opcode
