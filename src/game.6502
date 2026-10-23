@@ -4391,7 +4391,9 @@ ENDIF
     CMP flip_target
     BNE no_flip
     BIT flip_pending
-    BPL no_flip
+    BMI irq1_flip_go                \ grind: pending at a match (every flip field): taken (3), BPL's untaken 2 + 1
+    JMP no_flip                     \ not pending (a stale match 256 fields on): no flip. These 3 bytes pay for the
+.irq1_flip_go                       \ 3 the toggle below saves, so nothing after moves
     LDA #&0C                        \ R12: Displayed screen start address register (high)
     STA crtc_reg
     LDA flip_crtc_hi
@@ -4401,10 +4403,9 @@ ENDIF
     LDA flip_crtc_lo
     STA crtc_data
     LDA acccon
-    AND #&FE
-    ORA flip_screen
+    EOR #&01                        \ grind: D toggles: flip_screen is always the screen not shown (render: back = shown_screen EOR 1)
     STA acccon                      \ D: which RAM the video shows
-    AND #&01                        \ = flip_screen (0 or 1): the D bit just ORed in
+    AND #&01                        \ = flip_screen (0 or 1): the D bit just toggled to
     STA shown_screen
     STZ flip_pending                \ 65C02 opcode
 .no_flip

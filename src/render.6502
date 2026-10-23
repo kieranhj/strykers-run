@@ -2020,12 +2020,14 @@ lo_imm = * + 1
 .restore_block
 {
     STY rb_index
-    LDA save_end_lo,Y               \ the walk ends when v_ptr + 8 is the block's end
-    SEC
-    SBC #8
+IF SKY_MODE = 0
+    CLC
+ENDIF
+    LDA save_end_lo,Y               \ the walk ends when v_ptr + 8 is the block's end (C = 0 from
+    ADC #&F8                        \ sky_take_off's clear; - 8 as + &F8, C = no borrow)
     STA rb_end
     LDA save_end_hi,Y
-    SBC #0
+    ADC #&FF                        \ - 1 + C
     STA rb_end + 1
     LDA save_start_lo,Y             \ the header: where parts 2 and 3 start
     STA v_ptr
