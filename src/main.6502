@@ -41,7 +41,7 @@ ASSERT GAMEPLAY_SHIELD * 2 >= GAMEPLAY_TIMER AND GAMEPLAY_TIMER <= 2, "GAMEPLAY_
 \   GAMEPLAY_OPTIONS "6 GAME RULES" on the title: the lives, the rewind, the timer (decision 46,
 \                    src/options.6502; with GAMEPLAY_LIVES and GAMEPLAY_TIMER, whose settings it sets)
 ASSERT GAMEPLAY_OPTIONS = 0 OR (GAMEPLAY_LIVES <> 0 AND GAMEPLAY_TIMER <> 0), "GAMEPLAY_OPTIONS needs GAMEPLAY_LIVES and GAMEPLAY_TIMER"
-ASSERT SHIFT = 0 OR (GAMEPLAY_TIMER = 0 AND GAMEPLAY_OPTIONS = 0), "GAMEPLAY_TIMER and GAMEPLAY_OPTIONS do not fit the relocation test builds' banks (256 bytes smaller): build them unshifted"
+ASSERT SHIFT = 0 OR (GAMEPLAY_TIMER = 0 AND GAMEPLAY_OPTIONS = 0 AND GAMEPLAY_SHIELD = 0), "GAMEPLAY_SHIELD, GAMEPLAY_TIMER and GAMEPLAY_OPTIONS do not fit the relocation test builds' banks (256 bytes smaller; bank 5 has no page to spare): build them unshifted"
 \   GAMEPLAY_RUN     a run key (SHIFT): held, the player runs at a jump's speed, a column a pass
 \                    (decision 48), for as long as its meter lasts (decision 52: with GAMEPLAY_SHIELD,
 \                    whose game start and RAM it uses)
@@ -188,8 +188,17 @@ INCLUDE "render_bss.6502"
 
 IF GAMEPLAY_SHIELD                  \ decisions 44-50: the gameplay front end in bank 5's &8000-&83FF, free
     DATA2_ORG = &8000               \ since masked drawing (the player buffer's): DATA2 loads from there
+    B5_OFF = PAD_START              \ relocation builds: bank 5's contents a page higher, padded at both ends
+    B5_PAD_START = PAD_START
+    B5_PAD_END = PAD_END
 ELSE
-    DATA2_ORG = &8400
+    \ Relocation builds (2026-10-23): bank 5 has no page to spare at its end (the scroll text took it),
+    \ so the shifted build moves its contents a page LOWER, into &8300, free since masked drawing,
+    \ and its control keeps them where the shipping build has them, unpadded.
+    DATA2_ORG = &8400 - PAD_START
+    B5_OFF = -PAD_START
+    B5_PAD_START = 0
+    B5_PAD_END = 0
 ENDIF
 SECTION DATA2, org = DATA2_ORG, load = &FFFF0000 + DATA2_ORG - &6700, exec = &FFFF0000 + DATA2_ORG - &6700, filename = "DATA2", cmos = TRUE
 IF GAMEPLAY_SHIELD
@@ -204,7 +213,7 @@ ENDIF
     PRINT "bank 5 &8000-&83FF: ", &8400 - *, " bytes free"
     SKIP &8400 - *
 ENDIF
-    SKIP PAD_START
+    SKIP B5_PAD_START
     INCLUDE "bank5.6502"
     \ Step 2 layer 3 (decision 25): the 50 Hz sound effect driver, run from the vsync interrupt in
     \ play with bank 5 paged in, and the game's effects (src/sfx_data.6502, from tools/sfx50.py)
@@ -221,8 +230,8 @@ ENDIF
     .andy_end
     ENDSECTION
     ASSERT andy_end <= &9000
-    ASSERT andy_load + (andy_end - &8000) + PAD_END <= &C000, "bank 5 overruns its 16K by ", andy_load + (andy_end - &8000) + PAD_END - &C000
-    SKIP PAD_END
+    ASSERT andy_load + (andy_end - &8000) + B5_PAD_END <= &C000, "bank 5 overruns its 16K by ", andy_load + (andy_end - &8000) + B5_PAD_END - &C000
+    SKIP B5_PAD_END
 ENDSECTION
 
 SECTION DATA3, org = &8000, load = &FFFF1900, exec = &FFFF1900, filename = "DATA3", cmos = TRUE

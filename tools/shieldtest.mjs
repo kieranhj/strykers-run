@@ -49,7 +49,9 @@ cpu.debugInstruction.add((pc) => {
         const slot = hos > 0 && hos < 0x80 ? hos : mtu;
         const type = typeAt(slot);
         if (hit && hit.pass === m.passes) hit.second = true;
-        hit = { pass: m.passes, slot, type, before: zp("shield"), died: false };
+        // decision 45: just respawned (GAMEPLAY_LIVES), shield_hit counts nothing (tools/livestest.mjs checks it)
+        const safe = syms.invulnerable !== undefined && zp("invulnerable") > 0;
+        hit = { pass: m.passes, slot, type, before: zp("shield"), died: false, safe };
         hits.push(hit);
         pre = null;
     }
@@ -66,6 +68,10 @@ function judge() {                     // at the start of a pass: the last pass'
     if (hit && hit.pass === m.passes - 1 && !hit.judged) {
         hit.judged = true;
         hit.after = shield;
+        if (hit.safe) {
+            if (hit.after < hit.before || hit.died || (hit.sounds || []).includes(0x38)) fail(`a hit while invulnerable counted: the shield ${hit.before} -> ${hit.after}${hit.died ? ", kill_player entered" : ""}`);
+            return { shield, lives };
+        }
         const dmg = hit.type !== null && EXPLOSIVE.has(hit.type) ? 2 * UNIT : UNIT;
         hit.expected = hit.before === 0 ? 50 : Math.max(0, hit.before - dmg);
         if (hit.after !== hit.expected) fail(`hit by type ${hit.type} (slot ${hit.slot}) took the shield ${hit.before} -> ${hit.after}, expected ${hit.expected}`);
@@ -121,7 +127,7 @@ for (let p = 1; p <= PASSES; p++) {
 }
 const byType = {};
 for (const h of hits) { const k = `${h.type === null ? "?" : "&" + h.type.toString(16)} ${h.before === 0 ? "at 0 (a life)" : EXPLOSIVE.has(h.type) ? "explosive" : "1 unit"}`; byType[k] = (byType[k] || 0) + 1; }
-console.log(`${disc}: ${m.passes} passes (${end}); the bar right after ${bars} ticks; ${hits.length} hits, ${hits.filter((h) => h.died).length} of them lives, ${hits.filter((h) => h.second).length} a second hit in one pass; ${refills} refills to full, ${refillPasses} passes refilling`);
+console.log(`${disc}: ${m.passes} passes (${end}); the bar right after ${bars} ticks; ${hits.length} hits, ${hits.filter((h) => h.died).length} of them lives, ${hits.filter((h) => h.second).length} a second hit in one pass, ${hits.filter((h) => h.safe).length} while invulnerable; ${refills} refills to full, ${refillPasses} passes refilling`);
 console.log("hits by culprit type:", byType);
 console.log(fails.length ? `FAILED (${fails.length}${fails.length === 30 ? "+" : ""}):\n  ` + fails.join("\n  ") : "all rules held");
 process.exit(fails.length ? 1 : 0);

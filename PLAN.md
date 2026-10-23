@@ -54,12 +54,6 @@ Left:
 - **`tools/timertest.mjs`'s whole-world run** sees no ticks and the time 0 at the headquarters on
   every build back to before the rupture (2026-10-23): the harness is out of step with the code;
   its `--short` and `--bonus` runs are unaffected. Fix the harness.
-- **`tools/shieldtest.mjs`'s two reports** on the gameplay disc (passes 8,740 and 10,969: a hit by
-  types `&11` and `&0F` that leaves the shield at 50, with no absorbed-hit sound): the same before
-  and after grind round 3's merge (2026-10-23), not yet looked into; the game or the harness.
-- **The bench build** (`-Shift 256 -ShiftEnd -Define DEBUG_LIVES`, what the grind proves on) does
-  not assemble on this branch: bank 5 over by 247 (239 before round 3's merge; the scroll text's
-  moves). Fix before another grind round here.
 - **Merging into `main`**, when KC says: then one disc with both builds and a boot menu, for a
   release (the brief, "Discs").
 - **Room** is nearly gone on the gameplay disc (above): the next feature there starts by moving
@@ -76,8 +70,7 @@ Left:
 - **Grind round 3 is done** (`docs/done.md`, `docs/grind/README.md`): 77 kept, 2,553.6 / 2,343.1 cycles a pass saved (seed 1 / RIGHT); merged into
   `gameplay-shield` (`dbeeebf`), so `main` has it only when the branches merge. Left from it:
   47 candidates that had no room (`grind.py run --retry 'no room'` once a region grows) and 58
-  stale, whose windows a round 4 would evaluate afresh. A round 4 here needs the bench build
-  fixed (above).
+  stale, whose windows a round 4 would evaluate afresh.
 - Layer 4's leftovers, costed in `docs/step2-layer4-costing.md` "Closed": the generic column path's
   overhead, the logic in the bursts, compiled bodies, the scroll column's rest; sky mode's own (a
   rotor byte cache, ~0.8k a draw; a cheaper leading check, ~0.15k). Most want room the renderer

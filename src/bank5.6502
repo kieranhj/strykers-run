@@ -1140,8 +1140,8 @@ ENDIF
 IF GAMEPLAY_SHIELD = 0
     INCLUDE "scroll_pixel.6502"     \ the pixel scroller (gameplay builds: in the &8000 block, src/main.6502,
 ENDIF                               \ so the scroll text has its room here)
-    ASSERT * <= &9300 + PAD_START, "the pixel scroller overruns the music's page by ", * - &9300 - PAD_START
-    SKIP &9300 + PAD_START - *
+    ASSERT * <= &9300 + B5_OFF, "the pixel scroller overruns the music's page by ", * - &9300 - B5_OFF
+    SKIP &9300 + B5_OFF - *
 
 \ Step 2 layer 4: the front end's tunes (title, then high score, page-aligned as the event handler
 \ needs) are unpacked here at start-up from src/music_packed.6502 (src/game.6502 unpack_for_play;
