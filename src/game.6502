@@ -1758,6 +1758,10 @@ ENDIF
     JSR add_delta_to_screen_address_in_AX
     BRA to_next_row                 \ 65C02 opcode
 
+.edge_go_right_b3a9                 \ grind: the right edge leaves from here (edge_right sets Y itself before any read)
+    JMP edge_right
+.edge_leave_a1                      \ grind: an RTS in this page for the BNEs below (leave_1e0f is over the page, 4 cycles taken)
+    RTS
 .calculate_screen_addresses_for_movers_on_edge
     \ Step 2 (layer 3, D): a mover whose x high byte cannot put its edge on the screen's
     \ (equal for the right edge; equal or one less for the left, the width being under 256)
@@ -1766,12 +1770,9 @@ ENDIF
     \ mover), the last (&21) taken in full by a tail call: Y is left &21, the flags as it
     \ leaves them (both callers go on to add_movers_to_column_buffer, then load X and Y)
     \ Layer 4: the right edge by x low byte, unrolled, in HAZEL (src/scroll_hazel.6502 edge_right)
-    LDY #&00                        \ MOVER_FIRST                               # Bug: player is never on edge, so should be &01
     LDX &CF                         \ Zero for left edge, non-zero for right edge
-    BEQ edge_left_loop
-    JMP edge_right
-.edge_leave_a1                      \ grind: an RTS in this page for the BNEs below (leave_1e0f is over the page, 4 cycles taken)
-    RTS
+    BNE edge_go_right_b3a9
+    LDY #&00                        \ MOVER_FIRST (left edge only)              # Bug: player is never on edge, so should be &01
 .edge_left_loop                     \ C = 0 here: on entry (ground_square's CLC, via add_ground_to_column_buffer) and from the BCC
     LDA movers_x_high,Y             \ the left edge: x or x + 1 (mod 256), so x - edge_x_high - 1 is &FF or &FE
     SBC edge_x_high
@@ -3000,11 +3001,12 @@ move_mover_routine_address_low = * + 1
     LDA x_delta
     BEQ to_scroll_screen_right + 3
     LDA flip
-    BPL to_scroll_screen_right
-    JMP scroll_screen_left
+    BMI to_scroll_screen_left_76cf  \ grind: right, the common case, falls through to its tail call
 .to_scroll_screen_right
     JMP scroll_screen_right         \ grind: a tail call; the RTS (to_scroll_screen_right + 3) stays
     RTS
+.to_scroll_screen_left_76cf
+    JMP scroll_screen_left
 
 .use_player_position_for_mover_Y
     LDX movers_screen_address_high

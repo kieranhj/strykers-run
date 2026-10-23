@@ -110,9 +110,8 @@
 .next_col
     LDY #1                          \ on 2 + count
     LDA (p_ptr),Y
+    INC A                           \ 65C02 opcode: count + 1, then + 1 more by the carry
     SEC
-    ADC #1
-    CLC
     ADC p_ptr
     STA p_ptr
     BCC same_page
