@@ -1597,6 +1597,10 @@ ENDIF
     LDA straight_sprite_hi,X
     BNE known
     RTS                             \ an unused table entry
+.rds_clip_g31                       \ out of line, reached by branch only: a part that can be clipped
+    LDA #&FF
+    STA ds_clip                     \ &FF
+    BRA generic
 .known
     STA col_ptr + 1
     LDA straight_sprite_lo,X
@@ -1604,15 +1608,6 @@ ENDIF
     LDA sprite_column_count,X
     STA ds_c                        \ columns left
     STA ds_n
-    STZ ds_clip                     \ 65C02 opcode: whether any column can be clipped: not if
-    LDX dm_jmin                     \ jmin is 0 and jmax n - 1 or more (X: the sprite, done with)
-    BNE clips
-    CMP dm_jmax                     \ A = n: no clip if n <= jmax
-    BCC no_clip
-    BEQ no_clip
-.clips
-    DEC ds_clip                     \ &FF
-.no_clip
     LDA dm_scr_lo                   \ the part's bottom, raised once
     LDX dm_scr_hi                   \ Y: still the rows it is raised
     JSR raise_address
@@ -1621,9 +1616,13 @@ ENDIF
     STA ds_line
     TRB b_ptr                       \ 65C02 opcode: b_ptr AND &F8
     STX b_ptr + 1
-    LDA ds_clip                     \ step 2 layer 4: a part that cannot be clipped may be one of
-    BNE generic                     \ the player's kinds compiled to code (tools/compiled.py), or
-    LDA dm_slot                     \ a big part's kind built at run time (src/kindcache.6502,
+    LDA dm_jmin                     \ whether any column can be clipped: not if jmin is 0 and
+    BNE rds_clip_g31                \ jmax n - 1 or more (decided here, with A free, so that the
+    LDA dm_jmax                     \ unclipped part, the common one, goes on with no flag to
+    CMP ds_n                        \ reload: C set if n <= jmax)
+    BCC rds_clip_g31
+    STZ ds_clip                     \ 65C02 opcode: 0; step 2 layer 4: a part that cannot be clipped may be one of
+    LDA dm_slot                     \ the player's kinds compiled to code (tools/compiled.py), or a big part's kind built at run time (src/kindcache.6502,
 IF SKY_MODE
     BNE generic
     JSR compiled_part
