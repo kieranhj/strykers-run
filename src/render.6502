@@ -1330,7 +1330,9 @@ ENDIF
     TXA
     ORA boff                        \ slot + boff: slot < &40, boff 0 or 64
     STA dm_index
-    LDX back                        \ room for its block, or make some: arena_top + MAX_BLOCK
+IF SKY_MODE = 0
+    LDX back                        \ room for its block, or make some (SKY_MODE: sky_room loads X = back itself)
+ENDIF
 IF SKY_MODE
     JSR sky_room                    \ below helicopter 1's image (src/sky_main.6502; C set: none)
     BCS masked

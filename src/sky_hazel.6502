@@ -166,9 +166,10 @@
     SBC sky_rc,X
     BCC no                          \ before it
     STA sky_stop
-    LDA sky_ry,X
-    CMP sky_stop
-    BCC no                          \ after it
+    CMP sky_ry,X                    \ stop <= ry: after it if not
+    BCC skyrow_in
+    BNE no                          \ after it
+.skyrow_in
     LDA sky_rl,X
     STA s_ptr
     LDA sky_rh,X
