@@ -31,10 +31,9 @@ starts by finding room; the renderer reads only the first three while it draws.
 | the start-up code's carrier in the save arena (`arena_carried_end`) | 43 | 135 |
 | `MGAME` under the loading picture (`mgame_end`'s ASSERT) | 223 | 176 |
 
-## Gameplay variations (branch `gameplay-shield`)
+## Gameplay variations (on `main` since 2026-10-23; built on branch `gameplay-shield`)
 
-Kept separate from `main` for now (KC, 2026-10-21); `main` merged into it as it moves. Each
-variation is a flag, off by default (flags off: byte-identical to `main`); `build.ps1 -Gameplay` /
+Each variation is a flag, off by default; `build.ps1 -Gameplay` /
 `make gameplay` makes `build/strykers-gameplay.ssd` with all of them, the gameplay WIP. What is
 built is in `docs/done.md`; the design, checks and costs in `docs/briefs/gameplay-shield.md`.
 
@@ -43,7 +42,7 @@ Left:
   than the original (35 deaths against 175); whether 3 lives is enough for a person wants a
   playtest, or a count of the hits nobody could avoid (a floor).
 - **KC's review** of play: the rewind's speed and distance, the timer's bonus (10 points a second).
-- **Merging into `main`, and the release disc** (KC, 2026-10-23: the original release's menu, "(1)
+- **The release disc** (KC, 2026-10-23: the original release's menu, "(1)
   original game + performance improvements (2) redux version with gameplay improvements"):
   `docs/briefs/release-disc.md`, a plan with four questions for KC.
 - **Room** is nearly gone on the gameplay disc (above): the next feature there starts by moving
@@ -58,7 +57,7 @@ Left:
 ## Speed, if it is wanted again
 
 - **Grind round 3 is done** (`docs/done.md`, `docs/grind/README.md`): 77 kept, 2,553.6 / 2,343.1 cycles a pass saved (seed 1 / RIGHT); merged into
-  `gameplay-shield` (`dbeeebf`), so `main` has it only when the branches merge. Left from it:
+  `gameplay-shield` (`dbeeebf`) and with it into `main`. Left from it:
   47 candidates that had no room (`grind.py run --retry 'no room'` once a region grows) and 58
   stale, whose windows a round 4 would evaluate afresh.
 - Layer 4's leftovers, costed in `docs/step2-layer4-costing.md` "Closed": the generic column path's

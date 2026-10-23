@@ -13,8 +13,8 @@ busy scripted game (1,998 frames) and holding RIGHT (598), and 97% over the whol
 to finish (layer 4, tag `step2-layer4-steady-25hz`). 25 Hz is the target (decision 35): 50 Hz was
 costed and does not fit. Next are the original's own glitches (layer 5) and a level editor;
 the gameplay variations (a recharging shield, lives that respawn, a timer, a run key, the HUD as
-a CRTC rupture with the score and progress: decisions 43-68) are on branch `gameplay-shield`, off
-`main` until KC merges them. What has landed is in `docs/done.md`, what is left in `PLAN.md`.
+a CRTC rupture with the score and progress, their own sounds: decisions 43-69) are on `main` too,
+each behind a flag that is off in the plain build. What has landed is in `docs/done.md`, what is left in `PLAN.md`.
 Seen in the jsbeeb emulator only so far, not yet on real hardware.
 
 The game remains the copyright of its authors and publisher. This repository is for study and
@@ -37,7 +37,7 @@ preservation; it does not include the original disc images or the disassembly it
 |---|---|---|---|
 | **The optimised version** (step 2, in progress: a steady 25 Hz, no flicker) | `main` | `make`, or `.\build.ps1` | `build/strykers.ssd` |
 | **The original**, byte for byte the Stairway to Hell disc's game | the tag `step1-byte-identical-rebuild` (`762a0d2`) | `make original`, or the tag's own `build.ps1` in a worktree of it (below) | `build/strykers-original.ssd` |
-| **The gameplay variations** (decisions 43-68: a recharging shield, lives that respawn, a timer, a game rules screen, a run key, vehicles that take hits, dithered hills, the HUD as a CRTC rupture with the score and progress) | `gameplay-shield` | `make gameplay`, or `.\build.ps1 -Gameplay` (add `RELEASE=1` / `-Release` for testers) | `build/strykers-gameplay.ssd` |
+| **The gameplay variations** (decisions 43-69: a recharging shield, lives that respawn, a timer, a game rules screen, a run key, vehicles that take hits, dithered hills, the HUD as a CRTC rupture with the score and progress, their own sounds) | `main` | `make gameplay`, or `.\build.ps1 -Gameplay` (add `RELEASE=1` / `-Release` for testers) | `build/strykers-gameplay.ssd` |
 
 `make original` exports the tag's `src/` and `tools/` into `build/original/` (`git archive`, so it
 needs a clone with its tags: `git fetch --tags`), assembles them with the flags the tag's

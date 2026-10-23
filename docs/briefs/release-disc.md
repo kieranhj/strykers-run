@@ -1,4 +1,4 @@
-# Brief: `gameplay-shield` into `main`, and one release disc with both games (PLAN)
+# Brief: `gameplay-shield` into `main` (DONE, 2026-10-23), and one release disc with both games (PLAN)
 
 KC, 2026-10-23: "start planning the merge into main - we can reuse the disk menu from the original
 release that has space for two options - (1) original game + performance improvements (2) redux
@@ -9,9 +9,15 @@ version with gameplay improvements".
 - `main` (`d03e4bd`) is an ancestor of `gameplay-shield` (149 commits on, 2026-10-23): the merge is a
   fast-forward, no conflicts. After it `main` is the one line of work; `gameplay-shield` is deleted
   (its PLAN note "kept separate from `main`" goes).
-- Every gameplay variation stays behind its flag, off by default (decisions 43-69), so the plain
-  build is what it was: the flags-off disc is byte-identical before and after the merge (proved with
-  `tools/compare.py`, as each change on the branch was).
+- Every gameplay variation stays behind its flag, off by default (decisions 43-69). The plain build
+  is not byte-identical to `main`'s before (the branch also carries changes for every build: grind
+  round 3, the editable scroll text, today's fixes), but plays the same game.
+- **Done** (2026-10-23, jsbeeb 2.10.2): `main` fast-forwarded to `gameplay-shield`. Against `main`'s
+  `d03e4bd` (`DEBUG_LIVES` builds, the grind gate's checks): passlock seed 1, 6,000 passes, state and
+  screen identical; seed 3, 4,000 passes, state identical; the full-redraw oracle, seed 5, 4,000,
+  state and screen identical; helilock flights 5 and 2, no frame differing; frontend 0 failed;
+  observer mode ok. Every build set assembles (shipping, gameplay, `SKY_HELI=0`, `DEBUG_FULLREDRAW`,
+  the relocation pair).
 - The checks on `main` after it: every build set assembles (shipping, gameplay, `SKY_HELI=0`,
   `DEBUG_FULLREDRAW`, the relocation pair); the grind gate's checks on the shipping build; the
   gameplay harnesses (shield, lives, timer, options, run, selfhit, rupture) on the gameplay disc.

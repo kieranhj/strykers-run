@@ -238,7 +238,7 @@ left as a carrier, 2026-10-23); `hazel_b`
 and the packed tunes follow `&4000` to `mgame_end` (`&4EA1`), so `MGAME` loads to `&59A1`, 223
 bytes under the loading picture at `&5A80` (ASSERTed; 2026-10-23). Bank 5's `&8000-&83FF` (the player buffer) is free:
 masked drawing made it unnecessary; gameplay builds (`GAMEPLAY_SHIELD`) load `DATA2` from `&8000` and put their front end there (`front_gameplay.6502`, the game rules screen; 8 zero bytes first, so the MOS never takes it for a ROM header).
-Gameplay builds (`GAMEPLAY_*`, branch `gameplay-shield`, decisions 43-55) add: zero page `&07-&1E`
+Gameplay builds (`GAMEPLAY_*`, decisions 43-69; on `main` since 2026-10-23) add: zero page `&07-&1E`
 (the shield and its settings, the respawn, the timer, the run key: `src/zp.6502`); `moved_0a20` from `&0982` (not `&0A20`: !BOOT's and SRRUN's bytes, dead in play, decision 59); the HUD
 buffer at `&0C00` and the variables after it (`game_completed`, the run meter's, `timer_limit`, the timer
 display's; `vehicle_hits`, decision 62's; not in the file); the shield, the respawn and the HUD builder in
