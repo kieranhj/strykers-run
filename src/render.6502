@@ -483,7 +483,10 @@ ENDIF
     STY ren_k
     LDX act,Y
     BEQ taken_off                   \ the player: first in the list, already off
+    LDA need,X                      \ take_off's own first test, inline: most entries stay as they are
+    BPL toff_skip_f
     JSR take_off
+.toff_skip_f
     LDY ren_k
     BNE taking_off
 .taken_off
@@ -491,10 +494,9 @@ ENDIF
     \ ---- 5. the scroll, oldest column first, each with its view and the lives digit ----
     LDA pending_n
     BEQ scrolled
-    LDY #0
-    CMP #2
-    BEQ apply_entries
-    INY
+    LSR A                           \ pending_n 1 or 2 -> Y 1 or 0
+    EOR #1
+    TAY
 .apply_entries
     STY ren_k
     LDX pending_slot,Y
@@ -507,14 +509,15 @@ ENDIF
     JSR write_column                \ X = the slot still
     JSR ren_plot_lives
     LDY ren_k
-    BNE scrolled                    \ entry 1 (pending_slot + 1) is always the last
+    BNE view_restore_f
     INY
     BRA apply_entries               \ 65C02 opcode
-.scrolled
-    LDX #2                          \ the logic's view again; it is this screen's now
+    SKIP 2                         \ keeps the code after it where it was
+.view_restore_f
+    LDX #2                          \ the logic's view again (history_to_view changed it); with nothing scrolled it never did
     JSR buffer_to_view
-    LDX back
-    JSR view_to_buffer
+.scrolled
+    LDX back                        \ buf_*[back] is never read: view_to_buffer's stores were dead
     LDA buf_lives,X
     CMP HUD_KEY
     BEQ lives_drawn
