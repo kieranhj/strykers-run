@@ -1856,22 +1856,15 @@ ede5_stop_imm = * + 1
     STA b_ptr
     BCS forward_hi
     JMP each
-.forward_hi
-    LDA b_ptr + 1
-    INC A                           \ 65C02 opcode
-    BPL forward_in_ring
-    LDA #&40
-.forward_in_ring
-    STA b_ptr + 1
-    BRA to_each                     \ 65C02 opcode
 .step_back_hi
-    LDA b_ptr + 1
-    DEC A                           \ 65C02 opcode
-    CMP #&40
-    BCS back_in_ring
-    LDA #&7F
-.back_in_ring
-    STA b_ptr + 1
+    DEC b_ptr + 1                   \ the high byte down a page: &40 -> &3F -> &7F (round the 16K)
+    LDA #&40
+    TSB b_ptr + 1
+    BRA to_each                     \ 65C02 opcode
+.forward_hi
+    INC b_ptr + 1                   \ up a page: &7F -> &80 -> &40 (round the 16K)
+    BPL to_each
+    LSR b_ptr + 1
 .to_each
     JMP each
 .done

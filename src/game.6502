@@ -3493,8 +3493,8 @@ ENDIF
     AND #&7F
     TAY
     LDA movers_frame_and_flip,X
-    AND #&7F
-    CMP #&0D                        \ MOVER_TYPE_SKELETON
+    EOR #&0D                        \ grind: MOVER_TYPE_SKELETON (&0D, either flip): frame AND &7F = &0D <=> (frame EOR &0D) ASL 1 = 0
+    ASL A                           \ (C is dead on every exit: its one caller CLCs before it next reads it)
     BEQ skeleton_height             \ grind: the common case falls through
 .use_height_table
     LDA mover_types_height_table,Y

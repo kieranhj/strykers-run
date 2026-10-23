@@ -45,16 +45,15 @@
     LDA sfx_n,X
     BEQ next
     JSR sfx_output
+    CLC                             \ both paths add with C = 0 (LDA and BPL keep C)
     LDA sfx_dp,X                    \ the period steps (16 bits, the step sign-extended)
     BPL up
-    CLC                             \ the step negative (its high byte &FF): a carry leaves the high byte
-    ADC sfx_p_lo,X
+    ADC sfx_p_lo,X                  \ the step negative (its high byte &FF): a carry leaves the high byte
     STA sfx_p_lo,X
     BCS sfx_pa_clc
     DEC sfx_p_hi,X                  \ no carry: the high byte less 1
     BRA sfx_pa_c0                   \ 65C02 opcode; C = 0
 .up
-    CLC
     ADC sfx_p_lo,X
     STA sfx_p_lo,X
     BCC sfx_pa_c0                   \ C = 0
