@@ -58,10 +58,6 @@
     STA zp_save + 19
     LDA &B1
     STA zp_save + 20
-    LDA &B2
-    STA zp_save + 21
-    LDA &B3
-    STA zp_save + 22
     LDA &B4
     STA zp_save + 23
     LDA &B5
@@ -74,10 +70,6 @@
     STA zp_save + 27
     LDA &B9
     STA zp_save + 28
-    LDA &BA
-    STA zp_save + 29
-    LDA &BB
-    STA zp_save + 30
     LDA &C0
     STA zp_save + 31
     LDA &F8
