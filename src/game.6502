@@ -3621,22 +3621,22 @@ cm_x_max_low_operand = * + 1
     CPX mover_to_update
     BEQ cfc_a_leave_clear
 .check_for_collision_with_mover
+    LDA mover_x_max_low             \ grind: x <= mover_x_max (16-bit) first: it needs no type lookup and fails
+    CMP movers_x_low,X              \ 5,213 of the 13,260 checks a 1,000 passes (seed 1, passes 500-1500), the right
+    LDA mover_x_max_high            \ edge below only 6,404 and after the JSR, the loads and the stores
+    SBC movers_x_high,X
+    BCC leave_with_carry_as_is      \ C=0: no collision
     JSR get_mover_X_type_and_height
     STA &78
     LDA mover_types_width_table,Y
     STA &7A
-    CLC                             \ grind: the right edge first (x + width >= mover_x, 16-bit), the test more movers fail
+    CLC                             \ the right edge (x + width >= mover_x, 16-bit)
     ADC movers_x_low,X
     TAY
     LDA movers_x_high,X
     ADC #0                          \ (x + width) high, wrapping as the original's INY did
     CPY mover_x_low
     SBC &C5
-    BCC leave_with_carry_as_is      \ C=0: no collision
-    LDA mover_x_max_low             \ then x <= mover_x_max (16-bit)
-    CMP movers_x_low,X
-    LDA mover_x_max_high
-    SBC movers_x_high,X
     BCC leave_with_carry_as_is      \ C=0: no collision
     LDA movers_y,X
     CMP mover_y_max
