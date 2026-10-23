@@ -2429,7 +2429,6 @@ ENDIF
     TXA
     SBC screen_start_address_high
     AND #&3F                        \ round the 16K screen
-    STA wa_off + 1
     TAX
     LDY wa_rows_guess,X
     LDA wa_off                      \ at or past the next row's start: that row
