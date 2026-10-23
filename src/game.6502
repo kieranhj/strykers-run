@@ -3405,41 +3405,45 @@ IF GAMEPLAY_ANY = 0                 \ (gameplay builds: um_next in moved_0a20, d
     ASSERT HI(um_next - 1) == HI(um_next + 8)   \ um_next - 1,Y/X (1-9) must not cross a page
 ENDIF
 .um_populate
-    LDX #&02
-    STX movers_to_update_count
+    \ grind: the chain's three movers go to the slots in processing order, their raster ys sorted as they
+    \ stand now (stable: a tie keeps the chain order, as the search for the topmost one, a later slot
+    \ winning a tie, found it). Slot 0 is movers_to_update_count (&C1: the loop counter is gone with the
+    \ loop; read before any update_mover). The raster y copies and the FF marks go too: nothing else reads
+    \ them. In order is the usual case: two compares, nothing moved.
     LDY movers_to_update_base
-    LDA movers_raster_y,Y
-    STA movers_to_update_raster_y + 2
-    STY movers_to_update + 2
+    STY movers_to_update_count      \ slot 0 = the base
     LDX um_next - 1,Y
-    LDA movers_raster_y,X
-    STA movers_to_update_raster_y + 1
-    STX movers_to_update + 1
+    STX movers_to_update + 1        \ slot 1 = the next
     LDY um_next - 1,X
+    STY movers_to_update + 2        \ slot 2 = the next after
+    LDA um_next - 1,Y
+    STA movers_to_update_base
+.umsort_loop                        \ X = slot 1's mover, Y = slot 2's
     LDA movers_raster_y,Y
-    STA movers_to_update_raster_y
-    STY movers_to_update
-    LDX um_next - 1,Y
-    STX movers_to_update_base
-.update_movers_loop
-    LDX #&02                        \ grind: the last slot holding the lowest raster y, as the
-    LDA movers_to_update_raster_y + 1 \ original's search found it (a later slot wins a tie)
-    CMP movers_to_update_raster_y + 2
-    BCS find_topmost_check_slot_0   \ slot 1 >= slot 2: slot 2 stays
-    DEX                             \ slot 1 < slot 2: slot 1
-.find_topmost_check_slot_0
-    LDA movers_to_update_raster_y
-    CMP movers_to_update_raster_y,X
-    BCS found_topmost_mover         \ slot 0 >= the candidate: the candidate stays
-    LDX #&00
-.found_topmost_mover
-    LDA #&FF
-    STA movers_to_update_raster_y,X \ Set to maximum value to prevent being found again
-    LDY movers_to_update,X
-    STY mover_to_update
+    CMP movers_raster_y,X
+    BCS umsort_slot_0               \ slot 2 >= slot 1: in order
+    STY movers_to_update + 1        \ exchange slots 1 and 2
+    STX movers_to_update + 2
+    LDX movers_to_update + 1        \ X = slot 1's mover again
+.umsort_slot_0
+    LDY movers_to_update_count
+    LDA movers_raster_y,X
+    CMP movers_raster_y,Y
+    BCS umsort_done                 \ slot 1 >= slot 0: in order (Y = slot 0's mover)
+    STX movers_to_update_count      \ exchange slots 0 and 1, then slots 1 and 2 again
+    STY movers_to_update + 1
+    LDX movers_to_update + 1
+    LDY movers_to_update + 2
+    BRA umsort_loop
+.umsort_done
+    STY mover_to_update             \ slot 0 (Y)
     JSR update_mover                \ Update mover
-    DEC movers_to_update_count
-    BPL update_movers_loop
+    LDY movers_to_update + 1
+    STY mover_to_update
+    JSR update_mover
+    LDY movers_to_update + 2
+    STY mover_to_update
+    JSR update_mover
     LDA helicopter_to_update
     TAY
     EOR #&01                        \ Update enemy helicopters alternately

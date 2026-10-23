@@ -87,36 +87,10 @@
     RTS
 
 .restore_game_zp
-    LDA zp_save + 0
-    STA &00
-    LDA zp_save + 1
-    STA &01
-    LDA zp_save + 2
-    STA &02
-    LDA zp_save + 3
-    STA &03
-    LDA zp_save + 4
-    STA &7E
-    LDA zp_save + 5
-    STA &7F
-    LDA zp_save + 6
-    STA &80
-    LDA zp_save + 7
-    STA &82
-    LDA zp_save + 8
-    STA &83
-    LDA zp_save + 9
-    STA &84
-    LDA zp_save + 10
-    STA &8E
-    LDA zp_save + 11
-    STA &8F
-    LDA zp_save + 14
-    STA &94
-    LDA zp_save + 15
-    STA &95
-    LDA zp_save + 16
-    STA &9B
+    \ grind: restore_game_zp restores only what the renderer's own work changes and the logic then reads. Nothing between
+    \ save_game_zp and here writes &02 &03 &7E &7F &80 &82 &83 &84 &8E &8F &94 &95 &9B (tools/zplive.mjs, 2026-10-22,
+    \ with its restoring range corrected; static scan of every render-phase store), and &00/&01 are put back by
+    \ render's buffer_to_view (slot 2), the last writer of them, from the values view_to_buffer took at the start.
     LDA zp_save + 17
     STA &9F
     LDA zp_save + 18
