@@ -139,6 +139,10 @@ ENDIF
     RTS
 .level
     LDA shield                      \ the bar's filled pixels, 3 * shield / 25 (0-6: 3 a unit)
+IF HUD_RUPTURE
+    LSR A                           \ decision 68's wide bar: shield / 2 (0-25)
+    STA shield_tmp
+ELSE
     STA shield_tmp
     ASL A                           \ C = 0 after: shield <= 50
     ADC shield_tmp                  \ 3 * shield, at most 150
@@ -149,6 +153,7 @@ ENDIF
     SBC #SHIELD_UNIT
     BCS thirds
     STX shield_tmp
+ENDIF
     LDA shield_flash                \ bit 7 while it flashes, 2 passes on, 2 off
     AND #2
     BEQ steady

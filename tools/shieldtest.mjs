@@ -77,19 +77,22 @@ function judge() {                     // at the start of a pass: the last pass'
     return { shield, lives };
 }
 function checkBar(shield, lives) {
-    const hud = rd(syms.hud_buffer, 72), flash = zp("shield_flash");
+    const wide = syms.HUD_BAR_COL !== undefined && syms.rupture_t1 !== undefined;   // decision 68's bar (HUD_RUPTURE)
+    const barCols = wide ? syms.HUD_BAR_COLS : 4, barAt = wide ? 8 * syms.HUD_BAR_COL : 32;
+    const hud = rd(syms.hud_buffer, Math.max(72, barAt + 8 * barCols)), flash = zp("shield_flash");
     const font = rd(syms.font_data + 0x6c + 6 * lives, 6);     // plot_lives' character, as livesdigits.py made it
     const digit = [];
     for (let c = 0; c < 3; c++) for (let y = 0; y < 8; y++) digit.push((font[2 * c] >> y & 1 ? 0x28 : 0) | (font[2 * c + 1] >> y & 1 ? 0x14 : 0));
     for (let y = 0; y < 8; y++) digit.push(0);
     if (lives < 10 && hud.slice(0, 32).some((b, i) => b !== digit[i])) fail(`hud_buffer's digit is not the font's for ${lives}`);
-    const px = Math.floor(3 * shield / 25), white = (flash & 2) !== 0;
-    const seg = [0, 1, 2, 3, 4, 5, -1, -1];                     // 6 pixels in a row, then sky (KC, 2026-10-21)
+    const px = wide ? shield >> 1 : Math.floor(3 * shield / 25), white = (flash & 2) !== 0;
+    const seg = wide ? [...Array(2 * barCols).keys()].map((p) => (p < syms.HUD_BAR_PIXELS ? p : -1))
+        : [0, 1, 2, 3, 4, 5, -1, -1];                     // 6 pixels in a row, then sky (KC, 2026-10-21)
     const left = (p) => seg[p] < 0 ? 0 : white ? 0x2a : seg[p] < px ? 0x20 : 0x02;
-    for (let c = 0; c < 4; c++) {
+    for (let c = 0; c < barCols; c++) {
         const fill = left(2 * c) | (left(2 * c + 1) >> 1);
         for (let r = 0; r < 8; r++) {
-            const want = r === 0 || r === 7 ? 0 : fill, got = hud[32 + 8 * c + r];
+            const want = r === 0 || r === 7 ? 0 : fill, got = hud[barAt + 8 * c + r];
             if (got !== want) { fail(`bar column ${c} row ${r}: &${got.toString(16)}, expected &${want.toString(16)} (shield ${shield}, flash ${flash})`); return; }
         }
     }

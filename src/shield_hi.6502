@@ -5,6 +5,11 @@
 \ hud_build: hud_buffer from what it shows (shield_tick, when that changed: hud_level in shield_tmp,
 \ lives): the lives digit made from the game's font, as plot_lives drew it (tools/livesdigits.py
 \ made the same bytes into a table), then the bar; bumps hud_serial so the renderer redraws it
+IF HUD_RUPTURE
+    bar_at = hud_buffer + 8 * HUD_BAR_COL   \ decision 68
+ELSE
+    bar_at = hud_buffer + 32
+ENDIF
 .hud_build
 {
     LDA shield_tmp
@@ -57,7 +62,11 @@
     INY
     CPY #32
     BNE blank
+IF HUD_RUPTURE
+    LDX #HUD_BAR_COLS - 1           \ decision 68: the wide bar
+ELSE
     LDX #HUD_BAR_COLUMNS - 1        \ the bar, a byte column (two pixels) at a time, right to left
+ENDIF
 .column
     TXA
     ASL A
@@ -75,15 +84,15 @@
     ASL A
     TAY                             \ Y = 8 * the column: its 8 rows in hud_buffer
     PLA
-    STA hud_buffer + 32 + 1,Y       \ rows 1-6 the bar, 0 and 7 sky
-    STA hud_buffer + 32 + 2,Y
-    STA hud_buffer + 32 + 3,Y
-    STA hud_buffer + 32 + 4,Y
-    STA hud_buffer + 32 + 5,Y
-    STA hud_buffer + 32 + 6,Y
+    STA bar_at + 1,Y                \ rows 1-6 the bar, 0 and 7 sky
+    STA bar_at + 2,Y
+    STA bar_at + 3,Y
+    STA bar_at + 4,Y
+    STA bar_at + 5,Y
+    STA bar_at + 6,Y
     LDA #0
-    STA hud_buffer + 32 + 0,Y
-    STA hud_buffer + 32 + 7,Y
+    STA bar_at + 0,Y
+    STA bar_at + 7,Y
     DEX
     BPL column
     INC hud_serial
@@ -96,8 +105,14 @@
 \ shows up better than green on the sky), red (1) empty, white (7) all while it flashes, sky (0)
 \ after them
 .pixel
+IF HUD_RUPTURE
+    CPY #HUD_BAR_PIXELS             \ decision 68: pixel Y is its own place, sky past the bar
+    BCS sky
+    TYA
+ELSE
     LDA segment_of_pixel,Y
     BMI sky
+ENDIF
     BIT hud_level
     BMI white
     CMP shield_tmp                  \ hud_level here, its flash bit clear
@@ -120,8 +135,10 @@
     EQUB 0
 .font_right
     EQUB 0
+IF HUD_RUPTURE = 0
 .segment_of_pixel                   \ each pixel's place in the bar (0-5), &FF after it (KC: contiguous)
     EQUB 0, 1, 2, 3, 4, 5, &FF, &FF
+ENDIF
 .infinity                           \ two loops, in the font's form: a byte a pixel column, bit Y row Y
     EQUB &18, &24, &18, &18, &24, &18
 }
