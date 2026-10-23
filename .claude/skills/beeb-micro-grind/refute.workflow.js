@@ -1,6 +1,6 @@
 export const meta = {
   name: 'beeb-micro-grind-refute',
-  description: 'The skeptics of an interrupted grind round: one agent per missing (candidate, lens), the candidate read from the round's opt-<window>.json on disk',
+  description: 'The skeptics of an interrupted grind round: one agent per missing (candidate, lens), the candidate read from the round opt-<window>.json on disk',
   whenToUse: 'Resuming evaluate.workflow.js after it died between the optimisers and the skeptics (or in another session, where resumeFromRunId cannot help): args = the output of `python tools/grind.py todo build/grind/rN`, {round, items}',
   phases: [
     { title: 'Refute', detail: 'a skeptic per missing lens, writing build/grind/r<round>/skeptic-<window>-<i>-<lens>.json as evaluate.workflow.js does' },
@@ -37,9 +37,13 @@ The candidate is number ${it.i} (counting from 0) of the "candidates" array in $
 
 Try to REFUTE it: find a path, a state or a count where it is wrong. Read the source yourself; do not trust the argument or the annotations without checking them. If you are not sure it is right, it is refuted. Write {"refuted": ..., "reason": "...", "cycles_per_execution_recounted": n, "bytes_recounted": n} to ${path}, then return the same object with file_written set.`
 
+// items may be compact, [window, i, file, line, 'smp'] (the lenses' initials), to keep args small
+const LENS_OF = { s: 'semantics', m: 'machine', p: 'project' }
+const ITEMS = args.items.map(x => Array.isArray(x)
+  ? { window: x[0], i: x[1], file: x[2], line: x[3], lenses: [...x[4]].map(c => LENS_OF[c]) } : x)
 const jobs = []
-for (const it of args.items) for (const name of it.lenses) jobs.push([it, LENSES.find(l => l[0] === name)])
-log(`round ${ROUND}: ${args.items.length} candidates, ${jobs.length} skeptics to run`)
+for (const it of ITEMS) for (const name of it.lenses) jobs.push([it, LENSES.find(l => l[0] === name)])
+log(`round ${ROUND}: ${ITEMS.length} candidates, ${jobs.length} skeptics to run`)
 
 const votes = await pipeline(
   jobs,
