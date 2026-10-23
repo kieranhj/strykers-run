@@ -901,6 +901,13 @@ What it would mean:
 So there is about 35-50% more frame rate in the CPU than 25 Hz uses, not the 100% that 50 Hz needs:
 unlocked, with the movement scaled, the game would run at a variable 30-37 Hz.
 
+**Tried, 2026-10-23** (branch `flip-next-vsync`, `f1ed060`, kept for reference): the flag
+`FLIP_NEXT_VSYNC` makes the pass lock always pick the next field, with the movement unscaled. On the
+gameplay disc after grind round 3 (jsbeeb, pcprof): seed 1 45.18 frames a second (892 of 1,000 frames
+1 field, 108 2 fields), holding RIGHT 41.38 (393 / 106); the game about 1.7-1.8 times its design
+speed. KC played it: "an interesting experiment, but we'll leave things locked to 25Hz for now"
+(decision 35 stands).
+
 ## Tools
 
 - **`tools/fieldcost.mjs DISC [--from P] [--passes N] [--seed S] [--hold RIGHT] --out PER.json`:** the
