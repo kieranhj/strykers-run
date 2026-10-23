@@ -118,6 +118,12 @@ MOS's sound, skipping transparent bytes, building the column on the pass before.
 - **Micro-optimisation grind, round 2** (`af3881e` to `ccaa7b3`, report `cc80d16`): 179 of 372
   candidates kept over both rounds; work a pass at the close 34,826 on seed 1, 39,341 holding
   RIGHT (pcprof, the wait excluded; 36,779 / 41,141 on `layer4-late-frames`).
+- **Micro-optimisation grind, round 3** (2026-10-22/23, branch `grind-2026-10-22`, ledger `a6d41bf`,
+  batches to report `ed9a396`; merged into `gameplay-shield` as `dbeeebf`): 89 windows, 208
+  candidates, 583 skeptics; 183 approved, 77 kept in 45 batches (58 stale, 47 no room, 25 refuted,
+  1 no gain). Work a pass on the bench build 34,422.4 -> 31,868.8 on seed 1, 39,622.9 -> 37,279.8
+  holding RIGHT; the gameplay disc 32,519.8 -> 30,386.6 / 35,276.4 -> 33,397.9 (five candidates
+  left off it for room). Passlock identical across the merge (`docs/grind/README.md`).
 - **Closed** (2026-10-20, decision 42; `docs/step2-layer4-costing.md` "Closed"): late frames 0 of
   1,998 on seed 1, 0 of 598 holding RIGHT, 339 of 12,235 over the whole world (known and left).
   The milestone tags renamed for what each achieved.

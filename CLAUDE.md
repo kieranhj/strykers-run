@@ -182,7 +182,7 @@ the symbol dump (`tools/listing.py symbols`), and free space from the listing's 
 `&0000-&00FF` zero page, with game code at `&0004-&0077` (the sprite column unpacker; step 2: dead,
 its first bytes kept as the ground's, the rest the renderer's variables - decision 34);
 `&0300` column buffer; `&0400-&07FF` and `&0880-&095F` copied-down code and data (step 2: and
-`&0A20-&0CFF`, `moved_0a20`: `multiply_by_78`, `rows_up` and the level tables and the ground's texture (`ground_columns`, BUGS #1), 142 bytes free (2026-10-20) at its
+`&0A20-&0CFF`, `moved_0a20`: `multiply_by_78`, `rows_up` and the level tables and the ground's texture (`ground_columns`, BUGS #1), 159 bytes free (2026-10-23) at its
 end, decision 40); `&0E00-&3FFF` code and data; `&4000-&46FF` start-up code (step 2: mostly in the save arena, decision 33), then the screen `&4000-&7FFF` (16K, MODE 2,
 hardware-scrolled by the CRTC). Bank 5 `&8000-&83FF` is the player buffer.
 
@@ -208,7 +208,7 @@ sprite addresses; the code starts at `&14DF`, 1,024 lower than the original's `&
 that pages a compiled kind's bank) after them, then sky mode's main RAM half (`src/sky_main.6502`, `sky_room`
 `&3001`, decision 61) with its per-screen state and helicopter 0's image (`sky_img0`, `&317F`, 448 bytes,
 written in play per screen), and what is free up to `&33FF` is the listing's `SKIP
-unused_3400_original` (193 bytes on 2026-10-22, from `&333F`; `SKY_HELI=0`: the kind cache's builder and
+unused_3400_original` (97 bytes on 2026-10-23, from `&339F`; `SKY_HELI=0`: the kind cache's builder and
 slot 0's offsets, `kc_slot0_y`, there, 9 bytes free); everything from `&3400` stays
 where the original had it (once for BUGS #1 and #2; neither needs it since layer 5, so it may move). The interrupt's variables are below `&3000` (the renderer
 draws with ACCCON's X bit set when the target is shadow). Bank 4: the renderer `&9000-`, then its
@@ -231,9 +231,9 @@ decisions 38, 39) to `&DE2C`, then sky mode's geometry and column checks (`src/s
 ride in bank 5's music area and the start-up block; `unpack_for_play` copies them in and unpacks the
 front end's tunes (`src/music.6502` -> `tools/packmusic.py` -> `src/music_packed.6502`, ZX02) to
 `&9300`. The start-up code and the blocks it copies down ride in the save arena's bytes
-(`&354A-&3FE4`, decision 33: nothing touches the arena before the first `render_reset`; 27 bytes of it
+(`&354A-&3FD4`, decision 33: nothing touches the arena before the first `render_reset`; 43 bytes of it
 left as a carrier, 2026-10-23); `hazel_b`
-and the packed tunes follow `&4000` to `mgame_end` (`&4E36`), so `MGAME` loads to `&5936`, 330
+and the packed tunes follow `&4000` to `mgame_end` (`&4EA1`), so `MGAME` loads to `&59A1`, 223
 bytes under the loading picture at `&5A80` (ASSERTed; 2026-10-23). Bank 5's `&8000-&83FF` (the player buffer) is free:
 masked drawing made it unnecessary; gameplay builds (`GAMEPLAY_SHIELD`) load `DATA2` from `&8000` and put their front end there (`front_gameplay.6502`, the game rules screen; 8 zero bytes first, so the MOS never takes it for a ROM header).
 Gameplay builds (`GAMEPLAY_*`, branch `gameplay-shield`, decisions 43-55) add: zero page `&07-&1E`
