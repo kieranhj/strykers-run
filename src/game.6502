@@ -1940,21 +1940,20 @@ not_white = leave_1e3e - 4                \ plot_mover's BCS not_white + 4 lands
     LDA sprites_y_offset,X
     STA y_offset
     LDA &7A
-    CLC
-    ADC #&1C                        \ *** Use mover types &1c - &37 for second part of mover
+    ADC #&1C                        \ *** Use mover types &1c - &37 for second part of mover (C = 0: the ADC above is at most 63 + &1E)
     TAX
     JSR get_mover_sprite_and_screen_addresses
     LDY y_offset
-    JSR subtract_Y_rows_from_screen_address_in_AX
+    STY unused_0076
+    JSR rows_up                     \ subtract_Y_rows_from_screen_address_in_AX without its JMP (rows_up copes with 0 rows)
     JSR plot_mover_sprite           \ Plot second part of mover (e.g. player's torso)
-    LDY mover
-    JSR get_mover_Y_x
+    LDA movers_x_low,Y              \ get_mover_Y_x without &C5 (still movers_x_high,Y); Y is still mover (walk_column ends with it)
+    STA mover_x_low
     LDX &7A
-    LDA mover_types_parts,X         \ ***
-    BNE leave_1f08                  \ *** Leave if the mover only uses two sprites
+    CPX #&05                        \ types 0-4 are the three-part ones (mover_types_parts is 0 only there)
+    BCS leave_1f08                  \ *** Leave if the mover only uses two sprites
     LDA y_offset
-    CLC
-    ADC #&08
+    ADC #&08                        \ C = 0: the CPX fell through
     STA y_offset
     STZ sprite_data_offset          \ 65C02 opcode
     LDA mover_types_third_sprite,X

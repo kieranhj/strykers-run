@@ -845,9 +845,8 @@ ENDIF
     STA edge_screen_address_low
     LDA edge_screen_address_high
     ADC #&02
-    BMI wrap                        \ the hot path falls through
-    STA edge_screen_address_high
-    BRA group                       \ 65C02 opcode
+    STA edge_screen_address_high    \ stored before the test (STA keeps N): a wrapped &80-&82 is mended at .wrap
+    BPL group                       \ the hot path: N = 0 (A = &40-&7F), straight back
 .wrap
     EOR #&C0                        \ &80-&82 -> &40-&42: - &40
     STA edge_screen_address_high
