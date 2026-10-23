@@ -50,16 +50,46 @@
     LDA sky_H
     SEC
     SBC sky_t
-    STA sky_n                       \ rows left
-    LDX #0
-.more
+    SBC #8                          \ H is 23 to 28 (sky_heights): the first row above is never the top (C set)
+    STA sky_n                       \ rows left after entry 1
+    LDA sky_rl                      \ entry 1 from entry 0 (C set: here, and after every SBC #&02 below,
+    SBC #&80                        \ as the high byte is &40 or more)
+    STA sky_rl + 1
+    LDA sky_rh
+    SBC #&02
+    ORA #&40                        \ &3D-&3F (below the ring) -> &7D-&7F
+    STA sky_rh + 1
+    LDX #1
+    LDA #7
+    STA sky_rt + 1
+    STX sky_rb + 1
+    LDA #8
+    STA sky_rn + 1
+    LDA sky_rl + 1                  \ entry 2 from entry 1
+    SBC #&80
+    STA sky_rl + 2
+    LDA sky_rh + 1
+    SBC #&02
+    ORA #&40
+    STA sky_rh + 2
+    LDX #2
+    LDA #7
+    STA sky_rt + 2
+    STX sky_rb + 2
+    LDA sky_n
+    CMP #9
+    BCC top
+.skyg_a_next
+    SBC #8                          \ (C set)
+    STA sky_n
+    LDA #8
+    STA sky_rn,X
     LDA sky_rl,X                    \ the character row above
-    SEC
     SBC #&80
     STA sky_rl + 1,X
     LDA sky_rh,X
     SBC #&02
-    ORA #&40                        \ &3D-&3F (below the ring) -> &7D-&7F
+    ORA #&40
     STA sky_rh + 1,X
     INX
     LDA #7
@@ -68,12 +98,7 @@
     STA sky_rb,X
     LDA sky_n
     CMP #9
-    BCC top
-    SBC #8                          \ (C set)
-    STA sky_n
-    LDA #8
-    STA sky_rn,X
-    BRA more                        \ 65C02 opcode
+    BCS skyg_a_next
 .top
     STA sky_rn,X                    \ 1 to 8
     CMP #8
