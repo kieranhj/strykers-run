@@ -2112,13 +2112,12 @@ walk_d = walk_ptr + 1
     RTS                             \ Leave with AX = mover_screen_address
 
 .check_mover_x_against_viewport_left
+    LDA mover_x_low                 \ grind: one 16-bit compare, as the unflipped path's inline one:
+    CMP viewport_left_low           \ C = mover_x >= viewport_left (A, N, Z, V not read after)
     LDA &C5
-    CMP viewport_left_high
-    BNE leave_1f60
-    LDA mover_x_low
-    CMP viewport_left_low
-.leave_1f60
+    SBC viewport_left_high
     RTS                             \ Leave with carry set if mover_x >= viewport_left
+    SKIP 2                          \ grind: never run; keeps add_movers_to_column_buffer and all after it in place
 
 .add_movers_to_column_buffer
     \ Step 2 (layer 2): the edge column is scenery only; the renderer draws the movers that
@@ -2200,16 +2199,16 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     STZ pixel_table_address_low     \ 65C02 opcode: zero to use flipped pixel table
 .clip_flipped_mover_loop            \ Grind: the n = edge_x_low - mover_x_low columns counted in X
     LDA edge_x_low
+    TAY                             \ Grind: edge_x_low kept in Y (free here: the exits reload it from &CE)
     SEC
     SBC mover_x_low
     BEQ leave_with_sprite_address_and_carry_set
     STA columns_to_clip_from_left   \ n: zero on entry (both callers zero it), as n INCs left it
     TAX
-    LDA edge_x_low
-    STA mover_x_low                 \ + n, as n INCs left it
+    STY mover_x_low                 \ + n, as n INCs left it
     SEC
+    LDA &CE                         \ Grind: once, here; the loop leaves A = the new &CE (STA keeps it, BCS/DEC/SEC/DEX/BNE do not touch A)
 .clip_flipped_column_c1
-    LDA &CE
     SBC (&CE)                       \ 65C02 opcode: move back a column of sprite data (C = 1)
     STA &CE
     BCS skip_page_2054
@@ -3946,12 +3945,12 @@ ENDIF                               \ (an enemy's bullet into a friendly soldier
     JSR get_mover_frame_and_flip
 .calculate_mover_x_max_from_offset
     LDX &C5
+    LDA frame_and_flip              \ grind: the flip into C instead of N: the ADC below runs with C=0 and the SBC with C=1,
+    ASL A                           \ so neither needs its CLC/SEC (Y, was LDY frame_and_flip, is dead after: every caller reloads it)
     LDA mover_x_low
-    LDY frame_and_flip
-    BMI is_flipped_2aa5
+    BCS is_flipped_2aa5
 .not_flipped_2a9a
-    CLC
-    ADC mover_x_offset
+    ADC mover_x_offset              \ C=0 from the ASL
     STA mover_x_max_low             \ Leave with mover_x_max = mover_x + x_offset,
     STX mover_x_max_high            \ mover_x = mover_x if unflipped
     BCS skip_overflow_2aa0          \ grind: the carry (never measured) taken, not the common case
@@ -3961,13 +3960,13 @@ ENDIF                               \ (an enemy's bullet into a friendly soldier
     RTS
 .is_flipped_2aa5
     STA mover_x_max_low             \ Leave with mover_x_max = mover_x,
-    STX mover_x_max_high            \ grind: stored here, not before the BMI (the unflipped path stores its own)
-    SEC                             \ mover_x = mover_x - x_offset if flipped
-    SBC mover_x_offset
+    STX mover_x_max_high            \ grind: stored here, not before the BCS (the unflipped path stores its own)
+    SBC mover_x_offset              \ mover_x = mover_x - x_offset if flipped (C=1 from the ASL)
     STA mover_x_low
-    BCS set_mover_x
+    BCC cmx_borrow_c894             \ grind: the borrow (a quarter of the flips) out of line, so the common no-borrow case falls to the RTS
+    RTS
+.cmx_borrow_c894
     DEC &C5                         \ grind: was DEX/STX &C5 (X is dead after: every caller reloads it)
-.set_mover_x
     RTS
 
 .check_for_collision_with_friends

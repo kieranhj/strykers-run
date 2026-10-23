@@ -1236,15 +1236,19 @@ c1_rec = * + 1
     PLX
     STX list_n                      \ ...and take the union
     LDY #MOVER_SLOTS
+    LDA list_x1_hi,Y                \ the high bytes are nearly always equal: then only the low
+    CMP list_x1_hi,X                \ bytes are compared, and only the low byte is copied
+    BNE wbl_x1_differ
     LDA list_x1_lo,Y
     CMP list_x1_lo,X
-    LDA list_x1_hi,Y
-    SBC list_x1_hi,X
     BCS x1_kept
+    STA list_x1_lo,X
+    BRA x1_kept
+.wbl_x1_differ                      \ C from the high bytes' CMP
+    BCS x1_kept                     \ the live one's high byte is above: kept
+    STA list_x1_hi,X                \ below (A = its high byte): take both bytes
     LDA list_x1_lo,Y
     STA list_x1_lo,X
-    LDA list_x1_hi,Y
-    STA list_x1_hi,X
 .x1_kept
     LDA list_x2_lo,X
     CMP list_x2_lo,Y
