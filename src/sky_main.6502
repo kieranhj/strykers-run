@@ -214,8 +214,7 @@ NEXT
     TAY
     BPL cell
 .next_row
-    LDX sky_q
-    INX
+    INX                             \ X is still the row (sky_row and the cells leave it)
     CPX sky_nq
     BEQ done
     JMP row
@@ -231,8 +230,13 @@ NEXT
     STX sky_q
     JSR sky_row
     BNE cell
-    LDA #0
-.whole
+.whole                              \ A = 0 (sky_row left sky_skip, and Z is set)
+    STA (s_ptr),Y
+    DEY
+    STA (s_ptr),Y
+    DEY
+    STA (s_ptr),Y
+    DEY
     STA (s_ptr),Y
     DEY
     BPL whole

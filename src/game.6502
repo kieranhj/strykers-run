@@ -2936,6 +2936,7 @@ ENDIF
     INX
     INX
     BRA move_mover_set_43fa
+    SKIP 5                          \ grind: the 5 bytes the high-byte store below drops, so that the code after this routine keeps its address
 
 .unplot_and_move_mover
     LDY mover_to_update
@@ -2959,14 +2960,12 @@ ENDIF
     STA y_edge_size_and_direction   \ ***
     BMI move_mover_y_down_43fa      \ (y_delta AND &7F = y_delta when going up)
 .move_mover_set_43fa
-    LDA #HI(move_mover_up_and_right)
-    STA move_mover_routine_address_high
     STX move_mover_routine_address_low
     JSR animate_mover               \ Returns A = mover_y
 move_mover_routine_address_low = * + 1
-move_mover_routine_address_high = * + 2
-    JSR &FFFF                       \ Move mover up or down, then right or left
-\ #     actually JSR move_mover_routine_address
+    JSR move_mover_up_and_right     \ Move mover up or down, then right or left: grind: only the low byte is
+                                    \ self-modified, the four routines sharing a page (ASSERTed above), so the
+                                    \ high byte is the one assembled here and is never stored
     LDY mover_to_update
     LDA mover_x_low
     STA movers_x_low,Y

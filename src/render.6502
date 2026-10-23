@@ -1899,7 +1899,12 @@ ede5_stop_imm = * + 1
     TAY
     LDX ck_index,Y
     BMI compiled_none               \ &FF: not a kind
-    STX ck_kind
+    LDY #8                          \ its entry, written now (X = the kind; the kinds never touch
+    LDA #&FF                        \ the save block, and a refused part's generic path writes
+    STA (v_ptr),Y                   \ these two bytes again before restore_block can read them)
+    INY
+    TXA
+    STA (v_ptr),Y
     LDA b_ptr
     STA &C0
     LDA b_ptr + 1
@@ -1914,12 +1919,6 @@ ede5_stop_imm = * + 1
     JSR compiled_call
     BCS unsafe                      \ the banked kinds (the commoner) fall through
 .called                             \ carry clear here from either path
-    LDY #8                          \ its entry
-    LDA #&FF
-    STA (v_ptr),Y
-    INY
-    LDA ck_kind
-    STA (v_ptr),Y
     LDA v_ptr                       \ carry still clear
     ADC #11
     STA v_ptr
