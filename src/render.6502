@@ -1090,7 +1090,8 @@ c1_rec = * + 1
 .not_listed
     LDY ren_k
     INY
-    BRA gather                      \ 65C02 opcode
+    CPY act_n                       \ gather's test, inline: equal falls through to .gathered, else
+    BNE gather + 4                  \ in at gather's STY ren_k (its CPY act_n and BEQ are 4 bytes)
 .gathered
 .again
     STZ list_changed
@@ -1101,25 +1102,28 @@ c1_rec = * + 1
     LDY list_slot,X
     LDA need,Y
     BNE next_a                      \ already coming off or going on
-    LDY #0
-.each_b
-    CPY list_n
-    BEQ next_a
-    STY list_b
-    LDA list_slot,Y
-    TAY
-    LDA need,Y
-    BEQ next_b                      \ staying too: no reason
+    STX list_b                      \ a is staying: list_b = its entry (X runs over b below)
     TYA                             \ decision 37: only if b is drawn before a (below it). Over a,
-    BEQ next_b                      \ b's save holds a's bytes, so b comes off and on alone. The
-    CMP list_slot,X                 \ player (slot 0) is drawn last, over everything; the movers
-    BCC below                       \ in slot order (C clear: b's slot below a's)
+    BNE c1_start                    \ b's save holds a's bytes, so b comes off and on alone. The
+    LDX list_n                      \ player (slot 0, entry 0) is drawn last, over everything: for it
+.c1_start                           \ every other entry is below; for a mover b is an entry before
+    DEX                             \ its own (act is in slot order, so is the list)
+    BMI c1_done                     \ (C is clear from CPX list_n above: X < list_n)
+.each_b
     LDY list_slot,X
-    BNE next_b                      \ (a the player: b is below it)
-.below
+    LDA need,Y
+    BEQ c1_next                     \ staying too: no reason
+    TYA
+    BEQ c1_next                     \ b the player: drawn over a
     LDY list_b
     JSR list_overlap                \ X, Y list entries: C set if they overlap
-    BCC next_b
+    BCS c1_done
+.c1_next
+    DEX
+    BPL each_b
+.c1_done                            \ C set: a overlaps b. C clear on every other way in
+    LDX list_b
+    BCC next_a
     LDY list_slot,X                 \ a overlaps b: a comes off and goes back on
     LDA #&C0
     STA need,Y
