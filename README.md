@@ -11,8 +11,10 @@ sprites masked, so nothing flickers, and runs at a steady 25 frames a second - t
 original was designed for - against the original's 15-17 and its flicker: every frame on time on a
 busy scripted game (1,998 frames) and holding RIGHT (598), and 97% over the whole world played start
 to finish (layer 4, tag `step2-layer4-steady-25hz`). 25 Hz is the target (decision 35): 50 Hz was
-costed and does not fit. Next are the original's own glitches (layer 5), a level editor, and
-gameplay ideas not yet agreed. What has landed is in `docs/done.md`, what is left in `PLAN.md`.
+costed and does not fit. Next are the original's own glitches (layer 5) and a level editor;
+the gameplay variations (a recharging shield, lives that respawn, a timer, a run key, the HUD as
+a CRTC rupture with the score and progress: decisions 43-68) are on branch `gameplay-shield`, off
+`main` until KC merges them. What has landed is in `docs/done.md`, what is left in `PLAN.md`.
 Seen in the jsbeeb emulator only so far, not yet on real hardware.
 
 The game remains the copyright of its authors and publisher. This repository is for study and
@@ -35,7 +37,7 @@ preservation; it does not include the original disc images or the disassembly it
 |---|---|---|---|
 | **The optimised version** (step 2, in progress: a steady 25 Hz, no flicker) | `main` | `make`, or `.\build.ps1` | `build/strykers.ssd` |
 | **The original**, byte for byte the Stairway to Hell disc's game | the tag `step1-byte-identical-rebuild` (`762a0d2`) | `make original`, or the tag's own `build.ps1` in a worktree of it (below) | `build/strykers-original.ssd` |
-| **The gameplay variations** (decisions 43-48: a recharging shield, lives that respawn, a timer, a game rules screen, a run key; branch `gameplay-shield`) | `gameplay-shield` | `make gameplay`, or `.uild.ps1 -Gameplay` (add `RELEASE=1` / `-Release` for testers) | `build/strykers-gameplay.ssd` |
+| **The gameplay variations** (decisions 43-68: a recharging shield, lives that respawn, a timer, a game rules screen, a run key, vehicles that take hits, dithered hills, the HUD as a CRTC rupture with the score and progress) | `gameplay-shield` | `make gameplay`, or `.\build.ps1 -Gameplay` (add `RELEASE=1` / `-Release` for testers) | `build/strykers-gameplay.ssd` |
 
 `make original` exports the tag's `src/` and `tools/` into `build/original/` (`git archive`, so it
 needs a clone with its tags: `git fetch --tags`), assembles them with the flags the tag's
@@ -122,8 +124,11 @@ sideways RAM banks.
 
 ## Playing
 
-The latest work-in-progress build runs in the browser, in jsbeeb as a Master 128:
-<https://bbc.xania.org/?disc=https://bitshifters.github.io/content/wip/strykers-run-wip.ssd&autoboot&model=Master>
+The latest work-in-progress builds run in the browser, in jsbeeb as a Master 128: the optimised
+game,
+<https://bbc.xania.org/?disc=https://bitshifters.github.io/content/wip/strykers-run-wip.ssd&autoboot&model=Master>,
+and the gameplay variations,
+<https://bbc.xania.org/?disc=https://bitshifters.github.io/content/wip/strykers-run-gameplay-wip.ssd&autoboot&model=Master>.
 
 | Key | |
 |---|---|

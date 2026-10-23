@@ -231,10 +231,10 @@ decisions 38, 39) to `&DE2C`, then sky mode's geometry and column checks (`src/s
 ride in bank 5's music area and the start-up block; `unpack_for_play` copies them in and unpacks the
 front end's tunes (`src/music.6502` -> `tools/packmusic.py` -> `src/music_packed.6502`, ZX02) to
 `&9300`. The start-up code and the blocks it copies down ride in the save arena's bytes
-(`&354A-&3FD9`, decision 33: nothing touches the arena before the first `render_reset`; 38 bytes of it
-left as a carrier, 2026-10-20); `hazel_b`
-and the packed tunes follow `&4000` to `mgame_end` (`&4C1F`), so `MGAME` loads to `&572F`, 849
-bytes under the loading picture at `&5A80` (ASSERTed). Bank 5's `&8000-&83FF` (the player buffer) is free:
+(`&354A-&3FE4`, decision 33: nothing touches the arena before the first `render_reset`; 27 bytes of it
+left as a carrier, 2026-10-23); `hazel_b`
+and the packed tunes follow `&4000` to `mgame_end` (`&4E36`), so `MGAME` loads to `&5936`, 330
+bytes under the loading picture at `&5A80` (ASSERTed; 2026-10-23). Bank 5's `&8000-&83FF` (the player buffer) is free:
 masked drawing made it unnecessary; gameplay builds (`GAMEPLAY_SHIELD`) load `DATA2` from `&8000` and put their front end there (`front_gameplay.6502`, the game rules screen; 8 zero bytes first, so the MOS never takes it for a ROM header).
 Gameplay builds (`GAMEPLAY_*`, branch `gameplay-shield`, decisions 43-55) add: zero page `&07-&1E`
 (the shield and its settings, the respawn, the timer, the run key: `src/zp.6502`); `moved_0a20` from `&0982` (not `&0A20`: !BOOT's and SRRUN's bytes, dead in play, decision 59); the HUD
@@ -243,6 +243,11 @@ display's; `vehicle_hits`, decision 62's; not in the file); the shield, the resp
 bank 4 under ANDY; the timer in bank 6; `shield_new_game` and the game rules screen in bank 5 after
 its music (the front end's hooks replace instructions of the same size); the main block's
 unexecuted padding dropped (`GAMEPLAY_ANY`). The timer and the game rules need the unshifted banks.
+`HUD_RUPTURE` (decision 67, the gameplay disc) moves the HUD: its row is a CRTC frame of its own read
+from `HUD_ROW` (`&0B80-&0DFF`, the HUD buffer itself), `moved_0a20` ends under it (`vehicle_hits`,
+`HUD_ROW - 10`), the HUD's other variables (`hud_vars`, `game_completed`, `timer_limit`, ...) are in
+the main block before `font_data` (which it pushes past `&3400`), and the interrupt's rupture code
+(`rupture_t1`) is in `moved_0a20`; its K table at `hazel_b`'s end.
 Bank 5 grows only at its end (its music is page-aligned). In play the game's `irq1_handler` owns
 vsync and flips the two screens (main and shadow, both `&4000-&7FFF`); on the front end the MOS
 has vsync and only main is used (decisions 14, 23).

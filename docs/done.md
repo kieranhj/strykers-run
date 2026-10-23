@@ -157,6 +157,54 @@ MOS's sound, skipping transparent bytes, building the column on the pass before.
   each glyph wiped a pixel at a time in its cell, a step every 2 fields on the fields the scroll text
   does not use. `tools/credits.mjs`: every field matched against both lines at every shift.
 
+## Gameplay variations (branch `gameplay-shield`, decisions 43-68; the gameplay disc)
+
+Each under its own flag, off by default; `build.ps1 -Gameplay` builds them all. The design, checks
+and costs are `docs/briefs/gameplay-shield.md`.
+
+- **The shield** (`GAMEPLAY_SHIELD`, decision 44): two units, recharging after 5 s; a blue bar on
+  the top line, red when empty, white flash on a hit; an absorbed hit has its own sound.
+  `tools/shieldtest.mjs`.
+- **Lives that respawn** (`GAMEPLAY_LIVES`, 45): the skeleton, then the view rewinds (40 columns
+  by default) and the player returns with the shield full and 2 s safe. `tools/livestest.mjs`.
+- **The game rules screen** (`GAMEPLAY_OPTIONS`, 46, 50, 55): "6 GAME RULES" on the title: lives
+  1-9 or infinite, the rewind 40/80/120/160, the timer off/up/down, the shield's hits 1/2/3/4/6 and
+  its recharge 2/5/8/10 s, the run time and its charge, the timer's limit 3/5/8/10/15 minutes.
+  Infinite lives ended by ESCAPE stay off the high score table. `tools/optionstest.mjs`.
+- **The timer** (`GAMEPLAY_TIMER`, 47, 59, 63): counting up with a bonus for time under par, or
+  counting down to the skeleton and game over; shown as MM:SS.t; the limit 15 minutes by default
+  (decision 63, `2c399c2`). `tools/timertest.mjs`.
+- **The front end** (`GAMEPLAY_OPTIONS`, 56): any key leaves the high score table for the menu; the
+  game rules page's layout; define controls asks for RUN before PAUSE.
+- **Hits through a friendly soldier** (decision 49): the original passed a projectile's hit on to
+  the player when the mover it hit touched the player; gameplay builds let the mover take it.
+  `tools/selfhit.mjs`.
+- **The run key** (`GAMEPLAY_RUN`, 48, 52): SHIFT held runs a column a pass for 5 s, then refills
+  over 10 s (usable again past half); redefinable; its times on the game rules screen.
+  `tools/runmeter.mjs`.
+- **Jumping and firing on the move** (`GAMEPLAY_JUMP`, `GAMEPLAY_FIRE`, 53, 54).
+- **Vehicles take hits** (`GAMEPLAY_ARMOUR`, decision 62, `2d60ebb`): the player's helicopters and
+  tank take 3 hits (a bullet's impact sound) before the one that wrecks them.
+- **Dithered hills** (`DITHER_HILLS`, decision 64, merged `91add67`): the far, mid and fore ranges
+  dithered (blue 4/16, red 6/16, red 2/16) in `MOUNTAINS_TWO`'s data, in bank 4, no new RAM;
+  `MOUNTAINS_ONE` moved to bank 7. The sky tints tried with it were rejected (65, 66).
+- **The scroll text editable** (`fbe4474`, `bd8e1c2`, all builds): `src/scrolltext.txt`, encoded at
+  every build by `tools/scrolltext.py`; 28 bytes of room on the shipping disc, 141 on the gameplay
+  disc, whose pixel scroller moved to bank 5's `&8000` block.
+- **The HUD's row a CRTC rupture** (`HUD_RUPTURE`, decision 67, `cde5953`, merged `e5b6cae`; BUGS #15
+  fixed on the way, `5b0c05a`): one character row read from `HUD_ROW` (`&0B80`) as a CRTC frame of
+  its own, drawn once, no copy per screen. `tools/rupture.mjs`: over 10,000 frames the HUD read with
+  D 0 and the screen with the shown screen's D (6 of 8,985 fields set D up to 10 characters late,
+  in sky). Work a pass (pcprof, seed 1, jsbeeb 2.10.2, 2026-10-23) 32,953.6 -> 32,248.6; passlock
+  state identical to the build without it. KC checked it on b2 (2026-10-23).
+- **The HUD's contents** (decision 68, `d77061f` to `2853ce6`): the lives digit, the shield's bar 25
+  pixels wide (a pixel 2 of the shield's 50), the score centred, the timer, the progress percentage
+  at the right (a percent each 74 columns; 100 at the headquarters over the whole world). Work a
+  pass 32,519.8 with all of it (pcprof, seed 1, 2026-10-23). `tools/shieldtest.mjs` reads the bar's
+  place from the build.
+- Speed: with every flag but the rupture, 6 late frames of 1,998 against 5 with every flag off
+  (passbench, seed 1, unshifted `DEBUG_LIVES` builds, 2026-10-21).
+
 ## Tooling
 
 - **Two builds from one repository** (decision 28, `7e60e02`): the POSIX `Makefile` beside

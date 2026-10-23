@@ -1,4 +1,4 @@
-# Brief: the first gameplay variations - a recharging shield, lives that respawn (PLAN)
+# Brief: the first gameplay variations - a recharging shield, lives that respawn (BUILT; KC's review and the merge into `main` left: PLAN.md)
 
 KC, 2026-10-20 (decisions 43-46), on branch `gameplay-shield`. The first changes to how the
 original *plays* (rule 1: each is a decision before it is built). Every variation is under its own
@@ -205,6 +205,10 @@ death respawns whatever the lives, so the test scripts still never end.
 21. **Vehicles take hits: DONE** (decision 62, KC 2026-10-22): `GAMEPLAY_ARMOUR` gives each of the
    player's vehicles 3 hits, each with the shield's absorbed-hit sound, before the hit that wrecks it
    (then the next explodes it, as before). No HUD. Proven on helilock's flights 5 and 2.
+
+22. **The HUD after the shield: DONE** (decisions 67, 68, 2026-10-22/23): the HUD's cost (item 10) went
+    with the row as a CRTC rupture of its own (`HUD_RUPTURE`), and with it the score, the progress
+    percentage and a 25-pixel shield bar; `docs/done.md` has the measurements.
 
 ## Answered (KC, 2026-10-20)
 
