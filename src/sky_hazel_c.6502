@@ -80,13 +80,13 @@
 .placed
     JSR row_ptr
     LDA p_ptr                       \ the indices, from the top row down
-    CLC
-    ADC #2
     STA src + 1
     LDA p_ptr + 1
-    ADC #0
     STA src + 2
-    LDX #0
+    LDA sky_n                       \ the loop ends at X = 2 + count (C clear: row_ptr's high byte add)
+    ADC #2
+    STA cnt_ba44 + 1
+    LDX #2                          \ src is p_ptr itself: X from 2 skips the column's header
 .byte
 .src
     LDA &FFFF,X                     \ self-modified: the column's indices
@@ -104,7 +104,8 @@
     LDY #0
 .same_cell
     STY sky_line
-    DEC sky_n
+.cnt_ba44
+    CPX #&FF                        \ self-modified: 2 + the count
     BNE byte
 .next_col
     LDY #1                          \ on 2 + count
