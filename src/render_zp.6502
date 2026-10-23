@@ -92,22 +92,14 @@
     \ with its restoring range corrected; static scan of every render-phase store), and &00/&01 are put back by
     \ render's buffer_to_view (slot 2), the last writer of them, from the values view_to_buffer took at the start.
     LDA zp_save + 17
-    STA &9F
-    LDA zp_save + 18
-    STA &A0
-    LDA zp_save + 19
-    STA &B0
-    LDA zp_save + 20
-    STA &B1
-    LDA zp_save + 21
     \ &B2/&B3/&BA/&BB (the viewport) need nothing: render's buffer_to_view (slot 2) put back
-    \ the values saved here (A = zp_save + 21, unused)
+    \ the values saved here; &B0/&B1 (the CRTC start) likewise (history_to_view, the only other
+    \ writer, is followed by that buffer_to_view); &9F, &A0, &B6 the renderer never writes, nor the
+    \ interrupt: nothing to give back (zp_save + 17, + 18, + 19, + 20, + 21, + 25 unused)
     LDA zp_save + 23
     STA &B4
     LDA zp_save + 24
     STA &B5
-    LDA zp_save + 25
-    STA &B6
     LDA zp_save + 26
     STA &B7
     LDA zp_save + 27
