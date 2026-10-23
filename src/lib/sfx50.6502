@@ -199,12 +199,8 @@ noise = sfx_write.noise             \ after sfx_write's RTS
 .wait_low
     DEY
     BNE wait_low
-    LDY #&08
-    STY sysvia_orb                  \ and high again
-    LDY #4
-.wait_high
-    DEY
-    BNE wait_high
+    LDA #&08
+    STA sysvia_orb                  \ and high again (Y is still 0)
     RTS
 .noise                              \ sfx_output's noise channel (its BEQ noise lands here)
     LDA sfx_p_lo,X                  \ noise: only when it changes (writing it restarts the noise)

@@ -306,41 +306,74 @@ ENDIF
 \ sky_check: C set if the rectangle holds anything but sky
 .sky_check
 {
-    LDX #0
+    LDX #0                          \ X is the character row all through (nothing here changes it)
 .row
-    STX sky_q
     JSR sky_row
     BNE cell
-    LDA #0
-.full
+.full                               \ a whole row: Y = 8k + 7, eight bytes a pass
+    ORA (s_ptr),Y
+    DEY
+    ORA (s_ptr),Y
+    DEY
+    ORA (s_ptr),Y
+    DEY
+    ORA (s_ptr),Y
+    DEY
+    ORA (s_ptr),Y
+    DEY
+    ORA (s_ptr),Y
+    DEY
+    ORA (s_ptr),Y
+    DEY
     ORA (s_ptr),Y
     DEY
     BPL full
-    TAX
-    BNE dirty
-    BRA next_row                    \ 65C02 opcode
+    ORA #0
+    BEQ next_row
+.dirty
+    SEC
+    RTS
+\ a part row (sky_skip 1 to 7): the cell's n = 8 - sky_skip lines are the last n of seven LDA/BNE/DEY slots;
+\ the BRA's offset (self-modified once a row) enters 5 * (sky_skip - 1) bytes in; C is set all through
 .cell
-    LDX sky_n
-.line
+    ASL A
+    ASL A
+    ADC sky_skip                    \ 5 * skip (C clear: at most 35)
+    SBC #4                          \ (C clear: - 5) 5 * (skip - 1), no borrow: C set
+    STA ckp_br + 1
+.ckp_br
+    BRA ckp_lad                     \ 65C02 opcode; self-modified: the offset
+.ckp_lad
     LDA (s_ptr),Y
     BNE dirty
     DEY
-    DEX
-    BNE line
-    TYA
-    SEC
-    SBC sky_skip
+    LDA (s_ptr),Y
+    BNE dirty
+    DEY
+    LDA (s_ptr),Y
+    BNE dirty
+    DEY
+    LDA (s_ptr),Y
+    BNE dirty
+    DEY
+    LDA (s_ptr),Y
+    BNE dirty
+    DEY
+    LDA (s_ptr),Y
+    BNE dirty
+    DEY
+    LDA (s_ptr),Y
+    BNE dirty
+    DEY
+    TYA                             \ the cell to the left's top (negative: none); C set (a borrow
+    SBC sky_skip                    \ only comes with a negative Y, which leaves)
     TAY
-    BPL cell
+    BPL ckp_br
 .next_row
-    LDX sky_q
     INX
     CPX sky_nq
     BNE row
     CLC
-    RTS
-.dirty
-    SEC
     RTS
 }
 
