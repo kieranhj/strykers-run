@@ -2053,24 +2053,24 @@ lo_imm = * + 1
     ADC rb_part2,X
     STA v_ptr                       \ v_ptr is dead here: set to the result below
     LDA save_start_hi,Y
-    ADC rb_part2 + 1,X
+    ADC rb_part2 + 1,X              \ C = 0: start + offset is an address, no carry out of 16 bits
+    STA v_ptr + 1                   \ v_ptr = the part's start - 8, and the same pair kept in rb_p8
     STA rb_p8 + 1
     LDA v_ptr
-    SEC
-    SBC #8
+    SBC #7                          \ C = 0: minus 8; C = 1 afterwards if no borrow
     STA v_ptr
-    PHA                             \ the part's start - 8 kept on the stack, not in rb_p8
-    LDA rb_p8 + 1
-    SBC #0
-    STA v_ptr + 1
-    PHA
-    PHX
+    STA rb_p8
+    BCS rbA_nb
+    DEC v_ptr + 1
+    DEC rb_p8 + 1
+.rbA_nb
+    STX rb_part3                    \ X kept in rb_part3, dead since both its bytes were read
     JSR columns
-    PLX
-    PLA                             \ the part before ends where this one starts
-    STA rb_end + 1
-    PLA
+    LDX rb_part3
+    LDA rb_p8                       \ the part before ends where this one starts
     STA rb_end
+    LDA rb_p8 + 1
+    STA rb_end + 1
 .no_part
     DEX
     DEX
