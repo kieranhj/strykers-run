@@ -2355,23 +2355,23 @@ ENDIF
 \ X = slot (the live tables), Y = slot + boff (the records)
 .record_differs                     \ Z clear if the record and the live slot differ; keeps X, Y
 {
-    LDA rec_type,Y
-    CMP movers_type_and_colour,X
+    LDA rec_sl,Y                    \ the most likely to differ first (a moved or scrolled mover), then the animation frame
+    CMP movers_screen_address_low,X
     BNE out
     LDA rec_frame,Y
     CMP movers_frame_and_flip,X
     BNE out
-    LDA rec_xl,Y
-    CMP movers_x_low,X
-    BNE out
     LDA rec_xh,Y
     CMP movers_x_high,X
     BNE out
+    LDA rec_type,Y
+    CMP movers_type_and_colour,X
+    BNE out
+    LDA rec_xl,Y
+    CMP movers_x_low,X
+    BNE out
     LDA rec_y,Y
     CMP movers_y,X
-    BNE out
-    LDA rec_sl,Y
-    CMP movers_screen_address_low,X
     BNE out
     LDA rec_sh,Y
     CMP movers_screen_address_high,X
