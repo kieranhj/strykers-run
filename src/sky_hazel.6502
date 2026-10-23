@@ -168,14 +168,38 @@
     STA sky_j8
     LDX #0
 .row
-    JSR sky_col_row
-    BCS next
-.byte
+    LDA sky_j8                      \ sky_col_row's tests, inline (its caller here only): sk = this column from the entry's first
+    SEC
+    SBC sky_rc,X
+    BCC next                        \ before it
+    STA sky_stop
+    CMP sky_ry,X
+    BCC chk1_in                     \ sk < the last
+    BNE next                        \ after it
+.chk1_in
+    LDA sky_rt,X                    \ the cells' bytes lie at rl + (rt | sk) - (rn - 1) .. rl + (rt | sk): s_ptr = the lowest
+    ORA sky_stop                    \ (rn <= rt + 1, so 0 or more)
+    SEC
+    SBC sky_rn,X
+    INC A                           \ 65C02 opcode
+    CLC
+    ADC sky_rl,X
+    STA s_ptr
+    LDA sky_rh,X
+    ADC #0
+    STA s_ptr + 1
+    LDY sky_rn,X
+    DEY                             \ rn - 1 down to 0 (rn is 1 to 8)
     LDA (s_ptr),Y
-    BNE dirty
     DEY
-    CPY sky_stop
-    BNE byte
+    BMI chk1_done
+.byte
+    ORA (s_ptr),Y                   \ all the bytes ORed: nothing exits early, as nothing is ever found
+    DEY
+    BPL byte
+.chk1_done
+    TAY
+    BNE dirty
 .next
     INX
     CPX sky_nq
