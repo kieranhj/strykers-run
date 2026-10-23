@@ -80,7 +80,7 @@ const checkDigits = () => {
     }
 };
 cpu.debugInstruction.add((pc) => {
-    if (pc === syms.timer_bonus && (cpu.romsel & 15) === 6 && !bonus) bonus = { score: score(), t: bcd(zp("timer_hi"), zp("timer_lo")) };
+    if (pc === syms.timer_bonus && (cpu.romsel & 15) === 7 && !bonus) bonus = { score: score(), t: bcd(zp("timer_hi"), zp("timer_lo")) };   // bank 7 (decision 59, 866ce9b)
     if (pc === syms.render_finish && bonus && bonus.after === undefined) bonus.after = score();
     if (pc === syms.bank4_back && m.passes > 2 && m.passes > quietUntil && !bonus) { ticks++; checkDigits(); }   // (bonus: timer_bonus_call returns here too)   // timer_tick_call, after its JSR timer_tick
     if (pc === syms.game_over_screen && gameOverAt === null) gameOverAt = m.passes;

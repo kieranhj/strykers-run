@@ -51,9 +51,6 @@ Left:
   than the original (35 deaths against 175); whether 3 lives is enough for a person wants a
   playtest, or a count of the hits nobody could avoid (a floor).
 - **KC's review** of play: the rewind's speed and distance, the timer's bonus (10 points a second).
-- **`tools/timertest.mjs`'s whole-world run** sees no ticks and the time 0 at the headquarters on
-  every build back to before the rupture (2026-10-23): the harness is out of step with the code;
-  its `--short` and `--bonus` runs are unaffected. Fix the harness.
 - **Merging into `main`**, when KC says: then one disc with both builds and a boot menu, for a
   release (the brief, "Discs").
 - **Room** is nearly gone on the gameplay disc (above): the next feature there starts by moving
