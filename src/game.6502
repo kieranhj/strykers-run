@@ -5880,33 +5880,24 @@ SECTION moved_0a20, org = MOVED_ORG, cmos = TRUE
     LDA #&02
     STA delta_high
     LSR A                           \ 1: unused_0076's last row, counted off below (C: SEC next)
-    STA unused_0076
     LDA ru_lo
     AND #&F8                        \ line 0 of this cell, then up those cells
     SEC
     SBC ru_cells_lo,Y
-    STA ru_lo                       \ L1, a multiple of 8 (ru_cells_lo is &00 or &80)
+    STA unused_0076                 \ L1, a multiple of 8 (ru_cells_lo is &00 or &80); the rows are counted (the one read of &76 is done): scratch
     TXA
-    SBC ru_cells_hi,Y
-    CMP #&40                        \ round the 16K screen
-    BCS ru_in_ring
-    ADC #&40
-.ru_in_ring
-    LDY ru_lo                       \ step 2 (grind): the high byte first. C: no borrow from L1 - &79
-    CPY #&80                        \ (L1 >= &79 is L1 >= &80)
-    SBC #&02                        \ as the subroutine's SBC delta_high: the same N V Z C
-    CMP #&40                        \ round the 16K screen
-    BCS ru_in_ring_2
-    ADC #&40
-.ru_in_ring_2
+    SBC ru_cells_hi,Y               \ X is &40-&7F: less at most &11 and a borrow, &2E-&7F
+    LDY unused_0076
+    CPY #&80                        \ (L1 >= &79 is L1 >= &80): C = no borrow from L1 - &79
+    SBC #&02                        \ as the subroutine's SBC delta_high
+    ORA #&40                        \ round the 16K screen: &2B-&7F; below &40 add &40, else keep = set bit 6 (one wrap for the pair: the first leaves &40-&7F)
     TAX
     LDA ru_d                        \ then &0279 up, and up the rest of the rows inside that cell:
     AND #&07                        \ (L1 - &79) AND &F8 = L1 EOR &80, with its line 7 - (d AND 7)
-    EOR #&87                        \ (C and V stay as the crossing left them)
-    EOR ru_lo
+    EOR #&87
+    EOR unused_0076
 .ru_done                            \ the rows inside the cell: A = the low byte
-    TAY
-    STZ unused_0076                 \ 65C02 opcode; 0 (Z and N are read by no caller)
+    TAY                             \ (C, V, Z, N are read by no caller; unused_0076 is written by both entries' callers before it is read)
     RTS
 .ru_cells_lo                        \ n character rows: n * &280
     EQUB &00, &80, &00, &80, &00, &80, &00, &80
