@@ -1421,7 +1421,7 @@ ENDIF
     LDX #0
 .mark_part
 {
-    PHA
+    STA stop_y                  \ A kept in stop_y (dead here), not on the stack
     LDA v_ptr
     SEC
 base_lo = * + 1
@@ -1433,7 +1433,7 @@ base_hi = * + 1
     SBC #0
 header_hi = * + 1
     STA &FFFF,X
-    PLA
+    LDA stop_y
     RTS
 }
 
@@ -1644,12 +1644,11 @@ ENDIF
 .generic
     BIT dm_flip
     BPL draw_column.each
-    LDA ds_c                        \ flipped: the bottom 8 * (n - 1) on
-    DEC A                           \ 65C02 opcode
+    LDA ds_c                         \ flipped: the bottom 8 * (n - 1) on
+    DEC A                            \ 65C02 opcode
     ASL A
     ASL A
-    ASL A
-    CLC
+    ASL A                            \ C = 0: n <= 12 (every sprite drawn, sprite_column_count), so n - 1 < 32
     ADC b_ptr
     STA b_ptr
     BCC draw_column.each            \ the same page
@@ -1925,9 +1924,7 @@ ede5_stop_imm = * + 1
     LDA v_ptr                       \ carry still clear
     ADC #11
     STA v_ptr
-    BCC on_page
-    INC v_ptr + 1
-    CLC                             \ carry clear to return
+    BCS cp2_page_cross              \ the rare carry: off the hot path, which falls through
 .on_page
     LDA &C0
     STA (v_ptr)                     \ 65C02 opcode
@@ -1935,35 +1932,20 @@ ede5_stop_imm = * + 1
     LDA &C1
     STA (v_ptr),Y
     RTS                             \ carry clear: drawn
+.cp2_page_cross                     \ v_ptr + 11 crossed a page (rare)
+    INC v_ptr + 1
+    CLC                             \ carry clear to return
+    BRA on_page                     \ 65C02 opcode
 .in_hazel
     JSR compiled_direct
     BCC called
 .unsafe                             \ the code's row pointers used b_ptr and ds_c
-    LDA &C0
+    LDA &C0                         \ (C = 1 here from either path: BCS unsafe, BCC called not taken)
     STA b_ptr
     LDA &C1
     STA b_ptr + 1
     LDA ds_n
     STA ds_c
-    SEC
-    RTS
-}
-
-\ up_a_cell: AX = a character cell's top line; returns AX = the bottom line of the cell above
-\ (&279 lower, round the 16K screen), as the plotter moves up a group.
-.up_a_cell
-{
-    SEC
-    SBC #&79
-    PHA
-    TXA
-    SBC #&02
-    CMP #&40
-    BCS in_ring
-    ADC #&40
-.in_ring
-    TAX
-    PLA
     RTS
 }
 
