@@ -1533,16 +1533,16 @@ ENDIF
     LDA os_rom + 8192,X             \ *** Use ROM as pseudo-random stream for ground
     AND #&03
     TAX
-    PHA
-    JSR ground_square               \ layer 4: multiply_A_by_X_2f1e's A x X from a table (HAZEL)
-    PLA
-    TAX
-    CLC                             \ layer 5: for ground_rows' ADC, and the C = 0 edge_left_loop takes on entry
-    LDA column_buffer + 9
+    JSR ground_square               \ layer 4: multiply_A_by_X_2f1e's A x X from a table (HAZEL); leaves A = X * X (its LDA squares,X; nothing after it touches A)
+    CLC                             \ layer 5: for the ADC, and the C = 0 edge_left_loop takes on entry
+    LDY column_buffer + 9           \ step 2 (grind): Y, not A, so A = t * t stays; Y is dead (the callers load it next)
     BNE leave_1c4e                  \ Don't add ground if a bridge is present
+    ADC #LO(ground_columns)         \ step 2 (grind): the loads' base patched into the loop (below), t * t + ground_columns
+    STA ground_load_a + 1           \ (one page, ASSERTed after the table; C = 0 out, no carry)
+    STA ground_load_b + 1
     LDY #&13
     LDA column_buffer + 21
-    BNE ground_rows                 \ Don't add ground edge if runway present
+    BNE add_ground_to_column_buffer_loop    \ Don't add ground edge if runway present
     LDA ground_edge_bottom_pixel_values,X
     STA column_buffer + 22
     LDA column_buffer + 23
@@ -1550,22 +1550,22 @@ ENDIF
     EOR ground_edge_top_pixel_values,X
     STA column_buffer + 23
     LDY #&15
-.ground_rows                        \ Layer 5 (BUGS #1 fixed): the type's rows from a fixed texture (ground_columns),
-    TYA                             \ not the one the original read from zero page &0000-&001E: X = t * t + Y
-    ADC result_low                  \ ground_square's t * t; C = 0 (the CLC above), and no carry out
-    TAX
-.add_ground_to_column_buffer_loop   \ step 2 (grind): two rows a turn, Y odd at the top (&15 or &13)
-    LDA ground_columns,X
+.add_ground_to_column_buffer_loop   \ step 2 (grind): two rows a turn, Y odd at the top (&15 or &13); Layer 5 (BUGS #1 fixed): the type's rows from a fixed texture (ground_columns + t * t + Y)
+.ground_load_a
+    LDA ground_columns,Y            \ operand low byte patched above
     STA column_buffer,Y             \ Add ground to column buffe
-    DEX
     DEY
-    LDA ground_columns,X
+.ground_load_b
+    LDA ground_columns,Y            \ operand low byte patched above
     STA column_buffer,Y
-    DEX
     DEY
     BPL add_ground_to_column_buffer_loop
 .leave_1c4e
     RTS
+IF GAMEPLAY_ANY = 0
+    SKIP 1                          \ step 2 (grind): never run; keeps the padding after it where it was
+ENDIF
+ASSERT LO(ground_columns) + 9 + 21 < &100, "ground_columns + t * t + Y stays in its page"
 IF GAMEPLAY_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
     SKIP 3                          \ layer 5: never executed; keeps ground_left_x_low and what follows where they were
 ENDIF

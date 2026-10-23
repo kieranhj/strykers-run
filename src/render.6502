@@ -1726,29 +1726,12 @@ ENDIF
     LDA b_ptr + 1
     STA s_ptr + 1
     TXA                             \ ...raised by its first row
-    BPL raised
-.up_cell                            \ X = the line, negative: a cell up for each 8
-    LDA s_ptr
-    SEC
-    SBC #&80
-    STA s_ptr
-    LDA s_ptr + 1
-    SBC #&02
-    CMP #&40
-    BCS up_in_ring
-    ADC #&40
-.up_in_ring
-    STA s_ptr + 1
-    TXA
-    CLC
-    ADC #8
-    TAX
-    BCC up_cell
+    BMI up_cell                     \ negative (about 1 column in 8): a cell up for each 8, out of line
 .raised                             \ A = X = the line of the lowest byte drawn
     ORA s_ptr                       \ the record's address
     LDY #9
     STA (v_ptr),Y
-    INY
+    LDY #10                         \ (LDY, not INY: the BCC below must start its next instruction on a page)
     LDA s_ptr + 1
     STA (v_ptr),Y
     LDA v_ptr                       \ the cells after it
@@ -1758,6 +1741,21 @@ ENDIF
     BCC save_on_page                \ C = 0 on the common path
     INC v_ptr + 1
     CLC                             \ (the page-crossing path: C was 1)
+    BRA save_on_page                \ 65C02 opcode
+.up_cell                            \ X = the line, negative: a cell up for each 8
+    LDA s_ptr
+    SEC
+    SBC #&80
+    STA s_ptr
+    LDA s_ptr + 1
+    SBC #&02                        \ C = 1 after this: the ring's high byte is 3 or more
+    ORA #&40                        \ round the 16K: &3D-&3F (below the ring) -> &7D-&7F
+    STA s_ptr + 1
+    TXA
+    SBC #&F8                        \ + 8 (C = 1); carry out when it reaches 0 or more
+    TAX
+    BCC up_cell
+    BRA raised                      \ 65C02 opcode: A = X = the line
 .save_on_page                       \ C = 0 here (TXA, TAY, EOR leave it)
     \ the data: the byte for line Y of the first cell is data[count - 1 - (line - Y)], so
     \ d_ptr = the column + 2 + count - 1 - line = col_ptr - 1 - line = col_ptr + (line EOR &FF) - &100
