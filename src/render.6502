@@ -268,22 +268,24 @@ ENDIF
 
 \ ---- the view: the zero-page values the plotter and the lives read ---------------------------
 .view_to_buffer                     \ X = screen: the live view becomes that screen's
+                                    \ slot 2 always: nothing reads slots 0 and 1, and the one call with X = back follows buffer_to_view,
+                                    \ so the live view is slot 2's already; absolute stores are a cycle cheaper than ,X
     LDA screen_start_address_low
-    STA buf_ss_lo,X
+    STA buf_ss_lo + 2
     LDA screen_start_address_high
-    STA buf_ss_hi,X
+    STA buf_ss_hi + 2
     LDA crtc_start_address_low
-    STA buf_crtc_lo,X
+    STA buf_crtc_lo + 2
     LDA crtc_start_address_high
-    STA buf_crtc_hi,X
+    STA buf_crtc_hi + 2
     LDA viewport_left_low
-    STA buf_vl_lo,X
+    STA buf_vl_lo + 2
     LDA viewport_left_high
-    STA buf_vl_hi,X
+    STA buf_vl_hi + 2
     LDA viewport_right_low
-    STA buf_vr_lo,X
+    STA buf_vr_lo + 2
     LDA viewport_right_high
-    STA buf_vr_hi,X
+    STA buf_vr_hi + 2
     RTS
 
 .buffer_to_view                     \ X = screen: that screen's view becomes the live one
