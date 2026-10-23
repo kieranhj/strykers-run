@@ -64,7 +64,7 @@ cpu.debugInstruction.add((pc) => {
     if (tone && tone.at === undefined && pc === syms.shield_sound) {
         tone.at = m.passes; tones++;
         const d = 50 - tone.shield, r = rd(syms.shield_tone, 7), period = r[1] + 256 * r[2];
-        if (r[0] !== 2 * d || period !== 100 + 8 * d || r[3] !== 0xfc || r[6] !== 0) fail(`the refill's tone at shield ${tone.shield}: ${r.map((b) => b.toString(16)).join(" ")}`);
+        if (r[0] !== 2 * d || period !== (syms.SHIELD_TONE_TOP ?? 100) + 8 * d || r[3] !== 0xfc || r[6] !== 0) fail(`the refill's tone at shield ${tone.shield}: ${r.map((b) => b.toString(16)).join(" ")}`);
         if (cpu.a !== 10) fail(`the refill's tone requested as ${cpu.a}, not 10`);
         tone = null;
     }

@@ -75,7 +75,7 @@ ENDIF
 \ shield_tone_start: the shield starts to refill: a tone rising from its level to the top note,
 \ over the fields the refill takes at the design speed (a unit of 1 a pass, 2 fields a pass), on
 \ chip channel 1, where a hit's tink (the same channel) cuts it. Nothing at full. Keeps X.
-SHIELD_TONE_TOP = 100               \ the period at full: 1,250 Hz; empty, 100 + 8 * 50 = 500 (250 Hz)
+SHIELD_TONE_TOP = 200               \ the period at full: 625 Hz (KC: lower); empty, 200 + 8 * 50 = 600 (208 Hz)
 .shield_tone_start
 {
     LDA #SHIELD_FULL
