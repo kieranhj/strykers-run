@@ -2033,15 +2033,13 @@ walk_d = walk_ptr + 1
     ASL A                           \ 8 * steps (at most 13 columns)
     ASL A
     ASL A
-    CLC
-    ADC screen_address_low
+    ADC screen_address_low          \ grind: C = 0 from the third ASL (steps <= 12, 8 * steps < 256): no CLC
     STA screen_address_low
     BCC c1_walk_high_kept       \ grind: no carry, the high byte stands (always &40-&7F: no wrap to do)
     LDA screen_address_high
     ADC #&00
     BPL screen_in_range
-    SEC                             \ round the 16K screen, as add_delta_to_screen_address_in_AX
-    SBC #&40
+    SBC #&3F                        \ round the 16K screen, as add_delta_to_screen_address_in_AX (grind: C = 0 here, so as SEC, SBC #&40)
 .screen_in_range
     STA screen_address_high
 .c1_walk_high_kept

@@ -921,16 +921,16 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
     RTS
 }
 
-.add_zone_column                    \ zone_tmp -> the list; keeps X and Y
+.add_zone_column                    \ zone_tmp_lo, and A = zone_tmp_hi (every caller has just stored it) -> the list; keeps X and Y
 {
-    PHX
+    STX zone_tmp_hi                 \ X saved in zone_tmp_hi (dead: A holds it): 6 cycles where PHX/PLX is 7
     LDX zone_n
+    INX
+    STX zone_n
+    STA zone_hi - 1,X
     LDA zone_tmp_lo
-    STA zone_lo,X
-    LDA zone_tmp_hi
-    STA zone_hi,X
-    INC zone_n
-    PLX
+    STA zone_lo - 1,X
+    LDX zone_tmp_hi
     RTS
 }
 
@@ -950,7 +950,6 @@ ASSERT HI(hist0 - 8) = HI(hist0 - 1) AND HI(hist1 - 8) = HI(hist1 - 1)   \ the 8
 .each
     DEX
     LDA zone_hi,X                   \ d's high byte less 1 into span_d + 1 ...
-    CLC
     SBC span_x_hi
     STA span_d + 1
     LDA zone_lo,X                   \ ... its low byte in A, C clear if it borrowed (ADC #0 below
