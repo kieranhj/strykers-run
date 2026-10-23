@@ -78,7 +78,7 @@ HUD_BAR_COL   = 12                 \ (KC, 2026-10-23: "move the shield bar in th
 HUD_BAR_PIXELS = 25                \ wider": 25 pixels, a pixel 2 of the shield's 50, at columns 12-24, centred in 4-33)
 HUD_BAR_COLS  = 13
 HUD_SCORE_COL = 34                 \ decision 68 (KC, 2026-10-23: "lives then shield, score in the middle, then timer, then
-HUD_TIMER_COL = 52                 \ percentage last on right hand side"): the score's 12 columns centred, the timer's 13,
+HUD_TIMER_COL = 54                 \ percentage last on right hand side"): the score's 12 columns centred, the timer's 13,
 HUD_PCT_COL   = 72                 \ the percentage's 8 (three digits and the sign) to the row's end
 RUP_R4_M  = &25                    \ M's vertical total: 38 rows, with H's 1 the original's 39
 \ Look flag, off by default: DITHER_HILLS, the hills band's far, mid and fore ranges dithered (blue
