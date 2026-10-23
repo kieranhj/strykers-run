@@ -10,10 +10,12 @@
 \ font offsets, "0" &6C, 6 a digit), each redrawn only when it changes. Both in the timer's 3x5
 \ digits (src/timer.6502, which is in bank 6), black on the sky's colour 0; the percent sign its own.
 
-HX_BASE  = HUD_ROW + 384            \ column 48: every glyph below is within 256 bytes of it
-HX_PCT   = 8 * (52 - 48)            \ the percentage's hundreds, tens and units at columns 52, 54, 56,
-HX_SIGN  = HX_PCT + 48              \ the sign at 58
-HX_SCORE = 8 * (66 - 48)            \ the score's six digits at columns 66-77
+HX_SCORE_AT = HUD_ROW + 8 * HUD_SCORE_COL   \ the score's six digits (src/main.6502's layout)
+HX_PCT_AT   = HUD_ROW + 8 * HUD_PCT_COL     \ the percentage's hundreds, tens and units, then the sign
+ASSERT HI(HX_SCORE_AT) = HI(HX_SCORE_AT + 95) AND HI(HX_PCT_AT) = HI(HX_PCT_AT + 63)   \ each group in a page:
+HX_SCORE = LO(HX_SCORE_AT)          \ hx_digit writes at its page (hx_page) + Y
+HX_PCT   = LO(HX_PCT_AT)
+HX_SIGN  = HX_PCT + 48
 HX_STEP  = 74                       \ columns a percent
 HX_BLANK = 10                       \ hx_digit's glyphs after the digits: a blank, the percent sign
 HX_SIGNG = 11
@@ -40,6 +42,8 @@ HX_SIGNG = 11
 .next_page
     JSR hx_show_pct
 .score
+    LDA #HI(HX_SCORE_AT)
+    JSR hx_page
     LDX #5
 .each
     LDA game_over_text + 20,X
@@ -74,6 +78,8 @@ HX_SIGNG = 11
 \ hx_show_pct: hx_pct (0-100) as up to three digits, blank before the first
 .hx_show_pct
 {
+    LDA #HI(HX_PCT_AT)
+    JSR hx_page
     LDA hx_pct
     CMP #100
     BCC under
@@ -105,9 +111,8 @@ HX_SIGNG = 11
 .units
     LDY #HX_PCT + 32
 }
-\ hx_digit: glyph A (0-9, HX_BLANK, HX_SIGNG) at HX_BASE + Y: its two byte columns' rows 2-6, black
-.hx_digit
-{
+\ hx_digit: glyph A (0-9, HX_BLANK, HX_SIGNG) at the page + Y: its two byte columns' rows 2-6, black
+.hx_digit                           \ (no scope: hx_page, src/hud_extra_init.6502, writes hx_s1 and hx_s2)
     STA hx_tmp
     ASL A
     ASL A
@@ -115,25 +120,27 @@ HX_SIGNG = 11
     TAX
     LDA #5
     STA hx_tmp
-.row
+
+.hx_row
     LDA hx_font,X                   \ bits 2-0: its three pixels, left to right
     LSR A                           \ C = the third
     PHY                             \ 65C02 opcodes
     TAY
     LDA hx_left_two,Y               \ bits 2, 1: the first byte column's two pixels
     PLY
-    STA HX_BASE + 2,Y
+.hx_s1
+    STA &FF02,Y                     \ self-modified: the page (hx_page)
     LDA #0
-    BCC no_third
+    BCC hx_no_third
     LDA #&28                        \ bit 0: the second's left pixel (its right one the gap)
-.no_third
-    STA HX_BASE + 8 + 2,Y
+.hx_no_third
+.hx_s2
+    STA &FF0A,Y                     \ self-modified: the page
     INX
     INY
     DEC hx_tmp
-    BNE row
+    BNE hx_row
     RTS
-}
 .hx_left_two                        \ two pixels (bit 1 left, bit 0 right) in black, as a byte
     EQUB &00, &14, &28, &3C
 .hx_font                            \ five rows each, top down, three pixels in bits 2-0

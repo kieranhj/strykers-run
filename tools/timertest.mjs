@@ -66,7 +66,7 @@ const checkDigits = () => {
     if (down) { if (frac === 0 || S === 0) t = 0; else { sec = S - 1; t = Math.floor(2 * (25 - frac) / 5); } }
     const mm = Math.floor(sec / 60), ss = sec % 60;
     const cells = [[0, Math.floor(mm / 10)], [16, mm % 10], [40, Math.floor(ss / 10)], [56, ss % 10], [80, t]];
-    const hud = rd(syms.hud_buffer + HUD_TIMER, 8 * (syms.TIMER_COLUMNS ?? 13));
+    const hud = rd((syms.timer_buf ?? syms.hud_buffer) + HUD_TIMER, 8 * (syms.TIMER_COLUMNS ?? 13));   // timer_buf: decision 68's place
     const shown = `${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}.${t}`;
     for (const [at, dg] of cells) for (let r = 0; r < 8; r++) {
         const f = r >= 2 && r <= 6 ? FONT[dg][r - 2] : 0;

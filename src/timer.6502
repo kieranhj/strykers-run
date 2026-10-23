@@ -14,6 +14,11 @@
 \ rules screen's limit replaces it (decision 55): timer_limit, set at the game's start (BCD, high first)
 
 \ timer_tick: once a pass (main_game_loop, after shield_tick)
+IF HUD_RUPTURE
+    timer_buf = hud_buffer + 8 * HUD_TIMER_COL - HUD_TIMER   \ decision 68: at column HUD_TIMER_COL
+ELSE
+    timer_buf = hud_buffer
+ENDIF
 TIMER_MM    = HUD_TIMER             \ decision 59: the byte offsets in hud_buffer of the minutes' two digits,
 TIMER_COLON = HUD_TIMER + 32        \ the colon, the seconds' two, the point and the tenth
 TIMER_SS    = HUD_TIMER + 40
@@ -39,7 +44,7 @@ TIMER_TENTH = HUD_TIMER + 80
     LDA #0                          \ the digits' blank rows and the column after them, once
     LDX #8 * TIMER_COLUMNS - 1
 .clear
-    STA hud_buffer + HUD_TIMER,X
+    STA timer_buf + HUD_TIMER,X
     DEX
     BPL clear
     DEC timer_ready                 \ &FF
@@ -48,9 +53,9 @@ TIMER_TENTH = HUD_TIMER + 80
     RTS
 .start_show                         \ decision 59: the colon and the point, once; the rest forced to draw
     LDA #&28                        \ a left pixel, black: the colon's rows 3 and 5, the point's 6
-    STA hud_buffer + TIMER_COLON + 3
-    STA hud_buffer + TIMER_COLON + 5
-    STA hud_buffer + TIMER_POINT + 6
+    STA timer_buf + TIMER_COLON + 3
+    STA timer_buf + TIMER_COLON + 5
+    STA timer_buf + TIMER_POINT + 6
     LDA #&FF
     STA last_t
     STA last_lo
@@ -276,14 +281,14 @@ TIMER_TENTH = HUD_TIMER + 80
     TAY
     LDA left_two,Y                  \ bits 2, 1: the first byte column's two pixels
     PLY
-    STA hud_buffer + 2,Y
+    STA timer_buf + 2,Y
     BCC no_third
     LDA #&28                        \ bit 0: the second's left pixel (its right one the gap)
     BNE third                       \ always
 .no_third
     LDA #0
 .third
-    STA hud_buffer + 8 + 2,Y
+    STA timer_buf + 8 + 2,Y
     INX
     INY
     DEC digit_tmp

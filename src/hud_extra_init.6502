@@ -14,12 +14,17 @@
     STA hx_next
     LDA #HI(HX_STEP)
     STA hx_next + 1
+    JSR hx_show_pct                 \ (the HUD row is clear: rupture_on; this sets hx_digit's page)
     LDA #HX_SIGNG
     LDY #HX_SIGN
-    JSR hx_digit
-    JMP hx_show_pct                 \ (the HUD row is clear: rupture_on)
+    JMP hx_digit
 }
 
+\ hx_page: A the page hx_digit writes in (its two stores' operands, self-modified)
+.hx_page
+    STA hx_s1 + 2
+    STA hx_s2 + 2
+    RTS
 .hx_tmp     EQUB 0
 .hx_pct     EQUB 0                  \ the percentage shown
 .hx_next    EQUW 0                  \ the column of the next percent

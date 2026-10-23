@@ -26,7 +26,7 @@ const K = { K1: [0, 3], K2: [1, 3], K3: [1, 1], K4: [2, 1], K5: [3, 1], K6: [4, 
 const RUN = syms.opt_run_time !== undefined;
 const s = await bootMaster(MachineSession, disc);
 const cpu = s._machine.processor;
-const rd = (a, n = 1) => [...s.readMemory(a, n, { shadow: false })];
+const rd = (a, n = 1) => [...s.readMemory(a, n, a >= 0x8000 && a < 0xc000 ? { bank: 5 } : { shadow: false })];   // the game rules' settings are bank 5's, whatever is paged when this looks
 const run = (fields) => s.runFor(40000 * fields);
 const press = async (k, hold = 10, after = 40) => { s.keyDownRaw(K[k]); await run(hold); s.keyUpRaw(K[k]); await run(after); };
 let step = 0, fails = 0;
