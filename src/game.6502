@@ -2745,20 +2745,18 @@ ENDIF                               \ shooting pose for this update only, as a g
     LDA #&80
     STA hostile_mover               \ Set to negative to indicate no hostile mover
     STA mover_had_hostile_collision \ Set to negative to indicate no hostile collision
-    LDY mover_to_update             \ grind: get_mover_type inlined (Y = &03, A = type)
+    LDY mover_to_update             \ grind: get_mover_type inlined (Y = &03, A = type); its Z (Y = 0 is the player) replaces TYA
+    BNE am_common_e3fb              \ grind: not the player (Z from the LDY)
+    LDA player_helicopter           \ *** Zero if player not in helicopter
+    BEQ am_common_e3fb              \ *** (the helicopter test first: it and the skeleton test only skip, so the order is free)
+    LDA helicopter_fuel_high        \ ***
+    BMI skip_animation              \ *** Don't animate player helicopter if out of fuel
+.am_common_e3fb
     LDA movers_type_and_colour,Y
     AND #&7F
     CMP #&0D                        \ MOVER_TYPE_SKELETON
     BEQ skip_animation
     TAX
-    TYA                             \ ***
-    BNE not_player_23b1             \ ***
-.is_player_23a9    \ ***
-    LDA player_helicopter           \ *** Zero if player not in helicopter
-    BEQ not_player_23b1             \ ***
-    LDA helicopter_fuel_high        \ ***
-    BMI skip_animation              \ *** Don't animate player helicopter if out of fuel
-.not_player_23b1
     LDA movers_frame_and_flip,Y     \ grind: the next frame kept in A and compared with the type's
     AND #&7F                        \ frame count in place (frames, &C6, no longer written: nothing
     INC A                           \ 65C02 opcode; else reads it)
@@ -2771,6 +2769,9 @@ ENDIF                               \ shooting pose for this update only, as a g
 .skip_animation
     LDA movers_y,Y
     RTS
+IF GAMEPLAY_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
+    EQUB &EA                        \ spare (grind): the byte freed, kept so move_mover_right and all after stay put
+ENDIF
 
 .move_mover_right
     LDA mover_x_low
