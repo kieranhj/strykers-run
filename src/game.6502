@@ -4511,17 +4511,16 @@ ELSE
     LDA keys,Y                      \ the key's INKEY number
 ENDIF
     EOR #&FF                        \ INKEY number -> internal key number (check_for_keypress, inlined)
-    TAX                             \ keydown_int (src/lib/keydown.6502) inlined: X = the key number
-    LDA #&03                        \ KBD_LATCH_OFF: latch line 3 = 0
+    LDX #&03                        \ KBD_LATCH_OFF: latch line 3 = 0 (A keeps the key number: no TAX; X is dead after)
     SEI                             \ every caller runs with I = 0 (the play loop), so CLI after
-    STA sysvia_orb                  \ stop the free-running scan...
-    LDA #&7F                        \ KBD_DDRA_SCAN: PA0-PA6 out, PA7 in
-    STA sysvia_ddra                 \ every key: the interrupt's sound writes set DDRA too
-    STX sysvia_ora_nh               \ ask about this key
+    STX sysvia_orb                  \ stop the free-running scan...
+    LDX #&7F                        \ KBD_DDRA_SCAN: PA0-PA6 out, PA7 in
+    STX sysvia_ddra                 \ every key: the interrupt's sound writes set DDRA too
+    STA sysvia_ora_nh               \ ask about this key (A = the key number)
     LDA sysvia_ora_nh               \ PA7 is the answer
     ASL A                           \ C = down (PA7)
-    LDA #&0B                        \ KBD_LATCH_ON
-    STA sysvia_orb                  \ ...and hand it back
+    LDX #&0B                        \ KBD_LATCH_ON
+    STX sysvia_orb                  \ ...and hand it back
     CLI
 IF GAMEPLAY_RUN
     ROL keys_pressed_bitmap
