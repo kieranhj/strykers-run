@@ -4081,7 +4081,7 @@ ENDIF                               \ (an enemy's bullet into a friendly soldier
     STZ unfriendly_targets_found
     LDX #&FF
     STX target                      \ Set to negative to indicate no target found by default
-IF SKY_MODE
+IF (SKY_MODE = 1) AND (GAMEPLAY_ANY = 0) \ grind G0464: not on the gameplay disc (no room)
     LDA mover_x_low                 \ grind: set_cm_left inlined, its results stored straight into the left test's immediates
     SEC
     SBC #MOVER_WIDEST

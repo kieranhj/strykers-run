@@ -50,6 +50,11 @@
     LDA sky_H
     SEC
     SBC sky_t
+IF GAMEPLAY_ANY                     \ grind G0483 left out: no room on the gameplay disc
+    STA sky_n                       \ rows left
+    LDX #0
+.more
+ELSE
     SBC #8                          \ H is 23 to 28 (sky_heights): the first row above is never the top (C set)
     STA sky_n                       \ rows left after entry 1
     LDA sky_rl                      \ entry 1 from entry 0 (C set: here, and after every SBC #&02 below,
@@ -84,12 +89,21 @@
     STA sky_n
     LDA #8
     STA sky_rn,X
+ENDIF
     LDA sky_rl,X                    \ the character row above
+IF GAMEPLAY_ANY                     \ grind G0483 left out: no room on the gameplay disc
+    SEC
+ELSE
+ENDIF
     SBC #&80
     STA sky_rl + 1,X
     LDA sky_rh,X
     SBC #&02
+IF GAMEPLAY_ANY                     \ grind G0483 left out: no room on the gameplay disc
+    ORA #&40                        \ &3D-&3F (below the ring) -> &7D-&7F
+ELSE
     ORA #&40
+ENDIF
     STA sky_rh + 1,X
     INX
     LDA #7
@@ -98,7 +112,16 @@
     STA sky_rb,X
     LDA sky_n
     CMP #9
+IF GAMEPLAY_ANY                     \ grind G0483 left out: no room on the gameplay disc
+    BCC top
+    SBC #8                          \ (C set)
+    STA sky_n
+    LDA #8
+    STA sky_rn,X
+    BRA more                        \ 65C02 opcode
+ELSE
     BCS skyg_a_next
+ENDIF
 .top
     STA sky_rn,X                    \ 1 to 8
     CMP #8
@@ -194,6 +217,11 @@
     STA sky_j8
     LDX #0
 .row
+IF GAMEPLAY_ANY                     \ grind G0426 left out: no room on the gameplay disc
+    JSR sky_col_row
+    BCS next
+.byte
+ELSE
     LDA sky_j8                      \ sky_col_row's tests, inline (its caller here only): sk = this column from the entry's first
     SEC
     SBC sky_rc,X
@@ -216,8 +244,17 @@
     STA s_ptr + 1
     LDY sky_rn,X
     DEY                             \ rn - 1 down to 0 (rn is 1 to 8)
+ENDIF
     LDA (s_ptr),Y
+IF GAMEPLAY_ANY                     \ grind G0426 left out: no room on the gameplay disc
+    BNE dirty
+ELSE
+ENDIF
     DEY
+IF GAMEPLAY_ANY                     \ grind G0426 left out: no room on the gameplay disc
+    CPY sky_stop
+    BNE byte
+ELSE
     BMI chk1_done
 .byte
     ORA (s_ptr),Y                   \ all the bytes ORed: nothing exits early, as nothing is ever found
@@ -226,6 +263,7 @@
 .chk1_done
     TAY
     BNE dirty
+ENDIF
 .next
     INX
     CPX sky_nq

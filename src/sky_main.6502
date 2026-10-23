@@ -149,6 +149,11 @@
 .rc_ok
     JSR sky_row
     BNE part
+IF GAMEPLAY_ANY                     \ grind G0557 left out: no room on the gameplay disc
+.whole
+    LDA (d_ptr),Y
+    STA (s_ptr),Y
+ELSE
     LDA d_ptr                       \ a whole row: the four copies' operands set from the pointers
     STA sdw_l1 + 1
     STA sdw_l2 + 1
@@ -173,23 +178,43 @@
     LDA &FFFF,Y                     \ self-modified: the image
 .sdw_s1
     STA &FFFF,Y                     \ self-modified: the screen
+ENDIF
     DEY
+IF GAMEPLAY_ANY                     \ grind G0557 left out: no room on the gameplay disc
+    LDA (d_ptr),Y
+    STA (s_ptr),Y
+ELSE
 .sdw_l2
     LDA &FFFF,Y
 .sdw_s2
     STA &FFFF,Y
+ENDIF
     DEY
+IF GAMEPLAY_ANY                     \ grind G0557 left out: no room on the gameplay disc
+    LDA (d_ptr),Y
+    STA (s_ptr),Y
+ELSE
 .sdw_l3
     LDA &FFFF,Y
 .sdw_s3
     STA &FFFF,Y
+ENDIF
     DEY
+IF GAMEPLAY_ANY                     \ grind G0557 left out: no room on the gameplay disc
+    LDA (d_ptr),Y
+    STA (s_ptr),Y
+ELSE
 .sdw_l4
     LDA &FFFF,Y
 .sdw_s4
     STA &FFFF,Y
+ENDIF
     DEY
+IF GAMEPLAY_ANY                     \ grind G0557 left out: no room on the gameplay disc
+    BPL whole
+ELSE
     BPL sdw_l1
+ENDIF
     BMI next_row                    \ (always)
 .part                               \ A = 8 - lines: in at line8 + 5 * that
     ASL A

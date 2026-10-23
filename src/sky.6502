@@ -306,10 +306,22 @@ ENDIF
 \ sky_check: C set if the rectangle holds anything but sky
 .sky_check
 {
+IF GAMEPLAY_ANY                     \ grind G0502 left out: no room on the gameplay disc
+    LDX #0
+ELSE
     LDX #0                          \ X is the character row all through (nothing here changes it)
+ENDIF
 .row
+IF GAMEPLAY_ANY                     \ grind G0502 left out: no room on the gameplay disc
+    STX sky_q
+ELSE
+ENDIF
     JSR sky_row
     BNE cell
+IF GAMEPLAY_ANY                     \ grind G0502 left out: no room on the gameplay disc
+    LDA #0
+.full
+ELSE
 .full                               \ a whole row: Y = 8k + 7, eight bytes a pass
     ORA (s_ptr),Y
     DEY
@@ -325,9 +337,15 @@ ENDIF
     DEY
     ORA (s_ptr),Y
     DEY
+ENDIF
     ORA (s_ptr),Y
     DEY
     BPL full
+IF GAMEPLAY_ANY                     \ grind G0502 left out: no room on the gameplay disc
+    TAX
+    BNE dirty
+    BRA next_row                    \ 65C02 opcode
+ELSE
     ORA #0
     BEQ next_row
 .dirty
@@ -335,7 +353,12 @@ ENDIF
     RTS
 \ a part row (sky_skip 1 to 7): the cell's n = 8 - sky_skip lines are the last n of seven LDA/BNE/DEY slots;
 \ the BRA's offset (self-modified once a row) enters 5 * (sky_skip - 1) bytes in; C is set all through
+ENDIF
 .cell
+IF GAMEPLAY_ANY                     \ grind G0502 left out: no room on the gameplay disc
+    LDX sky_n
+.line
+ELSE
     ASL A
     ASL A
     ADC sky_skip                    \ 5 * skip (C clear: at most 35)
@@ -344,9 +367,17 @@ ENDIF
 .ckp_br
     BRA ckp_lad                     \ 65C02 opcode; self-modified: the offset
 .ckp_lad
+ENDIF
     LDA (s_ptr),Y
     BNE dirty
     DEY
+IF GAMEPLAY_ANY                     \ grind G0502 left out: no room on the gameplay disc
+    DEX
+    BNE line
+    TYA
+    SEC
+    SBC sky_skip
+ELSE
     LDA (s_ptr),Y
     BNE dirty
     DEY
@@ -367,14 +398,29 @@ ENDIF
     DEY
     TYA                             \ the cell to the left's top (negative: none); C set (a borrow
     SBC sky_skip                    \ only comes with a negative Y, which leaves)
+ENDIF
     TAY
+IF GAMEPLAY_ANY                     \ grind G0502 left out: no room on the gameplay disc
+    BPL cell
+ELSE
     BPL ckp_br
+ENDIF
 .next_row
+IF GAMEPLAY_ANY                     \ grind G0502 left out: no room on the gameplay disc
+    LDX sky_q
+ELSE
+ENDIF
     INX
     CPX sky_nq
     BNE row
     CLC
     RTS
+IF GAMEPLAY_ANY                     \ grind G0502 left out: no room on the gameplay disc
+.dirty
+    SEC
+    RTS
+ELSE
+ENDIF
 }
 
 \ each helicopter's image's blocks: per screen, at the same addresses (helicopter 0's in main RAM,
