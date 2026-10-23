@@ -1561,8 +1561,9 @@ ENDIF
     ADC mover_types_second_sprite_offset,X    \ (C clear)
     TAY
     LDA sprites_y_offset,Y
-    STA dm_raise
     TAY                             \ Y = the raise, for mark_part2 and ren_draw_sprite
+    ADC #&08                        \ (C clear) dm_raise: part three's raise, eight rows above
+    STA dm_raise                    \ (C still clear: the raise <= &F7)
     LDA dm_frame                    \ (C still clear: frame <= &3F plus an offset <= &1E)
     ADC mover_types_first_sprite_animation_offsets + &1C,X    \ the second parts' mover types
     TAX
@@ -1575,10 +1576,7 @@ ENDIF
 .nothing
     RTS                             \ one part or two
 .part_three
-    LDA dm_raise                    \ part three: eight rows above part two
-    CLC
-    ADC #&08
-    TAY
+    LDY dm_raise                    \ part three: eight rows above part two (stored so)
     LDA mover_types_third_sprite,X
     JSR mark_part3
 }

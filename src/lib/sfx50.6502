@@ -90,12 +90,11 @@
 \ X = channel: its next ramp, from sfx_ptr; at the end, the channel is silenced.
 .sfx_next_ramp
 {
-    LDA sfx_ptr_lo,X
-    STA ramp + 1
-    LDA sfx_ptr_hi,X
-    STA ramp + 2
-    LDY #0
-    JSR ramp
+    LDA sfx_ptr_hi,X                \ the ramp's first byte inline too (not by JSR ramp): Y = its low byte
+    STA nr_c1_b0 + 2
+    LDY sfx_ptr_lo,X
+.nr_c1_b0
+    LDA &FF00,Y                     \ self-modified: the ramp's page
     BEQ ended
     STA sfx_n,X
     LDA sfx_ptr_hi,X                \ the other five bytes inline: each load's operand is the ramp's
