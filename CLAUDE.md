@@ -147,6 +147,7 @@ disassembly's `actually`/`also` notes say what an operand really is.
   (and those within 10 passes of the one before), hits and deaths by 500 columns, score (`docs/difficulty.md`); `tools/bottrace.mjs DISC FROM TO` - the human bot's reason for its keys, pass by pass
 - `tools/runmeter.mjs DISC [--passes N] [--every E --hold H] [--drain D --charge C]` - `GAMEPLAY_RUN`'s meter, every pass: drain, charge, running dry and back past half, its sounds
 - `tools/shieldtest.mjs DISC [--passes N] [--unit U --wait W]` - a `GAMEPLAY_SHIELD` build's rules over the whole world: damage by culprit type, lives only at 0 shield, the refill, the bar after every tick
+- `tools/colpush.mjs DISC [world|flight V|heli V|jump]` - every scroll's column pushed to the renderer once, none twice (layer 5's suspected glitches, none found)
 - `tools/zplive.mjs DISC` - the zero-page bytes the logic reads first after a render (what `restore_game_zp` must keep)
 - `ZPWATCH=a2-a6,bc-bd node --import ./tools/zpwatch.mjs tools/HARNESS.mjs ...` - every write, read and execute at those addresses in any harness's machines, by phase (boot, front end, game) and the code that made it (BUGS #12)
 - `tools/analyse.py report|annotate` - beebgame's static analyses of the build (liveness, known values, ranges,

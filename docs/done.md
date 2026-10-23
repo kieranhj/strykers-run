@@ -142,6 +142,13 @@ MOS's sound, skipping transparent bytes, building the column on the pass before.
   is spent; the whole world's hits 655 -> 318, no repeat in one pass or from an explosion
   (`tools/hitwatch.mjs`); a skeleton soft-lock found and fixed on the way.
 - **Explosions and skeletons animate while the player is in them** (`0152c63`, BUGS #13's follow-up).
+- **The scroll's two suspected glitches closed, no change** (2026-10-23, `tools/colpush.mjs`): step 2's
+  plan had, from reading the code (`762a0d2`), a column lost when moving with `frame` >= 0 (firing in a
+  helicopter) and a column replotted after a hostile collision. Neither happens: every scroll's column
+  is pushed once and nothing is pushed twice over the whole world (13,000 passes, the WorldBot),
+  helilock's flights 2 and 5, a flight firing right throughout (856 scrolling passes) and jumps let go
+  in the air. Firing sets `frame` (`&81`) but the move reuses it as scratch, so it is `&80` where
+  `update_screen` is decided; a hostile collision leaves it `&7F` with no scroll, so no push either.
 - **The loader stops on anything but a Master 128 or Compact** (decision 51, `86a457a`): OSBYTE 0
   (X = 1) 3 or 5, else a message and back to the prompt; jsbeeb B (the message) and Master (frontend
   0 failed); the Compact's value documented, not measured (jsbeeb has none).

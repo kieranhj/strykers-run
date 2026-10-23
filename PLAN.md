@@ -1,7 +1,6 @@
 # Plan
 
-What is left, most pressing first: what waits on KC, then layer 5's fixes, then the gameplay
-variations' open items, then the level editor, then the ideas (KC has not ranked them). What has
+What is left, most pressing first: what waits on KC, then the gameplay variations' open items, then the level editor, then the ideas (KC has not ranked them). What has
 landed is in `docs/done.md`, with the numbers that say so.
 
 ## Waiting on KC
@@ -30,11 +29,6 @@ starts by finding room; the renderer reads only the first three while it draws.
 | bank 6 / bank 7, at their ends | 530 / 481 | 26 / 42 |
 | the start-up code's carrier in the save arena (`arena_carried_end`) | 43 | 135 |
 | `MGAME` under the loading picture (`mgame_end`'s ASSERT) | 223 | 176 |
-
-## Layer 5 - quirks and original glitches (decision 13)
-
-- Check in jsbeeb, then fix: a scroll column lost when moving with `frame` >= 0 (firing in a
-  helicopter while moving); the column replotted after a hostile collision.
 
 ## Gameplay variations (branch `gameplay-shield`)
 
