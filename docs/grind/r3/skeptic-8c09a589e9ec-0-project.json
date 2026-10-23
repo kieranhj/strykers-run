@@ -1,0 +1,7 @@
+{
+ "refuted": true,
+ "reason": "It does not fit its region in two builds. I applied it to a HEAD worktree: the shipping, DEBUG_LIVES and release builds assemble (bank 4 SKIP PAD_END &B37D -> &B39C, lives_digits &9444 -> &9463), but the 31 extra bytes overflow bank 4 in DEBUG_LIVES,DEBUG_FULLREDRAW ('src/main.6502:151: error: bank 4 overruns the renderer's workspace by 24'). That is the gate's 'full' build and the oracle twin. SKY_HELI=0 also overflows (by 22). HEAD builds both cleanly. The 'Room' rule fails, so the gate cannot assemble it. The logic itself checks out: the src hi/lo carries are right for every d because LO(ld)+16+X < 512; dst +16 cannot pass &8000 because page &7F goes to by_cell; the callers use no flags; fast_src and fast_dst have no other users. Cycles recounted, BCC taken in both versions, no page crossings: old 47 set-up + 447 loop = 494, new 81 + 367 = 448, a saving of 46. Bytes: old 46, new 77, so +31 (the claim's -31 holds).",
+ "cycles_per_execution_recounted": 46,
+ "bytes_recounted": -31,
+ "file_written": "build/grind/r3/skeptic-8c09a589e9ec-0-project.json"
+}

@@ -1,0 +1,55 @@
+{
+ "candidates": [
+  {
+   "window": "ba449511bac7",
+   "file": "src/sky_hazel_c.6502",
+   "line": 82,
+   "old": "    LDA p_ptr                       \\ the indices, from the top row down\n    CLC\n    ADC #2\n    STA src + 1\n    LDA p_ptr + 1\n    ADC #0\n    STA src + 2\n    LDX #0\n.byte\n.src\n    LDA &FFFF,X                     \\ self-modified: the column's indices\n    TAY\n.pix\n    LDA &FFFF,Y                     \\ self-modified: the pixel table\n    LDY sky_line\n    STA (w_ptr),Y\n    INX\n    INY\n    CPY #8\n    BCC same_cell\n    DEC sky_bq                      \\ the line below is the character row below's first\n    JSR row_ptr\n    LDY #0\n.same_cell\n    STY sky_line\n    DEC sky_n\n    BNE byte",
+   "new": "    LDA p_ptr                       \\ the indices, from the top row down\n    STA src + 1\n    LDA p_ptr + 1\n    STA src + 2\n    LDA sky_n                       \\ the loop ends at X = 2 + count (C clear: row_ptr's high byte add)\n    ADC #2\n    STA cnt_ba44 + 1\n    LDX #2                          \\ src is p_ptr itself: X from 2 skips the column's header\n.byte\n.src\n    LDA &FFFF,X                     \\ self-modified: the column's indices\n    TAY\n.pix\n    LDA &FFFF,Y                     \\ self-modified: the pixel table\n    LDY sky_line\n    STA (w_ptr),Y\n    INX\n    INY\n    CPY #8\n    BCC same_cell\n    DEC sky_bq                      \\ the line below is the character row below's first\n    JSR row_ptr\n    LDY #0\n.same_cell\n    STY sky_line\n.cnt_ba44\n    CPX #&FF                        \\ self-modified: 2 + the count\n    BNE byte",
+   "summary": "The byte loop's count as a self-modified CPX #(2+count) in place of DEC sky_n (3 cycles a byte), and src set to p_ptr itself with X starting at 2 (drops CLC/ADC #2/ADC #0); the CPX immediate set once a column with ADC #2 relying on C=0 after row_ptr. Alternative to candidate 2 (same lines).",
+   "claim": {
+    "cycles_per_execution": 3,
+    "executions_a_pass": 2.75,
+    "cycles_a_pass": 7.75,
+    "bytes": -2
+   },
+   "equivalence": "Inner loop reads LDA src+X with src=p_ptr, X=2+k: the same address p_ptr+2+k (and the same page crossings) as the old src=p_ptr+2, X=k. Old exit after n bytes (DEC sky_n from n to 0); new exit when X (incremented once a byte, INX before row_ptr which keeps X) equals 2+n, i.e. after n bytes; n>=1 here (count 0 branches to next_col before .placed) and n+2<=255 (body sprite columns are under 30 bytes). Setup: per column 25 cycles vs 22, i.e. +3 a column (0.167 columns a pass, from JSR row_ptr's 1.0 cycles/6). C on the ADC #2: row_ptr ends LDA sky_blk_hi,Y / ADC #0 / STA w_ptr+1 / RTS, and the blocks are in RAM (&31xx, &3Exx-&3Fxx) so the high add never carries: C=0. After the loop, X, A, Y are dead (next_col reloads Y and A; column reloads). sky_n is no longer counted down, so after sky_build it holds the last nonzero column's count instead of 0: every other reader (sky_check's and sky_draw's LDX sky_n after JSR sky_row, sky_geom's LDA sky_n) is preceded by its own write (sky_row's STA sky_n, sky_geom line 53), and sky_build is not run by the interrupt. Flags at the exit: BNE falls through with Z=1 to next_col, which sets its own (LDY #1).",
+   "relies_on": "row_ptr leaving C clear (sky_blk_hi + carry never wraps past &FF); column counts <= 253; nothing reading sky_n = 0 after sky_build. hazel_c is &C200-&C2DD, ASSERTed below &C2FF: +2 bytes keeps it within the page, so no branch or code crosses a page; the self-modified reads' addresses are unchanged, so no page crossing moves. New label cnt_ba44 is unique.",
+   "file_written": "build/grind/r3/opt-ba449511bac7.json"
+  },
+  {
+   "window": "ba449511bac7",
+   "file": "src/sky_hazel_c.6502",
+   "line": 82,
+   "old": "    LDA p_ptr                       \\ the indices, from the top row down\n    CLC\n    ADC #2\n    STA src + 1\n    LDA p_ptr + 1\n    ADC #0\n    STA src + 2\n    LDX #0\n.byte\n.src\n    LDA &FFFF,X                     \\ self-modified: the column's indices\n    TAY\n.pix\n    LDA &FFFF,Y                     \\ self-modified: the pixel table\n    LDY sky_line\n    STA (w_ptr),Y\n    INX\n    INY\n    CPY #8\n    BCC same_cell\n    DEC sky_bq                      \\ the line below is the character row below's first\n    JSR row_ptr\n    LDY #0\n.same_cell\n    STY sky_line\n    DEC sky_n\n    BNE byte",
+   "new": "    LDA p_ptr                       \\ the indices, from the top row down\n    STA src + 1\n    LDA p_ptr + 1\n    STA src + 2\n    LDA sky_n                       \\ the loop ends at X = 2 + count\n    INC A                           \\ 65C02 opcode\n    INC A                           \\ 65C02 opcode\n    STA cnt_ba44b + 1\n    LDX #2                          \\ src is p_ptr itself: X from 2 skips the column's header\n.byte\n.src\n    LDA &FFFF,X                     \\ self-modified: the column's indices\n    TAY\n.pix\n    LDA &FFFF,Y                     \\ self-modified: the pixel table\n    LDY sky_line\n    STA (w_ptr),Y\n    INX\n    INY\n    CPY #8\n    BCC same_cell\n    DEC sky_bq                      \\ the line below is the character row below's first\n    JSR row_ptr\n    LDY #0\n.same_cell\n    STY sky_line\n.cnt_ba44b\n    CPX #&FF                        \\ self-modified: 2 + the count\n    BNE byte",
+   "summary": "As candidate 1 but the CPX immediate computed with INC A / INC A instead of ADC #2, so it does not rely on row_ptr leaving C clear (+2 cycles a column). Alternative to candidate 1 (same lines).",
+   "claim": {
+    "cycles_per_execution": 3,
+    "executions_a_pass": 2.75,
+    "cycles_a_pass": 7.4,
+    "bytes": -2
+   },
+   "equivalence": "Inner loop reads LDA src+X with src=p_ptr, X=2+k: the same address p_ptr+2+k (and the same page crossings) as the old src=p_ptr+2, X=k. Old exit after n bytes (DEC sky_n from n to 0); new exit when X (incremented once a byte, INX before row_ptr which keeps X) equals 2+n, i.e. after n bytes; n>=1 here (count 0 branches to next_col before .placed) and n+2<=255 (body sprite columns are under 30 bytes). Setup: per column 27 cycles vs 22, i.e. +5 a column (0.167 columns a pass, from JSR row_ptr's 1.0 cycles/6). INC A twice needs no flag. After the loop, X, A, Y are dead (next_col reloads Y and A; column reloads). sky_n is no longer counted down, so after sky_build it holds the last nonzero column's count instead of 0: every other reader (sky_check's and sky_draw's LDX sky_n after JSR sky_row, sky_geom's LDA sky_n) is preceded by its own write, and sky_build is not run by the interrupt.",
+   "relies_on": "column counts <= 253; nothing reading sky_n = 0 after sky_build. hazel_c stays within &C200-&C2FF (+2 bytes), no page crossing moves. New label cnt_ba44b is unique.",
+   "file_written": "build/grind/r3/opt-ba449511bac7.json"
+  },
+  {
+   "window": "ba449511bac7",
+   "file": "src/sky_hazel_c.6502",
+   "line": 111,
+   "old": "    LDA (p_ptr),Y\n    SEC\n    ADC #1\n    CLC\n    ADC p_ptr",
+   "new": "    LDA (p_ptr),Y\n    INC A                           \\ 65C02 opcode: count + 1, then + 1 more by the carry\n    SEC\n    ADC p_ptr",
+   "summary": "next_col: p_ptr += count + 2 as INC A / SEC / ADC p_ptr in place of SEC / ADC #1 / CLC / ADC p_ptr (2 cycles, 1 byte). Independent of candidates 1 and 2.",
+   "claim": {
+    "cycles_per_execution": 2,
+    "executions_a_pass": 0.15,
+    "cycles_a_pass": 0.3,
+    "bytes": 1
+   },
+   "equivalence": "Old: A=count, (count+1+1) with CLC, then + p_ptr: A = p_ptr + count + 2, C its carry (correct while count+2 <= 255). New: INC A gives count+1 (no wrap for count <= 254), SEC/ADC p_ptr gives p_ptr + count + 2 with the same C into BCC same_page. V differs and is dead (INC sky_c / CMP follow); N/Z are overwritten before use. Both entries (BEQ next_col with A=0, and the loop's fall-through) reach LDY #1 / LDA (p_ptr),Y first, unchanged.",
+   "relies_on": "column counts <= 253 (the old code needs the same). -1 byte in hazel_c, no page crossing moves (all within &C2xx).",
+   "file_written": "build/grind/r3/opt-ba449511bac7.json"
+  }
+ ]
+}

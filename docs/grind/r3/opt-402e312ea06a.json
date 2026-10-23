@@ -1,0 +1,21 @@
+{
+ "candidates": [
+  {
+   "window": "402e312ea06a",
+   "file": "src/lib/sfx50.6502",
+   "line": 48,
+   "old": "    LDA sfx_dp,X                    \\ the period steps (16 bits, the step sign-extended)\n    BPL up\n    CLC                             \\ the step negative (its high byte &FF): a carry leaves the high byte\n    ADC sfx_p_lo,X\n    STA sfx_p_lo,X\n    BCS sfx_pa_clc\n    DEC sfx_p_hi,X                  \\ no carry: the high byte less 1\n    BRA sfx_pa_c0                   \\ 65C02 opcode; C = 0\n.up\n    CLC\n    ADC sfx_p_lo,X",
+   "new": "    CLC                             \\ both paths add with C = 0 (LDA and BPL keep C)\n    LDA sfx_dp,X                    \\ the period steps (16 bits, the step sign-extended)\n    BPL up\n    ADC sfx_p_lo,X                  \\ the step negative (its high byte &FF): a carry leaves the high byte\n    STA sfx_p_lo,X\n    BCS sfx_pa_clc\n    DEC sfx_p_hi,X                  \\ no carry: the high byte less 1\n    BRA sfx_pa_c0                   \\ 65C02 opcode; C = 0\n.up\n    ADC sfx_p_lo,X",
+   "summary": "The two CLCs (negative step path and .up path) merged into one CLC before LDA sfx_dp,X: every path executes exactly one CLC as before, one byte smaller, no cycle change.",
+   "claim": {
+    "cycles_per_execution": 0,
+    "executions_a_pass": 1.7,
+    "cycles_a_pass": 0,
+    "bytes": 1
+   },
+   "equivalence": "LDA abs,X and BPL do not touch C, so C=0 reaches both ADC sfx_p_lo,X exactly as the old per-path CLCs gave it. .up is entered only from BPL up (grep: no other reference to sfx_tick.up); the negative path is only the fall-through. A, X, Y, memory and every later flag are identical on both paths (CLC only sets C, overwritten-equivalently by the ADC). Cycles per path: old CLC(2) on each path, new CLC(2) once before the split: same.",
+   "relies_on": "Only that nothing branches to .up or the old line-50 CLC except BPL up / fall-through (checked by grep). Code from sfx_tick.up (&A4B3) onward moves down 1 byte, including the driver's own tables (sfx_channel_bits..sfx_noise_written, &A5C7-&A5EE, indexed X 0..3: no page crossing before or after), sfx_effect_lo/hi (-1,Y with small Y, &A67D: no crossing either way) and whatever follows in bank 7. In sfx50 the only branch crossing a page is BEQ ended (&A4F5->&A53A, rare), which crosses both before and after; no hot branch in the file is at a page edge. A byte-only saving in hot code: count it only if bank 7's later code (after sfx50) has no hot page-sensitive branch or table read at the 1-byte shift - not checked here; prefer rejecting if the gate shows any slowdown.",
+   "file_written": "build/grind/r3/opt-402e312ea06a.json"
+  }
+ ]
+}

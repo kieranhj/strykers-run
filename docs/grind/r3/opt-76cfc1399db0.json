@@ -1,0 +1,21 @@
+{
+ "candidates": [
+  {
+   "window": "76cfc1399db0",
+   "file": "src/game.6502",
+   "line": 3002,
+   "old": "    LDA flip\n    BPL to_scroll_screen_right\n    JMP scroll_screen_left\n.to_scroll_screen_right\n    JMP scroll_screen_right         \\ grind: a tail call; the RTS (to_scroll_screen_right + 3) stays\n    RTS",
+   "new": "    LDA flip\n    BMI to_scroll_screen_left_76cf  \\ grind: right, the common case, falls through to its tail call\n.to_scroll_screen_right\n    JMP scroll_screen_right         \\ grind: a tail call; the RTS (to_scroll_screen_right + 3) stays\n    RTS\n.to_scroll_screen_left_76cf\n    JMP scroll_screen_left",
+   "summary": "The player's scroll: LDA flip / BMI to a JMP scroll_screen_left placed after the RTS, so the right scroll (the common case: BPL measured always taken) falls through into JMP scroll_screen_right instead of taking a branch over JMP scroll_screen_left. 1 cycle saved a right scroll, 1 lost a left scroll; same bytes.",
+   "claim": {
+    "cycles_per_execution": 1,
+    "executions_a_pass": 0.37,
+    "cycles_a_pass": 0.33,
+    "bytes": 0
+   },
+   "equivalence": "Same instructions on each path: flip negative -> JMP scroll_screen_left (was BPL not taken then JMP), positive -> JMP scroll_screen_right (was BPL taken then JMP); flags and registers at either JMP are as before (LDA flip sets N/Z, branches change nothing). The RTS stays at to_scroll_screen_right + 3, the target of the three no-scroll branches (BNE/BPL/BEQ to_scroll_screen_right + 3), which still return at once. The block is the same 11 bytes (LDA 2, BMI 2, JMP 3, RTS 1, JMP 3) so use_player_position_for_mover_Y and everything after keep their addresses. to_scroll_screen_right is referenced only in this routine; the new label is unique.",
+   "relies_on": "flip's sign is the scroll direction (bit 7 set = left), as the old BPL used. Layout: in the shipping build the block is &215E-&2168 (page &21); the RTS moves from &2168 to &2165 and the three branches to it (from &2154, &2158, &215C) and the new BMI (from &2160 to &2166) stay in page &21, so no branch changes page; nothing after the block moves.",
+   "file_written": "build/grind/r3/opt-76cfc1399db0.json"
+  }
+ ]
+}

@@ -1,0 +1,38 @@
+{
+ "candidates": [
+  {
+   "window": "4edc2133499f",
+   "file": "src/render.6502",
+   "line": 1548,
+   "old": "    LDA sprites_y_offset,Y\n    STA dm_raise\n    TAY                             \\ Y = the raise, for mark_part2 and ren_draw_sprite\n    LDA dm_frame                    \\ (C still clear: frame <= &3F plus an offset <= &1E)\n    ADC mover_types_first_sprite_animation_offsets + &1C,X    \\ the second parts' mover types\n    TAX\n    LDA animation_table,X\n    JSR mark_part2\n    JSR ren_draw_sprite\n    LDX dm_type\n    LDA mover_types_parts,X\n    BEQ part_three                  \\ three parts\n.nothing\n    RTS                             \\ one part or two\n.part_three\n    LDA dm_raise                    \\ part three: eight rows above part two\n    CLC\n    ADC #&08\n    TAY",
+   "new": "    LDA sprites_y_offset,Y\n    TAY                             \\ Y = the raise, for mark_part2 and ren_draw_sprite\n    ADC #&08                        \\ (C clear) dm_raise: part three's raise, eight rows above\n    STA dm_raise                    \\ (C still clear: the raise <= &F7)\n    LDA dm_frame                    \\ (C still clear: frame <= &3F plus an offset <= &1E)\n    ADC mover_types_first_sprite_animation_offsets + &1C,X    \\ the second parts' mover types\n    TAX\n    LDA animation_table,X\n    JSR mark_part2\n    JSR ren_draw_sprite\n    LDX dm_type\n    LDA mover_types_parts,X\n    BEQ part_three                  \\ three parts\n.nothing\n    RTS                             \\ one part or two\n    EQUB &EA, &EA                   \\ never run: keeps the code after it where it was\n.part_three\n    LDY dm_raise                    \\ part three: eight rows above part two (stored so)",
+   "summary": "Store part three's raise (raise+8) in dm_raise during part two (one ADC #8, C known clear), so part three is LDY dm_raise instead of LDA/CLC/ADC #8/TAY; the 2 bytes saved are padded after the RTS so nothing after the window moves. Alternative to the next candidate.",
+   "claim": {
+    "cycles_per_execution": 4,
+    "executions_a_pass": 1.1,
+    "cycles_a_pass": 4.4,
+    "bytes": 0
+   },
+   "equivalence": "dm_raise is written only here and read only at part_three (grep: declared game.6502:5430, no other reference in src/); it now holds raise+8 instead of raise, so part three's Y is identical. In part two C is clear after ADC mover_types_second_sprite_offset,X (the existing code already relies on it); LDA/TAY leave C, so ADC #8 adds exactly 8 and leaves C clear because sprites_y_offset's bytes (and those the index can reach after it: the helicopter tables, max &EC) are all <= &F7, so the following ADC first+&1C,X still sees C=0 as before. Y passed to mark_part2/ren_draw_sprite is the raise as before (TAY before the ADC). A after the STA is reloaded by LDA dm_frame. Two-part movers: dm_raise is dead after (never read). Part three: Y = dm_raise = raise+8 as old TAY gave; A is reloaded by the next line LDA mover_types_third_sprite,X (outside the window, unchanged); flags overwritten by that LDA; C unused by mark_part3 (PHA..SEC..PLA) and ren_draw_sprite (TAX first, sets C itself before use). X unchanged (dm_type). Interrupt never reads dm_raise (renderer workspace).",
+   "relies_on": "sprites_y_offset entries reachable (frame+second offset) are <= &F7 so ADC #8 leaves C clear (table max &17; the bytes after it max &EC). Layout: .nothing moves &9B24->&9B26, part_three &9B25->&9B29, LDA mover_types_third_sprite stays at &9B2B and everything after is unmoved; BCS nothing (&9B00, next &9B02) and BEQ part_three (&9B24, next &9B26) still land in page &9B, no new crossing. Part two (1.1/pass) +2 cycles, part three (1.1/pass) -6 cycles, from the window's measured counts (BEQ part_three always taken).",
+   "file_written": "build/grind/r3/opt-4edc2133499f.json"
+  },
+  {
+   "window": "4edc2133499f",
+   "file": "src/render.6502",
+   "line": 1548,
+   "old": "    LDA sprites_y_offset,Y\n    STA dm_raise\n    TAY                             \\ Y = the raise, for mark_part2 and ren_draw_sprite\n    LDA dm_frame                    \\ (C still clear: frame <= &3F plus an offset <= &1E)\n    ADC mover_types_first_sprite_animation_offsets + &1C,X    \\ the second parts' mover types\n    TAX\n    LDA animation_table,X\n    JSR mark_part2\n    JSR ren_draw_sprite\n    LDX dm_type\n    LDA mover_types_parts,X\n    BEQ part_three                  \\ three parts\n.nothing\n    RTS                             \\ one part or two\n.part_three\n    LDA dm_raise                    \\ part three: eight rows above part two\n    CLC\n    ADC #&08\n    TAY",
+   "new": "    LDA sprites_y_offset,Y\n    TAY                             \\ Y = the raise, for mark_part2 and ren_draw_sprite\n    ADC #&08                        \\ (C clear) dm_raise: part three's raise, eight rows above\n    STA dm_raise                    \\ (C still clear: the raise <= &F7)\n    LDA dm_frame                    \\ (C still clear: frame <= &3F plus an offset <= &1E)\n    ADC mover_types_first_sprite_animation_offsets + &1C,X    \\ the second parts' mover types\n    TAX\n    LDA animation_table,X\n    JSR mark_part2\n    JSR ren_draw_sprite\n    LDX dm_type\n    LDA mover_types_parts,X\n    BEQ part_three                  \\ three parts\n.nothing\n    RTS                             \\ one part or two\n.part_three\n    LDY dm_raise                    \\ part three: eight rows above part two (stored so)",
+   "summary": "As the first candidate but without the padding: 2 bytes smaller, and everything after part_three (ren_draw_sprite, draw_column and the bank 4 tables after the renderer) slides down 2 bytes. Alternative to the first candidate.",
+   "claim": {
+    "cycles_per_execution": 4,
+    "executions_a_pass": 1.1,
+    "cycles_a_pass": 4.4,
+    "bytes": 2
+   },
+   "equivalence": "dm_raise is written only here and read only at part_three (grep: declared game.6502:5430, no other reference in src/); it now holds raise+8 instead of raise, so part three's Y is identical. In part two C is clear after ADC mover_types_second_sprite_offset,X (the existing code already relies on it); LDA/TAY leave C, so ADC #8 adds exactly 8 and leaves C clear because sprites_y_offset's bytes (and those the index can reach after it: the helicopter tables, max &EC) are all <= &F7, so the following ADC first+&1C,X still sees C=0 as before. Y passed to mark_part2/ren_draw_sprite is the raise as before (TAY before the ADC). A after the STA is reloaded by LDA dm_frame. Two-part movers: dm_raise is dead after (never read). Part three: Y = dm_raise = raise+8 as old TAY gave; A is reloaded by the next line LDA mover_types_third_sprite,X (outside the window, unchanged); flags overwritten by that LDA; C unused by mark_part3 (PHA..SEC..PLA) and ren_draw_sprite (TAX first, sets C itself before use). X unchanged (dm_type). Interrupt never reads dm_raise (renderer workspace).",
+   "relies_on": "As the first candidate for C and dm_raise. Moves all later bank 4 code and any tables assembled after the renderer by -2: any taken branch or indexed table read after &9B2B whose page crossing changes alters the count; not checked here, the gate must measure.",
+   "file_written": "build/grind/r3/opt-4edc2133499f.json"
+  }
+ ]
+}

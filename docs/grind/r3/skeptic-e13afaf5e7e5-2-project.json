@@ -1,0 +1,6 @@
+{
+ "refuted": true,
+ "reason": "Room: the +9 bytes do not fit bank 4 in every build the gate needs. Applied to a copy of HEAD 9f97ad5: the ship, gameplay, SKY_HELI=0 and release builds assemble, but the DEBUG_LIVES,DEBUG_FULLREDRAW build (grind_config's 'full', the oracle every proof runs against) fails: 'src/main.6502:151:5: error: bank 4 overruns the renderer's workspace by 2'. HEAD builds it, so the region has only 7 bytes free there. The logic itself checks out: the carry and A arithmetic are the same, SBC (col_ptr) still reads at the old pointer, Y, A and C are dead at on_same_page, the reads and writes and the paging are the same, branch ranges are fine and no protected or generated line is touched. It needs 2 more bytes of room in the full-redraw build (or a smaller form) before it can be gated. Recount: common path 28 -> 26 cycles (-2); cross path 32 -> 35 (+3, rare); bytes main 19 -> 16, plus the 12-byte each_cross = +9.",
+ "cycles_per_execution_recounted": 2,
+ "bytes_recounted": 9
+}
