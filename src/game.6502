@@ -4024,6 +4024,57 @@ ENDIF                               \ (an enemy's bullet into a friendly soldier
     STZ unfriendly_targets_found
     LDX #&FF
     STX target                      \ Set to negative to indicate no target found by default
+IF SKY_MODE
+    LDA mover_x_low                 \ grind: set_cm_left inlined, its results stored straight into the left test's immediates
+    SEC
+    SBC #MOVER_WIDEST
+    STA stf_left_low_operand_ve
+    LDA &C5                         \ no borrow (C=1): the high byte as it is
+    BCC stf_cm_borrow_ve
+.stf_cm_known_ve
+    STA stf_left_high_operand_ve
+    LDX #&0A                        \ MOVER_LAST_ENEMY_HELICOPTER - 1: the prefilter's index is one below the mover's
+    BRA search_pf_test_ve           \ grind: into the first test (the DEX below is for the others)
+.stf_cm_borrow_ve
+    SBC #0                          \ a borrow (C=0): one less, C clear if that is below 0
+    BCS stf_cm_known_ve
+    INC A                           \ &FF -> 0
+    STA stf_left_low_operand_ve
+    BRA stf_cm_known_ve
+IF LO(*) >= &E0
+    SKIP &100 - LO(*)               \ grind: never run; the loop below starts on a page boundary, so no hot branch crosses a page
+ENDIF
+.search_for_target_loop             \ grind: every way here is just after a DEX (consider_next_enemy's, found_target_2b1f's), whose Z this is
+    BEQ search_in_full              \ X = 0, the last mover: in full
+.search_prefilter_next             \ grind: the prefilter's loop: X = the mover - 1 (X >= 1 on entry, so the DEX leaves it >= 0)
+    DEX
+    BEQ search_pf_inx_ve            \ grind: X = 0: mover 1, which is always checked in full
+.search_pf_test_ve
+stf_x_max_high_operand_s = * + 1
+    LDA #&00                        \ actually LDA #mover_x_max_high, set above: right of the range: x > the range's right (the original's
+    CMP movers_x_high + 1,X         \ own first test), the high bytes first
+    BCC search_prefilter_next
+    BNE stf_left_test_s             \ the range's right is a page or more right of x
+    LDA mover_x_max_low
+    CMP movers_x_low + 1,X
+    BCC search_prefilter_next
+.stf_left_test_s
+    LDA movers_x_low + 1,X          \ left of it even at the widest type: x < its left - &0B
+stf_left_low_operand_ve = * + 1
+    CMP #&00                        \ actually CMP #cm_left_low, set above
+    LDA movers_x_high + 1,X
+stf_left_high_operand_ve = * + 1
+    SBC #&00                        \ actually SBC #cm_left_high, set above
+    BCC search_prefilter_next
+.search_pf_inx_ve
+    INX                             \ grind: X = the mover
+.search_in_full
+    JSR check_for_mover_collision_with_mover_X\ Returns carry set if collision, i.e. mover in range
+    BCS search_hit_g493a            \ grind: a miss (most checks) falls through to the DEX
+.consider_next_enemy
+    DEX
+    BPL search_for_target_loop
+ELSE
     JSR set_cm_left                 \ (leaves X alone)
     LDX #&0C                        \ MOVER_LAST_ENEMY_HELICOPTER + 1: the DEX makes it &0B
 .search_prefilter_next             \ grind: a mover the prefilter passes over (X >= 2) comes back here
@@ -4051,6 +4102,7 @@ stf_x_max_high_operand_s = * + 1
 .consider_next_enemy
     DEX
     BPL search_for_target_loop
+ENDIF
 .search_done
     LDX target
     BPL check_if_friendly           \ Leave with carry clear if unfriendly target found (grind: in a branch's reach here)
