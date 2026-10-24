@@ -1706,7 +1706,7 @@ ENDIF
 \ is that cell's base), its cells after the record; restore_block walks them the same way.
 .draw_column
 {
-    BRA_CS each                     \ 65C02 opcode
+    BRA_JMP each                    \ 65C02 opcode (NMOS: a JMP, C not being 1 when the flipped part's INC_A_CLC falls in)
 .empty
     LDA col_ptr                     \ an empty column: 2 bytes
     CLC

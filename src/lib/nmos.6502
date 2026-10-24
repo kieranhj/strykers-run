@@ -263,13 +263,14 @@ ELSE
 ENDIF
 ENDMACRO
 
-\ ---- BIT abs,X then BVC/BVS (V = bit 6): A dead here, and V nowhere read but after a BIT ----
-\ (+1 byte, +2 cycles: bit 6 to N by ASL)
+\ ---- BIT abs,X then BVC/BVS (V = bit 6): A dead here ----
+\ (+2 bytes, +2 cycles: bit 6 tested by AND, so C is kept as BIT keeps it; V is not set, so nothing
+\ after may read it: tools/nmosify.py check --nmos finds a BRA_VS/VC that did)
 MACRO BVC_BIT6 addr, "X", target
 IF NMOS
     LDA addr,X
-    ASL A
-    BPL target
+    AND #&40
+    BEQ target
 ELSE
     BIT addr,X
     BVC target
@@ -278,8 +279,8 @@ ENDMACRO
 MACRO BVS_BIT6 addr, "X", target
 IF NMOS
     LDA addr,X
-    ASL A
-    BMI target
+    AND #&40
+    BNE target
 ELSE
     BIT addr,X
     BVS target

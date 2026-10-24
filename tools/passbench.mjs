@@ -10,7 +10,7 @@
 // the fields each pass took (field_count, &90, at main_game_loop).
 import { readFileSync } from "node:fs";
 import { loadMachineSession } from "./jsbeeb_src.mjs";
-import { KEY, makeScript, applyEvents, bootMaster, gameKey } from "./playscript.mjs";
+import { KEY, makeScript, applyEvents, bootMaster, gameKey, loadSyms } from "./playscript.mjs";
 import { makeFlight } from "./flightscript.mjs";
 const MachineSession = await loadMachineSession();
 const args = process.argv.slice(2);
@@ -50,7 +50,7 @@ for (const disc of discs) {
         for (const [k, v] of Object.entries(sec.labels || {})) if (v && typeof v.value === "number") syms[k] = v.value;
     const s = await bootMaster(MachineSession, disc);
     const cpu = s._machine.processor;
-    const m = { passes: 0, target: 1, lastStop: -1, at: [], flips: [] };
+    const m = { passes: 0, target: 1, lastStop: -1, at: [], flips: [], saveStart: loadSyms(disc).save_start_lo ?? 0xb600 };
     // every flip (the vsync interrupt writes shown_screen): how long each frame stays shown
     cpu.debugWrite.add((a) => { if (a === syms.shown_screen) m.flips.push({ pass: m.passes, field: s.readMemory(0x90, 1)[0] }); return false; });
     cpu.debugInstruction.add((pc) => {
@@ -144,7 +144,7 @@ for (const disc of discs) {
         if (syms.arena_top_lo !== undefined) { const t = s.readMemory(syms.arena_top_lo, 4, { bank: 4 });
             for (const k of [0, 1]) { const top = t[k] + 256 * t[k + 2]; if (!(top <= (m.arenaMax ?? 0))) { m.arenaMax = top; m.arenaMaxAt = p; } }
             // and the bytes its live blocks hold (render.6502's save_start/end, REN_BASE + &600 on)
-            const ss = s.readMemory(0xb400 + 0x600, 0x200, { bank: 4 });   // (REN_BASE in the bench build: -ShiftEnd)
+            const ss = s.readMemory(m.saveStart, 0x200, { bank: 4 });   // render.6502's save_start_lo (an assignment: loadSyms)
             for (const k of [0, 1]) { let live = 0; for (let i = 0; i < 0x22; i++) { const j = i + 64 * k; if (ss[0x80 + j]) live += (ss[0x100 + j] + 256 * ss[0x180 + j]) - (ss[j] + 256 * ss[0x80 + j]); }
                 if (!(live <= (m.liveMax ?? 0))) { m.liveMax = live; m.liveMaxAt = p; } } }
         if (flight && flight.done) { stalled = p + 1; break; }

@@ -124,10 +124,39 @@ write lands where the beam is.
 
 ## Order, each proven on the Master before the next
 
-1. **NMOS-clean source**, still on the Master: `cmos = FALSE` everywhere, passlock identical, speed measured.
-2. **Nothing in ANDY or HAZEL**, still on the Master (shadow still used).
-3. **The one-screen renderer** behind a flag (`MODEL_B`): needs no shadow, so it runs on the Master
-   too, against the `DEBUG_FULLREDRAW` oracle.
+1. **NMOS-clean source** (the `NMOS` flag): below. Done but for the last whole-world check.
+2. **The one-screen renderer** behind a flag (`MODEL_B`): needs no shadow, so it runs on the Master
+   too, against the plain build and the `DEBUG_FULLREDRAW` oracle. Moved ahead of the memory work
+   (2026-10-24): one screen frees the second screen's records, its history column and the flip, room
+   the memory work needs.
+3. **Nothing in ANDY or HAZEL**, still on the Master.
 4. **The Model B boot**: the bank probe and patching, the loader; then the target matrix and real hardware.
 
-Step 3 is most of the work and the risk; 1 and 4 small, 2 medium to large.
+## Step 1: NMOS (2026-10-24)
+
+- `NMOS` (build.ps1 and the Makefile, 0 by default): every section is `cmos = CMOS` (`CMOS = NMOS = 0`),
+  so Baron rejects a 65SC12 instruction left. `src/lib/nmos.6502`'s macros are the 65SC12 instruction
+  without `NMOS` - the plain, dither and gameplay discs stay byte-identical (`tools/dfs.py compare`,
+  every file but the stamp's `INFO` and `!BOOT`) - and with it the NMOS form named.
+- `tools/nmosify.py` chose each site's form from the dataflow analysis (`tools/analyse.py annotate`):
+  281 sites in the plain-with-dither build, 232 by rule (a register known 0, a flag known for a
+  branch, a register or C dead), 49 by hand (`IF NMOS` blocks, the hand-checked macros marked
+  `(hand)`). `check` re-proves them after any change, in two halves, both needed: on a build without
+  `NMOS`, that each form's register or flag is free there; on an `NMOS` build (`check --nmos`), that
+  what an NMOS form newly reads - a branch's flag, a register known 0, C - is as the NMOS code leaves
+  it. Two bugs were found that way, both from one form's change meeting another's new read: a
+  `CLC`/`ADC #1` before a `BRA` made `BCS` (`render.6502` `draw_column`), and a `BIT abs,X` made
+  `LDA`/`ASL` before a `BRA` made `BCS` and another made `BVS` (now `AND #&40`, and that `BVS` a `BNE`).
+- Room: `ROOM_ANY` (= `GAMEPLAY_ANY OR NMOS`) drops the main block's unexecuted padding as the gameplay
+  builds do, and `moved_0a20` starts at `&0982` (decision 59); the renderer's workspace (`REN_BASE`) is a
+  page higher in `NMOS` builds; the credit line moves into bank 5's `&8000` block.
+- A start-up write of the IRQ vector's high byte to `leave_irq1_handler + 7` (a fixed offset into code
+  the NMOS exit lengthened) is now `previous_irq1_vector_low + 1`. Every other `label + n` into code checked.
+- Measured (jsbeeb 2.10.2, 2026-10-24), the `NMOS` build against the same flags without it
+  (`-Define DITHER_HILLS`): passlock seed 1, 4,000 passes, state identical; `tools/frontend.mjs` 0 failed;
+  passbench seed 1, passes 500-2,500: 25.04 passes/s, 79,867 cycles a pass, 0 late frames, both;
+  the whole world (worldrun `--control --screen`): 11,412 passes to the completion screen, state identical
+  every pass, late frames 140 against 131. Its newest frames differed on 499 passes, in the mountains only:
+  the mountain layer picks its sprites from HAZEL `&C300`, which the DFS leaves as each disc's loads do
+  (BUGS #9), and the two discs' files differ (5 bytes of `&C300-&C6FF` at the game's start).
+  `WORLDRUN_HAZEL=0` fills them alike in both machines.

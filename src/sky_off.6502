@@ -57,7 +57,7 @@
     CMP sky_slot
     BEQ found
     INX
-    BRA_VS find                     \ 65C02 opcode
+    BRA_NE find                     \ (hand) X < list_n here: Z clear (V, the caller's BIT's, is not set by its NMOS form)
 .found
     LDY #0
 .each

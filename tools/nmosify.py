@@ -4,6 +4,9 @@
                                             form chosen for each, and the ones left to do by hand
     python tools/nmosify.py report-all      the same, every site listed
     python tools/nmosify.py apply           the sources rewritten to the macros (MANUAL sites left)
+    python tools/nmosify.py check           on a build without NMOS: each site's form still allowed
+    python tools/nmosify.py check --nmos    on an NMOS build: what the forms newly read (flags, a zero
+                                            register) as the NMOS code leaves it. Both are needed.
 
 Reads build/annotated/src (`python tools/analyse.py --listing .. --symbols .. --disc .. annotate`, on
 the flag set the forms are for: the Model B Lite build's). Each macro is the CMOS instruction itself
@@ -224,11 +227,51 @@ def check():
     return 1 if bad else 0
 
 
+def check_nmos():
+    """The other half, on an NMOS build's annotation: what each NMOS form reads that its 65SC12
+    instruction did not - a flag (BRA_xx's branch, INC_A_ADC/DEC_A_SBC's C) or a register known 0
+    (STZ_A/X/Y) - as the NMOS code really leaves it, other NMOS forms included (a CLC/ADC before a
+    BRA_CS: render.6502's draw_column, 2026-10-24). The 65SC12 analysis cannot see these, since
+    there the flag or register is not read and so may be anything."""
+    bad, ok = [], 0
+    for dirpath, _, files in os.walk(ANN):
+        for f in sorted(files):
+            rel = os.path.relpath(os.path.join(dirpath, f), ANN).replace('\\', '/')
+            if not f.endswith('.6502'):
+                continue
+            for n, al in enumerate(open(os.path.join(dirpath, f), encoding='utf-8', newline='').read().split('\n'), 1):
+                al = al.rstrip('\r')
+                code = al.split(';|')[0].split('\\')[0].strip()
+                word = code.split()[0] if code else ''
+                st = state(al)
+                if st is None:
+                    continue
+                regs = st[0]
+                if '(hand' in al:
+                    continue
+                if word.startswith('BRA_') and word != 'BRA_JMP':
+                    good = '| always |' in al
+                elif word in ('STZ_A', 'STZ_X', 'STZ_Y'):
+                    good = zero(regs.get(word[-1]))
+                elif word in ('INC_A_ADC', 'DEC_A_SBC'):
+                    good = regs.get('C') == ('0' if word == 'INC_A_ADC' else '1')
+                else:
+                    continue
+                if good:
+                    ok += 1
+                else:
+                    bad.append(f"src/{rel}:{n}: {code[:60]}   [{' '.join(k + '=' + v for k, v in regs.items())}]")
+    print(f"NMOS build: {ok} hold, {len(bad)} DO NOT")
+    for b in bad:
+        print('  ' + b)
+    return 1 if bad else 0
+
+
 def main():
     sys.stdout.reconfigure(encoding='utf-8')
     cmd = sys.argv[1] if len(sys.argv) > 1 else 'report'
     if cmd == 'check':
-        sys.exit(check())
+        sys.exit(check_nmos() if '--nmos' in sys.argv else check())
     found = list(sites())
     forms = collections.Counter(s[4] or 'MANUAL' for s in found)
     nbytes = sum(COST.get(s[4], (0, 0))[0] for s in found)
