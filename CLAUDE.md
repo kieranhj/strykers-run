@@ -45,6 +45,8 @@ decision 2). One assembly, `src/main.6502`, so the game and the banks share one 
 `build/strykers.lst` is the listing, `build/strykers.symbols.json` the symbol dump: take
 addresses from there (`python tools/listing.py symbols build/strykers.symbols.json NAME`).
 `build_stamp.py` stamps the last commit's time (`+` if the tree is dirty) into `INFO` and `!BOOT`.
+After Baron, `tools/dfs.py layout` puts the disc's files in the boot's load order (`!BOOT`, `SRRUN`,
+`SCREEN`, `DATA1`-`4`, `MGAME`, then `INFO`), so no load seeks back.
 `build/` (gitignored, all regenerable) is kept to: `strykers.*` (the shipping disc), `strykers-gameplay.*`
 (`-Gameplay` / `make gameplay`, named so; `make NAME=x` names any build), `strykers-original.*` and
 `original/` (`make original`), `build_time.6502`; other flag sets are `strykers-<flags>.*`, harness
@@ -163,7 +165,7 @@ disassembly's `actually`/`also` notes say what an operand really is.
 - `tools/drawprof.mjs`, `tools/whatif.py`, `tools/colfast.py` - each draw by label and byte kind; costing renderer changes on measured passes
 - `tools/grind.py windows|add|queue|apply|revert|gate|run|report`, `tools/grind_config.py` - the micro-optimisation grind (the beeb-micro-grind skill): annotated windows weighted by cycles, the ledger (`docs/grind/`), the proof gate, the serial apply-and-prove run
 - `tools/pipesim.py PERPASS.json`, `tools/unlocksim.py PERPASS.json` - measured passes replayed under other loop orders: the logic ahead; the flip at the next vsync
-- `tools/scrolltext.py` - the title's scroll text from `src/scrolltext.txt` (editable: one sentence a line, `#` comments; the title font's A-Z, 0-9, space, `. , / : =` and `(C)`) into `build/scrolltext.6502`, at every build (build.ps1, the Makefile); bank 5 INCLUDEs it. Its room is the gap before the page-aligned music at `&9300`: 28 bytes more on the plain disc, 141 on the gameplay disc, whose pixel scroller (`src/scroll_pixel.6502`) is in bank 5's `&8000` block (2026-10-22)
+- `tools/scrolltext.py` - the title's scroll text from `src/scrolltext.txt` (editable: one sentence a line, `#` comments; the title font's A-Z, 0-9, space, `. , / : =` and `(C)`) into `build/scrolltext.6502`, at every build (build.ps1, the Makefile); bank 5 INCLUDEs it. Its room is the gap before the page-aligned music at `&9300`: 90 bytes more on the plain disc, 45 on the gameplay disc (2026-10-24, with KC's Bitshifters line); the pixel scroller (`src/scroll_pixel.6502`) is in bank 5's `&8000` block on every disc
 - `tools/packmusic.py` - the front end's tunes packed (ZX02) into `src/music_packed.6502`, checked by unpacking
 - `tools/hazelwatch.mjs DISC`, `tools/hazelreach.mjs DISC` - who touches HAZEL after the start; how far the mountain layer reads over the whole world
 - `tools/hang.mjs DISC PASS`, `tools/screendiff.mjs A B PASS` - where a stalled build goes; two builds' screens byte by byte
@@ -241,7 +243,7 @@ front end's tunes (`src/music.6502` -> `tools/packmusic.py` -> `src/music_packed
 left as a carrier, 2026-10-23); `hazel_b`
 and the packed tunes follow `&4000` to `mgame_end` (`&4EA1`), so `MGAME` loads to `&59A1`, 223
 bytes under the loading picture at `&5A80` (ASSERTed; 2026-10-23). Bank 5's `&8000-&83FF` (the player buffer) is free:
-masked drawing made it unnecessary; gameplay builds (`GAMEPLAY_SHIELD`) load `DATA2` from `&8000` and put their front end there (`front_gameplay.6502`, the game rules screen; 8 zero bytes first, so the MOS never takes it for a ROM header).
+masked drawing made it unnecessary; every build loads `DATA2` from `&8000` and puts the title's pixel scroller there, and gameplay builds (`GAMEPLAY_SHIELD`) their front end (`front_gameplay.6502`, the game rules screen); 8 zero bytes first, so the MOS never takes it for a ROM header.
 Gameplay builds (`GAMEPLAY_*`, decisions 43-69; on `main` since 2026-10-23) add: zero page `&07-&1E`
 (the shield and its settings, the respawn, the timer, the run key: `src/zp.6502`); `moved_0a20` from `&0982` (not `&0A20`: !BOOT's and SRRUN's bytes, dead in play, decision 59); the HUD
 buffer at `&0C00` and the variables after it (`game_completed`, the run meter's, `timer_limit`, the timer

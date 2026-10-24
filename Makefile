@@ -212,6 +212,8 @@ $(SSD): $(SRC) $(CONFIG)
 	    -D RELEASE=$(RELEASE) -D SHIFT=$(SHIFT) -D SHIFT_END=$(SHIFTEND) $(DEFS) \
 	    --symbols $(SYMS) -v src/main.6502 > $(LST) || \
 	    { rm -f $(SSD) $(SYMS); echo "baron failed" >&2; exit 1; }
+	@$(PYTHON) tools/dfs.py layout $(SSD) '!BOOT' SRRUN SCREEN DATA1 DATA2 DATA3 DATA4 MGAME || \
+	    { rm -f $(SSD) $(SYMS); echo "dfs.py layout failed" >&2; exit 1; }
 	@echo "Built  $(SSD)"
 	@$(SHA256) $(SSD)
 

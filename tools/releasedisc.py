@@ -28,6 +28,8 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 def catalogue(img):
+    """A disc's files in their PHYSICAL order (ascending start sector: the builds lay them out in load
+    order, tools/dfs.py layout), not the catalogue's (descending)."""
     n = img[256 + 5] // 8
     out = []
     for i in range(n):
@@ -38,8 +40,8 @@ def catalogue(img):
         exe = e[2] | e[3] << 8 | ((e[6] >> 6) & 3) << 16
         ln = e[4] | e[5] << 8 | ((e[6] >> 4) & 3) << 16
         st = e[7] | (e[6] & 3) << 8
-        out.append(dict(dir=dr, name=name, load=load, exec=exe, data=bytes(img[st * 256:st * 256 + ln])))
-    return out
+        out.append(dict(dir=dr, name=name, load=load, exec=exe, data=bytes(img[st * 256:st * 256 + ln]), start=st))
+    return [{k: v for k, v in f.items() if k != "start"} for f in sorted(out, key=lambda f: f["start"])]
 
 
 def file_of(img, name, dr="$"):

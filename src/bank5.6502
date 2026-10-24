@@ -1137,12 +1137,10 @@ ENDIF
 
     INCLUDE "../build/scrolltext.6502"   \ .scrolltext_text .. .scrolltext_end, &FF: from src/scrolltext.txt (tools/scrolltext.py)
 
-IF GAMEPLAY_SHIELD = 0
-    INCLUDE "scroll_pixel.6502"     \ the pixel scroller (gameplay builds: in the &8000 block, src/main.6502,
-ELSE                                \ so the scroll text has its room here)
-    INCLUDE "sfx_gameplay.6502"     \ decision 69: the gameplay builds' own sound effects
+IF GAMEPLAY_SHIELD                  \ (the pixel scroller is in the &8000 block, src/main.6502, so the
+    INCLUDE "sfx_gameplay.6502"     \ scroll text has its room here) decision 69: the gameplay builds' own sounds
 ENDIF
-    ASSERT * <= &9300 + B5_OFF, "the pixel scroller overruns the music's page by ", * - &9300 - B5_OFF
+    ASSERT * <= &9300 + B5_OFF, "the scroll text overruns the music's page by ", * - &9300 - B5_OFF
     SKIP &9300 + B5_OFF - *
 
 \ Step 2 layer 4: the front end's tunes (title, then high score, page-aligned as the event handler

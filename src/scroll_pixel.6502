@@ -1,6 +1,5 @@
-\ scroll_pixel.6502 - the title's scroll text a pixel at a time (decision 57): in bank 5 before the
-\ page-aligned music (src/bank5.6502), or in the gameplay builds in bank 5's &8000-&83FF block
-\ (src/main.6502), which gives the scroll text (src/scrolltext.txt) its room before the music.
+\ scroll_pixel.6502 - the title's scroll text a pixel at a time (decision 57): in bank 5's &8000-&83FF
+\ block (src/main.6502), which gives the scroll text (src/scrolltext.txt) its room before the music.
 
 \ Step 2 (decision 57, KC: the scroll text "moving 1 pixel ... resulting in the same scrolling speed but
 \ smoother"): the original moved the row a byte column (2 pixels) every 4 fields; scroll_pixel moves it

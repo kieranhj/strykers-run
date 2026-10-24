@@ -186,33 +186,37 @@ ENDSECTION
 \ decision 32: the renderer's variables, in bytes of its workspace no table uses (not in the file)
 INCLUDE "render_bss.6502"
 
-IF GAMEPLAY_SHIELD                  \ decisions 44-50: the gameplay front end in bank 5's &8000-&83FF, free
-    DATA2_ORG = &8000               \ since masked drawing (the player buffer's): DATA2 loads from there
+\ Every build loads DATA2 from &8000: bank 5's &8000-&83FF, the player buffer's, free since masked
+\ drawing, holds the title's pixel scroller (and the gameplay front end), which gives the scroll text
+\ (src/scrolltext.txt) its room before the music (2026-10-24: the plain disc's too).
+DATA2_ORG = &8000
+IF GAMEPLAY_SHIELD                  \ decisions 44-50
     B5_OFF = PAD_START              \ relocation builds: bank 5's contents a page higher, padded at both ends
     B5_PAD_START = PAD_START
     B5_PAD_END = PAD_END
 ELSE
     \ Relocation builds (2026-10-23): bank 5 has no page to spare at its end (the scroll text took it),
-    \ so the shifted build moves its contents a page LOWER, into &8300, free since masked drawing,
-    \ and its control keeps them where the shipping build has them, unpadded.
-    DATA2_ORG = &8400 - PAD_START
+    \ so the shifted build moves its contents a page LOWER, into &8300, and its control keeps them
+    \ where the shipping build has them; the shifted file is padded at its end to the control's
+    \ length, so both load in the same time (lockstep and passlock start them together).
     B5_OFF = -PAD_START
     B5_PAD_START = 0
-    B5_PAD_END = 0
+    B5_PAD_END = PAD_START
 ENDIF
+B5_LOW_END = &8400 + B5_OFF - B5_PAD_START  \ where the &8000 block ends: bank 5's contents start there
 SECTION DATA2, org = DATA2_ORG, load = &FFFF0000 + DATA2_ORG - &6700, exec = &FFFF0000 + DATA2_ORG - &6700, filename = "DATA2", cmos = TRUE
-IF GAMEPLAY_SHIELD
     EQUB 0, 0, 0, 0, 0, 0, 0, 0     \ not a ROM header: the MOS looks for one in sideways RAM on BREAK
+IF GAMEPLAY_SHIELD
     INCLUDE "front_gameplay.6502"   \ shield_new_game and the game rules screen (start_game and the
+ENDIF                               \ front end run with bank 5 paged)
     INCLUDE "scroll_pixel.6502"     \ the title's pixel scroller (from before the music: the scroll text's room)
 IF HUD_RUPTURE
 .rom_ws_save
     SKIP 16                         \ decision 67: &0DF0-&0DFF kept over a game (rupture_on/off: bank 5 paged)
 ENDIF
-    ASSERT * <= &8400, "bank 5's gameplay front end overruns &83FF by ", * - &8400   \ front end run with bank 5 paged)
-    PRINT "bank 5 &8000-&83FF: ", &8400 - *, " bytes free"
-    SKIP &8400 - *
-ENDIF
+    ASSERT * <= B5_LOW_END, "bank 5's &8000 block overruns by ", * - B5_LOW_END
+    PRINT "bank 5 &8000 block: ", B5_LOW_END - *, " bytes free"
+    SKIP B5_LOW_END - *
     SKIP B5_PAD_START
     INCLUDE "bank5.6502"
     \ Step 2 layer 3 (decision 25): the 50 Hz sound effect driver, run from the vsync interrupt in

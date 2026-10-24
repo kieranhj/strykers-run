@@ -78,6 +78,9 @@ try {
         Remove-Item "build\$stem.ssd", "build\$stem.symbols.json" -ErrorAction SilentlyContinue
         throw "baron failed ($LASTEXITCODE)"
     }
+    # the files in the order the boot reads them, so no load seeks back (Baron writes them in source order)
+    & python tools\dfs.py layout "build\$stem.ssd" '!BOOT' SRRUN SCREEN DATA1 DATA2 DATA3 DATA4 MGAME
+    if ($LASTEXITCODE -ne 0) { Remove-Item "build\$stem.ssd"; throw "dfs.py layout failed ($LASTEXITCODE)" }
     "Built  build\$stem.ssd"
     (Get-FileHash "build\$stem.ssd" -Algorithm SHA256).Hash.ToLower() | ForEach-Object { "       sha256 $_" }
 

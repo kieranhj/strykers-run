@@ -220,7 +220,16 @@ and costs are `docs/briefs/gameplay-shield.md`.
   in bank 5 byte for byte. The plain build is identical to before, every file.
 - **The scroll text editable** (`fbe4474`, `bd8e1c2`, all builds): `src/scrolltext.txt`, encoded at
   every build by `tools/scrolltext.py`; 28 bytes of room on the shipping disc, 141 on the gameplay
-  disc, whose pixel scroller moved to bank 5's `&8000` block.
+  disc, whose pixel scroller moved to bank 5's `&8000` block. 2026-10-24: KC's line "BITSHIFTERS REDUX
+  VERSION IN 2026 BY KIERAN USING CLAUDE CODE." overran the shipping disc by 35, so its scroller moved
+  to the `&8000` block too (DATA2 from `&8000` on every disc, 1K more on the disc): 90 bytes left on the
+  shipping disc, 45 on the gameplay disc. `tools/scrolltext.mjs` and `tools/frontend.mjs` on both.
+- **The discs laid out in load order** (2026-10-24): Baron writes the files in source order, the reverse
+  of the boot's (`MGAME` at track 0, `!BOOT` at the end), so every load sought across the disc.
+  `tools/dfs.py layout` now rewrites each image after Baron (build.ps1 and the Makefile alike):
+  `!BOOT`, `SRRUN`, `SCREEN`, `DATA1`-`4`, `MGAME`, then `INFO`; `tools/releasedisc.py` keeps each
+  build's physical order. Boot to `entry_point` in jsbeeb 2.10.2 (which steps the head a track at a
+  time): the shipping disc 12.68 s and 120 head steps before, 12.38 s and 32 after (DATA2 1K larger).
 - **The HUD's row a CRTC rupture** (`HUD_RUPTURE`, decision 67, `cde5953`, merged `e5b6cae`; BUGS #15
   fixed on the way, `5b0c05a`): one character row read from `HUD_ROW` (`&0B80`) as a CRTC frame of
   its own, drawn once, no copy per screen. `tools/rupture.mjs`: over 10,000 frames the HUD read with
