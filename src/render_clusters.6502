@@ -1,0 +1,142 @@
+\ render_clusters.6502 - decision 73 (MODEL_B: one screen, drawn in the beam's order): the clusters
+\ render.6502 draws as units. Bank 4 under ANDY: these run with ROMSEL &04 only (render's step 4
+\ and behind the beam; group_on, which pages ANDY for put_on, cluster_build and pick_cluster are in
+\ render.6502, for room).
+
+\ ---- clusters (decision 73: one screen, drawn in the beam's order) ------------------------------
+\ Screen 1's records are unused with one screen: its halves of rec_type and rec_frame hold these.
+list_cl     = rec_type + 64         \ each list entry's cluster: a label (an entry's index), CL_STAY if
+CL_STAY     = &FF                   \ its slot stays, CL_DONE once drawn
+CL_DONE     = &FE
+cl_zone     = rec_frame + 64        \ the zone's cluster (&FF: none)
+cl_from     = rec_frame + 65
+cl_to       = rec_frame + 66
+cl_best     = rec_frame + 67
+cl_key      = rec_frame + 68
+cl_cur      = rec_frame + 69
+cl_y        = rec_frame + 70
+ASSERT MOVER_SLOTS + 1 <= 64
+
+\ group_off: A = a cluster (&FF none). Its movers off: the player first (drawn last), then the
+\ others from the last slot down (the list is in slot order)
+.group_off
+{
+    STA cl_cur
+    CMP #&FF
+    BEQ out
+    LDA list_n
+    BEQ out
+    LDA list_slot                   \ the player, when listed, is entry 0
+    BNE movers
+    LDA list_cl
+    CMP cl_cur
+    BNE movers
+    LDX #0
+    JSR take_off
+.movers
+    LDY list_n
+.each
+    DEY
+    BMI out
+    LDA list_cl,Y
+    CMP cl_cur
+    BNE each
+    LDA list_slot,Y
+    BEQ each                        \ the player: above
+    TAX
+    STY cl_y
+    JSR take_off
+    LDY cl_y
+    JMP each
+.out
+    RTS
+}
+
+\ cluster_thresholds: cl_thr for each cluster: T2's high byte's count down from &FF at which the beam has
+\ passed its lowest line, a row more (its bytes are a column right in the last frame: at the right edge, the
+\ row below), in the last frame's last field: the beam's line is about 4 * (&FF - T2CH) - 56, so a
+\ member's lowest line 199 - y1 is passed with a row to spare from ((255 - y1) >> 2) + 4 (from 3 to 67)
+DISPLAY_END_E = 64                  \ &FF - T2CH from 64: line 200 on, the display over (16,384 us from the vsync)
+BB_STOP_E = 56                      \ no cluster started behind the beam from line 168 on: one started later would
+                                    \ hold the zone's (the scroll's column, the lives digit) past the blank's start
+.cluster_thresholds
+{
+    LDX list_n
+.clear
+    LDA #0
+    STA cl_thr,X                    \ (labels are entry indices: list_n + 1 bytes from cl_thr cover them)
+    DEX
+    BPL clear
+    LDX list_n
+.each
+    DEX
+    BMI out
+    LDY list_cl,X
+    CPY #CL_DONE
+    BCS each
+    LDA list_y1,X
+    EOR #&FF
+    LSR A
+    LSR A
+    ADC #4                          \ (C clear from the LSR's bit 1... or not: a line either way)
+    CMP cl_thr,Y
+    BCC each
+    STA cl_thr,Y
+    BCS each                        \ always
+.out
+    RTS
+}
+
+\ behind_beam: in the last frame's last field, while it displays, each cluster (but the zone's) whose lowest
+\ line the beam has passed, off and on; then, its display over (or T's vsync passed), back. field_count is
+\ read before T2: a vsync between the two leaves T2 high, so nothing seems passed and it goes round again.
+.behind_beam
+{
+.loop
+    LDA flip_target
+    SEC
+    SBC field_count
+    CMP #1
+    BNE out                         \ T's vsync has passed: late, the rest ahead of the beam
+    LDA #&FF
+    SEC
+    SBC usrvia_t2ch
+    CMP #BB_STOP_E
+    BCS ending                      \ the display nearly over: the zone's next, in the blank
+    STA cl_e
+    LDX list_n
+.each
+    DEX
+    BMI loop                        \ none passed yet: again
+    LDY list_cl,X
+    CPY #CL_DONE
+    BCS each
+    CPY cl_zone
+    BEQ each
+    LDA cl_thr,Y
+    CMP cl_e
+    BEQ ready
+    BCS each
+.ready
+    TYA
+    PHA
+    JSR group_off
+    PLA
+    JSR group_on
+    JMP loop
+.ending                             \ until the display is over: the scroll's column is on screen until
+    LDA flip_target                 \ then, as the last frame's left column a row down
+    SEC
+    SBC field_count
+    CMP #1
+    BNE out
+    LDA #&FF
+    SEC
+    SBC usrvia_t2ch
+    CMP #DISPLAY_END_E
+    BCC ending
+.out
+    RTS
+}
+cl_thr      = rec_xl + 64           \ (screen 1's half of rec_xl, as list_cl's)
+cl_e        = rec_frame + 72

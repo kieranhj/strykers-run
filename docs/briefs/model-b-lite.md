@@ -187,8 +187,34 @@ Measured (jsbeeb 2.10.2, 2026-10-24; `-Define DITHER_HILLS,NMOS,MODEL_B` against
   (row 0, columns 0-3, 2,341), movers (`draw_column`, about 3,000), the scroll column (about 130). Work
   done late in the render's order lands near the top after the beam has passed it.
 
-Stage 2, next: the work in the beam's order. The overlap closure already gives each changing mover's
-rectangle; movers that overlap form a cluster, taken off (reverse slot order) and put on (slot order)
-as a unit. The clusters touching the scroll's zone and the lives digit go first, with the column, in
-the blank; the rest by their top row, so the top of the screen is done before the beam gets there.
-Later, clusters below the beam can start before the blank, behind the beam in the field before.
+Stages 2 and 3, built (`src/render_clusters.6502` under ANDY, `render.6502`): the work in the beam's order.
+- **Clusters**: after the overlap closure each changing list entry joins every changing entry it overlaps,
+  through any chain (`cluster_build`, labels relabelled on each join); an entry shown in the scroll's zone
+  (need bit 5, set in classify) or whose rectangle - where shown and where it goes - meets a zone column
+  (`span_in_zone`) joins the one zone cluster, since the scroll's columns and the lives digit are written
+  over what is there. A cluster is taken off (the player first, then reverse slot order) and put on (slot
+  order, the player last) as a unit; clusters do not overlap, so their order cannot change the frame.
+- **Order**: render starts as the field before the frame's begins (`wait_for_field`, the flip armed then).
+  While that field displays, each cluster whose lowest line the beam has passed (a row to spare: its bytes
+  sit a column right, or at the right edge a row down, in the last frame) is drawn behind the beam
+  (`behind_beam`, from T2: line about 4 * (&FF - T2CH) - 56); none is started from line 168, and the
+  display's end is awaited. Then, in the blank, the zone's cluster with the scroll's column and the lives
+  digit; then the rest from the one reaching highest down, ahead of the beam in the frame's field.
+- The cluster state lives in screen 1's halves of the record arrays (unused with one screen).
+
+Measured (jsbeeb 2.10.2, 2026-10-24, `tools/beamcheck.mjs`, now counting before a frame's flip writes ahead
+of the beam as early, after it writes behind the beam as late):
+
+| build | game | frames | with early or late bytes | late bytes | early bytes |
+|---|---|---|---|---|---|
+| stage 1 (today's order, from the display's end) | seed 1, passes 501-1,500 | 999 | 100 | 14,124 | 0 |
+| stage 2 (clusters, zone first, from the display's end) | seed 1, passes 501-1,500 | 999 | 57 | 7,417 | 0 |
+| stage 3 (behind the beam first) | seed 1, passes 501-1,500 | 1,000 | 24 | 711 | 0 |
+| stage 3 | seed 2, passes 501-1,500 | 1,000 | 17 | 660 | 0 |
+| stage 3 | seed 1, passes 2,001-4,000 | 2,000 | 43 | 4,293 | 0 |
+
+What is left late is the player (rows 19-21) and the helicopters (row 5) in the heaviest frames. Speed
+unchanged: passbench seed 1, 25.04 passes/s, 1,998 frames each shown 2 fields, 0 late; the arenas' top
+`&3D27`. Finished frames identical to the double-buffered build's (worldrun, the whole world: 11,412 passes, state and the
+finished frame identical every pass; late frames 120 against 143). The `-Define DITHER_HILLS` and `NMOS` builds
+unchanged by it (every file).

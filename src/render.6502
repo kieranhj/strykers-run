@@ -253,7 +253,7 @@ IF MODEL_B
     LDA field_count                 \ decision 73: one screen, nothing to copy; the first frame's
     STA flip_target                 \ field 2 on (wait_for_window)
     RTS
-ENDIF
+ELSE
     STZ_LDA save_ptr
     LDA #&30
     STA save_ptr + 1
@@ -270,6 +270,7 @@ ENDIF
     INC save_ptr + 1
     BPL copy                        \ up to &7FFF
     RTS
+ENDIF
 }
 
 \ ---- the view: the zero-page values the plotter and the lives read ---------------------------
@@ -343,8 +344,8 @@ IF SKY_MODE = 0
     JSR kc_build                    \ (src/kindcache.6502)
 ENDIF
 IF MODEL_B
-    JSR wait_for_window             \ decision 73: one screen, drawn once the beam has shown the last
-    JSR save_game_zp                \ frame's last field
+    JSR wait_for_field              \ decision 73: one screen; from the start of the last frame's
+    JSR save_game_zp                \ last field, behind the beam (behind_beam)
     LDA #0
     STA back
     STA boff
@@ -472,8 +473,13 @@ ENDIF
     JSR span_in_zone
     LDX ren_i                       \ (keeps C) X = ren_i on every path into stale and listed
     BCC listed
+IF MODEL_B
+    LDA #&A0                        \ decision 73: in the zone, bit 5 too (cluster_build: it goes first,
+    BNE stale_a                     \ with the scroll)
+ENDIF
 .stale
     LDA #&80
+.stale_a
     STA need,X
 .listed
     LDY act_n
@@ -489,6 +495,16 @@ ENDIF
     JSR mark_to_draw
     JSR close_over_overlaps
 
+IF MODEL_B
+    \ ---- 4-6 in the beam's order (decision 73): each cluster of changing movers that overlap (as
+    \ a chain) off and on as a unit; the zone's (the scroll's columns, the lives digit) first, with
+    \ the scroll, then the others from the one reaching highest on the screen down ----
+    JSR cluster_build
+    JSR cluster_thresholds
+    JSR behind_beam                 \ those the beam has passed in the last frame's last field
+    LDA cl_zone                     \ then, its display over, the zone's with the scroll
+    JSR group_off
+ELSE
     \ ---- 4. take off: the player first (drawn last), then the movers from the last slot down ----
     LDX #0
     JSR take_off
@@ -506,6 +522,7 @@ ENDIF
     LDY ren_k
     BNE taking_off
 .taken_off
+ENDIF
 
     \ ---- 5. the scroll, oldest column first, each with its view and the lives digit ----
     LDA pending_n
@@ -543,6 +560,18 @@ ENDIF
     STA buf_lives,X
 .lives_drawn
 
+IF MODEL_B
+    LDA cl_zone
+    JSR group_on
+.each_cluster
+    JSR pick_cluster                \ the one reaching highest on the screen, the beam's next
+    BCS player_done
+    PHA
+    JSR group_off
+    PLA
+    JSR group_on
+    JMP each_cluster
+ELSE
     \ ---- 6. put on: slot order, the player last; ANDY paged over bank 4's first 4K ----
     LDA #&84
     STA os_ram_copy_of_currently_selected_rom
@@ -573,6 +602,7 @@ ENDIF
     LDA #&04
     STA os_ram_copy_of_currently_selected_rom
     STA romsel
+ENDIF
 .player_done
     LDX back                        \ for the vsync interrupt to show, at the pass lock's field
     STX flip_screen
@@ -595,6 +625,7 @@ ENDIF
 
 \ ---- ACCCON's X bit: which RAM the CPU sees at &3000-&7FFF (D, which the video shows, is the
 \ vsync interrupt's). Read, change, write with interrupts off: the interrupt writes ACCCON too.
+IF MODEL_B = 0
 .cpu_sees_back
     LDA back
     BEQ cpu_sees_main
@@ -610,6 +641,7 @@ ENDIF
     STA acccon
     CLI
     RTS
+ENDIF
 
 \ ---- wait_for_flip: until the vsync interrupt has shown the last frame (decision 26: the logic
 \ of the next pass runs meanwhile, and the renderer waits here) -------------------------------
@@ -621,15 +653,11 @@ ENDIF
 }
 
 IF MODEL_B
-\ ---- wait_for_window (decision 73: one screen): this frame's field T is the last frame's + 2 (25 Hz),
-\ or the next if that has gone by (a late frame). Wait until the beam has shown the last displayed line
-\ of the field before T, so that what is drawn now, the scroll's column first, is not seen until T
-\ (or, behind the beam, until the field after). T is left in flip_target for the pass's end to arm
-\ (src/game.6502 wait_for_timer_281a). field_count is read before T2: a vsync between the two reads
-\ leaves T2 just restarted, high, and the wait goes round again.
-DISPLAY_END_T2CH = &BF              \ T2 at &BEFF or less: 16,640 us or more since the vsync (the display
-                                    \ ends 256 lines, 16,384 us, after it: rows 32-38 then 0-24 of R4 38, R6 25, R7 32)
-.wait_for_window
+\ ---- wait_for_field (decision 73: one screen): this frame's field T is the last frame's + 2 (25 Hz),
+\ or the next if that has gone by (a late frame). Wait until the field before T has begun (its vsync):
+\ the last frame is shown then for the last time, and what the beam has passed in it may change
+\ unseen (behind_beam); the flip to T is armed. T stays in flip_target.
+.wait_for_field
 {
     JSR wait_for_flip               \ the last frame's flip first (a quick pass can be here before it)
     LDA flip_target                 \ the last frame's field + 2 (render_reset: a game's first frame's
@@ -644,13 +672,10 @@ DISPLAY_END_T2CH = &BF              \ T2 at &BEFF or less: 16,640 us or more sin
     BEQ late
     CMP #1
     BNE wait                        \ two fields to go
-    LDA usrvia_t2ch                 \ the field before T: until its display has ended
-    CMP #DISPLAY_END_T2CH
-    BCS wait
-    LDA crtc_start_address_high     \ the flip armed now, for T's vsync (in this field's blank,
-    STA flip_crtc_hi                \ 56 lines on): there is one screen, so the frame need not be
-    LDA crtc_start_address_low      \ finished first, only drawn ahead of the beam (the scroll's
-    STA flip_crtc_lo                \ column first) or behind it (seen a field late)
+    LDA crtc_start_address_high     \ the flip armed now, for T's vsync: there is one screen, so the
+    STA flip_crtc_hi                \ frame need not be finished first, only drawn behind the beam
+    LDA crtc_start_address_low      \ in this field (seen in T), ahead of it in T, or behind it in
+    STA flip_crtc_lo                \ T (seen a field late)
     LDA #&80
     STA flip_pending
     RTS
@@ -667,6 +692,9 @@ ENDIF
 .render_to_main
 {
     JSR wait_for_flip               \ a flip still to come happens first
+IF MODEL_B
+    RTS                             \ decision 73: one screen, always the newest and shown
+ELSE
     LDA shown_screen
     BEQ done                        \ main is shown, and newest
     JSR render                      \ draws into main, the hidden one
@@ -693,6 +721,7 @@ ENDIF
     CLI
 .done
     RTS
+ENDIF
 }
 
 \ ---- ren_plot_lives: the lives digit at the screen start, as plot_lives leaves it (its bytes do
@@ -1380,6 +1409,179 @@ ENDIF
 .no                                 \ every BCC no arrives with C clear: this RTS serves
     RTS                             \ C as it stands
 }
+
+IF MODEL_B
+\ (cluster_build, group_off and pick_cluster: src/render_clusters.6502, under ANDY)
+\ group_on: A = a cluster (&FF none). Its movers on, in slot order, the player last; ANDY paged
+\ over bank 4's first 4K meanwhile. Then it is done.
+.group_on
+{
+    STA cl_cur
+    CMP #&FF
+    BEQ out
+    LDA #&84
+    STA os_ram_copy_of_currently_selected_rom
+    STA romsel
+    LDA #0
+    STA cl_pl
+    TAY
+.each
+    CPY list_n
+    BEQ player
+    LDA list_cl,Y
+    CMP cl_cur
+    BNE next
+    LDA #CL_DONE
+    STA list_cl,Y
+    LDA list_slot,Y
+    BNE mover
+    DEC cl_pl                       \ the player (entry 0): last
+    JMP next
+.mover
+    TAX
+    STY cl_y
+    JSR put_on
+    LDY cl_y
+.next
+    INY
+    BNE each                        \ always
+.player
+    BIT cl_pl
+    BPL rom
+    LDX #0
+    JSR put_on
+.rom
+    LDA #&04
+    STA os_ram_copy_of_currently_selected_rom
+    STA romsel
+.out
+    RTS
+}
+cl_pl       = rec_frame + 71        \ &FF: the player is in this cluster
+
+\ cluster_build: every changing entry's label is shared with each changing entry it overlaps
+\ (list_overlap), through any chain; every entry in the zone shares cl_zone's: shown there (need bit 5),
+\ or its rectangle (where it is shown and where it goes) over a zone column (span_in_zone), since the
+\ scroll's columns and the lives digit are written over what is there.
+.cluster_build
+{
+    LDA #&FF
+    STA cl_zone
+    LDX #0
+.init
+    CPX list_n
+    BEQ pairs
+    LDY list_slot,X
+    LDA need,Y
+    BEQ stay
+    AND #&20
+    BNE zone
+    STX cl_y                        \ not shown in the zone: does it go into it? (its rectangle, shown and live)
+    LDA list_x1_lo,X
+    STA span_x_lo
+    LDA list_x1_hi,X
+    STA span_x_hi
+    LDA list_x2_lo,X
+    SEC
+    SBC list_x1_lo,X
+    JSR span_in_zone                \ (keeps Y)
+    LDX cl_y
+    BCC own
+.zone
+    LDA cl_zone                     \ in the zone: the first zone entry's label
+    BPL zone_label
+    STX cl_zone
+.own
+    TXA
+.zone_label
+    STA list_cl,X
+    INX
+    BNE init                        \ always
+.stay
+    LDA #CL_STAY
+    STA list_cl,X
+    INX
+    BNE init                        \ always
+.pairs
+    LDX #0
+.each_a
+    CPX list_n
+    BEQ joined
+    LDA list_cl,X
+    CMP #CL_STAY
+    BEQ next_a
+    TXA
+    TAY
+.each_b
+    INY
+    CPY list_n
+    BEQ next_a
+    LDA list_cl,Y
+    CMP #CL_STAY
+    BEQ each_b
+    CMP list_cl,X
+    BEQ each_b
+    JSR list_overlap                \ X, Y entries (keeps them): C set if they overlap
+    BCC each_b
+    LDA list_cl,Y                   \ join: Y's cluster becomes X's
+    STA cl_from
+    LDA list_cl,X
+    STA cl_to
+    STY cl_y
+    LDY list_n
+.relabel
+    DEY
+    BMI relabelled
+    LDA list_cl,Y
+    CMP cl_from
+    BNE relabel
+    LDA cl_to
+    STA list_cl,Y
+    JMP relabel
+.relabelled
+    LDY cl_y
+    JMP each_b
+.next_a
+    INX
+    JMP each_a
+.joined
+    LDX cl_zone                     \ the zone's label as it ended (a join may have changed it)
+    BMI none
+    LDA list_cl,X
+    STA cl_zone
+.none
+    RTS
+}
+
+\ pick_cluster: C set if no cluster is left; else A = the one whose rectangle reaches highest
+\ (list_y2, the greatest: y counts up the screen)
+.pick_cluster
+{
+    LDA #0
+    STA cl_key
+    LDA #&FF
+    STA cl_best
+    LDX list_n
+.each
+    DEX
+    BMI picked
+    LDA list_cl,X
+    CMP #CL_DONE
+    BCS each                        \ done or staying
+    LDA list_y2,X
+    CMP cl_key
+    BCC each
+    STA cl_key
+    LDA list_cl,X
+    STA cl_best
+    JMP each
+.picked
+    LDA cl_best
+    CMP #&FF                        \ C set: none
+    RTS
+}
+
+ENDIF
 
 \ ---- take off and put on -------------------------------------------------------------------
 \ take_off: X = slot. If it comes off and is shown here, put its save block back.
