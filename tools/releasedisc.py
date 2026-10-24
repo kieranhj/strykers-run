@@ -83,9 +83,10 @@ def write_ssd(files, title, opt, sectors=800):
 
 
 KEYWORDS = {"AND": 0x80, "DIV": 0x81, "EOR": 0x82, "MOD": 0x83, "OR": 0x84, "ELSE": 0x8B, "THEN": 0x8C,
-            "GET": 0xA5, "INKEY": 0xA6, "NOT": 0xAC, "TO": 0xB8, "CHAIN": 0xD7, "CLS": 0xDB, "END": 0xE0,
-            "FOR": 0xE3, "IF": 0xE7, "MODE": 0xEB, "NEXT": 0xED, "VDU": 0xEF, "PRINT": 0xF1, "REM": 0xF4,
-            "REPEAT": 0xF5, "UNTIL": 0xFD, "OSCLI": 0xFF}
+            "GET": 0xA5, "INKEY": 0xA6, "NOT": 0xAC, "TO": 0xB8, "CALL": 0xD6, "CHAIN": 0xD7, "CLS": 0xDB,
+            "DATA": 0xDC, "END": 0xE0, "FOR": 0xE3, "IF": 0xE7, "MODE": 0xEB, "NEXT": 0xED, "VDU": 0xEF,
+            "PRINT": 0xF1, "READ": 0xF3, "REM": 0xF4, "REPEAT": 0xF5, "UNTIL": 0xFD, "OSCLI": 0xFF}
+LITERAL_AFTER = ("DATA", "REM")             # the rest of the line as it is
 
 
 def tokenise(src):
@@ -110,6 +111,9 @@ def tokenise(src):
                     if word and not (prev.isalnum() and prev.islower()):
                         body.append(KEYWORDS[word])
                         i += len(word)
+                        if word in LITERAL_AFTER:
+                            body += text[i:].encode("latin1")
+                            break
                         continue
                     while i < len(text) and (text[i].isalnum() or text[i] in "%$_"):   # a variable: as it is
                         body.append(ord(text[i]))

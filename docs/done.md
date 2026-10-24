@@ -233,6 +233,13 @@ and costs are `docs/briefs/gameplay-shield.md`.
 - **The screen blank across the loader's display changes** (decision 72, 2026-10-24, KC): SCREEN's mode
   change and CRTC set-up show only black and the picture appears whole; the start-up's CRTC table turns the
   display off until the title has cleared its screen. Every frame captured in jsbeeb around both: no garbage.
+- **The release disc's menu blank too, and MODE 7's cursor off for the load** (decision 72's follow-up,
+  2026-10-24, KC): MENU (`src/menu.bas`) runs a routine at `&0900` (`tools/menublank.py`, its DATA) that
+  does for its MODE 1 change what SCREEN does for MODE 2 (display and cursor off, palette black, memory
+  zeroed, the cursor held off by the vsync event), keeps the display off while MSCREEN draws and shows it
+  at a vsync; its MODE 7 after a choice, and every `!BOOT`, turn the cursor off (`VDU 23,1,0`). jsbeeb,
+  every distinct frame: boot text, black, the menu whole; a choice, black, the loading picture whole.
+  menutest held; frontend 0 failed on both discs.
 - **The build stamp shown only on debug builds** (2026-10-24, KC): `!BOOT` `*TYPE`s `INFO` when `RELEASE=0`
   and prints nothing when `RELEASE=1` (it printed the stamp itself on every build); `INFO` stays on
   every disc for `*TYPE INFO`. Checked in jsbeeb: the boot screen at SRRUN's start, both builds.

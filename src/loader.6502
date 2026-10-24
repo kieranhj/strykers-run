@@ -202,6 +202,13 @@ SECTION Boot, org = BOOT_STAGE, guard = BOOT_STAGE + 256, filename = "!BOOT", ex
     LDX #boot_refused - boot_text
     JMP boot_print                  \ the reason, then back to the prompt (boot_print's RTS)
 .boot_on_a_master
+    LDX #0                          \ MODE 7's cursor off for the load (KC, 2026-10-24): VDU 23,1,0;0;0;0;
+.boot_cursor_off
+    LDA boot_cursor_vdu,X
+    JSR oswrch
+    INX
+    CPX #10
+    BNE boot_cursor_off
 IF RELEASE = 0
     LDX #LO(boot_type_info)         \ a debug build shows its stamp: *TYPE INFO
     LDY #HI(boot_type_info)
@@ -226,6 +233,8 @@ ENDIF
     BNE boot_print
 .boot_printed
     RTS
+.boot_cursor_vdu
+    EQUB 23, 1, 0, 0, 0, 0, 0, 0, 0, 0
 .boot_text
 .boot_refused
     EQUS "Needs a BBC Master 128 or Compact.", 13
