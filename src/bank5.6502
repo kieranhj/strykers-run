@@ -858,6 +858,10 @@ ENDIF
     STA crtc_reg                    \ video register number
     LDA #&19
     STA crtc_data                   \ video register value
+    LDA #&08                        \ R8: the display on (2026-10-24: off from the start-up's registers,
+    STA crtc_reg                    \ src/game.6502 video_register_values, through to here)
+    LDA #&00
+    STA crtc_data
     LDA #&06                        \ MOVER_TYPE_HELICOPTER
     STA firing_mover_type
     LDA #&08

@@ -5851,7 +5851,10 @@ ENDIF
     EQUB &00    \ R5: Vertical total adjust register
     EQUB &19    \ R6: Vertical displayed register
     EQUB &20    \ R7: Vertical sync position
-    EQUB &00    \ R8: Interlace and delay register                     # STH build: &00; disassembly: &01
+    EQUB &30    \ R8: Interlace and delay register                     # STH build: &00; disassembly: &01
+                \ 2026-10-24 (KC): &30, the display off (skew 3) until title_screen has cleared the screen
+                \ and set its own registers, which turns it on (R8 0): no garbage between the loading
+                \ picture and the menu
     EQUB &07    \ R9: Scan lines per character register
     EQUB &67    \ R10: Cursor start register
     EQUB &08    \ R11: Cursor end register

@@ -37,6 +37,19 @@ const cpu = s._machine.processor;
 const rd = (a, n = 1) => [...s.readMemory(a, n, { shadow: false })];   // main RAM: the renderer may have the CPU on shadow
 const run = (n) => s.runFrames(n);
 const press = async (k, hold = 10, after = 40) => { s.keyDownRaw(K[k]); await run(hold); s.keyUpRaw(K[k]); await run(after); };
+// The title alternates its options with the high score table, which takes no menu keys (and on a
+// GAMEPLAY_OPTIONS build leaves for the options on any key): a menu key waits for the options page,
+// shown 30 frames or more. (2026-10-24: the loads' timing moved, and frame 2100 found the scores.)
+let page = null, pageAt = 0;
+cpu.debugInstruction.add((pc) => {
+    if (pc === syms.display_title_screen) { page = "options"; pageAt = s.elapsedCycles; }
+    else if (pc === syms.high_score_screen) page = "scores";
+    return false;
+});
+const onOptions = async () => {
+    for (let i = 0; i < 400 && !(page === "options" && s.elapsedCycles - pageAt >= 30 * 40000); i++) await run(5);
+};
+const menu = async (k, hold, after) => { await onOptions(); await press(k, hold, after); };
 let step = 0, fails = 0;
 const shot = async (name) => writeFileSync(`build/shots/${PREFIX}-${String(++step).padStart(2, "0")}-${name}.png`, await s.screenshotActive({ scale: 1 }));
 const check = (what, ok, detail = "") => { console.log(`${ok ? "ok  " : "FAIL"} ${what}${detail ? ": " + detail : ""}`); if (!ok) { fails++; pcReport = true; } };
@@ -75,12 +88,12 @@ watchCode = true;
 await shot("title");
 check("title: main_game_loop not entered", inLoop === 0);
 
-await press("K3", 10, 100); await shot("instructions-1");
+await menu("K3", 10, 100); await shot("instructions-1");
 await press("SPACE", 10, 100); await shot("instructions-2");
 await press("SPACE", 10, 100); await shot("instructions-3");
 await press("SPACE", 10, 150); await shot("title-after-instructions");
 
-await press("K2", 10, 100); await shot("define-controls");
+await menu("K2", 10, 100); await shot("define-controls");
 const RUN = defines.GAMEPLAY_RUN > 0;                            // GAMEPLAY_RUN (decision 48): a ninth, the run key (O)
 // in screen order: a GAMEPLAY_RUN build asks for RUN (keys + 8) before PAUSE (keys + 7)
 for (const k of ["Q", "W", "E", "R", "T", "Y", "U", ...(RUN ? ["O", "I"] : ["I"])]) await press(k, 10, 50);
@@ -138,8 +151,8 @@ const l0 = inLoop; await run(600);
 check("title does not start a game by itself", inLoop === l0);
 await shot("title-again");
 
-await press("K4", 10, 100); await shot("music-toggled");
-await press("K5", 10, 100); await shot("sound-toggled");
+await menu("K4", 10, 100); await shot("music-toggled");
+await menu("K5", 10, 100); await shot("sound-toggled");
 
 await startGame(); await run(100); await shot("game-2");
 const again = mosState();

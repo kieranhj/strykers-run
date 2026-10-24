@@ -161,9 +161,45 @@ pixel_value = * + 1
     JMP unpack_screen_data_loop
 
 \ *RUN SCREEN enters here (STH build; disassembled from the file).
+\ 2026-10-24 (KC: "blank the screen before the loading image is shown - there's a glitchy frame as
+\ it reprograms the CRTC"): the display off (R8's display skew 3) and the palette black, the screen
+\ memory zeroed, so the mode change shows only black whatever order it programs the CRTC, the ULA
+\ and the palette in (its cursor, which it turns on, off at each vsync); then the display off again
+\ while the CRTC is reprogrammed and the picture drawn,
+\ and on once it is whole (R8 0, as the MOS sets it for MODE 2 after !BOOT's *TV255,1: jsbeeb).
 .title_entry_point
+    JSR title_display_off           \ (the mode change programs R8 and R10 again)
+    LDA #&07                        \ every palette entry black, for the frames between the
+.title_black                        \ mode change's ULA and palette writes
+    STA ula_palette
+    CLC
+    ADC #&10
+    BCC title_black
+    LDA #&30
+    STA column_address_high
+    LDA #0
+    STA column_address_low
+    TAY
+.title_clear                        \ &3000-&7FFF zeroed: MODE 7's screen too
+    STA (column_address),Y
+    INY
+    BNE title_clear
+    INC column_address_high
+    BPL title_clear                 \ to &8000
+    LDA evntv : STA screen_address_low      \ the vsync event's, while the mode change clears the
+    LDA evntv + 1 : STA screen_address_high \ screen (5 fields): its cursor off at every vsync
+    LDA #LO(title_vsync) : STA evntv
+    LDA #HI(title_vsync) : STA evntv + 1
+    LDA #14 : LDX #4 : JSR osbyte   \ the vsync event on
+    PHP                             \ interrupts on for it (the DFS *RUNs SCREEN with them off, and the
+    CLI                             \ rest of it runs so, as it always has: jsbeeb, &0240 still)
     LDA #22 : JSR oswrch            \ MODE 2
     LDA #2  : JSR oswrch
+    PLP
+    LDA #13 : LDX #4 : JSR osbyte   \ the vsync event off
+    LDA screen_address_low : STA evntv
+    LDA screen_address_high : STA evntv + 1
+    JSR title_display_off
     LDA #6  : STA crtc_reg          \ R6: vertical displayed = 15 character rows
     LDA #&0F : STA crtc_data
     LDA #7  : STA crtc_reg          \ R7: vertical sync position
@@ -184,7 +220,30 @@ pixel_value = * + 1
     LDA #&24                        \ Plot Stryker's Run and Superior Software logo at &7C24
     LDX #&7C
     LDY #&01
-    JMP unpack_screen_data
+    JSR unpack_screen_data
+    LDA #19 : JSR osbyte            \ the picture whole: at the next vsync, so no frame shows half of it,
+    LDA #8  : STA crtc_reg          \ R8: the display on
+    LDA #0  : STA crtc_data
+    RTS
+
+\ At each vsync while the mode change clears the screen: the ULA's MODE 2 with its cursor off, as
+\ OSBYTE &9A below sets it (and the MOS's copy, which its flash rewrites the ULA from). One store
+\ each, so it cannot split one of the MOS's CRTC register writes as a CRTC write could.
+.title_vsync
+    PHA
+    LDA #&14
+    STA ula_control
+    STA os_ula_control_copy
+    PLA
+    RTS
+
+\ The display off (R8's display skew 3) and the cursor, which the 6845 still draws, off (R10)
+.title_display_off
+    LDA #8  : STA crtc_reg
+    LDA #&30 : STA crtc_data
+    LDA #10 : STA crtc_reg
+    LDA #&20 : STA crtc_data
+    RTS
 
 \ The standard version's SETSCR ends by running the game; unused here.
 .title_run_game
