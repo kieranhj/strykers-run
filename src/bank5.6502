@@ -714,13 +714,13 @@ ENDIF
 
 .high_score_names
     EQUB &1C, &1E, &19, &0E, &1B, &12, &18, &1B, &25, &25, &1C, &18, &0F, &1D, &20, &0A, &1B, &0E    \ "SUPERIOR  SOFTWARE"
+    EQUB &0B, &12, &1D, &1C, &11, &12, &0F, &1D, &0E, &1B, &1C, &25, &25, &25, &02, &00, &02, &06    \ "BITSHIFTERS   2026" (KC, 2026-10-24: every other row)
     EQUB &1C, &1E, &19, &0E, &1B, &12, &18, &1B, &25, &25, &1C, &18, &0F, &1D, &20, &0A, &1B, &0E    \ "SUPERIOR  SOFTWARE"
+    EQUB &0B, &12, &1D, &1C, &11, &12, &0F, &1D, &0E, &1B, &1C, &25, &25, &25, &02, &00, &02, &06    \ "BITSHIFTERS   2026" (KC, 2026-10-24: every other row)
     EQUB &1C, &1E, &19, &0E, &1B, &12, &18, &1B, &25, &25, &1C, &18, &0F, &1D, &20, &0A, &1B, &0E    \ "SUPERIOR  SOFTWARE"
+    EQUB &0B, &12, &1D, &1C, &11, &12, &0F, &1D, &0E, &1B, &1C, &25, &25, &25, &02, &00, &02, &06    \ "BITSHIFTERS   2026" (KC, 2026-10-24: every other row)
     EQUB &1C, &1E, &19, &0E, &1B, &12, &18, &1B, &25, &25, &1C, &18, &0F, &1D, &20, &0A, &1B, &0E    \ "SUPERIOR  SOFTWARE"
-    EQUB &1C, &1E, &19, &0E, &1B, &12, &18, &1B, &25, &25, &1C, &18, &0F, &1D, &20, &0A, &1B, &0E    \ "SUPERIOR  SOFTWARE"
-    EQUB &1C, &1E, &19, &0E, &1B, &12, &18, &1B, &25, &25, &1C, &18, &0F, &1D, &20, &0A, &1B, &0E    \ "SUPERIOR  SOFTWARE"
-    EQUB &1C, &1E, &19, &0E, &1B, &12, &18, &1B, &25, &25, &1C, &18, &0F, &1D, &20, &0A, &1B, &0E    \ "SUPERIOR  SOFTWARE"
-    EQUB &1C, &1E, &19, &0E, &1B, &12, &18, &1B, &25, &25, &1C, &18, &0F, &1D, &20, &0A, &1B, &0E    \ "SUPERIOR  SOFTWARE"
+    EQUB &0B, &12, &1D, &1C, &11, &12, &0F, &1D, &0E, &1B, &1C, &25, &25, &25, &02, &00, &02, &06    \ "BITSHIFTERS   2026" (KC, 2026-10-24: every other row)
 
 .previous_irq1_vector_for_title_screen_low
     EQUB &00

@@ -230,6 +230,8 @@ and costs are `docs/briefs/gameplay-shield.md`.
   `!BOOT`, `SRRUN`, `SCREEN`, `DATA1`-`4`, `MGAME`, then `INFO`; `tools/releasedisc.py` keeps each
   build's physical order. Boot to `entry_point` in jsbeeb 2.10.2 (which steps the head a track at a
   time): the shipping disc 12.68 s and 120 head steps before, 12.38 s and 32 after (DATA2 1K larger).
+- **The high score table's names alternate** (2026-10-24, KC): "SUPERIOR  SOFTWARE" and "BITSHIFTERS   2026",
+  row by row (`src/bank5.6502` `high_score_names`, 18 characters each). frontend 0 failed on both discs.
 - **The disc's files packed** (2026-10-24, KC: "do the file packing"): `SCREEN`, `DATA1`-`4` and `MGAME`
   ZX02-packed by `tools/packdisc.py` after Baron (the vendored v3 compressor, `tools/zx02src`; `zx02.py`
   makes the same bytes); SRRUN (`src/loader.6502`) reads each one's load address from the catalogue
