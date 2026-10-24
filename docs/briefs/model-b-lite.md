@@ -124,7 +124,7 @@ write lands where the beam is.
 
 ## Order, each proven on the Master before the next
 
-1. **NMOS-clean source** (the `NMOS` flag): below. Done but for the last whole-world check.
+1. **NMOS-clean source** (the `NMOS` flag): below. Done.
 2. **The one-screen renderer** behind a flag (`MODEL_B`): needs no shadow, so it runs on the Master
    too, against the plain build and the `DEBUG_FULLREDRAW` oracle. Moved ahead of the memory work
    (2026-10-24): one screen frees the second screen's records, its history column and the flip, room
@@ -155,8 +155,9 @@ write lands where the beam is.
 - Measured (jsbeeb 2.10.2, 2026-10-24), the `NMOS` build against the same flags without it
   (`-Define DITHER_HILLS`): passlock seed 1, 4,000 passes, state identical; `tools/frontend.mjs` 0 failed;
   passbench seed 1, passes 500-2,500: 25.04 passes/s, 79,867 cycles a pass, 0 late frames, both;
-  the whole world (worldrun `--control --screen`): 11,412 passes to the completion screen, state identical
-  every pass, late frames 140 against 131. Its newest frames differed on 499 passes, in the mountains only:
-  the mountain layer picks its sprites from HAZEL `&C300`, which the DFS leaves as each disc's loads do
-  (BUGS #9), and the two discs' files differ (5 bytes of `&C300-&C6FF` at the game's start).
-  `WORLDRUN_HAZEL=0` fills them alike in both machines.
+  the whole world (`WORLDRUN_HAZEL=0 tools/worldrun.mjs --control --screen`, at `17180e0`): 11,412 passes to the
+  completion screen, state identical every pass, the newest frame identical every pass; late frames 143 against
+  130 (24.88 against 24.90 passes/s). `WORLDRUN_HAZEL=0` fills HAZEL `&C300-&C6FF` alike in both machines: the
+  mountain layer picks its sprites from those bytes, which the DFS leaves as each disc's loads do (BUGS #9), and
+  the two discs' files differ (5 bytes differ at the game's start; without it the newest frames differ on 499
+  passes, in the mountains only).
