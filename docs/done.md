@@ -230,6 +230,9 @@ and costs are `docs/briefs/gameplay-shield.md`.
   `!BOOT`, `SRRUN`, `SCREEN`, `DATA1`-`4`, `MGAME`, then `INFO`; `tools/releasedisc.py` keeps each
   build's physical order. Boot to `entry_point` in jsbeeb 2.10.2 (which steps the head a track at a
   time): the shipping disc 12.68 s and 120 head steps before, 12.38 s and 32 after (DATA2 1K larger).
+- **The build stamp shown only on debug builds** (2026-10-24, KC): `!BOOT` `*TYPE`s `INFO` when `RELEASE=0`
+  and prints nothing when `RELEASE=1` (it printed the stamp itself on every build); `INFO` stays on
+  every disc for `*TYPE INFO`. Checked in jsbeeb: the boot screen at SRRUN's start, both builds.
 - **The high score table's names alternate** (2026-10-24, KC): "SUPERIOR  SOFTWARE" and "BITSHIFTERS   2026",
   row by row (`src/bank5.6502` `high_score_names`, 18 characters each). frontend 0 failed on both discs.
 - **The disc's files packed** (2026-10-24, KC: "do the file packing"): `SCREEN`, `DATA1`-`4` and `MGAME`

@@ -167,8 +167,9 @@ ENDIF
 ENDSECTION
 
 \ ---------------------------------------------------------------------------------------------
-\ The build stamp (beeb-port-kit's boot_stamp): INFO is a disc file *TYPE reads; !BOOT prints
-\ the same text, then *TV255,1, *FX200,3, *RUN SRRUN.
+\ The build stamp (beeb-port-kit's boot_stamp): INFO is a disc file *TYPE reads. !BOOT *TYPEs it
+\ on a debug build (RELEASE=0) but not on a release build (KC, 2026-10-24; it printed the stamp
+\ itself before), then *TV255,1, *FX200,3, *RUN SRRUN.
 \ ---------------------------------------------------------------------------------------------
 INCLUDE "lib/boot_stamp.6502"
 
@@ -201,8 +202,11 @@ SECTION Boot, org = BOOT_STAGE, guard = BOOT_STAGE + 256, filename = "!BOOT", ex
     LDX #boot_refused - boot_text
     JMP boot_print                  \ the reason, then back to the prompt (boot_print's RTS)
 .boot_on_a_master
-    LDX #0
-    JSR boot_print
+IF RELEASE = 0
+    LDX #LO(boot_type_info)         \ a debug build shows its stamp: *TYPE INFO
+    LDY #HI(boot_type_info)
+    JSR oscli
+ENDIF
     LDA #&90                        \ *TV255,1: display moved up a line, interlace off
     LDX #255
     LDY #1
@@ -223,11 +227,13 @@ SECTION Boot, org = BOOT_STAGE, guard = BOOT_STAGE + 256, filename = "!BOOT", ex
 .boot_printed
     RTS
 .boot_text
-    BUILD_STAMP
-    EQUB 0
 .boot_refused
-    EQUS "Needs a BBC Master 128 or Compact.", 13   \ (short: !BOOT is one page, with the debug flags' lines)
+    EQUS "Needs a BBC Master 128 or Compact.", 13
     EQUB 0
+IF RELEASE = 0
+.boot_type_info
+    EQUS "TYPE INFO", 13
+ENDIF
 .boot_run
     EQUS "RUN SRRUN", 13
 .bootfile_end
