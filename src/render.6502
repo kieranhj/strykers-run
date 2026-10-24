@@ -249,6 +249,11 @@ ENDIF
     STA acc_main
     ORA #&04
     STA acc_shadow
+IF MODEL_B
+    LDA field_count                 \ decision 73: one screen, nothing to copy; the first frame's
+    STA flip_target                 \ field 2 on (wait_for_window)
+    RTS
+ENDIF
     STZ_LDA save_ptr
     LDA #&30
     STA save_ptr + 1
@@ -337,6 +342,13 @@ IF SKY_MODE = 0
     INC kc_clock                    \ layer 4: a big part's kind asked for, built if there is time
     JSR kc_build                    \ (src/kindcache.6502)
 ENDIF
+IF MODEL_B
+    JSR wait_for_window             \ decision 73: one screen, drawn once the beam has shown the last
+    JSR save_game_zp                \ frame's last field
+    LDA #0
+    STA back
+    STA boff
+ELSE
     JSR wait_for_flip               \ the hidden screen is the one the last frame went to until
     JSR save_game_zp                \ it is shown (decision 26)
     LDA shown_screen                \ draw into the screen not being shown
@@ -347,6 +359,7 @@ ENDIF
 .set_boff
     STA boff
     JSR cpu_sees_back               \ ACCCON X: &3000-&7FFF is that screen's RAM
+ENDIF
     LDX #2                          \ the logic's current view goes in slot 2 of buf_*
     JSR view_to_buffer
 
@@ -567,7 +580,8 @@ ENDIF
     STX flip_crtc_hi
     LDX crtc_start_address_low
     STX flip_crtc_lo
-IF NMOS
+IF MODEL_B                          \ (MODEL_B: armed by wait_for_window; the stores above repeat its)
+ELIF NMOS
     SEI                             \ NMOS: the read-modify-write with interrupts off (the vsync interrupt writes ACCCON too)
     LDA acccon
     AND #&FB
@@ -605,6 +619,48 @@ ENDIF
     BMI wait_for_flip
     RTS
 }
+
+IF MODEL_B
+\ ---- wait_for_window (decision 73: one screen): this frame's field T is the last frame's + 2 (25 Hz),
+\ or the next if that has gone by (a late frame). Wait until the beam has shown the last displayed line
+\ of the field before T, so that what is drawn now, the scroll's column first, is not seen until T
+\ (or, behind the beam, until the field after). T is left in flip_target for the pass's end to arm
+\ (src/game.6502 wait_for_timer_281a). field_count is read before T2: a vsync between the two reads
+\ leaves T2 just restarted, high, and the wait goes round again.
+DISPLAY_END_T2CH = &BF              \ T2 at &BEFF or less: 16,640 us or more since the vsync (the display
+                                    \ ends 256 lines, 16,384 us, after it: rows 32-38 then 0-24 of R4 38, R6 25, R7 32)
+.wait_for_window
+{
+    JSR wait_for_flip               \ the last frame's flip first (a quick pass can be here before it)
+    LDA flip_target                 \ the last frame's field + 2 (render_reset: a game's first frame's
+    CLC                             \ is 2 fields from its start)
+    ADC #2
+    STA flip_target
+.wait
+    LDA flip_target
+    SEC
+    SBC field_count
+    BMI late                        \ T has begun (or gone): the next field instead
+    BEQ late
+    CMP #1
+    BNE wait                        \ two fields to go
+    LDA usrvia_t2ch                 \ the field before T: until its display has ended
+    CMP #DISPLAY_END_T2CH
+    BCS wait
+    LDA crtc_start_address_high     \ the flip armed now, for T's vsync (in this field's blank,
+    STA flip_crtc_hi                \ 56 lines on): there is one screen, so the frame need not be
+    LDA crtc_start_address_low      \ finished first, only drawn ahead of the beam (the scroll's
+    STA flip_crtc_lo                \ column first) or behind it (seen a field late)
+    LDA #&80
+    STA flip_pending
+    RTS
+.late
+    LDX field_count
+    INX
+    STX flip_target
+    JMP wait
+}
+ENDIF
 
 \ ---- render_to_main: the game is over (or observer mode left): the newest frame on the main
 \ screen, shown, so the game over text and the title go where the original put them.

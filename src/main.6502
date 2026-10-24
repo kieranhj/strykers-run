@@ -71,6 +71,9 @@ CMOS = NMOS = 0
 \ build, decision 43, or an NMOS one): its unexecuted padding goes, the dead BASIC fragment before the
 \ font with it, and moved_0a20 starts at &0982 (decision 59)
 ROOM_ANY = GAMEPLAY_ANY OR NMOS
+\ MODEL_B (decision 73, Redux Lite): one screen, main RAM's, drawn after the beam has shown the last line
+\ of the field before the frame's (src/render.6502 wait_for_window): no shadow RAM. Runs on the Master too.
+ASSERT MODEL_B <= NMOS, "MODEL_B needs NMOS"
 INCLUDE "lib/nmos.6502"
 \ HUD_RUPTURE (decision 67, with GAMEPLAY_SHIELD): the HUD's character row a CRTC frame of its own,
 \ read from HUD_ROW, drawn there once and only when it changes; no copy at every scroll

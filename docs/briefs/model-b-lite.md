@@ -161,3 +161,34 @@ write lands where the beam is.
   mountain layer picks its sprites from those bytes, which the DFS leaves as each disc's loads do (BUGS #9), and
   the two discs' files differ (5 bytes differ at the game's start; without it the newest frames differ on 499
   passes, in the mountains only).
+
+## Step 2: the one-screen renderer (`MODEL_B`, 2026-10-24)
+
+Stage 1, built: `MODEL_B` (needs `NMOS`) draws into main RAM only, in today's order, from the moment the
+beam has shown the last displayed line of the field before the frame's (`render.6502` `wait_for_window`:
+the frame's field T is the last frame's + 2, or the next if that has begun; T2 from the vsync past
+`&BEFF`, 16,640 us, the display ending at 16,384). The flip (R12/R13 at T's vsync, 56 lines on) is
+armed there and then: with one screen the frame need not be finished first, only drawn ahead of the
+beam (the scroll's column in the blank) or behind it, where it is seen a field late. Waiting for the
+last flip first matters: a quick pass otherwise moved the target on while a flip was pending (a frame
+lost, its predecessor shown 4 fields). No ACCCON X or D, no shadow copies; the vsync interrupt still
+writes `shown_screen` (0) at each flip, as the harnesses count frames by it. A page pad in the target
+search put a `BPL` out of reach in this layout: it now picks `BMI`/`JMP` where it must.
+
+Measured (jsbeeb 2.10.2, 2026-10-24; `-Define DITHER_HILLS,NMOS,MODEL_B` against `-Define DITHER_HILLS,NMOS`):
+- passbench seed 1, passes 500-2,500: 25.04 passes/s, 79,865 cycles a pass, 1,997 frames each shown 2
+  fields, 0 late;
+- the whole world (`WORLDRUN_HAZEL=0` worldrun `--control --screen`): 11,412 passes, state and the
+  finished frame identical every pass; late frames 123 against the double-buffered build's 143;
+- frontend 0 failed (the game over screen's hash the double-buffered build's), observer mode works;
+- `tools/beamcheck.mjs` (new: every screen write placed against jsbeeb's 6845 beam), passes 501-1,500:
+  of 999 frames, 100 had late bytes (899 none), 14,124 of 211,861 writes, all in a frame's first field:
+  the sky helicopters' drawing at the top left (`sky_draw`, rows 5-8, about 8,400), the lives digit
+  (row 0, columns 0-3, 2,341), movers (`draw_column`, about 3,000), the scroll column (about 130). Work
+  done late in the render's order lands near the top after the beam has passed it.
+
+Stage 2, next: the work in the beam's order. The overlap closure already gives each changing mover's
+rectangle; movers that overlap form a cluster, taken off (reverse slot order) and put on (slot order)
+as a unit. The clusters touching the scroll's zone and the lives digit go first, with the column, in
+the blank; the rest by their top row, so the top of the screen is done before the beam gets there.
+Later, clusters below the beam can start before the blank, behind the beam in the field before.

@@ -3549,6 +3549,9 @@ ENDIF
 \ first frame one or two fields.
 .wait_for_timer_281a
     JSR render_pass                 \ Step 2 (layer 2): draw this pass into the hidden screen
+IF MODEL_B
+    RTS                             \ decision 73: the flip was armed as render began (wait_for_window)
+ELSE
     SEI                             \ the field chosen and the flip armed before a vsync can pass
     LDA field_count                 \ grind: the next field (field_count + 1), or the one after if no
     CMP pass_start                  \ field has gone by since the last flip - the same as pass_start + 2
@@ -3568,6 +3571,7 @@ ENDIF
     STA flip_pending
     CLI
     RTS
+ENDIF
 
 .movers_to_update
     EQUB &00, &00, &00
@@ -4222,7 +4226,12 @@ stf_x_max_high_operand_s = * + 1
 ENDIF
 .search_done
     LDX target
+IF check_if_friendly + 128 >= * + 2
     BPL check_if_friendly           \ Leave with carry clear if unfriendly target found (grind: in a branch's reach here)
+ELSE
+    BMI no_target                   \ (a layout whose page pad above takes it out of a branch's reach)
+    JMP check_if_friendly
+ENDIF
 .no_target
     SEC                             \ Leave with carry set to indicate no target found
     RTS
@@ -4552,6 +4561,9 @@ ENDIF
 IF HUD_RUPTURE
     LDA flip_screen                 \ decision 67: D is rupture_t1's, at the HUD row's end
     STA shown_screen
+ELIF MODEL_B
+    LDA #0                          \ decision 73: one screen, main RAM's: D stays 0, shown_screen 0
+    STA shown_screen                \ (written at each flip still: the harnesses count frames by it)
 ELSE
     LDA acccon
     EOR #&01                        \ grind: D toggles: flip_screen is always the screen not shown (render: back = shown_screen EOR 1)
