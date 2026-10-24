@@ -1,0 +1,8 @@
+\ play_movers_width.6502 - the mover types' widths (MOVER_WIDEST): read-only tables play reads (decision 40: hazel_b; MODEL_B, decision 75:
+\ placed by where they are read, src/game.6502). Cut from src/game.6502 as they were.
+MOVER_WIDEST = &0B                  \ step 2 (layer 3): the largest entry below (the collision searches' early test)
+.mover_types_width_table
+    EQUB &06, &06, &06, &06, &06, &0B, &0B, &0B, &0B, &09, &09, &0B, &0B, &06, &06, &02    \ &00
+    EQUB &02, &03, &02, &03, &0B, &0B, &0B, &0B, &0B, &0B, &0B, &02    \ &10
+
+\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f

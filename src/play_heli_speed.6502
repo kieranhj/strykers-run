@@ -1,0 +1,6 @@
+\ play_heli_speed.6502 - the player helicopters' vertical speeds: read-only tables play reads (decision 40: hazel_b; MODEL_B, decision 75:
+\ placed by where they are read, src/game.6502). Cut from src/game.6502 as they were.
+.player_helicopter_types_vertical_speed
+    EQUB &04, &03, &02, &02, &00, &00, &04, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &00
+    EQUB &00, &03, &00, &00, &00, &02    \ &10
+

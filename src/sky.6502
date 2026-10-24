@@ -70,7 +70,7 @@ ENDIF
     LDX dm_slot
     CPX #10
     BCC no
-    CPX #12
+    CPX #12 - MODEL_B               \ (MODEL_B, decision 75: helicopter 0 only: helicopter 1's image's room holds code)
     BCC yes
 .no
     CLC

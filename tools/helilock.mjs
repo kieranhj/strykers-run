@@ -50,6 +50,9 @@ function newest(m) {
 const press = (m, keys) => { for (const k of m.held) if (!keys.includes(k)) m.s.keyUpRaw(gameKey(m.s, k)); for (const k of keys) if (!m.held.includes(k)) m.s.keyDownRaw(gameKey(m.s, k)); m.held = keys; };
 
 const A = await start(discA), B = await start(discB);
+// HELILOCK_HAZEL=B: HAZEL &C300-&C6FF filled with B in both machines at the start (the mountain layer's bytes, BUGS #9;
+// as worldrun's WORLDRUN_HAZEL: the DFS leaves them as each disc's loads did, so two builds' screens differ there)
+if (process.env.HELILOCK_HAZEL !== undefined) for (const m of [A, B]) m.s.writeMemory(0xc300, new Array(0x400).fill(+process.env.HELILOCK_HAZEL));
 const clobbers = [A, B].map((m) => prngClobber(m, { undo: UNCLOBBER }));
 const x = (i) => rdm(A, A.syms.movers_x_high + i)[0] * 256 + rdm(A, A.syms.movers_x_low + i)[0];
 let phase = "run", target = null, exploded = null, firstDiff = null, diffs = 0, stateDiffers = null;

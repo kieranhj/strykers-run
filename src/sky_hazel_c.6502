@@ -39,7 +39,7 @@ IF MODEL_B = 0                      \ (MODEL_B: the caller has set p_ptr: bank 4
     LDA straight_sprite_hi,X
     STA p_ptr + 1
 ENDIF
-    STZ_Y sky_c                     \ 65C02 opcode: the sprite's column
+    STZ_Y sky_c                     \ 65C02 opcode: the sprite's column (hand: Y = 0, zero2's exit; MODEL_B enters through call_b5, which the analysis cannot follow)
 .column
     LDA sky_c                       \ 8 * the image's column: j + 1, j = c, or 11 - c flipped
     BIT dm_flip

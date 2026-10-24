@@ -21,10 +21,36 @@
     RTS
 .test
     LDX back
+IF MODEL_B                          \ decision 75: room for what this mover's type may need (mover_block_q,
+    LDY dm_slot                     \ bank 4, src/sprite_blocks.6502), not MAX_BLOCK: helicopter 1's image's room
+    LDA movers_type_and_colour,Y    \ holds code, so the arena may not run into it. Y and sky_bq/sky_tmp
+    AND #&7F                        \ (the image builder's scratch) spoiled
+    TAY
+    LDA mover_block_q,Y
+    ASL A
+    STA sky_tmp
+    LDA #0
+    ROL A
+    ASL sky_tmp
+    ROL A
+    STA sky_bq                      \ the bound, 4 x q
+    LDA arena_top_lo,X
+    CLC
+    ADC sky_tmp
+    STA sky_tmp
+    LDA arena_top_hi,X
+    ADC sky_bq                      \ the block's end at most (no carry out: the arena is below &4000)
+    STA sky_bq
+    LDA sky_tmp
+    CMP #LO(SKY_IMG1 + 1)           \ C set: it would run past SKY_IMG1
+    LDA sky_bq
+    SBC #HI(SKY_IMG1 + 1)
+ELSE
     LDA arena_top_lo,X
     CMP #LO(SKY_IMG1 - MAX_BLOCK + 1)
     LDA arena_top_hi,X
     SBC #HI(SKY_IMG1 - MAX_BLOCK + 1)
+ENDIF
     RTS
 }
 

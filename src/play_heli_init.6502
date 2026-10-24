@@ -1,0 +1,10 @@
+\ play_heli_init.6502 - the player helicopters' types and initial x: read-only tables play reads (decision 40: hazel_b; MODEL_B, decision 75:
+\ placed by where they are read, src/game.6502). Cut from src/game.6502 as they were.
+.player_helicopters_type
+    EQUB &08, &0B, &06, &05, &06, &08, &05, &05, &0B, &14
+
+.player_helicopters_initial_x_low
+    EQUB &EC, &66, &C8, &DA, &43, &4F, &C1, &EA, &CF, &08
+
+.player_helicopters_initial_x_high
+    EQUB &02, &05, &32, &09, &0E, &0E, &11, &11, &14, &08

@@ -3070,6 +3070,9 @@ move_mover_routine_address_low = * + 1
     EOR #&FF                        \ grind: &C7 - mover_y + &18 = &DF - mover_y = (&FF - mover_y) - &20
     SEC
     SBC #&20
+IF MODEL_B
+    JSR times_78_of_a               \ decision 75: computed (mb_low): no table, no HAZEL
+ELSE
     TAX                             \ grind: multiply_by_78 inlined (A x &4E from the table), its stores kept; Y stays mover_to_update
     LDA times_78_lo,X
     STA result_low
@@ -3079,6 +3082,7 @@ move_mover_routine_address_low = * + 1
     STZ_X multiplier_low            \ 65C02 opcode
     LDX #&4E
     STX multiplier_high
+ENDIF
     STA movers_raster_y,Y           \ A = result_high
     JSR calculate_screen_addresses_for_mover_on_edge
     CPY #&00                        \ MOVER_PLAYER
@@ -5668,6 +5672,9 @@ IF ROOM_ANY
 ELSE
     unused_3400_original = &3400 - GAME_DOWN
 ENDIF
+IF MODEL_B
+    INCLUDE "play_heli_init.6502"   \ decision 75: out of HAZEL; mb_low has no room for it (it must stop at &0D9F)
+ENDIF
     ASSERT * <= unused_3400_original, "layer 1's code overruns the free block by ", * - unused_3400_original, " bytes"
     SKIP unused_3400_original - *
 
@@ -5779,6 +5786,18 @@ ASSERT ren_zp_end <= unused_0076, "the renderer's zero page overruns &0075 by ",
 ENDSECTION
 
 .initialisation
+IF MODEL_B                          \ decision 75: mb_img to helicopter 1's image's room, over the arena's carried start-up
+    LDX #0                          \ code (unpack_for_play's, finished: this code is below it); 512 bytes, the rest into
+.mbi_copy                           \ the screen, cleared after
+    LDA mb_img_load,X
+    STA SKY_IMG1,X
+    LDA mb_img_load + &100,X
+    STA SKY_IMG1 + &100,X
+    INX
+    BNE mbi_copy
+    ASSERT mbi_copy + 16 <= SKY_IMG1 AND mb_img_end - SKY_IMG1 <= &200
+ENDIF
+IF MODEL_B = 0                      \ (MODEL_B, decision 75: computed, times_78_of_a)
     \ Step 2 (RAM for cycles 4): the table multiply_by_78 reads, n x &4E for n = 0-255
     LDA #&00
     STA times_78_lo
@@ -5794,6 +5813,7 @@ ENDSECTION
     STA times_78_hi,X
     INX
     BNE times_78_loop
+ENDIF
     LDA #&14
     STA ula_control                 \ video ULA control register
     STA os_ula_control_copy
@@ -6133,7 +6153,7 @@ SECTION moved_0a20, org = MOVED_ORG, cmos = CMOS
 \ multiply_by_78: A x &4E as multiply_A_by_X_2f1e with X = &4E leaves everything: the result,
 \ multiplicand and multiplier_low 0, multiplier_high &4E, A = result_high, X = &4E, Y = 0, C clear,
 \ Z set, N clear (V is never read). The tables are made at start-up.
-IF HUD_RUPTURE = 0                  \ (decision 67: no caller since the grind inlined it; its room is the rupture's)
+IF (HUD_RUPTURE = 0) AND (MODEL_B = 0) \ (decision 67: no caller since the grind inlined it; its room is the rupture's; MODEL_B: no table)
 .multiply_by_78
     TAX
     LDA times_78_lo,X
@@ -6415,11 +6435,13 @@ zxwrk = &C6
 up_n  = &C8
 .unpack_for_play
 {
+IF MODEL_B = 0                      \ (MODEL_B, decision 75: no HAZEL; no ACCCON on a Model B)
     SEI
     LDA acccon
     ORA #&08                        \ Y: HAZEL at &C000-&DFFF
     STA acccon
     CLI
+ENDIF
     LDA #&05                        \ bank 5: part A's carrier, and the tunes' place
     STA os_ram_copy_of_currently_selected_rom
     STA romsel
@@ -6436,6 +6458,21 @@ up_n  = &C8
     LDA #HI(hazel_a_end - HAZEL_ORG)
     STA up_n + 1
     JSR copy
+IF MODEL_B
+    LDA #LO(mb_low_load)            \ decision 75: the blocks HAZEL held, to main RAM: after moved_0a20, and
+    STA zxsrc                       \ where helicopter 1's image was
+    LDA #HI(mb_low_load)
+    STA zxsrc + 1
+    LDA #LO(mb_low_org)
+    STA zxdst
+    LDA #HI(mb_low_org)
+    STA zxdst + 1
+    LDA #LO(mb_low_end - mb_low_org)
+    STA up_n
+    LDA #HI(mb_low_end - mb_low_org)
+    STA up_n + 1
+    JSR copy                        \ (mb_img: by initialisation, as this code is carried where it goes)
+ELSE
     LDA #LO(hazel_b_load)           \ part B, from here, after part A
     STA zxsrc
     LDA #HI(hazel_b_load)
@@ -6445,6 +6482,7 @@ up_n  = &C8
     LDA #HI(hazel_b_end - hazel_a_end)
     STA up_n + 1
     JSR copy
+ENDIF
 IF SKY_MODE * (1 - MODEL_B)
     LDX #hazel_c_end - &C200        \ the sky mode's image builder (src/sky_hazel_c.6502), at &C200
 .hazel_c_copy
@@ -6501,6 +6539,75 @@ save_arena_end = *
 
 .resident_end         \ everything above is in memory for the whole game; the screen starts at &4000
     ASSERT resident_end <= &4000, "resident code and data overrun the screen by ", resident_end - &4000, " bytes"
+IF MODEL_B
+\ Decision 75 (MODEL_B: no HAZEL): what hazel_b held, by where it is read. In main RAM, read with any bank
+\ paged: after moved_0a20 to &0D9E (the DFS's NMI code and workspace: no disc is read once the game has
+\ loaded; not the extended vectors from &0D9F, which a ROM that claims a vector goes through), and where helicopter 1's sky image was. In bank 4, the tables read only with it
+\ paged (src/main.6502: measured over 3,000 passes, tools/hazelbanks.mjs).
+mb_low_org = moved_0a20_end
+.mb_low_load
+SECTION mb_low, org = mb_low_org, cmos = CMOS
+    INCLUDE "scroll_hazel.6502"     \ pre_cancel, edge_right (a loop), ground_square, unpack_scenery_column
+    INCLUDE "play_movers_width.6502"
+    INCLUDE "play_heli_speed.6502"
+\ times_78_of_a: A x &4E as multiply_by_78's table gave it: result_low/high, multiplicand and multiplier_low 0,
+\ multiplier_high = X = &4E, A = result_high, Y kept (2n + 4n + 8n + 64n; about 100 cycles)
+.times_78_of_a
+    STA multiplicand                \ t = n, 16 bits (multiplicand, multiplier_low)
+    LDA #0
+    STA multiplier_low
+    ASL multiplicand
+    ROL multiplier_low              \ t = 2n
+    LDA multiplicand
+    STA result_low
+    LDA multiplier_low
+    STA result_high                 \ r = 2n
+    LDX #2
+.t78_dbl
+    ASL multiplicand
+    ROL multiplier_low              \ t = 4n, then 8n
+    LDA result_low
+    CLC
+    ADC multiplicand
+    STA result_low
+    LDA result_high
+    ADC multiplier_low
+    STA result_high                 \ r = 6n, then 14n
+    DEX
+    BNE t78_dbl
+    ASL multiplicand
+    ROL multiplier_low
+    ASL multiplicand
+    ROL multiplier_low
+    ASL multiplicand
+    ROL multiplier_low              \ t = 64n
+    LDA result_low
+    CLC
+    ADC multiplicand
+    STA result_low
+    LDA result_high
+    ADC multiplier_low
+    STA result_high                 \ r = 78n
+    LDX #0
+    STX multiplicand
+    STX multiplier_low
+    LDX #&4E
+    STX multiplier_high
+    RTS
+.mb_low_end
+    ASSERT mb_low_end <= &0D9F, "mb_low overruns the MOS's extended vectors (&0D9F) by ", mb_low_end - &0D9F
+ENDSECTION
+.mb_img_load
+SECTION mb_img, org = SKY_IMG1, cmos = CMOS
+IF SKY_MODE
+    INCLUDE "sky_hazel.6502"        \ sky mode's geometry and column checks
+ENDIF
+.mb_img_end
+    ASSERT mb_img_end <= &4000, "mb_img overruns &3FFF by ", mb_img_end - &4000
+ENDSECTION
+hazel_b_load = mb_low_load
+hazel_b_end = hazel_a_end
+ELSE
 .hazel_b_load
 SECTION hazel_b, org = hazel_a_end, cmos = CMOS
 IF MODEL_B = 0
@@ -6526,256 +6633,14 @@ IF HUD_RUPTURE
 ENDIF
     SKIP (&105 - LO(*)) AND &FF
 \ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.player_helicopter_types_vertical_speed
-    EQUB &04, &03, &02, &02, &00, &00, &04, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &00
-    EQUB &00, &03, &00, &00, &00, &02    \ &10
-
-.animation_table
-    EQUB &00    \ &00 &00 : SPRITE_LEGS_ONE
-    EQUB &01    \ &01 : SPRITE_LEGS_TWO
-    EQUB &02    \ &02 : SPRITE_LEGS_THREE
-    EQUB &00    \ &03 : SPRITE_LEGS_ONE
-    EQUB &03    \ &04 : SPRITE_LEGS_FOUR
-    EQUB &04    \ &05 : SPRITE_LEGS_FIVE
-    EQUB &0A    \ &06 : SPRITE_LEGS_SIX
-    EQUB &0D    \ &07 : SPRITE_LEGS_SEVEN
-    EQUB &0A    \ &08 : SPRITE_LEGS_SIX
-    EQUB &1B    \ &09 : SPRITE_LEGS_NINE
-    EQUB &1C    \ &0a : SPRITE_LEGS_TEN
-    EQUB &1A    \ &0b : SPRITE_LEGS_EIGHT
-    EQUB &0A    \ &0c : SPRITE_LEGS_SIX
-    EQUB &0D    \ &0d : SPRITE_LEGS_SEVEN
-
-    EQUB &05    \ &0e &00 : SPRITE_TORSO_WITH_PISTOL_ONE
-    EQUB &06    \ &01 : SPRITE_TORSO_WITH_PISTOL_TWO
-    EQUB &05    \ &02 : SPRITE_TORSO_WITH_PISTOL_ONE
-    EQUB &08    \ &03 : SPRITE_TORSO_WITH_PISTOL_FOUR
-    EQUB &07    \ &04 : SPRITE_TORSO_WITH_PISTOL_THREE
-    EQUB &08    \ &05 : SPRITE_TORSO_WITH_PISTOL_FOUR
-    EQUB &0F    \ &06 : SPRITE_TORSO_WITH_PISTOL_FIVE
-    EQUB &0F    \ &07 : SPRITE_TORSO_WITH_PISTOL_FIVE
-    EQUB &05    \ &08 : SPRITE_TORSO_WITH_PISTOL_ONE
-    EQUB &1D    \ &09 : SPRITE_TORSO_WITH_PISTOL_SIX
-    EQUB &05    \ &0a : SPRITE_TORSO_WITH_PISTOL_ONE
-    EQUB &1E    \ &0b : SPRITE_TORSO_WITH_PISTOL_SEVEN
-    EQUB &1F    \ &0c : SPRITE_TORSO_WITH_PISTOL_EIGHT
-    EQUB &05    \ &0d : SPRITE_TORSO_WITH_PISTOL_ONE
-
-    EQUB &10    \ &1c &00 : SPRITE_TORSO_WITH_RIFLE_ONE
-    EQUB &10    \ &01 : SPRITE_TORSO_WITH_RIFLE_ONE
-    EQUB &10    \ &02 : SPRITE_TORSO_WITH_RIFLE_ONE
-    EQUB &10    \ &03 : SPRITE_TORSO_WITH_RIFLE_ONE
-    EQUB &10    \ &04 : SPRITE_TORSO_WITH_RIFLE_ONE
-    EQUB &10    \ &05 : SPRITE_TORSO_WITH_RIFLE_ONE
-    EQUB &0B    \ &06 : SPRITE_TORSO_WITH_RIFLE_ZERO
-    EQUB &0B    \ &07 : SPRITE_TORSO_WITH_RIFLE_ZERO
-    EQUB &10    \ &08 : SPRITE_TORSO_WITH_RIFLE_ONE
-
-    EQUB &16    \ &25 &00 : SPRITE_ROTORS_ONE
-    EQUB &17    \ &01 : SPRITE_ROTORS_TWO
-    EQUB &19    \ &02 : SPRITE_ROTORS_FOUR
-    EQUB &18    \ &03 : SPRITE_ROTORS_THREE
-    EQUB &19    \ &04 : SPRITE_ROTORS_FOUR
-    EQUB &17    \ &05 : SPRITE_ROTORS_TWO
-    EQUB &42    \ &06 : SPRITE_ROTORS_WRECK
-
-    EQUB &12    \ &2c &00 : SPRITE_HELICOPTER_WITH_MISSILE_BODY
-    EQUB &12    \ &01 : SPRITE_HELICOPTER_WITH_MISSILE_BODY
-    EQUB &12    \ &02 : SPRITE_HELICOPTER_WITH_MISSILE_BODY
-    EQUB &12    \ &03 : SPRITE_HELICOPTER_WITH_MISSILE_BODY
-    EQUB &12    \ &04 : SPRITE_HELICOPTER_WITH_MISSILE_BODY
-    EQUB &12    \ &05 : SPRITE_HELICOPTER_WITH_MISSILE_BODY
-    EQUB &40    \ &06 : SPRITE_HELICOPTER_WITH_MISSILE_BODY_WRECK
-
-    EQUB &11    \ &33 &00 : SPRITE_HELICOPTER_BODY
-    EQUB &11    \ &01 : SPRITE_HELICOPTER_BODY
-    EQUB &11    \ &02 : SPRITE_HELICOPTER_BODY
-    EQUB &11    \ &03 : SPRITE_HELICOPTER_BODY
-    EQUB &11    \ &04 : SPRITE_HELICOPTER_BODY
-    EQUB &11    \ &05 : SPRITE_HELICOPTER_BODY
-    EQUB &43    \ &06 : SPRITE_HELICOPTER_BODY_WRECK
-
-    EQUB &15    \ &3a &00 : SPRITE_HELICOPTER_WITH_SOLDIER_BODY
-    EQUB &15    \ &01 : SPRITE_HELICOPTER_WITH_SOLDIER_BODY
-    EQUB &15    \ &02 : SPRITE_HELICOPTER_WITH_SOLDIER_BODY
-    EQUB &15    \ &03 : SPRITE_HELICOPTER_WITH_SOLDIER_BODY
-    EQUB &15    \ &04 : SPRITE_HELICOPTER_WITH_SOLDIER_BODY
-    EQUB &15    \ &05 : SPRITE_HELICOPTER_WITH_SOLDIER_BODY
-
-    EQUB &24    \ &40 &00 : SPRITE_SKELETON_FOUR
-    EQUB &23    \ &01 : SPRITE_SKELETON_THREE
-    EQUB &22    \ &02 : SPRITE_SKELETON_TWO
-    EQUB &21    \ &03 : SPRITE_SKELETON_ONE
-
-    EQUB &29    \ &44 &00 : SPRITE_EXPLOSION_FIVE
-    EQUB &28    \ &01 : SPRITE_EXPLOSION_FOUR
-    EQUB &27    \ &02 : SPRITE_EXPLOSION_THREE
-    EQUB &26    \ &03 : SPRITE_EXPLOSION_TWO
-    EQUB &25    \ &04 : SPRITE_EXPLOSION_ONE
-
-    EQUB &2A    \ &49 &00 : SPRITE_BULLET
-
-    EQUB &2B    \ &4a &00 : SPRITE_GRENADE
-
-    EQUB &2C    \ &4b &00 : SPRITE_BOMB
-
-    EQUB &14    \ &4c &00 : SPRITE_RED_HELICOPTER_BODY
-    EQUB &14    \ &01 : SPRITE_RED_HELICOPTER_BODY
-    EQUB &14    \ &02 : SPRITE_RED_HELICOPTER_BODY
-    EQUB &14    \ &03 : SPRITE_RED_HELICOPTER_BODY
-    EQUB &14    \ &04 : SPRITE_RED_HELICOPTER_BODY
-    EQUB &14    \ &05 : SPRITE_RED_HELICOPTER_BODY
-    EQUB &41    \ &00 : SPRITE_RED_HELICOPTER_BODY_WRECK
-
-    EQUB &13    \ &53 &00 : SPRITE_BLUE_CRAFT
-    EQUB &3E    \ &00 : SPRITE_BLUE_CRAFT_WRECK
-
-    EQUB &2D    \ &55 &00 : SPRITE_TORSO_WITH_BAZOOKA
-    EQUB &2D    \ &01 : SPRITE_TORSO_WITH_BAZOOKA
-    EQUB &2D    \ &02 : SPRITE_TORSO_WITH_BAZOOKA
-    EQUB &2D    \ &03 : SPRITE_TORSO_WITH_BAZOOKA
-    EQUB &2D    \ &04 : SPRITE_TORSO_WITH_BAZOOKA
-    EQUB &2D    \ &05 : SPRITE_TORSO_WITH_BAZOOKA
-    EQUB &2D    \ &06 : SPRITE_TORSO_WITH_BAZOOKA
-    EQUB &2D    \ &07 : SPRITE_TORSO_WITH_BAZOOKA
-    EQUB &2D    \ &08 : SPRITE_TORSO_WITH_BAZOOKA
-
-    EQUB &34    \ &5e &00 : SPRITE_MORTAR_OR_MACHINE_GUN_SOLDIER
-
-    EQUB &33    \ &5f &00 : SPRITE_MORTAR
-
-    EQUB &35    \ &60 &00 : SPRITE_MACHINE_GUN
-
-    EQUB &37    \ &61 &00 : SPRITE_SAM
-
-    EQUB &38    \ &62 &00 : SPRITE_ROCKET
-
-    EQUB &2E    \ &63 &00 : SPRITE_MINE
-
-    EQUB &39    \ &64 &00 : SPRITE_TANK_WHEELS_ONE
-    EQUB &3A    \ &01 : SPRITE_TANK_WHEELS_TWO
-    EQUB &3B    \ &02 : SPRITE_TANK_WHEELS_THREE
-    EQUB &39    \ &03 : SPRITE_TANK_WHEELS_ONE
-
-    EQUB &3C    \ &68 &00 : SPRITE_TANK_BODY
-    EQUB &3C    \ &01 : SPRITE_TANK_BODY
-    EQUB &3C    \ &02 : SPRITE_TANK_BODY
-    EQUB &4A    \ &03 : SPRITE_TANK_BODY_WRECK
-
-    EQUB &3D    \ &6c &00 : SPRITE_VEHICLE_BODY                            # Unused
-    EQUB &3D    \ &01 : SPRITE_VEHICLE_BODY
-    EQUB &3D    \ &02 : SPRITE_VEHICLE_BODY
-
-    EQUB &44    \ &6f &03 : SPRITE_HEAVY_GUN
-
-    EQUB &45    \ &70 &00 : SPRITE_GREEN_WHITE_HELICOPTER_BODY
-    EQUB &45    \ &00 : SPRITE_GREEN_WHITE_HELICOPTER_BODY
-    EQUB &45    \ &00 : SPRITE_GREEN_WHITE_HELICOPTER_BODY
-    EQUB &45    \ &00 : SPRITE_GREEN_WHITE_HELICOPTER_BODY
-    EQUB &45    \ &00 : SPRITE_GREEN_WHITE_HELICOPTER_BODY
-    EQUB &45    \ &00 : SPRITE_GREEN_WHITE_HELICOPTER_BODY
-
-    EQUB &46    \ &76 &00 : SPRITE_GREEN_WHITE_CRAFT_ONE
-
-    EQUB &47    \ &77 &00 : SPRITE_GREEN_WHITE_CRAFT_TWO
-
-    EQUB &48    \ &78 &00 : SPRITE_FLYING_SCOOTER
-
-    EQUB &49    \ &79 &00 : SPRITE_GREEN_WHITE_CRAFT_WITH_MISSILE
-    EQUB &49    \ &00 : SPRITE_GREEN_WHITE_CRAFT_WITH_MISSILE
-    EQUB &49    \ &00 : SPRITE_GREEN_WHITE_CRAFT_WITH_MISSILE
-    EQUB &49    \ &00 : SPRITE_GREEN_WHITE_CRAFT_WITH_MISSILE
-    EQUB &49    \ &00 : SPRITE_GREEN_WHITE_CRAFT_WITH_MISSILE
-    EQUB &49    \ &00 : SPRITE_GREEN_WHITE_CRAFT_WITH_MISSILE
-
-    EQUB &4B    \ &7f &00 : SPRITE_SHELL
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.sprites_y_offset
-    EQUB &0C, &0B, &0A, &0C, &0B, &0A, &0C, &06, &0C, &0A, &0A, &09, &0C, &04, &15, &15    \ &00
-    EQUB &15, &15, &15, &15, &15, &17, &17, &17, &17, &17, &17, &17, &00, &00, &05, &06    \ &10
-    EQUB &07, &05    \ &20
-
-.player_helicopters_type
-    EQUB &08, &0B, &06, &05, &06, &08, &05, &05, &0B, &14
-
-.player_helicopters_initial_x_low
-    EQUB &EC, &66, &C8, &DA, &43, &4F, &C1, &EA, &CF, &08
-
-.player_helicopters_initial_x_high
-    EQUB &02, &05, &32, &09, &0E, &0E, &11, &11, &14, &08
+    INCLUDE "play_heli_speed.6502"
+    INCLUDE "play_anim.6502"
+    INCLUDE "play_heli_init.6502"
     ASSERT HI(player_helicopter_types_vertical_speed - 5) = HI(* - 1), "decision 40: the helicopter and animation tables cross a page"
     SKIP (&101 - LO(*)) AND &FF
-.mover_types_parts
-    EQUB &00, &00, &00, &00, &00, &01, &01, &01, &01, &01, &01, &02, &02, &02, &02, &02    \ &00
-    EQUB &02, &02, &02, &02, &01, &02, &01, &02, &02, &02, &01, &02    \ &10
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.mover_types_first_sprite_animation_offsets
-    EQUB &00, &00, &00, &00, &00, &2C, &33, &3A, &4C, &5E, &5E, &53, &61, &40, &44, &49    \ &00
-    EQUB &4A, &4B, &62, &63, &64, &6F, &70, &76, &77, &78, &79, &7F, &0E, &1C, &0E, &1C    \ &10
-    EQUB &55, &25, &25, &25, &25, &5F, &60, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &20
-    EQUB &68, &00, &25, &00, &00, &00, &25, &00    \ &30
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-MOVER_WIDEST = &0B                  \ step 2 (layer 3): the largest entry below (the collision searches' early test)
-.mover_types_width_table
-    EQUB &06, &06, &06, &06, &06, &0B, &0B, &0B, &0B, &09, &09, &0B, &0B, &06, &06, &02    \ &00
-    EQUB &02, &03, &02, &03, &0B, &0B, &0B, &0B, &0B, &0B, &0B, &02    \ &10
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.mover_types_height_table
-    EQUB &1E, &1C, &1F, &1C, &1C, &1C, &1B, &1C, &1C, &16, &16, &17, &17, &1D, &0F, &03    \ &00
-    EQUB &04, &04, &0D, &05, &20, &18, &1C, &18, &18, &18, &1C, &02    \ &10
-
-.mover_types_third_sprite
-    EQUB &09, &0C, &0E, &20, &20
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.mover_types_second_sprite_offset
-    EQUB &00, &00, &00, &00, &00, &0E, &0E, &15, &15, &1C, &1D, &00, &00, &00, &00, &00    \ &00
-    EQUB &00, &00, &00, &00, &1E, &00, &0E, &00, &00, &00, &0E, &00    \ &10
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.mover_types_animation_frame
-    EQUB &06, &06, &06, &06, &06, &06, &06, &06, &06, &01, &01, &01, &01, &04, &05, &01    \ &00
-    EQUB &01, &01, &01, &01, &03, &01, &06, &01, &01, &01, &06, &01    \ &10
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.mover_types_new_grenade_bomb_or_rocket_y_offset
-    EQUB &22, &22, &22, &22, &22, &01, &01, &01, &01, &22, &00, &01, &22, &00, &00, &00    \ &00
-    EQUB &00, &00, &00, &00, &00, &00, &01, &01, &01, &00, &01    \ &10
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.mover_types_new_bullet_y_offset
-    EQUB &10, &10, &10, &10, &10, &10, &0F, &14, &10, &00, &18, &10, &00, &00, &00, &00    \ &00
-    EQUB &00, &00, &00, &00, &20, &1C, &10, &10, &10, &10, &10    \ &10
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.mover_types_new_grenade_bomb_or_rocket_type
-    EQUB &10, &00, &10, &00, &00, &11, &10, &11, &11, &10, &00, &00, &12, &00, &00, &00    \ &00
-    EQUB &00, &00, &00, &00, &00, &00, &11, &11, &10, &00, &10    \ &10
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.mover_types_new_grenade_bomb_or_rocket_y_velocity
-    EQUB &06, &00, &06, &00, &00, &80, &80, &80, &80, &08, &00, &80, &01, &00, &00, &00    \ &00
-    EQUB &00, &00, &00, &00, &00, &00, &80, &80, &80, &00, &80    \ &10
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.mover_types_new_bullet_type
-    EQUB &0F, &0F, &0F, &0F, &11, &0F, &0F, &0F, &00, &00, &0F, &0F, &00, &00, &00, &00    \ &00
-    EQUB &00, &00, &00, &00, &1B, &1B, &0F, &0F, &0F, &0F, &0F    \ &10
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.mover_types_new_bullet_y_velocity
-    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &00
-    EQUB &00, &00, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &10
-
-\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-.mover_types_maximum_firing_cooldown
-    EQUB &0A, &0A, &0A, &0A, &0A, &05, &06, &02, &05, &00, &02, &00, &00, &00, &00, &00    \ &00
-    EQUB &00, &00, &00, &00, &05, &05, &04, &03, &02, &03, &06    \ &10
+    INCLUDE "play_movers_a.6502"
+    INCLUDE "play_movers_width.6502"
+    INCLUDE "play_movers_b.6502"
     ASSERT LO(mover_types_new_grenade_bomb_or_rocket_type) = 0 AND HI(mover_types_parts) = HI(mover_types_new_grenade_bomb_or_rocket_type - 1) AND HI(mover_types_new_grenade_bomb_or_rocket_type) = HI(* - 1), "decision 40: a mover type table crosses a page"
     ASSERT * <= &DC00, "decision 40: hazel_b's tables reach &DC00 by ", * - &DC00
     INCLUDE "scroll_hazel.6502"     \ layer 4: the scroll column's code (decisions 38, 39)
@@ -6794,6 +6659,7 @@ ENDIF
 .hazel_b_end
     ASSERT hazel_b_end <= &E000, "HAZEL overruns by ", hazel_b_end - &E000
 ENDSECTION
+ENDIF
 IF SKY_MODE * (1 - MODEL_B)      \ (MODEL_B, decision 75: in bank 5, src/render_b5.6502)
 .hazel_c_load
 SECTION hazel_c, org = &C200, cmos = CMOS

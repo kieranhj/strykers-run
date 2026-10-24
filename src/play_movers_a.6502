@@ -1,0 +1,14 @@
+\ play_movers_a.6502 - the mover types' parts and first sprites: read-only tables play reads (decision 40: hazel_b; MODEL_B, decision 75:
+\ placed by where they are read, src/game.6502). Cut from src/game.6502 as they were.
+.mover_types_parts
+    EQUB &00, &00, &00, &00, &00, &01, &01, &01, &01, &01, &01, &02, &02, &02, &02, &02    \ &00
+    EQUB &02, &02, &02, &02, &01, &02, &01, &02, &02, &02, &01, &02    \ &10
+
+\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+.mover_types_first_sprite_animation_offsets
+    EQUB &00, &00, &00, &00, &00, &2C, &33, &3A, &4C, &5E, &5E, &53, &61, &40, &44, &49    \ &00
+    EQUB &4A, &4B, &62, &63, &64, &6F, &70, &76, &77, &78, &79, &7F, &0E, &1C, &0E, &1C    \ &10
+    EQUB &55, &25, &25, &25, &25, &5F, &60, &00, &00, &00, &00, &00, &00, &00, &00, &00    \ &20
+    EQUB &68, &00, &25, &00, &00, &00, &25, &00    \ &30
+
+\ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f

@@ -35,6 +35,19 @@
 \ the same order as before (Y kept by it). Leaves Y = &21 and what that last call leaves.
 .edge_right
 {
+IF MODEL_B                          \ decision 75: a loop, for the room (main RAM's): about 10 cycles more a mover
+    LDY #0
+.loop
+    LDA movers_x_low,Y
+    CMP edge_x_low
+    BNE next
+    JSR calculate_screen_addresses_for_mover_on_edge    \ (keeps Y)
+.next
+    INY
+    CPY #&21
+    BCC loop
+    JMP calculate_screen_addresses_for_mover_on_edge    \ Y = &21, taken in full
+ELSE
     LDA edge_x_low
     FOR n = 0..&20
         CMP movers_x_low + n
@@ -48,6 +61,7 @@
     JSR calculate_screen_addresses_for_mover_on_edge
     LDA edge_x_low
     RTS
+ENDIF
 }
 
 \ ground_square: multiply_A_by_X_2f1e for the ground's A = X = 0-3, leaving what is read after it:

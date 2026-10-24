@@ -1659,7 +1659,11 @@ IF SKY_MODE = 0
 ENDIF
 IF SKY_MODE
     JSR sky_room                    \ below helicopter 1's image (src/sky_main.6502; C set: none)
+IF MODEL_B
+    BCS out_of_room                 \ decision 75: code is there (mb_img): not drawn this frame
+ELSE
     BCS masked
+ENDIF
     JSR sky_put_on                  \ C set: a helicopter drawn in sky mode (src/sky.6502), no
     BCC masked                      \ block (the room above arena_top its rotor's scratch)
     LDY dm_index
@@ -1667,6 +1671,10 @@ IF SKY_MODE
     STA save_start_hi,Y
     LDX dm_slot
     JMP record_live                 \ X = slot, Y = slot + boff
+IF MODEL_B
+.out_of_room
+    RTS
+ENDIF
 .masked
     LDX back
 ELSE

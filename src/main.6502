@@ -194,6 +194,12 @@ ENDIF
     INCLUDE "compiled_table.6502"   \ step 2 layer 4: the player's compiled kinds (tools/compiled.py)
     INCLUDE "sprite_straight.6502"  \ step 2 layer 3: the masked renderer's sprites (and ANDY's, below)
     INCLUDE "sprite_in_b5.6502"     \ decision 75: which sprites bank 5 holds (MODEL_B)
+IF MODEL_B                          \ decision 75: hazel_b's tables read only with bank 4 paged (src/game.6502)
+    INCLUDE "play_anim.6502"
+    INCLUDE "play_movers_a.6502"
+    INCLUDE "play_movers_b.6502"
+    INCLUDE "sprite_blocks.6502"    \ the largest save block of each mover type (tools/sprites.py blocks)
+ENDIF
 IF GAMEPLAY_SHIELD
 IF HUD_RUPTURE
     INCLUDE "hud_extra.6502"        \ decision 68: the HUD row's progress and score
