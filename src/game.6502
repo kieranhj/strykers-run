@@ -5568,6 +5568,26 @@ compiled_vec = * + 1                \ self-modified: the entry (also compiled_di
     STA romsel
     RTS
     EQUB &00, &00, &00, &00         \ grind: pad, so nothing after moves
+IF MODEL_B
+\ call_b5 (decision 75): the routine at b5_vec with bank 5 paged (ANDY's sprites' home), then bank 4 again.
+\ Keeps nothing (draw_column uses X, which compiled_call keeps for its way back).
+.call_b5
+    LDA #&05
+    STA os_ram_copy_of_currently_selected_rom
+    STA romsel
+b5_vec = * + 1
+    JSR &0000
+    LDA #&04
+    STA os_ram_copy_of_currently_selected_rom
+    STA romsel
+    RTS
+.dc_ops                             \ draw_mover's tables for bank 5's draw_column: pixel table, mask table
+    SKIP 4
+IF SKY_MODE
+.sky_rb_main                        \ sky_rb (bank 4's workspace) copied for sky_build in bank 5
+    SKIP SKY_ROWS
+ENDIF
+ENDIF
 IF SKY_MODE
     INCLUDE "sky_main.6502"         \ the enemy helicopters over the sky (src/sky.6502 its take_off half)
 ELSE
@@ -5853,6 +5873,7 @@ ENDSECTION
     STA usrvia_t1ch                 \ User VIA timer 1 counter MSB
     LDA #&01                        \ Set colour 0 to cyan
     STA ula_palette                 \ video ULA palette register
+IF MODEL_B = 0                      \ (decision 75: MODEL_B draws them where bank 5 carries them)
     \ Step 2 layer 3: ANDY's sprites, from bank 5 (ROMSEL &85: ANDY at &8000-&8FFF, bank 5 above)
     LDA #&85
     STA romsel                      \ Paged ROM latch
@@ -5869,6 +5890,7 @@ copy_andy_target = * + 1
     LDA copy_andy_target + 1
     CMP #&90
     BNE copy_andy_loop
+ENDIF
 IF DITHER_HILLS                     \ decisions 70, 71: the mountain sprites dithered, and mirrored for their
     LDA #LO(hills_unpacked)         \ flipped draws, packed in banks 4 and 7: unpacked one after the other
     STA zxdst                       \ over ANDY's carrier in bank 5, which the copy has finished with
@@ -6423,7 +6445,7 @@ up_n  = &C8
     LDA #HI(hazel_b_end - hazel_a_end)
     STA up_n + 1
     JSR copy
-IF SKY_MODE
+IF SKY_MODE * (1 - MODEL_B)
     LDX #hazel_c_end - &C200        \ the sky mode's image builder (src/sky_hazel_c.6502), at &C200
 .hazel_c_copy
     LDA hazel_c_load - 1,X
@@ -6481,7 +6503,9 @@ save_arena_end = *
     ASSERT resident_end <= &4000, "resident code and data overrun the screen by ", resident_end - &4000, " bytes"
 .hazel_b_load
 SECTION hazel_b, org = hazel_a_end, cmos = CMOS
+IF MODEL_B = 0
     INCLUDE "compiled_hazel_b.6502"
+ENDIF
 \ Decision 40: read-only tables only play reads (HAZEL is paged in through play), from the main block,
 \ placed so that no read crosses a page: player_helicopter_types_vertical_speed (read from 5 below
 \ it) .. player_helicopters_initial_x_high (read from 24 below) in one page from LO = 5, then the
@@ -6770,7 +6794,7 @@ ENDIF
 .hazel_b_end
     ASSERT hazel_b_end <= &E000, "HAZEL overruns by ", hazel_b_end - &E000
 ENDSECTION
-IF SKY_MODE
+IF SKY_MODE * (1 - MODEL_B)      \ (MODEL_B, decision 75: in bank 5, src/render_b5.6502)
 .hazel_c_load
 SECTION hazel_c, org = &C200, cmos = CMOS
     INCLUDE "sky_hazel_c.6502"      \ the enemy helicopters over the sky: the image builder

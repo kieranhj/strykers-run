@@ -19,9 +19,40 @@
 \ Records are per screen: index = slot + 64 * screen. Screen 0 is main RAM, screen 1 the Master's
 \ shadow RAM, at the same addresses (&4000-&7FFF); the vsync interrupt shows each in turn.
 
+IF MODEL_B
+\ Decision 75: one screen, so each record array is 64 slots, not 128 (index = slot + 64 * screen, screen 0);
+\ the variables' holes kept where they were (ren_vars_a, h0, h1), zp_save, ren_vars_z and ren_vars_d after
+\ the history, then the clusters' (render_clusters.6502): &7B8 bytes, from &B800
+REN_BASE    = &B800 + PAD_START
+rec_type    = REN_BASE + &000
+rec_frame   = REN_BASE + &040
+rec_xl      = REN_BASE + &080
+rec_xh      = REN_BASE + &0C0
+rec_y       = REN_BASE + &100
+rec_sl      = REN_BASE + &140
+rec_sh      = REN_BASE + &180
+save_start_lo = REN_BASE + &1C0
+save_start_hi = REN_BASE + &200
+save_end_lo = REN_BASE + &240
+save_end_hi = REN_BASE + &280
+rec_wxl     = REN_BASE + &2C0
+rec_wxh     = REN_BASE + &300
+rec_wy      = REN_BASE + &340
+hist0       = REN_BASE + &400
+hist1       = REN_BASE + &500
+zp_save     = REN_BASE + &600
+REN_Z       = &622                  \ ren_vars_z's offset, after zp_save's &22
+REN_D       = &700                  \ ren_vars_d's
+REN_CL      = &769                  \ the clusters' (render_clusters.6502), to &7B8
+REN_RECORDS = 64                    \ a record array's entries
+ASSERT REN_BASE + &7B8 <= &C000
+ELSE
 REN_BASE    = &B400 + PAD_START + NMOS * &100   \ workspace above the code and data (DATA1 ASSERTs it), to &C000
                                     \ (NMOS: a page higher, for its longer code; the offsets in a page as they were);
                                     \ not in the file
+REN_Z       = &822
+REN_D       = &A80
+REN_RECORDS = 128
 rec_type    = REN_BASE + &000       \ movers_type_and_colour as drawn
 rec_frame   = REN_BASE + &080       \ movers_frame_and_flip
 rec_xl      = REN_BASE + &100       \ movers_x_low
@@ -40,6 +71,7 @@ rec_wxl     = REN_BASE + &900       \ per record: where it was drawn, in the wor
 rec_wxh     = REN_BASE + &980       \ and its y, from the screen address it was drawn at, not
 rec_wy      = REN_BASE + &A00       \ movers_x/y (BUGS #7): world_of_address
 ASSERT zp_save + &100 <= &C000 AND rec_wy + &80 <= &C000
+ENDIF
 
 MOVER_SLOTS = &22                   \ MOVER_LAST + 1
 save_ptr    = &9C                   \ zero page, free since layer 2 (&9C/&9D)
@@ -196,13 +228,13 @@ MAX_BLOCK   = &2A0                  \ more than any mover's save block: 636 byte
 \ =============================================================================================
 .render_reset
 {
-    LDX #127
+    LDX #REN_RECORDS - 1
     LDA #&FF
 .clear_records
     STA rec_xh,X
     DEX
     BPL clear_records
-    LDX #127                        \ no save blocks
+    LDX #REN_RECORDS - 1            \ no save blocks
     LDA #0
 .no_blocks
     STA save_start_hi,X
@@ -430,7 +462,9 @@ ENDIF
     LDA boff                        \ the records' x high for this screen: rec_xh + boff
     ORA #LO(rec_xh)
     STA classify_xh
+IF MODEL_B = 0                      \ (MODEL_B: boff is always 0)
     ASSERT (LO(rec_xh) AND &40) = 0 AND LO(rec_xh) + 64 + MOVER_SLOTS <= &100
+ENDIF
     LDX #0
 .classify
     STZ_LDA need,X
@@ -1419,7 +1453,7 @@ IF MODEL_B
     STA cl_cur
     CMP #&FF
     BEQ out
-    LDA #&84
+    LDA #REN_ROMSEL
     STA os_ram_copy_of_currently_selected_rom
     STA romsel
     LDA #0
@@ -1457,7 +1491,7 @@ IF MODEL_B
 .out
     RTS
 }
-cl_pl       = rec_frame + 71        \ &FF: the player is in this cluster
+cl_pl       = REN_BASE + REN_CL + 78        \ &FF: the player is in this cluster
 
 \ cluster_build: every changing entry's label is shared with each changing entry it overlaps
 \ (list_overlap), through any chain; every entry in the zone shares cl_zone's: shown there (need bit 5),
@@ -1806,28 +1840,49 @@ ENDIF
 .green
     STY draw_column.pix_operand + 1
     STY draw_column.pix_operand_2 + 1
+IF MODEL_B
+    STY dc_ops + 1                  \ decision 75: and for bank 5's copy (call_b5)
+ENDIF
     BIT dm_flip
     BMI flipped
     LDA #LO(unflipped_green_pixel_table)
     STA draw_column.pix_operand
     STA draw_column.pix_operand_2
+IF MODEL_B
+    STA dc_ops
+ENDIF
     LDA #LO(unflipped_mask_table)
     STA draw_column.mask_operand
     STA draw_column.mask_operand_2
+IF MODEL_B
+    STA dc_ops + 2
+ENDIF
     LDA #HI(unflipped_mask_table)
     STA draw_column.mask_operand + 1
     STA draw_column.mask_operand_2 + 1
+IF MODEL_B
+    STA dc_ops + 3
+ENDIF
     BRA_NE parts                    \ 65C02 opcode
 .flipped
     LDA #LO(flipped_green_pixel_table)
     STA draw_column.pix_operand
     STA draw_column.pix_operand_2
+IF MODEL_B
+    STA dc_ops
+ENDIF
     LDA #LO(flipped_mask_table)
     STA draw_column.mask_operand
     STA draw_column.mask_operand_2
+IF MODEL_B
+    STA dc_ops + 2
+ENDIF
     LDA #HI(flipped_mask_table)
     STA draw_column.mask_operand + 1
     STA draw_column.mask_operand_2 + 1
+IF MODEL_B
+    STA dc_ops + 3
+ENDIF
 .parts
 IF SKY_MODE
     CLC
@@ -1936,6 +1991,36 @@ ENDIF
 .drawn
     RTS
 .generic
+IF MODEL_B
+    LDX ds_sprite                   \ decision 75: ANDY's sprites are drawn where bank 5 carries them, by
+    LDA sprite_in_b5,X              \ its copy of the column loop (src/render_b5.6502), the flip's step
+    BEQ generic_b4                  \ below first
+    BIT dm_flip
+    BPL to_b5
+    LDA ds_c
+    SEC
+    SBC #1
+    ASL A
+    ASL A
+    ASL A
+    ADC b_ptr
+    STA b_ptr
+    BCC to_b5
+    LDA b_ptr + 1
+    CLC
+    ADC #1
+    BPL b5_in_ring
+    LDA #&40
+.b5_in_ring
+    STA b_ptr + 1
+.to_b5
+    LDA #LO(dc_b5.entry)
+    STA b5_vec
+    LDA #HI(dc_b5.entry)
+    STA b5_vec + 1
+    JMP call_b5                     \ (its RTS is ren_draw_sprite's)
+.generic_b4
+ENDIF
     BIT dm_flip
     BPL draw_column.each
     LDA ds_c                         \ flipped: the bottom 8 * (n - 1) on
@@ -1962,214 +2047,7 @@ ENDIF
 \ (byte AND mask) EOR pixel, as the plotter does with the player. Each column's record (count
 \ - 1, the lowest byte's address) goes 8 bytes after the last cell before it (v_ptr + 8: v_ptr
 \ is that cell's base), its cells after the record; restore_block walks them the same way.
-.draw_column
-{
-    BRA_JMP each                    \ 65C02 opcode (NMOS: a JMP, C not being 1 when the flipped part's INC_A_CLC falls in)
-.empty
-    LDA col_ptr                     \ an empty column: 2 bytes
-    CLC
-    ADC #2
-    STA col_ptr
-    BCS empty_hi                    \ the page crossed (rare)
-.to_next
-    JMP next
-.empty_hi
-    INC col_ptr + 1
-    BRA_CS to_next                  \ 65C02 opcode
-.unflipped_j                        \ (after JMP next: reached only from clip_test)
-    LDA ds_n
-    SEC
-    SBC ds_c
-    BRA_JMP have_j                  \ 65C02 opcode
-.clip_test                          \ j = n - c unflipped, c - 1 flipped (c = columns left)
-    BIT dm_flip
-    BPL unflipped_j
-    LDA ds_c
-    DEC_A_SEC                       \ 65C02 opcode
-.have_j
-    CMP dm_jmin
-    BCC to_next                     \ left of the viewport
-    CMP dm_jmax
-    BCC visible                     \ not right of it: j < jmax...
-    BEQ visible                     \ ...or j = jmax
-    JMP next
-.each
-    LDY #1
-    LDA (col_ptr),Y                 \ the count
-    BEQ empty
-    DEC_A_SEC                       \ 65C02 opcode: count - 1, the record's and the cell loop's
-    STA rows_m1
-    LDY #8
-    STA (v_ptr),Y                   \ the record: count - 1 (then the address)
-    LDA ds_line                     \ the lowest byte's line: the part's line - the first row
-    SEC                             \ drawn (below 0: a cell up for each 8)
-IF NMOS
-    LDY #0                          \ NMOS: Y dead (each reloads it)
-    SBC (col_ptr),Y
-ELSE
-    SBC (col_ptr)                   \ 65C02 opcode
-ENDIF
-    TAX
-    LDA rows_m1                     \ col_ptr on to the next column: 2 + count bytes (the data
-    SEC                             \ is found back from there)
-    ADC #2
-    ADC col_ptr
-    STA col_ptr
-    BCC on_same_page
-    INC col_ptr + 1
-.on_same_page
-    BIT ds_clip
-    BMI clip_test
-.visible
-    LDA b_ptr                       \ the cell of the column's bottom...
-    STA s_ptr
-    LDA b_ptr + 1
-    STA s_ptr + 1
-    TXA                             \ ...raised by its first row
-    BMI up_cell                     \ negative (about 1 column in 8): a cell up for each 8, out of line
-.raised                             \ A = X = the line of the lowest byte drawn
-    ORA s_ptr                       \ the record's address
-    LDY #9
-    STA (v_ptr),Y
-    LDY #10                         \ (LDY, not INY: the BCC below must start its next instruction on a page)
-    LDA s_ptr + 1
-    STA (v_ptr),Y
-    LDA v_ptr                       \ the cells after it
-    CLC
-    ADC #11
-    STA v_ptr
-    BCC save_on_page                \ C = 0 on the common path
-    INC v_ptr + 1
-    CLC                             \ (the page-crossing path: C was 1)
-    BRA_CC save_on_page             \ 65C02 opcode
-.up_cell                            \ X = the line, negative: a cell up for each 8
-    LDA s_ptr
-    SEC
-    SBC #&80
-    STA s_ptr
-    LDA s_ptr + 1
-    SBC #&02                        \ C = 1 after this: the ring's high byte is 3 or more
-    ORA #&40                        \ round the 16K: &3D-&3F (below the ring) -> &7D-&7F
-    STA s_ptr + 1
-    TXA
-    SBC #&F8                        \ + 8 (C = 1); carry out when it reaches 0 or more
-    TAX
-    BCC up_cell
-    BRA_CS raised                   \ 65C02 opcode: A = X = the line
-.save_on_page                       \ C = 0 here (TXA, TAY, EOR leave it)
-    \ the data: the byte for line Y of the first cell is data[count - 1 - (line - Y)], so
-    \ d_ptr = the column + 2 + count - 1 - line = col_ptr - 1 - line = col_ptr + (line EOR &FF) - &100
-    TXA
-    TAY                             \ Y = the line
-    EOR #&FF
-    ADC col_ptr
-    STA d_ptr
-    LDA col_ptr + 1
-    ADC #&FF
-    STA d_ptr + 1
-.cell                               \ Y = the line it starts on: does the column end in this cell?
-    TYA
-    SBC rows_m1                     \ line - (rows left - 1) (C = 1 already: the ADC #&FF above carried, col_ptr + 1 being 1 or more)
-    BCS last_cell                   \ 0 or more: it ends here
-    EOR #&FF                        \ no: rows left after this cell, less 1: rows - line - 2
-    STA rows_m1
-.byte                               \ down to line 0
-    LDA (d_ptr),Y                   \ the pixel/mask index
-    TAX
-    LDA (s_ptr),Y
-    STA (v_ptr),Y                   \ saved
-mask_operand = * + 1
-    AND &FFFF,X                     \ self-modified: the mask table for the flip
-pix_operand = * + 1
-    EOR &FFFF,X                     \ self-modified: the pixel table for the colour and flip
-    STA (s_ptr),Y
-    DEY
-    BPL byte
-    LDA d_ptr                       \ the next cell: the data 8 back (C = 0 from the cell test:
-    SBC #7                          \ the byte loop leaves C alone, so 7 + 1)...
-    STA d_ptr
-    BCS data_same_page
-    DEC d_ptr + 1
-    SEC                             \ C = 1 on both paths
-.data_same_page
-    LDA v_ptr                       \ ...the save block 8 on (C = 1: 7 + 1)...
-    ADC #7
-    STA v_ptr
-    BCC save_same_page
-    INC v_ptr + 1
-    CLC                             \ C = 0 on both paths
-    BRA_CC save_same_page           \ 65C02 opcode
-.ede5_more                          \ C = 0: the column goes on in the next cell (rare: out of the common path)
-    EOR #&FF                        \ rows left after this cell, less 1
-    STA rows_m1
-    BRA_CC byte                     \ 65C02 opcode (C = 0, as the byte loop needs)
-.save_same_page
-    LDA s_ptr                       \ ...the screen a character row up (C = 0: &7F + 1)...
-    SBC #&7F
-    STA s_ptr
-    LDA s_ptr + 1
-    SBC #&02
-    ORA #&40                        \ ...round the 16K: &3D-&3F (below the ring) -> &7D-&7F
-    STA s_ptr + 1
-    LDY #7                          \ ...from its bottom line: the cell test inline (C = 1, as
-    TYA                             \ the ring's high byte is 3 or more)
-    SBC rows_m1                     \ line - (rows left - 1)
-    BCC ede5_more                   \ below 0: not the last cell (the last cell is the common case: falls through)
-.last_cell                          \ A = line - rows left + 1: the last line drawn
-    DEC_A_SBC                       \ 65C02 opcode: the line below it
-    STA ede5_stop_imm               \ self-modified: the CPY below's operand (stop_y's zero page byte, no longer read)
-.part_byte
-    LDA (d_ptr),Y
-    TAX
-    LDA (s_ptr),Y
-    STA (v_ptr),Y
-mask_operand_2 = * + 1
-    AND &FFFF,X                     \ self-modified, as mask_operand
-pix_operand_2 = * + 1
-    EOR &FFFF,X                     \ self-modified, as pix_operand
-    STA (s_ptr),Y
-    DEY
-ede5_stop_imm = * + 1
-    CPY #0                          \ self-modified: the line below the last one drawn (set at .last_cell)
-    BNE part_byte
-.next_c                             \ C = 1: the loop's CPY found Y = stop_y, or .next set it
-    DEC ds_c
-    BEQ done
-    BIT dm_flip                     \ the next column's bottom
-    BPL step_forward
-    LDA b_ptr                       \ flipped: back 8 (C = 1)
-    SBC #8
-    STA b_ptr
-    BCC step_back_hi
-    JMP each
-.next                               \ v_ptr: this column's last cell (the next record 8 on)
-    SEC                             \ (from empty and clip_test: carry either way)
-    BRA_CS next_c                   \ 65C02 opcode
-.step_forward
-    LDA b_ptr                       \ on 8 (C = 1)
-    ADC #7
-    STA b_ptr
-    BCS forward_hi
-    JMP each
-.step_back_hi
-    DEC b_ptr + 1                   \ the high byte down a page: &40 -> &3F -> &7F (round the 16K)
-    LDA #&40
-IF NMOS
-    ORA b_ptr + 1                   \ NMOS: A = &40
-    STA b_ptr + 1
-ELSE
-    TSB b_ptr + 1
-ENDIF
-    BRA_CC to_each                  \ 65C02 opcode
-.forward_hi
-    INC b_ptr + 1                   \ up a page: &7F -> &80 -> &40 (round the 16K)
-    BPL to_each
-    LSR b_ptr + 1
-.to_each
-    JMP each
-.done
-    RTS
-}
+    INCLUDE "draw_column.6502"      \ (its own file: MODEL_B builds assemble a second copy in bank 5)
 
 .compiled_direct                    \ a kind in HAZEL: no bank to page
     JMP (compiled_vec)
@@ -2198,6 +2076,10 @@ ENDIF
     TAY
     LDX ck_index,Y
     BMI compiled_none               \ &FF: not a kind
+IF MODEL_B
+    LDA ck_bank,X                   \ decision 75: no HAZEL; its kinds drawn as straight sprites. Refused before
+    BEQ compiled_none               \ the entry is written: the generic path does not rewrite it if its first column is empty
+ENDIF
     LDY #8                          \ its entry, written now (X = the kind; the kinds never touch
     LDA #&FF                        \ the save block, and a refused part's generic path writes
     STA (v_ptr),Y                   \ these two bytes again before restore_block can read them)
@@ -2213,8 +2095,8 @@ ENDIF
     LDA ck_draw_hi,X
     STA compiled_vec + 1
     LDA ck_bank,X
-    BEQ in_hazel                    \ bank 0: HAZEL, paged in through play
-    LDX #&84                        \ ANDY and bank 4 again after
+    BEQ in_hazel                    \ bank 0: HAZEL, paged in through play (MODEL_B: never, refused above)
+    LDX #REN_ROMSEL                 \ ANDY and bank 4 again after (MODEL_B: bank 4)
     JSR compiled_call
     BCS unsafe                      \ the banked kinds (the commoner) fall through
 .called                             \ carry clear here from either path

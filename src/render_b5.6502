@@ -1,0 +1,46 @@
+\ render_b5.6502 - MODEL_B (decision 75): no ANDY. Its sprites (straight_00 to straight_34) are drawn where
+\ bank 5 carries them (src/main.6502 andy_data), so the code that reads them is here too, in bank 5's &8000
+\ block, called through call_b5 (src/game.6502): a copy of the column loop, and the sky image builder.
+
+\ dc_b5.entry: ren_draw_sprite's generic path, for a sprite here: draw_mover's tables (dc_ops) into this
+\ copy's operands, then the columns as render.6502's draw_column draws them
+.dc_b5
+{
+.entry
+    LDA dc_ops
+    STA draw_column.pix_operand
+    STA draw_column.pix_operand_2
+    LDA dc_ops + 1
+    STA draw_column.pix_operand + 1
+    STA draw_column.pix_operand_2 + 1
+    LDA dc_ops + 2
+    STA draw_column.mask_operand
+    STA draw_column.mask_operand_2
+    LDA dc_ops + 3
+    STA draw_column.mask_operand + 1
+    STA draw_column.mask_operand_2 + 1
+    JMP draw_column
+    INCLUDE "draw_column.6502"
+}
+
+\ (sky_build, the sky image builder, is at bank 5's end: src/main.6502; these are its copies of bank 4's
+\ sky_blk_lo/hi, the image blocks' addresses)
+IF SKY_MODE
+.sky_blk5_lo
+FOR b = 0..3
+    EQUB LO(sky_img0 + b * SKY_BLOCK)
+NEXT
+FOR b = 0..3
+    EQUB LO(SKY_IMG1 + b * SKY_BLOCK)
+NEXT
+.sky_blk5_hi
+FOR b = 0..3
+    EQUB HI(sky_img0 + b * SKY_BLOCK)
+NEXT
+FOR b = 0..3
+    EQUB HI(SKY_IMG1 + b * SKY_BLOCK)
+NEXT
+SKY_BLK_LO = sky_blk5_lo
+SKY_BLK_HI = sky_blk5_hi
+SKY_RB = sky_rb_main
+ENDIF

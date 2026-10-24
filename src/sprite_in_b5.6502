@@ -1,0 +1,64 @@
+IF MODEL_B
+\ sprite_in_b5 (decision 75): 1 for each sprite src/sprite_andy.6502 holds (ANDY's on the Master), drawn where bank 5
+\ carries them; 0 for bank 4's (src/sprite_straight.6502). The two banks' addresses overlap, so it is a table, its
+\ entries checked against where each of ANDY's sprites was assembled
+.sprite_in_b5
+    EQUB 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    EQUB 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    EQUB 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    EQUB 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0
+    EQUB 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1
+ASSERT straight_00 >= andy_load AND straight_00 < andy_end
+ASSERT straight_01 >= andy_load AND straight_01 < andy_end
+ASSERT straight_02 >= andy_load AND straight_02 < andy_end
+ASSERT straight_03 >= andy_load AND straight_03 < andy_end
+ASSERT straight_04 >= andy_load AND straight_04 < andy_end
+ASSERT straight_05 >= andy_load AND straight_05 < andy_end
+ASSERT straight_06 >= andy_load AND straight_06 < andy_end
+ASSERT straight_07 >= andy_load AND straight_07 < andy_end
+ASSERT straight_08 >= andy_load AND straight_08 < andy_end
+ASSERT straight_09 >= andy_load AND straight_09 < andy_end
+ASSERT straight_0a >= andy_load AND straight_0a < andy_end
+ASSERT straight_0b >= andy_load AND straight_0b < andy_end
+ASSERT straight_0c >= andy_load AND straight_0c < andy_end
+ASSERT straight_0d >= andy_load AND straight_0d < andy_end
+ASSERT straight_0e >= andy_load AND straight_0e < andy_end
+ASSERT straight_0f >= andy_load AND straight_0f < andy_end
+ASSERT straight_10 >= andy_load AND straight_10 < andy_end
+ASSERT straight_11 >= andy_load AND straight_11 < andy_end
+ASSERT straight_12 >= andy_load AND straight_12 < andy_end
+ASSERT straight_13 >= andy_load AND straight_13 < andy_end
+ASSERT straight_14 >= andy_load AND straight_14 < andy_end
+ASSERT straight_15 >= andy_load AND straight_15 < andy_end
+ASSERT straight_16 >= andy_load AND straight_16 < andy_end
+ASSERT straight_17 >= andy_load AND straight_17 < andy_end
+ASSERT straight_18 >= andy_load AND straight_18 < andy_end
+ASSERT straight_19 >= andy_load AND straight_19 < andy_end
+ASSERT straight_1a >= andy_load AND straight_1a < andy_end
+ASSERT straight_1b >= andy_load AND straight_1b < andy_end
+ASSERT straight_1c >= andy_load AND straight_1c < andy_end
+ASSERT straight_1d >= andy_load AND straight_1d < andy_end
+ASSERT straight_1e >= andy_load AND straight_1e < andy_end
+ASSERT straight_1f >= andy_load AND straight_1f < andy_end
+ASSERT straight_20 >= andy_load AND straight_20 < andy_end
+ASSERT straight_21 >= andy_load AND straight_21 < andy_end
+ASSERT straight_22 >= andy_load AND straight_22 < andy_end
+ASSERT straight_23 >= andy_load AND straight_23 < andy_end
+ASSERT straight_24 >= andy_load AND straight_24 < andy_end
+ASSERT straight_25 >= andy_load AND straight_25 < andy_end
+ASSERT straight_26 >= andy_load AND straight_26 < andy_end
+ASSERT straight_27 >= andy_load AND straight_27 < andy_end
+ASSERT straight_28 >= andy_load AND straight_28 < andy_end
+ASSERT straight_29 >= andy_load AND straight_29 < andy_end
+ASSERT straight_2a >= andy_load AND straight_2a < andy_end
+ASSERT straight_2b >= andy_load AND straight_2b < andy_end
+ASSERT straight_2c >= andy_load AND straight_2c < andy_end
+ASSERT straight_2d >= andy_load AND straight_2d < andy_end
+ASSERT straight_2e >= andy_load AND straight_2e < andy_end
+ASSERT straight_2f >= andy_load AND straight_2f < andy_end
+ASSERT straight_33 >= andy_load AND straight_33 < andy_end
+ASSERT straight_34 >= andy_load AND straight_34 < andy_end
+ASSERT straight_38 >= andy_load AND straight_38 < andy_end
+ASSERT straight_42 >= andy_load AND straight_42 < andy_end
+ASSERT straight_4b >= andy_load AND straight_4b < andy_end
+ENDIF

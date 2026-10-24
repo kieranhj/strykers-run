@@ -112,6 +112,12 @@ ENDIF
     TAY
     LDA animation_table,Y
     STA sky_body
+IF MODEL_B
+    TAY                             \ decision 75: the image is built in bank 5, from ANDY's sprites only
+    LDA sprite_in_b5,Y
+    BEQ to_fall
+    TYA
+ENDIF
     TAY
     LDA sprite_column_count,Y
     CMP #SKY_COLS
@@ -425,6 +431,11 @@ ENDIF
 
 \ each helicopter's image's blocks: per screen, at the same addresses (helicopter 0's in main RAM,
 \ src/sky_main.6502; 1's after the save arena)
+IF MODEL_B = 0
+SKY_BLK_LO = sky_blk_lo             \ (sky_build's: MODEL_B, decision 75, has its own copies in bank 5)
+SKY_BLK_HI = sky_blk_hi
+SKY_RB = sky_rb
+ENDIF
 .sky_blk_lo
 FOR b = 0..3
     EQUB LO(sky_img0 + b * SKY_BLOCK)

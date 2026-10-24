@@ -99,7 +99,26 @@ ENDIF
     DEY
     DEX
     BPL copy
+IF MODEL_B
+    LDX #SKY_ROWS - 1               \ decision 75: built in bank 5 (src/render_b5.6502), from the sprite's data
+.rb_copy                            \ there; the rows' blocks it reads copied to main RAM first
+    LDA sky_rb,X
+    STA sky_rb_main,X
+    DEX
+    BPL rb_copy
+    LDX sky_body
+    LDA straight_sprite_lo,X        \ there (sky.6502 takes only ANDY's sprites into sky mode), its address
+    STA p_ptr                       \ looked up here, in bank 4's table
+    LDA straight_sprite_hi,X
+    STA p_ptr + 1
+    LDA #LO(sky_build)
+    STA b5_vec
+    LDA #HI(sky_build)
+    STA b5_vec + 1
+    JMP call_b5
+ELSE
     JMP sky_build
+ENDIF
 }
 
 \ ---- the rectangle ------------------------------------------------------------------------

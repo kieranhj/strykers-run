@@ -4,18 +4,18 @@
 \ render.6502, for room).
 
 \ ---- clusters (decision 73: one screen, drawn in the beam's order) ------------------------------
-\ Screen 1's records are unused with one screen: its halves of rec_type and rec_frame hold these.
-list_cl     = rec_type + 64         \ each list entry's cluster: a label (an entry's index), CL_STAY if
+\ In the workspace after ren_vars_d (render.6502 REN_CL): list_cl, cl_thr, then the scalars.
+list_cl     = REN_BASE + REN_CL         \ each list entry's cluster: a label (an entry's index), CL_STAY if
 CL_STAY     = &FF                   \ its slot stays, CL_DONE once drawn
 CL_DONE     = &FE
-cl_zone     = rec_frame + 64        \ the zone's cluster (&FF: none)
-cl_from     = rec_frame + 65
-cl_to       = rec_frame + 66
-cl_best     = rec_frame + 67
-cl_key      = rec_frame + 68
-cl_cur      = rec_frame + 69
-cl_y        = rec_frame + 70
-ASSERT MOVER_SLOTS + 1 <= 64
+cl_zone     = REN_BASE + REN_CL + 70        \ the zone's cluster (&FF: none)
+cl_from     = REN_BASE + REN_CL + 71
+cl_to       = REN_BASE + REN_CL + 72
+cl_best     = REN_BASE + REN_CL + 73
+cl_key      = REN_BASE + REN_CL + 74
+cl_cur      = REN_BASE + REN_CL + 75
+cl_y        = REN_BASE + REN_CL + 76
+ASSERT MOVER_SLOTS + 1 <= 35 AND REN_CL + 79 <= &800
 
 \ group_off: A = a cluster (&FF none). Its movers off: the player first (drawn last), then the
 \ others from the last slot down (the list is in slot order)
@@ -138,5 +138,5 @@ BB_STOP_E = 56                      \ no cluster started behind the beam from li
 .out
     RTS
 }
-cl_thr      = rec_xl + 64           \ (screen 1's half of rec_xl, as list_cl's)
-cl_e        = rec_frame + 72
+cl_thr      = REN_BASE + REN_CL + 35           \ (each cluster's: labels are entry indices)
+cl_e        = REN_BASE + REN_CL + 77

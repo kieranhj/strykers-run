@@ -1179,11 +1179,16 @@ ENDIF
 \ sprite kinds for HAZEL (tools/compiled.py), copied into HAZEL before the tunes go over it.
 .title_screen_music_data
 .hazel_a_load
+IF MODEL_B                          \ decision 75: HAZEL's kinds not built (no HAZEL): drawn as straight sprites
+    INCLUDE "compiled_hazel_none.6502"
+hazel_a_end = HAZEL_ORG
+ELSE
 SECTION hazel_a, org = HAZEL_ORG, cmos = CMOS
     INCLUDE "compiled_hazel_a.6502"
 .hazel_a_end
 ENDSECTION
     ASSERT hazel_a_load + (hazel_a_end - HAZEL_ORG) <= title_screen_music_data + MUSIC_SIZE
+ENDIF
     SKIP title_screen_music_data + MUSIC_SIZE - *
 high_score_music_data = title_screen_music_data + &E00
 

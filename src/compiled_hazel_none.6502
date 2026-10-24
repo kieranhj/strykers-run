@@ -1,0 +1,15 @@
+\ compiled_hazel_none.6502 - MODEL_B (decision 75): HAZEL's compiled kinds (src/compiled_hazel_a.6502,
+\ _b.6502) are not built; their names, which compiled_table.6502's tables give, are 0. compiled_part refuses
+\ a kind in bank 0 (HAZEL), so the generic path draws those parts from their straight sprites.
+ck8_06_u4_draw = 0
+ck8_06_u4_restore = 0
+ck9_07_u4_draw = 0
+ck9_07_u4_restore = 0
+ck10_05_u5_draw = 0
+ck10_05_u5_restore = 0
+ck11_08_u3_draw = 0
+ck11_08_u3_restore = 0
+ck12_08_u5_draw = 0
+ck12_08_u5_restore = 0
+ck13_05_u3_draw = 0
+ck13_05_u3_restore = 0

@@ -2,6 +2,7 @@
 \ cache's slot 1 offsets were: free in this build; times_78 is below it, the mountains above),
 \ carried in the file after hazel_b and copied in by unpack_for_play.
 
+\ (SKY_BLK_LO/HI, SKY_RB: bank 4's sky_blk_lo/hi and sky_rb, or with MODEL_B bank 5's and main RAM's copies)
 \ sky_build: helicopter sky_s's image: body sprite sky_body's pixels (draw_column's table: its
 \ colour and flip) at their places in the rectangle sky_geom has set (line sky_L, the blocks), sky
 \ everywhere else. Run when the kind changes (sky_image).
@@ -11,9 +12,9 @@
     ASL A
     ASL A
     TAX
-    LDA sky_blk_lo,X
+    LDA SKY_BLK_LO,X
     STA w_ptr
-    LDA sky_blk_hi,X
+    LDA SKY_BLK_HI,X
     STA w_ptr + 1
     LDA #0
     TAY
@@ -31,11 +32,13 @@
     STA pix + 1
     LDA sky_phi
     STA pix + 2
+IF MODEL_B = 0                      \ (MODEL_B: the caller has set p_ptr: bank 4's table is not in reach)
     LDX sky_body
     LDA straight_sprite_lo,X
     STA p_ptr
     LDA straight_sprite_hi,X
     STA p_ptr + 1
+ENDIF
     STZ_Y sky_c                     \ 65C02 opcode: the sprite's column
 .column
     LDA sky_c                       \ 8 * the image's column: j + 1, j = c, or 11 - c flipped
@@ -131,17 +134,17 @@ ENDIF
     RTS
 .row_ptr                            \ w_ptr = character row sky_bq's block + 8j (keeps X)
     LDY sky_bq
-    LDA sky_rb,Y
+    LDA SKY_RB,Y
     LDY sky_s
     BEQ h0
     ORA #4
 .h0
     TAY
-    LDA sky_blk_lo,Y
+    LDA SKY_BLK_LO,Y
     CLC
     ADC sky_j8
     STA w_ptr
-    LDA sky_blk_hi,Y
+    LDA SKY_BLK_HI,Y
     ADC #0
     STA w_ptr + 1
     RTS
