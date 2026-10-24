@@ -1,6 +1,6 @@
 \ mountains_one.6502 - SCENERY_MOUNTAINS_ONE, the original's, unchanged (from src/bank4.6502): in bank 4,
-\ or with DITHER_HILLS in bank 7 (decision 64: its room in bank 4 is MOUNTAINS_TWO's dither's). On a real
-\ Master the mountain layer may draw it (BUGS #9); jsbeeb never does.
+\ builds without DITHER_HILLS only (with it, src/hills_dither_one.6502, decision 70). The mountain layer
+\ draws it where HAZEL's bytes pick it (BUGS #9): on a real Master, or after the release disc's menu.
 
 .scenery_sprite_04    \ (SCENERY_MOUNTAINS_ONE)
     EQUB &00, &0F, &00, &68, &54, &19, &00, &54, &68, &80, &94, &BD, &0F, &3F, &7D, &54

@@ -173,6 +173,10 @@ below `&C700` (decision 29). KC, 2026-10-17: leave it (decision 31) - the mounta
 enhanced version draws them, from whatever HAZEL holds at `&C300`; nothing may be put in
 `&C300-&C6FF`.
 
+Seen 2026-10-24 (KC, the release disc): its menu's disc activity leaves HAZEL's bytes picking
+`MOUNTAINS_ONE` (25 of the first 624 in jsbeeb), which the gameplay disc had left undithered; decision 70
+dithers it too.
+
 ## 10. A mover clipped at the view's left edge is placed 80 columns right and a row up (layer 3, `c5d760b`; FIXED in layer 4)
 
 Found 2026-10-18 by `tools/worldcheck.mjs`, once it read the records at all (jsbeeb 2.5.0,

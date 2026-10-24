@@ -201,6 +201,14 @@ and costs are `docs/briefs/gameplay-shield.md`.
 - **Dithered hills** (`DITHER_HILLS`, decision 64, merged `91add67`): the far, mid and fore ranges
   dithered (blue 4/16, red 6/16, red 2/16) in `MOUNTAINS_TWO`'s data, in bank 4, no new RAM;
   `MOUNTAINS_ONE` moved to bank 7. The sky tints tried with it were rejected (65, 66).
+- **`MOUNTAINS_ONE` dithered too** (decision 70, 2026-10-24): KC saw undithered hills on the release
+  disc, where the menu's disc activity leaves HAZEL's mountain bytes (BUGS #9) picking it. 708 bytes
+  dithered, packed to 220 in bank 7 and unpacked at start-up over bank 5's dead carrier of ANDY's
+  sprites. `tools/hillstest.mjs`: 708 of 708 bytes, ANDY 4,089 of 4,089; passlock, both machines'
+  HAZEL forced to both sprites, `DITHER_HILLS` against its `DEBUG_FULLREDRAW` twin, seed 5: 3,226
+  passes (to game over) state and screen identical (one machine poked: 1,346 screen bytes differ,
+  so the run drew it); frontend on the gameplay disc 0 failed; menutest all held; the release
+  disc's choice 2 has it in bank 5 byte for byte. The plain build is identical to before, every file.
 - **The scroll text editable** (`fbe4474`, `bd8e1c2`, all builds): `src/scrolltext.txt`, encoded at
   every build by `tools/scrolltext.py`; 28 bytes of room on the shipping disc, 141 on the gameplay
   disc, whose pixel scroller moved to bank 5's `&8000` block.

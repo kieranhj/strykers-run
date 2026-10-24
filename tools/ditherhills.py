@@ -3,8 +3,9 @@ ditherhills.py - the mountain sprites with their hill ranges dithered (DITHER_HI
 
     python tools/ditherhills.py [build/strykers.ssd] [--out src] [--show DIR]
 
-The hills band is the mountain layer: MOUNTAINS_TWO (and on a real Master, where HAZEL picks the
-records, MOUNTAINS_ONE too), 12-column sprites laid end to end at y 23. Each draws the snow and
+The hills band is the mountain layer: MOUNTAINS_TWO and MOUNTAINS_ONE (which HAZEL's bytes pick:
+BUGS #9; in jsbeeb, booted straight into the game, HAZEL is zeros and only MOUNTAINS_TWO shows),
+12-column sprites laid end to end at y 23. Each draws the snow and
 three ridge lines over transparent colour 0, which the palette split shows as magenta below row
 111. The ridges close the transparent pixels into regions in three tiers - far, mid, fore - and
 this fills each tier with an ordered (Bayer 4x4) dither of its own colour in place of colour 0:
@@ -21,19 +22,25 @@ Pattern phase: x from the sprite's first pixel (12 columns is 24 pixels, a multi
 pattern runs on across sprites), y from the buffer row (the layer's y is fixed).
 
 Reads the original sprites from the build (unflipped addresses, the sprite's bank) and writes them
-re-encoded (src/hills_dither_two.6502; MOUNTAINS_ONE has no room: see SPRITES), in the sprites' own run-length format (docs/level-format.md): per column the previous
+re-encoded (src/hills_dither_two.6502, src/hills_dither_one.6502), in the sprites' own run-length format (docs/level-format.md): per column the previous
 column's length, the runs, 0; after the last column &80 + its length. `scenery_sprite_0N_last`
 is the last column's offset, for the flipped address tables. Checked by re-encoding the original
 sprites to their own bytes, and by decoding what it writes.
+
+MOUNTAINS_ONE dithered is 708 bytes, more than any bank has free, so it is written packed (ZX02,
+tools/zx02.py, checked by unpacking): 220 bytes in bank 7, where the original was. At start-up it
+is unpacked into bank 5's carrier of ANDY's sprites, dead once they are copied into ANDY
+(src/game.6502, after copy_andy_loop), and drawn from there (decision 70).
 """
 import argparse, sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from worldmap import Build, Scenery, decode_column, SPLIT_ROW, ROWS  # noqa: E402
+import zx02  # noqa: E402
 
-SPRITES = {5: "MOUNTAINS_TWO"}       # MOUNTAINS_ONE (4) too, given room: at these densities it is 708 bytes, and its
-                                        # room in bank 4 is MOUNTAINS_TWO's dither's (decision 64; it moves to bank 7)
+SPRITES = {5: "MOUNTAINS_TWO", 4: "MOUNTAINS_ONE"}
+PACKED = {4}                            # written ZX02-packed, unpacked at start-up (decision 70)
 Y0 = 23                                 # the mountain layer's y (tools/worldmap.py's runs: all at 23)
 B4 = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]
 TIERS = [(4, 4), (1, 6), (1, 2)]        # (colour, density of 16): far, mid, fore (KC, 2026-10-22, the last of several: see decision 64)
@@ -174,9 +181,24 @@ def main():
         if back != new:
             sys.exit(f"sprite {s}: what was written does not decode to the dithered sprite")
         print(f"{name}: {len(cols)} columns, {len(orig)} bytes -> {len(data)} (+{len(data) - len(orig)})")
-        lines.append(f".scenery_sprite_{s:02x}    \\ ({'SCENERY_' + name}, dithered)")
-        for i in range(0, len(data), 16):
-            lines.append("    EQUB " + ", ".join(f"&{v:02X}" for v in data[i:i + 16]))
+        if s in PACKED:
+            packed = zx02.compress(data)
+            if zx02.decompress(packed) != data:
+                sys.exit(f"sprite {s}: the packed stream does not unpack to the dithered sprite")
+            print(f"  packed: {len(packed)} bytes")
+            lines[2] = ("\\ Packed (ZX02): unpacked at start-up into bank 5's carrier of ANDY's sprites (src/game.6502,"
+                        " after copy_andy_loop; decision 70) and drawn from there.")
+            lines.append(f".scenery_sprite_{s:02x}_packed    \\ ({'SCENERY_' + name}, dithered, {len(data)} bytes unpacked)")
+            body = packed
+        else:
+            lines.append(f".scenery_sprite_{s:02x}    \\ ({'SCENERY_' + name}, dithered)")
+            body = data
+        for i in range(0, len(body), 16):
+            lines.append("    EQUB " + ", ".join(f"&{v:02X}" for v in body[i:i + 16]))
+        if s in PACKED:
+            lines.append(f"scenery_sprite_{s:02x}_packed_size = {len(packed)}")
+            lines.append(f"scenery_sprite_{s:02x}_size = {len(data)}")
+            lines.append(f"scenery_sprite_{s:02x} = andy_load               \\ where it is unpacked")
         lines.append(f"scenery_sprite_{s:02x}_last = scenery_sprite_{s:02x} + {last}")
         (Path(a.out) / fn).write_text("\n".join(lines) + "\n", encoding="utf-8")
         print("wrote", Path(a.out) / fn)

@@ -349,7 +349,7 @@
 
 \ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 .scenery_sprite_banks
-    EQUB &04, &04, &04, &04, &04 + 3 * DITHER_HILLS, &04, &04, &04, &04, &04, &04, &04, &04, &04, &04, &04    \ &00 (DITHER_HILLS: MOUNTAINS_ONE in bank 7)
+    EQUB &04, &04, &04, &04, &04 + DITHER_HILLS, &04, &04, &04, &04, &04, &04, &04, &04, &04, &04, &04    \ &00 (DITHER_HILLS: MOUNTAINS_ONE in bank 5, decision 70)
     EQUB &04, &04, &04, &04, &04, &04, &04, &06, &06, &06, &06, &06, &06, &06, &06, &06    \ &10
     EQUB &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06    \ &20
     EQUB &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07    \ &30
@@ -5772,6 +5772,29 @@ copy_andy_target = * + 1
     LDA copy_andy_target + 1
     CMP #&90
     BNE copy_andy_loop
+IF DITHER_HILLS                     \ decision 70: MOUNTAINS_ONE dithered, its packed stream from bank 7
+    LDA #&07                        \ to the screen (dead: the title draws it), then unpacked from there
+    STA os_ram_copy_of_currently_selected_rom
+    STA romsel                      \ over ANDY's carrier in bank 5, which the copy has finished with
+    LDX #scenery_sprite_04_packed_size
+.copy_mountains_one
+    LDA scenery_sprite_04_packed - 1,X
+    STA &4000 - 1,X
+    DEX
+    BNE copy_mountains_one
+    LDA #&05
+    STA os_ram_copy_of_currently_selected_rom
+    STA romsel
+    LDA #LO(&4000)
+    STA zxsrc
+    LDA #HI(&4000)
+    STA zxsrc + 1
+    LDA #LO(scenery_sprite_04)
+    STA zxdst
+    LDA #HI(scenery_sprite_04)
+    STA zxdst + 1
+    JSR zx_unpack
+ENDIF
     LDA #&04
     STA romsel                      \ Paged ROM latch
     STA os_ram_copy_of_currently_selected_rom

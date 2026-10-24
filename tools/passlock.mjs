@@ -20,7 +20,8 @@
 // Use DEBUG_LIVES builds, so the game never ends.
 // PASSLOCK_POKE="BANK:ADDR=B,B,...;..." writes bytes into the TEST machine at its first pass (ADDR a
 // symbol, with +N, or hex; BANK a sideways bank or "-" for as paged), to force a path in a test:
-// tools/kcguard.mjs. PASSLOCK_COUNT=LABEL[,LABEL] counts each label's executions in TEST (bank 4's
+// tools/kcguard.mjs; PASSLOCK_POKE_BOTH=1 writes them into both machines (a path the game state
+// picks, as HAZEL's mountain bytes do: decision 70). PASSLOCK_COUNT=LABEL[,LABEL] counts each label's executions in TEST (bank 4's
 // above &8000) and reports them as "counted".
 // The generator's state is read where each build keeps it (playscript.mjs prngAt: &92/&93 before
 // BUGS #12's fix). Each machine's writes of a dying mover's slot to &92 are counted (`clobbers`:
@@ -63,7 +64,7 @@ async function start(disc, test = false) {
     const cpu = s._machine.processor;
     const m = { s, cpu, syms, passes: 0, target: 0, lastStop: -1, counted: {} };
     const addrOf = (t) => { const [n, k] = t.split("+"); const a = syms[n] ?? parseInt(n, 16); if (!Number.isFinite(a)) throw new Error(`no symbol ${n}`); return a + (+k || 0); };
-    const pokes = test && process.env.PASSLOCK_POKE ? process.env.PASSLOCK_POKE.split(";").filter(Boolean).map((p) => {
+    const pokes = (test || process.env.PASSLOCK_POKE_BOTH) && process.env.PASSLOCK_POKE ? process.env.PASSLOCK_POKE.split(";").filter(Boolean).map((p) => {
         const [bank, rest] = p.split(":"), [a, b] = rest.split("=");
         return { bank: bank === "-" ? undefined : +bank, addr: addrOf(a), bytes: b.split(",").map((v) => parseInt(v, 16)) }; }) : [];
     if (test && process.env.PASSLOCK_COUNT) for (const l of process.env.PASSLOCK_COUNT.split(",")) {
