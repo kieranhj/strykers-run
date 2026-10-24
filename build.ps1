@@ -47,6 +47,22 @@ function Find-Tool([string]$name) {
     throw "$name not found: set $($name.ToUpper()), or put $name.exe in bin\ or on the PATH"
 }
 $baron = Find-Tool 'baron'
+# zx02 (tools/packdisc.py packs the disc's files): bin\zx02.exe, $ZX02 or the PATH, else built
+# from tools\zx02src (v3, vendored: its VENDORED.md) by a C compiler on the PATH, as make builds it
+$zx02 = $env:ZX02
+if (-not $zx02) { $zx02 = Join-Path $root 'bin\zx02.exe' }
+if (-not (Test-Path $zx02)) {
+    $onPath = Get-Command zx02 -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($onPath) { $zx02 = $onPath.Source }
+    else {
+        $cc = Get-Command cc, gcc, clang -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+        if (-not $cc) { throw "zx02 not found and no C compiler (cc, gcc, clang) to build it from tools\zx02src: set ZX02, or put a zx02.exe built from that source in bin\" }
+        New-Item -ItemType Directory -Force -Path (Join-Path $root 'bin') | Out-Null
+        $srcs = 'compress', 'optimize', 'memory', 'zx02' | ForEach-Object { Join-Path $root "tools\zx02src\src\$_.c" }
+        & $cc.Source -O -o $zx02 @srcs
+        if ($LASTEXITCODE -ne 0) { throw "building zx02 failed ($LASTEXITCODE)" }
+    }
+}
 
 $relDef = if ($Release) { 'RELEASE=1' } else { 'RELEASE=0' }
 $endDef = if ($ShiftEnd) { 'SHIFT_END=1' } else { 'SHIFT_END=0' }
@@ -78,9 +94,10 @@ try {
         Remove-Item "build\$stem.ssd", "build\$stem.symbols.json" -ErrorAction SilentlyContinue
         throw "baron failed ($LASTEXITCODE)"
     }
-    # the files in the order the boot reads them, so no load seeks back (Baron writes them in source order)
-    & python tools\dfs.py layout "build\$stem.ssd" '!BOOT' SRRUN SCREEN DATA1 DATA2 DATA3 DATA4 MGAME
-    if ($LASTEXITCODE -ne 0) { Remove-Item "build\$stem.ssd"; throw "dfs.py layout failed ($LASTEXITCODE)" }
+    # SCREEN, DATA1-4 and MGAME packed (ZX02, SRRUN unpacks them), the files in the order the boot
+    # reads them, so no load seeks back (Baron writes them in source order)
+    & python tools\packdisc.py "build\$stem.ssd" $zx02
+    if ($LASTEXITCODE -ne 0) { Remove-Item "build\$stem.ssd"; throw "packdisc.py failed ($LASTEXITCODE)" }
     "Built  build\$stem.ssd"
     (Get-FileHash "build\$stem.ssd" -Algorithm SHA256).Hash.ToLower() | ForEach-Object { "       sha256 $_" }
 

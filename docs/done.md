@@ -230,6 +230,20 @@ and costs are `docs/briefs/gameplay-shield.md`.
   `!BOOT`, `SRRUN`, `SCREEN`, `DATA1`-`4`, `MGAME`, then `INFO`; `tools/releasedisc.py` keeps each
   build's physical order. Boot to `entry_point` in jsbeeb 2.10.2 (which steps the head a track at a
   time): the shipping disc 12.68 s and 120 head steps before, 12.38 s and 32 after (DATA2 1K larger).
+- **The disc's files packed** (2026-10-24, KC: "do the file packing"): `SCREEN`, `DATA1`-`4` and `MGAME`
+  ZX02-packed by `tools/packdisc.py` after Baron (the vendored v3 compressor, `tools/zx02src`; `zx02.py`
+  makes the same bytes); SRRUN (`src/loader.6502`) reads each one's load address from the catalogue
+  (OSFILE 5), loads it there and unpacks it: SCREEN to `&2100`, DATAn into its bank, MGAME in place to
+  `&1900` (its stream ending at `&5A80`, the margin checked by `dfs.check_stream`), then MGAME's stub as
+  before. Shipping disc 81,424 bytes -> 48,415 (324 sectors -> 196), gameplay 82,541 -> 50,789; the
+  release disc 706 sectors -> 456. Boot to `entry_point` (jsbeeb 2.10.2): shipping 12.38 s -> 11.33,
+  gameplay 12.47 -> 11.80. Less than the bytes suggest: jsbeeb reads ~8.8K a second (~230 cycles a byte)
+  and the unpack costs ~60 cycles a byte it writes, 0.43-0.6 s a bank, ~2.6 s in all. Checked: booted to
+  `entry_point`, main RAM and banks 4-7 equal the unpacked files byte for byte (but the copy-down stub's
+  own two operands, which it increments) on both discs; frontend 0 failed on both; scrolltext; hillstest;
+  menutest; `make release-disc` = `build.ps1 -ReleaseDisc`. The `-Shift` builds stay unpacked
+  (`PACK_FILES`; lockstep 3,000 frames identical). Tools read discs through `dfs.game_files`; it also
+  fixed `worldmap.Build`'s DATA2 origin (`&8400`, wrong since DATA2 moved to `&8000`).
 - **The HUD's row a CRTC rupture** (`HUD_RUPTURE`, decision 67, `cde5953`, merged `e5b6cae`; BUGS #15
   fixed on the way, `5b0c05a`): one character row read from `HUD_ROW` (`&0B80`) as a CRTC frame of
   its own, drawn once, no copy per screen. `tools/rupture.mjs`: over 10,000 frames the HUD read with

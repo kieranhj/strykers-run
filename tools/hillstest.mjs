@@ -15,16 +15,8 @@ import { execFileSync } from "child_process";
 const MachineSession = await loadMachineSession();
 const [disc, shots, passes = "300"] = process.argv.slice(2);
 if (!disc) throw new Error("usage: node tools/hillstest.mjs DISC [SHOTS_DIR] [PASSES]");
-const img = readFileSync(disc);
-function file(name) {                           // a file from the disc's catalogue
-    const n = img[256 + 5] / 8;
-    for (let i = 0; i < n; i++) {
-        if (img.subarray(8 + 8 * i, 15 + 8 * i).toString("latin1").trimEnd() !== name) continue;
-        const e = img.subarray(256 + 8 + 8 * i, 256 + 16 + 8 * i);
-        const len = e[4] | e[5] << 8 | ((e[6] >> 4) & 3) << 16, st = e[7] | (e[6] & 3) << 8;
-        return { load: e[0] | e[1] << 8, data: img.subarray(st * 256, st * 256 + len) };
-    }
-    throw new Error(`${disc}: no ${name}`);
+function file(name) {                       // a file as the game sees it: unpacked on a packed disc (tools/dfs.py game_files)
+    return Buffer.from(execFileSync("python", ["tools/dfs.py", "file", disc, name], { maxBuffer: 1 << 20 }).toString().trim(), "hex");
 }
 
 const fails = [];
@@ -50,7 +42,7 @@ const romsel = m.cpu.romsel;                    // ANDY paged in at &8000 (ROMSE
 m.cpu.romSelect(0x84);
 const andy = s.readMemory(0x8000, n);
 m.cpu.romSelect(romsel);
-const carried = d2.data.subarray(off, off + n);
+const carried = d2.subarray(off, off + n);
 let abad = 0;
 for (let i = 0; i < n; i++) if (andy[i] !== carried[i]) abad++;
 console.log(`ANDY: ${n - abad} of ${n} bytes as DATA2 carries them`);

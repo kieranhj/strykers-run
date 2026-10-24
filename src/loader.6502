@@ -8,10 +8,105 @@
 
 \ ---------------------------------------------------------------------------------------------
 \ SRRUN: show the title picture, fill banks 4-7, run the game. Runs at &0A00.
+\
+\ 2026-10-24 (KC: "do the file packing"): SCREEN, DATA1-4 and MGAME are on the disc as ZX02 streams
+\ (tools/packdisc.py, after Baron), 59-62% of their size, so the load reads ~33K less. Each is
+\ loaded at its catalogue load address (OSFILE 5 reads it, OSFILE &FF loads there) and unpacked:
+\ SCREEN to &2100, then run; DATA1-4 into banks 4-7 from &8000; MGAME to &1900, in place (its
+\ stream ends at &5A80, under the loading picture: packdisc.py checks the margin), then its stub
+\ copies it down to &0E00 as before. STH's SRRUN *RAN SCREEN, *LOADed each DATAn to &1900 and
+\ copied 16K into its bank, then *RAN MGAME.
+\ "ZX02" in this file is how the tools know the disc's files are packed (tools/dfs.py game_files).
+\ It runs through &0AFF into &0B00 (the soft keys' page, unused while it runs).
 \ ---------------------------------------------------------------------------------------------
 srrun_bank = &70                \ the bank being filled, 4 to 7
+PACK_FILES = (SHIFT = 0)        \ the relocation test builds load unpacked (tools/packdisc.py lays them out only)
 
 SECTION SRRUN, org = &0A00, load = &FFFF0A00, exec = &FFFF0A00, filename = "SRRUN", cmos = TRUE
+IF PACK_FILES
+{
+zxsrc = &71                     \ the depacker's zero page: user zero page, not the filing system's
+zxdst = &73                     \ &B0-&CF, which it is called between
+zxofs = &75
+zxbit = &76
+zxwrk = &77
+
+.srrun
+    LDX #LO(srrun_screen)
+    LDY #HI(srrun_screen)
+    JSR srrun_load                  \ SCREEN: the loading picture's code, unpacked to &2100 and run
+    LDA #LO(&2100)
+    LDY #HI(&2100)
+    JSR srrun_unpack
+    JSR title.title_entry_point
+    LDA #4
+    STA srrun_bank
+.srrun_load_loop
+    LDX #LO(srrun_data)
+    LDY #HI(srrun_data)
+    JSR srrun_load                  \ DATAn, unpacked into bank n + 3 from &8000
+    SEI
+    LDA srrun_bank
+    STA romsel
+    LDA #LO(&8000)
+    LDY #HI(&8000)
+    JSR srrun_unpack
+    LDA romsel_copy                 \ give the MOS its ROM back
+    STA romsel
+    CLI
+    INC srrun_data_digit            \ DATA1 -> DATA2 -> ...
+    INC srrun_bank
+    LDA srrun_bank
+    CMP #8
+    BNE srrun_load_loop
+    LDX #LO(srrun_mgame)
+    LDY #HI(srrun_mgame)
+    JSR srrun_load                  \ MGAME, unpacked in place to where it always loaded
+    LDA #LO(GAME_LOAD)
+    LDY #HI(GAME_LOAD)
+    JSR srrun_unpack
+    JMP mgame_relocate              \ its copy-down stub, which runs the game
+
+\ The file named at YX loaded at its own load address; zxsrc points at it
+.srrun_load
+    STX srrun_block
+    STY srrun_block + 1
+    LDA #5                          \ OSFILE 5: its catalogue entry, the load address at block + 2
+    JSR srrun_osfile
+    LDA #&FF
+    STA srrun_block + 6             \ not 0: OSFILE &FF loads at the file's own address
+    JSR srrun_osfile
+    LDA srrun_block + 2
+    STA zxsrc
+    LDA srrun_block + 3
+    STA zxsrc + 1
+    RTS
+.srrun_osfile
+    LDX #LO(srrun_block)
+    LDY #HI(srrun_block)
+    JMP osfile
+
+\ Unpack the stream at zxsrc to YA
+.srrun_unpack
+    STA zxdst
+    STY zxdst + 1
+.zx_unpack
+    ZX02_DEPACKER
+
+.srrun_screen
+    EQUS "SCREEN", 13
+.srrun_data
+    EQUS "DATA"
+.srrun_data_digit
+    EQUS "1", 13
+.srrun_mgame
+    EQUS "MGAME", 13
+    EQUS "ZX02"                     \ the tools' sign that this disc's files are packed
+.srrun_block                        \ OSFILE's control block (not in the file)
+    ASSERT srrun_block + 18 <= &0C00, "SRRUN overruns &0BFF by ", srrun_block + 18 - &0C00
+}
+ELSE                                \ relocation test builds (SHIFT): the files as Baron wrote them, so the
+                                    \ control and the shifted build load in exactly the same time (lockstep)
 .srrun
     LDX #LO(srrun_run_screen)
     LDY #HI(srrun_run_screen)
@@ -68,6 +163,7 @@ srrun_load_data_digit = *
     EQUS "1", 13
 .srrun_run_game
     EQUS "RUN MGAME", 13
+ENDIF
 ENDSECTION
 
 \ ---------------------------------------------------------------------------------------------

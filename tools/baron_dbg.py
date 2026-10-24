@@ -238,7 +238,7 @@ class Converter:
         self.lines = _listing.parse(listing_path)
         self.dump = _listing.dump_files(
             json.loads(Path(symbols_path).read_text(encoding="utf-8")))
-        self.disc = _dfs.read_image(disc_path).files if disc_path and \
+        self.disc = _dfs.game_files(disc_path) if disc_path and \
             Path(disc_path).exists() else {}
         self.main = main or next(iter(self.dump))
         self.files = {}             # resolved path -> SourceFile

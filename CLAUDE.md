@@ -23,7 +23,7 @@ of every agreed decision, `BUGS.md` the bug log. The method is beeb-port-kit's (
 |---|---|
 | Machine | BBC Master 128 (65SC12, four sideways RAM banks 4-7). The enhanced version needs both |
 | Reference | The Stairway to Hell disc, `reference/sth/StrykersRun.ssd` (decision 1): files `MGAME`, `DATA1`-`DATA4`, `SCREEN`, `SRRUN` |
-| Disc | Enhanced version only (decision 3): `!BOOT` (stamp, `*TV255,1`, `*FX200,3`) -> `SRRUN` -> `SCREEN`, then `DATA1`-`4` into banks 4-7, then `MGAME` |
+| Disc | Enhanced version only (decision 3): `!BOOT` (stamp, `*TV255,1`, `*FX200,3`) -> `SRRUN` -> `SCREEN`, then `DATA1`-`4` into banks 4-7, then `MGAME`; `SCREEN`, `DATA1`-`4` and `MGAME` ZX02-packed, SRRUN unpacking each (2026-10-24; not the `-Shift` builds) |
 
 ## Build
 
@@ -45,8 +45,13 @@ decision 2). One assembly, `src/main.6502`, so the game and the banks share one 
 `build/strykers.lst` is the listing, `build/strykers.symbols.json` the symbol dump: take
 addresses from there (`python tools/listing.py symbols build/strykers.symbols.json NAME`).
 `build_stamp.py` stamps the last commit's time (`+` if the tree is dirty) into `INFO` and `!BOOT`.
-After Baron, `tools/dfs.py layout` puts the disc's files in the boot's load order (`!BOOT`, `SRRUN`,
-`SCREEN`, `DATA1`-`4`, `MGAME`, then `INFO`), so no load seeks back.
+After Baron, `tools/packdisc.py` packs `SCREEN`, `DATA1`-`4` and `MGAME` (ZX02, with `bin\zx02.exe`: built
+from the vendored `tools/zx02src`, v3, by any C compiler, or the kit's own build of it; `zx02.py` makes the
+same bytes in ~3 minutes a file) at the load addresses `SRRUN` unpacks them from (`src/loader.6502`), and
+puts the files in the boot's load order (`!BOOT`, `SRRUN`, `SCREEN`, `DATA1`-`4`, `MGAME`, then `INFO`),
+so no load seeks back. The `-Shift` builds are laid out only, unpacked (`PACK_FILES`: lockstep needs the
+control and the shifted build to load in the same time). Tools read a disc's files through
+`dfs.game_files` (unpacked; `python tools/dfs.py file DISC NAME` for the harnesses), never raw.
 `build/` (gitignored, all regenerable) is kept to: `strykers.*` (the shipping disc), `strykers-gameplay.*`
 (`-Gameplay` / `make gameplay`, named so; `make NAME=x` names any build), `strykers-original.*` and
 `original/` (`make original`), `build_time.6502`; other flag sets are `strykers-<flags>.*`, harness
@@ -96,7 +101,8 @@ disassembly's `actually`/`also` notes say what an operand really is.
 
 - `tools/compare.py [built.ssd] [reference.ssd]` - every file byte for byte
 - `tools/m6502.py FILE LOAD START [END]` - 65SC12 disassembler for poking at binaries
-- `tools/listing.py`, `tools/dfs.py`, `tools/jsbeeb_src.mjs` - the kit's
+- `tools/listing.py`, `tools/dfs.py`, `tools/jsbeeb_src.mjs` - the kit's (`dfs.py`: also `game_files`, `file`, `layout`)
+- `tools/packdisc.py DISC ZX02` - the build's last step: the files packed and laid out in load order (above)
 - `tools/disasm2baron.py` - the one-shot converter (audit trail)
 - `tools/playscript.mjs` - the scripted game (boot, start, run/fire/jump); `tools/play.mjs DISC` plays it with screenshots. Also `WorldBot` and
   `startWorldGame` (the whole world by pass, infinite lives poked into a build without `DEBUG_LIVES`; `keepAlive`: in a

@@ -69,8 +69,10 @@ Each tag builds with the build script it carries; check one out with
 
 ### Tools
 
-Baron 0.5.3 and Python 3; Node.js and jsbeeb for the test harnesses. Both builds look for Baron
-in `$BARON`, then `bin/` (`bin/baron`, or `bin\baron.exe`), then the PATH. To build Baron from
+Baron 0.5.3, Python 3 and zx02; Node.js and jsbeeb for the test harnesses. Both builds look for Baron
+in `$BARON`, then `bin/` (`bin/baron`, or `bin\baron.exe`), then the PATH, and for zx02 the same
+way (`$ZX02`, `bin/zx02`, the PATH); without one they build it into `bin/` from `tools/zx02src`
+(ZX02 v3, vendored) with the C compiler on the PATH (`cc`, `gcc` or `clang`; `make CC=...`). To build Baron from
 source (C17, CMake; a C compiler and `cmake`):
 
     git clone --recurse-submodules --branch v0.5.3 https://github.com/waitingforvsync/baron.git

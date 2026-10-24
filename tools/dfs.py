@@ -132,6 +132,37 @@ def read_image(path_or_bytes):
                  cycle=img[0x104], opt=(img[0x106] >> 4) & 3, files=files)
 
 
+PACKED = ("SCREEN", "DATA1", "DATA2", "DATA3", "DATA4", "MGAME")
+
+
+def game_files(path_or_bytes):
+    """Stryker's Run's discs: every file as the game sees it, name -> Entry (a directory other
+    than $ prefixed: "R.MGAME"), with SCREEN, DATA1-4 and MGAME unpacked where their directory's
+    SRRUN carries the sign "ZX02" (src/loader.6502: it unpacks them; tools/packdisc.py packed
+    them, 2026-10-24). Older discs, the reference's and the original build's, come back as they
+    are. The entries' load addresses stay the catalogue's (where the STREAM loads)."""
+    img = Path(path_or_bytes).read_bytes() if isinstance(path_or_bytes, (str, Path)) \
+        else bytes(path_or_bytes)
+    files = {}
+    for i in range(img[0x105] // 8):
+        e = 8 * (i + 1)
+        name = img[e:e + 7].decode("ascii").rstrip()
+        dirc = chr(img[e + 7] & 0x7F)
+        a = 0x100 + e
+        extra = img[a + 6]
+        length = (img[a + 4] | (img[a + 5] << 8)) | (((extra >> 4) & 3) << 16)
+        load = (img[a] | (img[a + 1] << 8)) | (((extra >> 2) & 3) << 16)
+        exe = (img[a + 2] | (img[a + 3] << 8)) | (((extra >> 6) & 3) << 16)
+        start = (img[a + 7] | ((extra & 3) << 8)) * SECTOR
+        key = name if dirc == "$" else f"{dirc}.{name}"
+        files[key] = Entry(name, bytes(img[start:start + length]), load, exe, dirc, bool(img[e + 7] & 0x80))
+    for key, f in files.items():
+        srrun = files.get("SRRUN" if f.dir == "$" else f"{f.dir}.SRRUN")
+        if f.name in PACKED and srrun is not None and b"ZX02" in srrun.data:
+            f.data = bytes(zx02.decompress(f.data))
+    return files
+
+
 def read_catalogue(img):
     """The ports' original shape: name -> {'dir', 'load', 'exec', 'data'}."""
     return {n: {"dir": f.dir, "load": f.load, "exec": f.exec, "data": f.data}
@@ -452,6 +483,7 @@ def _main(argv):
     """python tools/dfs.py compare A.ssd B.ssd [--ignore NAME]...
     python tools/dfs.py host IMAGE.ssd
     python tools/dfs.py layout IMAGE.ssd NAME...
+    python tools/dfs.py file IMAGE.ssd NAME
 
     compare: prints each image's SHA256, then either "identical images" or
     every per-file difference. Exit status 0 when every file not ignored
@@ -461,8 +493,16 @@ def _main(argv):
     layout: rewrites IMAGE in place with its files laid out in the NAMEs'
     order (build_image: boot access order, so a load never seeks back), the
     rest after them; every NAME must be on the disc. The image keeps its
-    length."""
+    length.
+    file: NAME's bytes as the game sees them (game_files: unpacked on a packed disc; "R.MGAME"
+    for a directory other than $), as hex on stdout, for the harnesses."""
     import hashlib
+    if len(argv) == 3 and argv[0] == "file":
+        files = game_files(argv[1])
+        if argv[2] not in files:
+            raise SystemExit(f"{argv[1]}: no {argv[2]}")
+        print(files[argv[2]].data.hex())
+        return 0
     if len(argv) >= 3 and argv[0] == "layout":
         raw = Path(argv[1]).read_bytes()
         img = read_image(raw)

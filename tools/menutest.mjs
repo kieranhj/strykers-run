@@ -15,18 +15,9 @@ const MachineSession = await loadMachineSession();
 const [disc, shots] = process.argv.slice(2);
 if (!disc) throw new Error("usage: node tools/menutest.mjs RELEASE.ssd [SHOTS_DIR]");
 if (shots) mkdirSync(shots, { recursive: true });
-const img = readFileSync(disc);
 
-function file(dir, name) {                       // a file from the disc's catalogue
-    const n = img[256 + 5] / 8;
-    for (let i = 0; i < n; i++) {
-        const nm = img.subarray(8 + 8 * i, 15 + 8 * i).toString("latin1").trimEnd();
-        if (nm !== name || String.fromCharCode(img[15 + 8 * i] & 0x7f) !== dir) continue;
-        const e = img.subarray(256 + 8 + 8 * i, 256 + 16 + 8 * i);
-        const len = e[4] | e[5] << 8 | ((e[6] >> 4) & 3) << 16, st = e[7] | (e[6] & 3) << 8;
-        return img.subarray(st * 256, st * 256 + len);
-    }
-    throw new Error(`${disc}: no ${dir}.${name}`);
+function file(dir, name) {                       // a file as the game sees it: unpacked on a packed disc (tools/dfs.py game_files)
+    return Buffer.from(execFileSync("python", ["tools/dfs.py", "file", disc, `${dir}.${name}`], { maxBuffer: 1 << 20 }).toString().trim(), "hex");
 }
 
 // what MSCREEN should draw: releasedisc.py's own picture of it

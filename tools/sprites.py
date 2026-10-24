@@ -40,7 +40,7 @@ BS, NL = chr(92), chr(10)          # a backslash and a newline, for the generate
 class Build:
     def __init__(self, disc):
         self.disc = Path(disc)
-        self.files = dfs.read_image(self.disc).files
+        self.files = dfs.game_files(self.disc)          # unpacked on a packed disc (tools/packdisc.py)
         doc = json.loads(self.disc.with_suffix(".symbols.json").read_text())
         self.sym = {}
         for sec in doc["assemblies"][0]["sections"]:

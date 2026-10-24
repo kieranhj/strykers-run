@@ -49,6 +49,8 @@
 
 PYTHON ?= python3
 BARON  ?=
+ZX02   ?=
+CC     ?= cc
 
 # The options (see above). Set on the command line; `release` sets RELEASE.
 RELEASE  = 0
@@ -101,6 +103,18 @@ SRC = \
   src/lib/boot_stamp.6502 src/lib/keydown.6502 src/lib/sfx50.6502 src/scroll_hazel.6502 \
   src/sky.6502 src/sky_main.6502 src/sky_off.6502 src/sky_edges.6502 src/sky_hazel.6502 src/sky_hazel_c.6502 \
   src/hills_dither_bank4.6502 src/hills_dither_bank7.6502 src/mountains_one.6502 src/scroll_pixel.6502 src/level_triggers.6502 src/level_movers_x_low.6502 src/ground_columns.6502 src/hud_extra.6502 src/hud_extra_init.6502 $(BUILD)/scrolltext.6502
+
+# The zx02 tools/packdisc.py packs with, as build.ps1 finds it: $ZX02, then bin/zx02 (bin/zx02.exe
+# too, under MSYS2 and Git for Windows), then zx02 on the PATH, else built into bin/ from
+# tools/zx02src (v3, vendored: its VENDORED.md) with $(CC).
+ZX02SRC = tools/zx02src/src/compress.c tools/zx02src/src/optimize.c tools/zx02src/src/memory.c tools/zx02src/src/zx02.c
+FINDZX02 = zx02="$(ZX02)"; \
+  if [ -z "$$zx02" ]; then \
+    if [ -f bin/zx02 ]; then zx02=bin/zx02; \
+    elif [ -f bin/zx02.exe ]; then zx02=bin/zx02.exe; \
+    elif command -v zx02 >/dev/null 2>&1; then zx02=zx02; \
+    else mkdir -p bin && $(CC) -O -o bin/zx02 $(ZX02SRC) && zx02=bin/zx02; fi; \
+  fi
 
 # The baron to run, as build.ps1's Find-Tool finds it. A shell fragment, so
 # that it costs nothing on a build that does not assemble; `[ -f bin/baron ]`
@@ -205,15 +219,16 @@ $(CONFIG):
 $(BUILD)/scrolltext.6502: src/scrolltext.txt tools/scrolltext.py
 	$(PYTHON) tools/scrolltext.py src/scrolltext.txt $@
 
-$(SSD): $(SRC) $(CONFIG)
+$(SSD): $(SRC) $(CONFIG) tools/packdisc.py tools/dfs.py tools/zx02.py
 	@$(FINDBARON); \
 	echo "  $$baron $(SSD)"; \
 	"$$baron" --warn 2 -o $(SSD) --title 'STRYKERS RUN' --opt 2 \
 	    -D RELEASE=$(RELEASE) -D SHIFT=$(SHIFT) -D SHIFT_END=$(SHIFTEND) $(DEFS) \
 	    --symbols $(SYMS) -v src/main.6502 > $(LST) || \
 	    { rm -f $(SSD) $(SYMS); echo "baron failed" >&2; exit 1; }
-	@$(PYTHON) tools/dfs.py layout $(SSD) '!BOOT' SRRUN SCREEN DATA1 DATA2 DATA3 DATA4 MGAME || \
-	    { rm -f $(SSD) $(SYMS); echo "dfs.py layout failed" >&2; exit 1; }
+	@$(FINDZX02); \
+	$(PYTHON) tools/packdisc.py $(SSD) "$$zx02" || \
+	    { rm -f $(SSD) $(SYMS); echo "packdisc.py failed" >&2; exit 1; }
 	@echo "Built  $(SSD)"
 	@$(SHA256) $(SSD)
 

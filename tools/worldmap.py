@@ -120,7 +120,7 @@ class Build:
 
     def __init__(self, disc, mos=None, hazel=None):
         self.disc = Path(disc)
-        files = dfs.read_image(self.disc).files
+        files = dfs.game_files(self.disc)                   # unpacked on a packed disc (tools/packdisc.py)
         doc = json.loads(self.disc.with_suffix(".symbols.json").read_text())
         self.sym, self.sections = {}, {}
         for sec in doc["assemblies"][0]["sections"]:
@@ -139,16 +139,17 @@ class Build:
                 src = self.sym[name + "_load"]
                 self.main[org:org + size] = self.main[src:src + size]
         self.bank = {}
-        for n, f, org in ((4, "DATA1", 0x8000), (5, "DATA2", 0x8400), (6, "DATA3", 0x8000), (7, "DATA4", 0x8000)):
+        data2 = self.sections["DATA2"]["attributes"]["org"] if "DATA2" in self.sections else 0x8400   # &8000 since 2026-10-24
+        for n, f, org in ((4, "DATA1", 0x8000), (5, "DATA2", data2), (6, "DATA3", 0x8000), (7, "DATA4", 0x8000)):
             b = bytearray(0x4000)
             d = files[f].data
             b[org - 0x8000:org - 0x8000 + len(d)] = d
             self.bank[n] = b
         self.andy = bytearray(0x1000)
         if "andy_load" in self.sym:
-            src = self.sym["andy_load"] - 0x8400
+            src = self.sym["andy_load"] - 0x8000
             size = self.sections["andy_data"]["size"]
-            self.andy[:size] = self.bank[5][0x400 + src:0x400 + src + size]
+            self.andy[:size] = self.bank[5][src:src + size]
         self.hazel = bytearray(0x2000)                      # &C000-&DFFF
         self.hazel_source = "zeros (jsbeeb)"
         if hazel:
