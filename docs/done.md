@@ -245,7 +245,7 @@ and costs are `docs/briefs/gameplay-shield.md`.
 
 - **Both builds on one disc behind the original release's menu** (`tools/releasedisc.py`,
   `build.ps1 -ReleaseDisc`): the Stairway to Hell disc's MENU and MSCREEN, its two choices redrawn
-  in the artist's font as "(1) Original, faster" and "(2) Redux"; the original in directory `O`, Redux
+  in the artist's font as "(1) Original, faster" and "(2) Redux, improved" (KC, 2026-10-24); the original in directory `O`, Redux
   in `R`, each started by its own `!BOOT`. `tools/menutest.mjs`: the picture byte for byte, each choice
   its own directory's game to its title.
 

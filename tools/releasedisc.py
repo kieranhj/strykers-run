@@ -168,6 +168,8 @@ DRAWN = {
     "R": ["", "#### ", "#   #", "#   #", "#### ", "# #  ", "#  # ", "#   #"],
     "u": ["", "", "", "#   #", "#   #", "#   #", "#   #", " ####"],
     "x": ["", "", "", "#   #", " # # ", "  #  ", " # # ", "#   #"],
+    "m": ["", "", "", " ## ## ", "#  #  #", "#  #  #", "#  #  #", "#  #  #"],
+    "p": ["", "", "", "#### ", "#   #", "#   #", "#   #", "#### ", "#    ", "#    "],
 }
 SPACE = 6                                                   # the box's word gap (5, and a letter's 1)
 
@@ -224,7 +226,7 @@ def mscreen(original):
     pic = Picture(original)
     glyphs = font(pic)
     write_line(pic, glyphs, "one", "Original, faster")       # KC, 2026-10-23: the brief's wording
-    write_line(pic, glyphs, "two", "Redux")
+    write_line(pic, glyphs, "two", "Redux, improved")       # KC, 2026-10-24
     return bytes(pic.d)
 
 

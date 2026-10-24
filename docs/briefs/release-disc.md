@@ -85,8 +85,9 @@ release-disc` makes `build/strykers-release.ssd` (both builds `-Release`). The s
   of 19 character rows of 312 bytes (the mapping in `tools/releasedisc.py`, all 5,928 bytes measured
   against the reference's screen in jsbeeb). The box's text is the artist's own narrow font, not the
   MOS's: `releasedisc.py` cuts its letters from the box's four lines and draws the ones it lacks (g,
-  l, comma, f, R, u, x) in the same style, then redraws the two choices: **"(1) Original, faster"**
-  and **"(2) Redux"** ("the original, faster" runs 7 pixels past the box).
+  l, comma, f, R, u, x, m, p) in the same style, then redraws the two choices: **"(1) Original, faster"**
+  and **"(2) Redux, improved"** (KC, 2026-10-24; first "(2) Redux". "the original, faster" runs 7
+  pixels past the box).
 - `build.ps1 -ReleaseDisc` / `make release-disc` -> `build/strykers-release.ssd` (both `-Release`);
   the two scripts' discs byte-identical.
 - **Checked** (jsbeeb 2.10.2): `tools/menutest.mjs`: the menu's picture 0 of 5,928 bytes differing

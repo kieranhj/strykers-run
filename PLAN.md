@@ -44,8 +44,8 @@ Left:
 - **KC's review** of play: the rewind's speed and distance, the timer's bonus (10 points a second).
 - **The release disc** (KC, 2026-10-23: the original release's menu, "(1)
   original game + performance improvements (2) redux version with gameplay improvements"): built,
-  `build.ps1 -ReleaseDisc`, the WIP `strykers-run-release-wip.ssd`; KC to see the menu's wording
-  ("(1) Original, faster", "(2) Redux") and say (`docs/briefs/release-disc.md`).
+  `build.ps1 -ReleaseDisc`, the WIP `strykers-run-release-wip.ssd`; the menu's wording
+  "(1) Original, faster", "(2) Redux, improved" (KC changed the second, 2026-10-24; the first to confirm) (`docs/briefs/release-disc.md`).
 - **Room** is nearly gone on the gameplay disc (above): the next feature there starts by moving
   something out of bank 4 or HAZEL. Five of grind round 3's candidates are off the gameplay disc
   for room (G0426, G0483, G0464, G0502, G0557, under `GAMEPLAY_ANY`: merge `dbeeebf`); room in
