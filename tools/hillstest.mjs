@@ -1,9 +1,10 @@
-// hillstest.mjs - DITHER_HILLS's MOUNTAINS_ONE (decision 70) on a gameplay disc:
-//   unpacked  at the first pass, bank 5 from andy_load holds the dithered sprite byte for byte as
-//             tools/ditherhills.py makes it (from build/strykers.ssd, the build without the flag),
+// hillstest.mjs - DITHER_HILLS's mountain sprites (decisions 70, 71) on a gameplay disc:
+//   unpacked  at the first pass, bank 5 from hills_unpacked holds the four dithered sprites (each
+//             mountain, and its mirrored copy for the flipped draws) byte for byte as
+//             tools/ditherhills.py makes them (from build/strykers.ssd, the build without the flag),
 //             and ANDY holds its sprites as the disc carries them (the copy done before the unpack)
-//   drawn     HAZEL &C300-&C6FF filled 0, 2, 1, 3 (the mountain layer's bytes, BUGS #9: 2 and 3 pick
-//             MOUNTAINS_ONE), RIGHT held: the shown screen saved (SHOTS_DIR) to look at
+//   drawn     HAZEL &C300-&C6FF filled 0, 2, 1, 3 (the mountain layer's bytes, BUGS #9: TWO, TWO
+//             flipped, ONE flipped, ONE), RIGHT held: the shown screen saved (SHOTS_DIR) to look at
 //
 //   node tools/hillstest.mjs DISC [SHOTS_DIR] [PASSES]
 import { loadMachineSession } from "./jsbeeb_src.mjs";
@@ -29,20 +30,19 @@ function file(name) {                           // a file from the disc's catalo
 const fails = [];
 const m = await startWorldGame(MachineSession, disc);
 const { s, syms } = m;
-for (const k of ["andy_load", "andy_end", "scenery_sprite_04", "scenery_sprite_04_size", "DATA2_ORG"])
+for (const k of ["andy_load", "andy_end", "hills_unpacked", "hills_unpacked_size", "DATA2_ORG"])
     if (syms[k] === undefined) throw new Error(`${disc}: no ${k} (not a DITHER_HILLS build?)`);
 
-// the dithered sprite, as the generator makes it
+// the dithered sprites, as the generator makes them
 const want = Buffer.from(execFileSync("python", ["-c",
     "import sys; sys.path.insert(0, 'tools'); import ditherhills as d; " +
-    "b = d.Build('build/strykers.ssd'); sc = d.Scenery(b); _, cols, _ = d.read_sprite(b, sc, 4); " +
-    "new = d.dither(cols)[0]; data, _ = d.encode(new); print(data.hex())"]).toString().trim(), "hex");
-const got = Buffer.from(s.readMemory(syms.scenery_sprite_04, syms.scenery_sprite_04_size, { bank: 5 }));
+    "print(d.unpacked('build/strykers.ssd').hex())"]).toString().trim(), "hex");
+const got = Buffer.from(s.readMemory(syms.hills_unpacked, syms.hills_unpacked_size, { bank: 5 }));
 let bad = 0;
 for (let i = 0; i < want.length; i++) if (got[i] !== want[i]) bad++;
-console.log(`unpacked: bank 5 &${syms.scenery_sprite_04.toString(16)}, ${want.length - bad} of ${want.length} bytes the dithered MOUNTAINS_ONE` +
-    (want.length === syms.scenery_sprite_04_size ? "" : ` (the build says ${syms.scenery_sprite_04_size})`));
-if (bad || want.length !== syms.scenery_sprite_04_size) fails.push(`unpacked: ${bad} bytes differ`);
+console.log(`unpacked: bank 5 &${syms.hills_unpacked.toString(16)}, ${want.length - bad} of ${want.length} bytes the dithered sprites` +
+    (want.length === syms.hills_unpacked_size ? "" : ` (the build says ${syms.hills_unpacked_size})`));
+if (bad || want.length !== syms.hills_unpacked_size) fails.push(`unpacked: ${bad} bytes differ`);
 
 // ANDY: its sprites as DATA2 carries them
 const d2 = file("DATA2"), off = syms.andy_load - syms.DATA2_ORG, n = syms.andy_end - 0x8000;

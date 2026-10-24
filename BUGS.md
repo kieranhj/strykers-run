@@ -175,7 +175,7 @@ enhanced version draws them, from whatever HAZEL holds at `&C300`; nothing may b
 
 Seen 2026-10-24 (KC, the release disc): its menu's disc activity leaves HAZEL's bytes picking
 `MOUNTAINS_ONE` (25 of the first 624 in jsbeeb), which the gameplay disc had left undithered; decision 70
-dithers it too.
+dithers it too, and decision 71 puts the dither in phase where either sprite is drawn flipped.
 
 ## 10. A mover clipped at the view's left edge is placed 80 columns right and a row up (layer 3, `c5d760b`; FIXED in layer 4)
 

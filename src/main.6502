@@ -230,8 +230,8 @@ ENDIF
     .andy_end
     ENDSECTION
     ASSERT andy_end <= &9000
-IF DITHER_HILLS                     \ decision 70: MOUNTAINS_ONE dithered is unpacked over this carrier
-    ASSERT scenery_sprite_04_size <= andy_end - &8000
+IF DITHER_HILLS                     \ decisions 70, 71: the mountain sprites are unpacked over this carrier
+    ASSERT hills_unpacked_size <= andy_end - &8000
 ENDIF
     ASSERT andy_load + (andy_end - &8000) + B5_PAD_END <= &C000, "bank 5 overruns its 16K by ", andy_load + (andy_end - &8000) + B5_PAD_END - &C000
     SKIP B5_PAD_END
@@ -253,7 +253,7 @@ SECTION DATA4, org = &8000, load = &FFFF1900, exec = &FFFF1D00, filename = "DATA
     INCLUDE "bank7.6502"
     INCLUDE "compiled_bank7.6502"   \ step 2 layer 4: compiled kinds of the player's parts
 IF DITHER_HILLS
-    INCLUDE "hills_dither_one.6502" \ decision 70: MOUNTAINS_ONE dithered, packed; unpacked into bank 5 at start-up
+    INCLUDE "hills_dither_bank7.6502" \ decisions 70, 71: MOUNTAINS_TWO mirrored, packed; unpacked into bank 5 at start-up
 ENDIF
 IF GAMEPLAY_RUN
     INCLUDE "run.6502"              \ decision 52: the run meter (timer_tick_call pages bank 7 for it)

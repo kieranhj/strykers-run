@@ -209,6 +209,15 @@ and costs are `docs/briefs/gameplay-shield.md`.
   passes (to game over) state and screen identical (one machine poked: 1,346 screen bytes differ,
   so the run drew it); frontend on the gameplay disc 0 failed; menutest all held; the release
   disc's choice 2 has it in bank 5 byte for byte. The plain build is identical to before, every file.
+- **The hills' dither in phase at flips, `MOUNTAINS_ONE`'s bottom hill at the fore density** (decision 71,
+  2026-10-24): KC saw `MOUNTAINS_ONE` at 6/16 to the bottom and pixels pairing up beside `MOUNTAINS_TWO`.
+  Its lowest ridge, open at its top, closed (not drawn) so the hill below is the fore tier; each sprite
+  also dithered with the pattern mirrored, drawn when flipped, so every flip is in phase. Four sprites,
+  2,473 bytes, packed 595 (bank 4) + 229 (bank 7), unpacked at start-up. `tools/hillstest.mjs`: 2,473 of
+  2,473 bytes, ANDY 4,089 of 4,089; on its screen (HAZEL picking all four) every row's dither dots in one
+  phase of the pattern; passlock as decision 70: 3,226 passes identical (one machine poked: screens
+  differ from pass 16); frontend 0 failed; menutest all held; the release disc's choice 2 has the block
+  in bank 5 byte for byte. The plain build is identical to before, every file.
 - **The scroll text editable** (`fbe4474`, `bd8e1c2`, all builds): `src/scrolltext.txt`, encoded at
   every build by `tools/scrolltext.py`; 28 bytes of room on the shipping disc, 141 on the gameplay
   disc, whose pixel scroller moved to bank 5's `&8000` block.

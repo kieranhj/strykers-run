@@ -349,7 +349,7 @@
 
 \ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 .scenery_sprite_banks
-    EQUB &04, &04, &04, &04, &04 + DITHER_HILLS, &04, &04, &04, &04, &04, &04, &04, &04, &04, &04, &04    \ &00 (DITHER_HILLS: MOUNTAINS_ONE in bank 5, decision 70)
+    EQUB &04, &04, &04, &04, &04 + DITHER_HILLS, &04 + DITHER_HILLS, &04, &04, &04, &04, &04, &04, &04, &04, &04, &04    \ &00 (DITHER_HILLS: the mountains in bank 5, decisions 70, 71)
     EQUB &04, &04, &04, &04, &04, &04, &04, &06, &06, &06, &06, &06, &06, &06, &06, &06    \ &10
     EQUB &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06    \ &20
     EQUB &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07    \ &30
@@ -361,7 +361,7 @@
     EQUB LO(scenery_sprite_01 + 147)                \ &01
     EQUB LO(scenery_sprite_02 + 160)                \ &02
     EQUB LO(scenery_sprite_03 + 170)                  \ &03
-    EQUB LO(scenery_sprite_04_last)                 \ &04 (DITHER_HILLS: the sprite's own, src/bank4.6502)
+    EQUB LO(scenery_sprite_04_last)                 \ &04 (DITHER_HILLS: the mirrored copy's, src/hills_dither_bank4.6502)
     EQUB LO(scenery_sprite_05_last)                 \ &05
     EQUB LO(scenery_sprite_06 + 216)                \ &06
     EQUB LO(scenery_sprite_07 + 72)                 \ &07
@@ -5772,28 +5772,19 @@ copy_andy_target = * + 1
     LDA copy_andy_target + 1
     CMP #&90
     BNE copy_andy_loop
-IF DITHER_HILLS                     \ decision 70: MOUNTAINS_ONE dithered, its packed stream from bank 7
-    LDA #&07                        \ to the screen (dead: the title draws it), then unpacked from there
-    STA os_ram_copy_of_currently_selected_rom
-    STA romsel                      \ over ANDY's carrier in bank 5, which the copy has finished with
-    LDX #scenery_sprite_04_packed_size
-.copy_mountains_one
-    LDA scenery_sprite_04_packed - 1,X
-    STA &4000 - 1,X
-    DEX
-    BNE copy_mountains_one
-    LDA #&05
-    STA os_ram_copy_of_currently_selected_rom
-    STA romsel
-    LDA #LO(&4000)
-    STA zxsrc
-    LDA #HI(&4000)
-    STA zxsrc + 1
-    LDA #LO(scenery_sprite_04)
-    STA zxdst
-    LDA #HI(scenery_sprite_04)
+IF DITHER_HILLS                     \ decisions 70, 71: the mountain sprites dithered, and mirrored for their
+    LDA #LO(hills_unpacked)         \ flipped draws, packed in banks 4 and 7: unpacked one after the other
+    STA zxdst                       \ over ANDY's carrier in bank 5, which the copy has finished with
+    LDA #HI(hills_unpacked)
     STA zxdst + 1
-    JSR zx_unpack
+    LDX #&04
+    LDY #HI(hills_packed_bank4)
+    LDA #LO(hills_packed_bank4)
+    JSR unpack_hills
+    LDX #&07
+    LDY #HI(hills_packed_bank7)
+    LDA #LO(hills_packed_bank7)
+    JSR unpack_hills
 ENDIF
     LDA #&04
     STA romsel                      \ Paged ROM latch
@@ -6682,3 +6673,38 @@ SECTION hazel_c, org = &C200, cmos = TRUE
 ENDSECTION
 ENDIF
     INCLUDE "music_packed.6502"
+IF DITHER_HILLS
+\ unpack_hills (decisions 70, 71; start-up code, run once where the file put it, after what
+\ unpack_for_play has finished with): the packed stream at YA in bank X copied to the screen
+\ (dead: the title draws it; &4000-&42FF, below this code),
+\ three whole pages (what follows a shorter stream is copied too, harmlessly), then unpacked from
+\ there into bank 5 at zxdst, which zx_unpack leaves one past what it wrote
+.unpack_hills
+    STX os_ram_copy_of_currently_selected_rom
+    STX romsel
+    STA zxsrc
+    STY zxsrc + 1
+    LDA #HI(&4000)
+    STA unpack_hills_target + 1
+    LDX #3
+    LDY #0
+.unpack_hills_copy
+    LDA (zxsrc),Y
+unpack_hills_target = * + 1
+    STA &4000,Y
+    INY
+    BNE unpack_hills_copy
+    INC zxsrc + 1
+    INC unpack_hills_target + 1
+    DEX
+    BNE unpack_hills_copy
+    LDA #&05
+    STA os_ram_copy_of_currently_selected_rom
+    STA romsel
+    STX zxsrc                       \ X = 0: LO(&4000)
+    LDA #HI(&4000)
+    STA zxsrc + 1
+    JMP zx_unpack
+    ASSERT hills_packed_bank4_size <= &300 AND hills_packed_bank7_size <= &300
+    ASSERT unpack_hills >= &4300, "unpack_hills is under the screen bytes it copies the streams to"
+ENDIF

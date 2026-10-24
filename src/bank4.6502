@@ -89,7 +89,7 @@ IF DITHER_HILLS = 0
     EQUB &94, &68, &1A, &00, &68, &54, &40, &BC, &0A, &3F, &BD, &FF, &BE, &A8, &00, &92
 scenery_sprite_05_last = scenery_sprite_05 + 237
 ELSE
-    INCLUDE "hills_dither_two.6502" \ DITHER_HILLS: dithered (tools/ditherhills.py), in sprite 3's and MOUNTAINS_ONE's room
+    INCLUDE "hills_dither_bank4.6502" \ DITHER_HILLS: dithered, packed (tools/ditherhills.py), in sprite 3's and MOUNTAINS_ONE's room
 ENDIF
 
 .scenery_sprite_06    \ (SCENERY_TREES_ONE)
