@@ -58,7 +58,7 @@
     CPX #5
     BCS clear
 .near
-    STZ sky_c0                      \ 65C02 opcode: no geometry yet
+    STZ_LDA sky_c0                  \ 65C02 opcode: no geometry yet
 .left
     LDA sky_e1
     JSR in_zone
@@ -69,7 +69,7 @@
     CMP sky_e2
     BEQ gone
     INC sky_e1
-    BRA left                        \ 65C02 opcode
+    BRA_JMP left                    \ 65C02 opcode
 .right
     LDA sky_e2
     JSR in_zone
@@ -77,7 +77,7 @@
     LDA sky_e2
     JSR zero
     DEC sky_e2                      \ (e2 > e1: the left one is not in the zone)
-    BRA right                       \ 65C02 opcode
+    BRA_CS right                    \ 65C02 opcode
 .kept
     LDX sky_s
     LDA sky_e1
@@ -87,7 +87,7 @@
     RTS
 .gone
     LDX sky_s
-    STZ sky_on,X                    \ 65C02 opcode
+    STZ_LDA sky_on,X                \ 65C02 opcode
 .clear
     RTS
 .zero                               \ A = a column: zeroed (the old geometry, made the first time)

@@ -34,6 +34,7 @@ const MS = await loadMachineSession();
 const args = process.argv.slice(2);
 const opt = (name) => { const i = args.indexOf(name); if (i < 0) return null; const v = args[i + 1]; args.splice(i, 2); return v; };
 const flag = (name) => { const i = args.indexOf(name); if (i < 0) return false; args.splice(i, 1); return true; };
+const DUMP = (process.env.WORLDRUN_DUMP || "").split(",").filter(Boolean).map(Number);
 const CONTROL = opt("--control"), SHOTS = opt("--shots"), PASSES = +(opt("--passes") || 20000), SCREEN = flag("--screen"), UNCLOBBER = flag("--unclobber");
 const [disc] = args;
 if (!disc) { console.error("usage: node tools/worldrun.mjs DISC.ssd [--control CONTROL.ssd [--screen]] [--shots DIR] [--passes N]"); process.exit(2); }
@@ -104,6 +105,15 @@ for (let p = 1; p <= PASSES; p++) {
             let d = 0;
             for (let i = 0; i < 0x4000; i++) if (x[i] !== y[i] && ((i + 0x4000 - start + 0x4000) & 0x3fff) < 16000) d++;
             screenPasses++;
+            if (d && DUMP.includes(p)) {     // WORLDRUN_DUMP=pass,...: where, by character row and column from the screen start
+                const cells = new Map();
+                for (let i = 0; i < 0x4000; i++) if (x[i] !== y[i]) { const off = (i + 0x4000 - start + 0x4000) & 0x3fff; if (off >= 16000) continue;
+                    const k = `r${Math.floor(off / 640)} c${Math.floor((off % 640) / 8)}`; cells.set(k, (cells.get(k) || 0) + 1); }
+                const pend = (m) => m.s.readMemory(m.syms.flip_pending, 1, { shadow: false })[0];
+                console.log(`pass ${p}: ${d} bytes in ${cells.size} cells (pending ${pend(C).toString(16)}/${pend(T).toString(16)}): ${[...cells].slice(0, 40).map(([k, n]) => k + ":" + n).join(" ")}`);
+                for (let i = 0, k = 0; i < 0x4000 && k < 24; i++) if (x[i] !== y[i]) { k++; process.stdout.write(`&${(0x4000 + i).toString(16)}:${x[i].toString(16)}/${y[i].toString(16)} `); }
+                console.log();
+            }
             if (d) { screenDiffCount++; if (screenDiffPasses.length < 20) screenDiffPasses.push(`${p}:${d}`); screenMax = Math.max(screenMax, d);
                 if (screenDiffCount === 1) { await shot(C, `screen-${p}`); await shot(T, `screen-${p}`); } }
         }

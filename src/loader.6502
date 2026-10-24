@@ -22,7 +22,7 @@
 srrun_bank = &70                \ the bank being filled, 4 to 7
 PACK_FILES = (SHIFT = 0)        \ the relocation test builds load unpacked (tools/packdisc.py lays them out only)
 
-SECTION SRRUN, org = &0A00, load = &FFFF0A00, exec = &FFFF0A00, filename = "SRRUN", cmos = TRUE
+SECTION SRRUN, org = &0A00, load = &FFFF0A00, exec = &FFFF0A00, filename = "SRRUN", cmos = CMOS
 IF PACK_FILES
 {
 zxsrc = &71                     \ the depacker's zero page: user zero page, not the filing system's

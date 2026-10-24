@@ -190,7 +190,7 @@ PRE_T2_MIN = &C8                    \ one field to go: start only if User VIA T2
     STA pc_dst2 + 2
     STA pc_dst3 + 2
     STA pc_dst4 + 2
-    INC A                           \ 65C02 opcode: grind: the operands below are 32 bytes on,
+    INC_A_ADC                       \ 65C02 opcode: grind: the operands below are 32 bytes on,
     STA pc_dst1 + 2                 \ into the slot's own page (hist_dst_hi is the page before)
     STA pc_dst2 + 2
     STA pc_dst3 + 2

@@ -62,6 +62,16 @@ DEBUG_ANY = DEBUG_LIVES OR DEBUG_FULLREDRAW   \ the OR of every DEBUG_ flag (GAM
 \ control for costing). Never in the oracle: DEBUG_FULLREDRAW builds draw them as SKY_HELI=0 does.
 ASSERT SKY_HELI <= 2, "SKY_HELI is 0, 1 or 2"
 SKY_MODE = SKY_HELI * (1 - DEBUG_FULLREDRAW)
+\ NMOS (decision 73, Redux Lite): no 65SC12 instruction anywhere, for a Model B's NMOS 6502. Every
+\ section is cmos = CMOS, so Baron rejects one left; src/lib/nmos.6502's macros are the 65SC12
+\ instruction without NMOS (those builds byte-identical) and, with it, the NMOS form tools/nmosify.py
+\ chose from the state the analysis found there. An NMOS build runs on the Master too.
+CMOS = NMOS = 0
+\ ROOM_ANY: a build that need not keep the original's addresses in the main block (a gameplay
+\ build, decision 43, or an NMOS one): its unexecuted padding goes, the dead BASIC fragment before the
+\ font with it, and moved_0a20 starts at &0982 (decision 59)
+ROOM_ANY = GAMEPLAY_ANY OR NMOS
+INCLUDE "lib/nmos.6502"
 \ HUD_RUPTURE (decision 67, with GAMEPLAY_SHIELD): the HUD's character row a CRTC frame of its own,
 \ read from HUD_ROW, drawn there once and only when it changes; no copy at every scroll
 ASSERT GAMEPLAY_SHIELD >= HUD_RUPTURE, "HUD_RUPTURE needs GAMEPLAY_SHIELD (its HUD)"
@@ -99,13 +109,13 @@ GAME_LOAD = &1900
 GAME_ORG  = &0E00 - GAME_DOWN
 
 INCLUDE "lib/zx02depack.6502"       \ step 2 layer 4: the macro, for the tunes (src/game.6502 unpack_for_play)
-SECTION MGAME, org = GAME_ORG, load = &FFFF0000 + GAME_LOAD, exec = &FFFF0000 + mgame_relocate, filename = "MGAME", cmos = TRUE
+SECTION MGAME, org = GAME_ORG, load = &FFFF0000 + GAME_LOAD, exec = &FFFF0000 + mgame_relocate, filename = "MGAME", cmos = CMOS
     INCLUDE "game.6502"
 
     \ The copy-down stub (STH's MGAME; the reference's lived at &46E0, ran at &51E0). Follows the
     \ game in the file, runs where the file put it, and copies the file down to &0E00, whole pages,
     \ itself included.
-    SECTION mgame_stub, org = * - GAME_ORG + GAME_LOAD, cmos = TRUE
+    SECTION mgame_stub, org = * - GAME_ORG + GAME_LOAD, cmos = CMOS
     .mgame_relocate
         LDA #&8C                        \ *TAPE: release the disc filing system's workspace
         JSR osbyte
@@ -145,7 +155,7 @@ ASSERT mgame_end - GAME_ORG + GAME_LOAD <= &5A80, "MGAME would load over the loa
 \ The sideways RAM banks. SRRUN loads each file at &1900 and copies &1900-&58FF into its bank
 \ at &8000-&BFFF, so a file that starts higher in the bank (DATA2, at &8400) loads higher.
 \ ---------------------------------------------------------------------------------------------
-SECTION DATA1, org = &8000, load = &FFFF1900, exec = &FFFF1900, filename = "DATA1", cmos = TRUE
+SECTION DATA1, org = &8000, load = &FFFF1900, exec = &FFFF1900, filename = "DATA1", cmos = CMOS
     SKIP PAD_START
     INCLUDE "bank4.6502"
     INCLUDE "prebuild.6502"         \ step 2 layer 3: the next column built in the wait (ROMSEL &04 only)
@@ -204,12 +214,15 @@ ELSE
     B5_PAD_END = PAD_START
 ENDIF
 B5_LOW_END = &8400 + B5_OFF - B5_PAD_START  \ where the &8000 block ends: bank 5's contents start there
-SECTION DATA2, org = DATA2_ORG, load = &FFFF0000 + DATA2_ORG - &6700, exec = &FFFF0000 + DATA2_ORG - &6700, filename = "DATA2", cmos = TRUE
+SECTION DATA2, org = DATA2_ORG, load = &FFFF0000 + DATA2_ORG - &6700, exec = &FFFF0000 + DATA2_ORG - &6700, filename = "DATA2", cmos = CMOS
     EQUB 0, 0, 0, 0, 0, 0, 0, 0     \ not a ROM header: the MOS looks for one in sideways RAM on BREAK
 IF GAMEPLAY_SHIELD
     INCLUDE "front_gameplay.6502"   \ shield_new_game and the game rules screen (start_game and the
 ENDIF                               \ front end run with bank 5 paged)
     INCLUDE "scroll_pixel.6502"     \ the title's pixel scroller (from before the music: the scroll text's room)
+IF NMOS
+    INCLUDE "credits.6502"          \ decision 60: the title's credit line (NMOS: here, for the room at bank 5's end)
+ENDIF
 IF HUD_RUPTURE
 .rom_ws_save
     SKIP 16                         \ decision 67: &0DF0-&0DFF kept over a game (rupture_on/off: bank 5 paged)
@@ -224,12 +237,14 @@ ENDIF
     INCLUDE "lib/sfx50.6502"
     INCLUDE "sfx_data.6502"
     INCLUDE "compiled_bank5.6502"   \ step 2 layer 4: compiled kinds of the player's parts
+IF NMOS = 0
     INCLUDE "credits.6502"          \ decision 60: the title's credit line cycling
+ENDIF
     \ Step 2 layer 3: the sprites that live in ANDY (&8000-&8FFF, the Master's 4K that ROMSEL
     \ bit 7 pages over the first 4K of a bank), carried here and copied in at start-up
     \ (src/game.6502 initialisation). The renderer runs with ROMSEL = &84: ANDY, then bank 4.
     .andy_load
-    SECTION andy_data, org = &8000, cmos = TRUE
+    SECTION andy_data, org = &8000, cmos = CMOS
         INCLUDE "sprite_andy.6502"
     .andy_end
     ENDSECTION
@@ -241,7 +256,7 @@ ENDIF
     SKIP B5_PAD_END
 ENDSECTION
 
-SECTION DATA3, org = &8000, load = &FFFF1900, exec = &FFFF1900, filename = "DATA3", cmos = TRUE
+SECTION DATA3, org = &8000, load = &FFFF1900, exec = &FFFF1900, filename = "DATA3", cmos = CMOS
     SKIP PAD_START
     INCLUDE "bank6.6502"
     INCLUDE "compiled_bank6.6502"   \ step 2 layer 4: compiled kinds of the player's parts
@@ -252,7 +267,7 @@ ENDIF
     SKIP PAD_END
 ENDSECTION
 
-SECTION DATA4, org = &8000, load = &FFFF1900, exec = &FFFF1D00, filename = "DATA4", cmos = TRUE
+SECTION DATA4, org = &8000, load = &FFFF1900, exec = &FFFF1D00, filename = "DATA4", cmos = CMOS
     SKIP PAD_START
     INCLUDE "bank7.6502"
     INCLUDE "compiled_bank7.6502"   \ step 2 layer 4: compiled kinds of the player's parts
@@ -273,7 +288,7 @@ ENDSECTION
 \ SCREEN: the title picture, *RUN by SRRUN at &2E71.
 \ ---------------------------------------------------------------------------------------------
 \ Its own scope: it shares many label names with the game's sprite unpacker.
-SECTION SCREEN, org = &2100, load = &FFFF2100, exec = &FFFF0000 + title.title_entry_point, filename = "SCREEN", cmos = TRUE
+SECTION SCREEN, org = &2100, load = &FFFF2100, exec = &FFFF0000 + title.title_entry_point, filename = "SCREEN", cmos = CMOS
 .title
 {
     INCLUDE "title.6502"

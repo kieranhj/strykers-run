@@ -22,7 +22,7 @@
     BMI scroll_pixel_right
     AND #&AA                        \ the column's left pixel, moved right
     LSR A
-    BRA scroll_pixel_store          \ 65C02 opcode
+    BRA_CC scroll_pixel_store       \ 65C02 opcode
 .scroll_pixel_right
     AND #&55                        \ its right pixel
 .scroll_pixel_store
@@ -75,7 +75,7 @@
     BCC scroll_pixel_done
     JSR initialise_scrolltext_buffer   \ the next character into the buffer
 .scroll_pixel_done
-    STZ scroll_busy                 \ 65C02 opcode
+    STZ_LDA scroll_busy             \ 65C02 opcode
     RTS
 .scroll_busy
     EQUB 0

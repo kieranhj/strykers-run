@@ -86,14 +86,14 @@ ENDIF
     LDA dm_jmin                     \ the columns in view, as the image numbers them (1-12; 0 and
     CMP #SKY_COLS                   \ 13 its sky margins): jmin + 1 to jmax + 1 (12 at most)
     BCS to_fall                     \ none (&FF: far left)
-    INC A                           \ 65C02 opcode
+    INC_A_ADC                       \ 65C02 opcode
     STA sky_jl
     LDA dm_jmax
     CMP #SKY_COLS - 1
     BCC jh
     LDA #SKY_COLS - 1
 .jh
-    INC A                           \ 65C02 opcode
+    INC_A_CLC                       \ 65C02 opcode
     STA sky_jh
     LDX dm_type                     \ a helicopter type, with its rectangle's rows
     CPX #&05
@@ -173,19 +173,19 @@ ENDIF
     LDA sky_ojl,X                   \ the old columns drawn, A = [a1, a2], as the new image numbers
     SEC                             \ them: less dx (0-13)
     SBC sky_t
-    INC A                           \ 65C02 opcode
+    INC_A_CLC                       \ 65C02 opcode
     STA sky_a1
     LDA sky_ojh,X
     SEC
     SBC sky_t
-    INC A                           \ 65C02 opcode
+    INC_A_CLC                       \ 65C02 opcode
     STA sky_a2
     LDA sky_jh                      \ A and the new, B = [jl, jh], meet or touch?
-    INC A                           \ 65C02 opcode
+    INC_A_CLC                       \ 65C02 opcode
     CMP sky_a1
     BCC moved
     LDA sky_a2
-    INC A                           \ 65C02 opcode
+    INC_A_CLC                       \ 65C02 opcode
     CMP sky_jl
     BCC moved
     LDA sky_jl                      \ drawn: both, A's columns not in B as the image's sky (they
@@ -214,8 +214,8 @@ ENDIF
     JSR lead_col
     BCS fall
     LDA sky_c
-    INC A                           \ 65C02 opcode
-    BRA lead_l                      \ 65C02 opcode
+    INC_A_X                         \ 65C02 opcode
+    BRA_CC lead_l                   \ 65C02 opcode
 .to_fall2
     JMP fall
 .lead_r0
@@ -230,8 +230,8 @@ ENDIF
     JSR lead_col
     BCS fall
     LDA sky_c
-    DEC A                           \ 65C02 opcode
-    BRA lead_r                      \ 65C02 opcode
+    DEC_A_X                         \ 65C02 opcode
+    BRA_CC lead_r                   \ 65C02 opcode
 .moved
     JSR sky_erase_old
 .fresh
@@ -365,7 +365,7 @@ ELSE
     SBC #4                          \ (C clear: - 5) 5 * (skip - 1), no borrow: C set
     STA ckp_br + 1
 .ckp_br
-    BRA ckp_lad                     \ 65C02 opcode; self-modified: the offset
+    BRA_CS ckp_lad                  \ (hand) C set (the SBC's no borrow); self-modified: the offset
 .ckp_lad
 ENDIF
     LDA (s_ptr),Y

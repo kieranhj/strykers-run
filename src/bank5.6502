@@ -124,8 +124,15 @@ text_colour = * + 1
     LDA #&40
     STA clear_title_screen_loop + 2
     LDX #&00
+IF NMOS
+    LDA #0                          \ NMOS: A unused in the loop and after
+ENDIF
 .clear_title_screen_loop    \ # Wipe &4000 - &7fff
+IF NMOS
+    STA &4000,X
+ELSE
     STZ &4000,X                     \ *** 65C02 opcode
+ENDIF
 \ #     actually STZ wipe_address,X
     INX
     BNE clear_title_screen_loop
@@ -136,7 +143,7 @@ text_colour = * + 1
 .clear_part_of_title_screen
     LDA #&40                        \ ***
     STA screen_address_high         \ ***
-    STZ screen_address_low          \ *** 65C02 opcode
+    STZ_LDA screen_address_low      \ *** 65C02 opcode
     LDY #&00                        \ ***
     LDA #&00                        \ ***
 .clear_part_of_display_title_screen    \ ***
@@ -152,7 +159,7 @@ text_colour = * + 1
 .plot_title_screen_text
     STX text_address_high
     STY text_address_low
-    STZ credit_on                   \ decision 60: another screen: the credit line still (65C02 opcode)
+    STZ_LDA credit_on               \ decision 60: another screen: the credit line still (65C02 opcode)
     JSR clear_part_of_title_screen  \ ***
     LDY #&00
 .plot_title_screen_text_loop
@@ -334,7 +341,7 @@ ENDIF
     RTS
 
 .check_for_high_score    \ *** # &86cb - &a3f7 is extra code and data
-    STZ rank                        \ 65C02 opcode
+    STZ_LDA rank                    \ 65C02 opcode
 .check_for_high_score_rank_loop
     LDA rank
     LDX #&06
@@ -350,7 +357,7 @@ ENDIF
     INX
     CPY #&06
     BCC check_for_high_score_digit_loop
-    BRA consider_next_rank          \ 65C02 opcode
+    BRA_EQ consider_next_rank       \ 65C02 opcode
 .new_high_score
     LDA rank
     CMP #&07
@@ -362,7 +369,7 @@ ENDIF
     CPX result_low
     BEQ finished_shuffling_scores
     DEX
-    BRA shuffle_scores_loop         \ 65C02 opcode
+    BRA_JMP shuffle_scores_loop     \ 65C02 opcode
 .finished_shuffling_scores
     LDX result_low
     LDY #&00
@@ -383,7 +390,7 @@ ENDIF
     LDA #HI(high_score_names)
     ADC result_high
     STA name_address_high
-    BRA well_done_screen            \ 65C02 opcode
+    BRA_JMP well_done_screen        \ 65C02 opcode
 .consider_next_rank
     INC rank
     LDA rank
@@ -407,7 +414,7 @@ ENDIF
     CPX result_low
     BEQ finished_shuffling_names
     DEX
-    BRA shuffle_names_loop          \ 65C02 opcode
+    BRA_JMP shuffle_names_loop      \ 65C02 opcode
 .finished_shuffling_names
     LDY #&11
     LDA #&25                        \ " "
@@ -436,7 +443,7 @@ ENDIF
     CPX #&FE
     BEQ enter_name_loop
     STX &7F
-    BRA enter_name_loop             \ 65C02 opcode
+    BRA_NE enter_name_loop          \ 65C02 opcode
 .not_delete
     STA &CC
     LSR A
@@ -449,7 +456,7 @@ ENDIF
     CMP #&62                        \ SPACE
     BNE not_space
     LDA #&25                        \ " "
-    BRA consider_adding_character   \ 65C02 opcode
+    BRA_NE consider_adding_character   \ 65C02 opcode
 .not_space
     SEC
     SBC result_low
@@ -467,7 +474,7 @@ ENDIF
     BCS enter_name_loop
     STX &7F
     JSR add_character_to_name
-    BRA enter_name_loop             \ 65C02 opcode
+    BRA_EQ enter_name_loop          \ 65C02 opcode
 
 .add_character_to_name
     PHA
@@ -482,8 +489,14 @@ ENDIF
     LDA result_high
     ADC #&60
     STA &CF
+IF NMOS
+    PLA
+    TAX
+    LDA #&AA
+ELSE
     LDA #&AA
     PLX                             \ 65C02 opcode
+ENDIF
     JMP plot_title_screen_character
 
 .display_high_scores
@@ -494,8 +507,8 @@ ENDIF
     LDA #&90
     STA text_screen_address_low
     STA row_screen_address_low
-    STZ score_offset                \ 65C02 opcode
-    STZ &7D                         \ 65C02 opcode
+    STZ_Y score_offset              \ 65C02 opcode
+    STZ_Y &7D                       \ 65C02 opcode
     LDA #&07
     STA ranks_remaining
 .display_high_scores_rank_loop
@@ -591,20 +604,25 @@ ENDIF
     CPY #&18
     BCC leave_88b4
 .initialise_scrolltext_buffer
-    STZ scrolltext_buffer_offset    \ 65C02 opcode
+    STZ_LDA scrolltext_buffer_offset    \ 65C02 opcode
     LDA #LO(scrolltext_buffer)      \ &89ee = scrolltext_buffer
     STA text_screen_address_low
     LDA #HI(scrolltext_buffer)
     STA &CF
     LDA #&3C                        \ CC
     STA text_colour
+IF NMOS
+    LDY #0                          \ NMOS: Y dead here
+    LDA (scrolltext_address),Y
+ELSE
     LDA (scrolltext_address)        \ 65C02 opcode
+ENDIF
     TAX
     LDA #&AA
     JSR plot_title_screen_character
     LDA &89
     LDX &8A
-    INC A                           \ 65C02 opcode
+    INC_A_CLC                       \ 65C02 opcode
     BNE skip_page_88a4
     INX
 .skip_page_88a4
@@ -621,8 +639,8 @@ ENDIF
     RTS
 
 .title_screen_irq1_handler
-    PHX                             \ 65C02 opcode
-    PHY                             \ 65C02 opcode
+    PHX_A                           \ 65C02 opcode
+    PHY_A                           \ 65C02 opcode
     LDA irq_accumulator
     PHA
     LDA sysvia_ifr                  \ System VIA interrupt flag register
@@ -693,14 +711,22 @@ ENDIF
 .leave_title_screen_irq1_handler
     PLA
     STA irq_accumulator
+IF NMOS
+    PLA
+    TAY
+    PLA
+    TAX
+    LDA irq_accumulator             \ A as the PLY/PLX left it
+ELSE
     PLY                             \ 65C02 opcode
     PLX                             \ 65C02 opcode
+ENDIF
     JMP (previous_irq1_vector_for_title_screen_low)
 .credit_field                       \ decision 60 (src/credits.6502): a step of the credit line, on the menu
     BIT credit_on
     BPL leave_title_screen_irq1_handler
     JSR credit_step
-    BRA leave_title_screen_irq1_handler   \ 65C02 opcode
+    BRA_JMP leave_title_screen_irq1_handler   \ 65C02 opcode
 
 .high_scores
     EQUB &00, &01, &00, &00, &00, &00    \ 010000
@@ -944,7 +970,7 @@ ELSE
 ENDIF
 .title_two
     JSR define_controls
-    BRA display_title_screen        \ 65C02 opcode
+    BRA_JMP display_title_screen    \ 65C02 opcode
 .to_high_score_screen
     LDA #&50
     STA title_screen_cooldown
@@ -960,7 +986,7 @@ IF GAMEPLAY_OPTIONS
 ENDIF
     LDA title_screen_cooldown
     BPL high_score_screen_loop
-    BRA display_title_screen        \ 65C02 opcode
+    BRA_MI display_title_screen     \ 65C02 opcode
 .not_one_or_two
     CMP #&11                        \ "3"
     BEQ read_instructions
@@ -989,7 +1015,7 @@ ENDIF
     LDA #&0F                        \ "F"
     STA title_music_word
     STA title_music_word + 1
-    STZ music_muted
+    STZ_PHA music_muted
     JSR start_title_screen_music
     JMP display_title_screen
 
@@ -1001,7 +1027,7 @@ ENDIF
     LDA #&0F                        \ "F"
     STA title_sound_word
     STA title_sound_word + 1
-    STZ sound_muted                 \ 65C02 opcode
+    STZ_LDA sound_muted             \ 65C02 opcode
     JMP display_title_screen
 .disable_sound
     LDA #&17                        \ "N"
@@ -1153,7 +1179,7 @@ ENDIF
 \ sprite kinds for HAZEL (tools/compiled.py), copied into HAZEL before the tunes go over it.
 .title_screen_music_data
 .hazel_a_load
-SECTION hazel_a, org = HAZEL_ORG, cmos = TRUE
+SECTION hazel_a, org = HAZEL_ORG, cmos = CMOS
     INCLUDE "compiled_hazel_a.6502"
 .hazel_a_end
 ENDSECTION
@@ -1429,7 +1455,7 @@ ENDIF
     LDA saved_sysvia_ier_bits
     ORA #&80
     STA sysvia_ier
-    STZ irq_owned                   \ 65C02 opcode
+    STZ_PHA irq_owned                 \ 65C02 opcode
 IF HUD_RUPTURE
     JSR rupture_off                 \ decision 67: one CRTC frame again
 ENDIF

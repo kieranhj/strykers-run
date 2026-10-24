@@ -7,8 +7,8 @@
     LDA #&FF
     STA sky_k
     STA sky_k + 1
-    STZ sky_on                      \ 65C02 opcode
-    STZ sky_on + 1                  \ 65C02 opcode
+    STZ_LDA sky_on                  \ 65C02 opcode
+    STZ_A sky_on + 1                \ 65C02 opcode
     RTS
 
 \ ---- take_off's: X = slot, Y = slot + boff (shown here). C set if it was drawn in sky mode: left
@@ -29,12 +29,11 @@
     LDA sky_on,X
     BEQ no                          \ drawn masked: its save block
     LDX sky_slot
-    BIT need,X                      \ 65C02 opcode: V = bit 6, going back on
-    BVC erase
+    BVC_BIT6 need, X, erase         \ V = bit 6, going back on (A dead: what follows loads it)
     JSR sky_below
     BCS erase
     JSR sky_edges                   \ the rest left for put_on
-    BRA done                        \ 65C02 opcode
+    BRA_JMP done                    \ 65C02 opcode
 .erase
     JSR sky_erase_old
 .done
@@ -58,7 +57,7 @@
     CMP sky_slot
     BEQ found
     INX
-    BRA find                        \ 65C02 opcode
+    BRA_VS find                     \ 65C02 opcode
 .found
     LDY #0
 .each
@@ -78,7 +77,7 @@
     BCS hit
 .next
     INY
-    BRA each                        \ 65C02 opcode
+    BRA_JMP each                    \ 65C02 opcode
 .none
     CLC
 .hit

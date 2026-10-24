@@ -144,7 +144,7 @@ const clobberReport = () => ({ control: clobbers[0], test: clobbers[1] });
 const keysAt = passKeys(PASSES + 2);
 let held = [];
 const screenDiffs = [];
-let inHelicopter = 0, hiddenDiffs = 0;
+let inHelicopter = 0, hiddenDiffs = 0, otherScreen = 0;
 const traces = [];
 function arm(m) {
     const t = { writes: [], trail: [] };
@@ -210,6 +210,11 @@ for (let p = 1; p <= PASSES; p++) {
         let d = 0, hidden = 0;
         for (let i = 0; i < 0x4000; i++) if (a[i] !== b.bytes[i]) { if (((i + 0x4000 - start + 0x4000) & 0x3fff) < 16000) d++; else hidden++; }
         screenDiffs.push(d); hiddenDiffs += hidden ? 1 : 0;
+        if (d) {    // the test showing its other screen at this pass's start (a flip a field later: a slower build), its frame the control's?
+            const o = B.s.readMemory(0x4000, 0x4000, { shadow: !b.shadow }); let d2 = 0;
+            for (let i = 0; i < 0x4000; i++) if (a[i] !== o[i] && ((i + 0x4000 - start + 0x4000) & 0x3fff) < 16000) d2++;
+            if (!d2) otherScreen++;
+        }
         if (DUMP.includes(p)) {
             // where on screen: character column/row from the control's screen start (&00/&01)
             const ss = A.s.readMemory(0, 2, { shadow: false }); const start = ss[0] + ss[1] * 256;
@@ -243,6 +248,7 @@ if (SCREEN) {
     out.screenMaxDiff = Math.max(...screenDiffs);
     out.screenFirstDiffPass = screenDiffs.findIndex((d) => d > 0) + 1 || null;
     out.passesWithHiddenBytesDiffering = hiddenDiffs;
+    out.screenPassesOnOtherScreen = otherScreen;     // differing, but the test's other screen is the control's shown one
     out.screenDiffPasses = screenDiffs.map((d, i) => d ? `${i + 1}:${d}` : null).filter(Boolean).slice(0, 16);
 }
 if (Object.keys(B.counted).length) out.counted = B.counted;

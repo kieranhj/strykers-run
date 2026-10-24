@@ -1053,7 +1053,7 @@
     LDA crtc_start_address_low      \ grind: the CRTC start back a column; the high byte is always
     BNE crtc_left_1cb4a_low         \ &08-&0F, so only an underflow touches it, and 7 OR 8 = &0F wraps
     LDA crtc_start_address_high
-    DEC A                           \ 65C02 opcode
+    DEC_A_X                         \ 65C02 opcode
     ORA #&08
     STA crtc_start_address_high
 .crtc_left_1cb4a_low
@@ -1063,10 +1063,10 @@
     LDA pre_bank                    \ grind: install_prebuilt in line (A, Y and C are dead here:
     STA os_ram_copy_of_currently_selected_rom\ layers_left_done sets each before reading it)
     STA romsel                      \ Paged ROM latch
-    BRA layers_left_done            \ the renderer's prebuilt walk left (65C02 opcode)
+    BRA_JMP layers_left_done        \ the renderer's prebuilt walk left (65C02 opcode)
 .layers_left_1cb4a_walk
     JSR layers_left
-    BRA layers_left_done            \ 65C02 opcode
+    BRA_MI layers_left_done         \ 65C02 opcode
 .layers_left                        \ a subroutine: src/prebuild.6502 runs it ahead
     LDY #&07                        \ *** Enhanced version has extra layer for clouds
     STY edge_and_layer
@@ -1151,7 +1151,12 @@
     RTS                             \ Leave with X = sprite, A = flip
 
 .get_mountain_or_cloud_type
+IF NMOS
+    LDY #&00                        \ NMOS: Y is dead after both callers' returns
+    LDA (scenery_data_address),Y
+ELSE
     LDA (scenery_data_address)      \ 65C02 opcode (Y is dead after both callers' returns)
+ENDIF
     AND #&03
     TAX
     LDA clouds_y_table,X            \ ***
@@ -1165,7 +1170,7 @@
 .is_mountains
     LDA mountains_table,X
 .to_get_sprite_and_flip
-    BRA get_sprite_and_flip         \ *** 65C02 opcode
+    BRA_CS get_sprite_and_flip      \ *** 65C02 opcode
 
 .consider_adding_scenery_when_scrolling_left
     STA scenery_layer
@@ -1184,7 +1189,7 @@
     BMI add_scenery_when_scrolling_left\ *** Negative if mountain layer, positive if cloud layer
     LDA scenery_sprite_width_table,X\ ***
     LDY #&00                        \ ***
-    BRA use_width                   \ *** 65C02 opcode
+    BRA_EQ use_width                \ *** 65C02 opcode
 .not_mountain_or_cloud
     JSR get_scenery_type
     LDA scenery_sprite_width_table,X
@@ -1359,10 +1364,10 @@
     LDA pre_bank                    \ grind: install_prebuilt in line (the A, Y and C it sets are
     STA os_ram_copy_of_currently_selected_rom\ dead at layers_right_done, which loads A and Y
     STA romsel                      \ Paged ROM latch (and change_pixel_tables' ASL sets C)
-    BRA layers_right_done           \ the renderer's prebuilt walk left (65C02 opcode)
+    BRA_JMP layers_right_done       \ the renderer's prebuilt walk left (65C02 opcode)
 .walk_right_w2a
     JSR layers_right
-    BRA layers_right_done           \ 65C02 opcode
+    BRA_CC layers_right_done        \ 65C02 opcode
 .layers_right                        \ a subroutine: src/prebuild.6502 runs it ahead
     LDY #&07                        \ *** Enhanced version has extra layer for clouds
     STY edge_and_layer
@@ -1397,7 +1402,7 @@
     BPL scroll_layers_right_loop
     LDA #&14                        \ KC; grind: the walk ends by putting the foreground back (a tail call),
     JMP change_pixel_tables         \ so a prebuilt scroll (whose prebuild did it) skips it below
-IF GAMEPLAY_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
+IF ROOM_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
     EQUB &60                        \ grind: never run; keeps layers_right_done and what follows where they were
 ENDIF
 .layers_right_done
@@ -1469,14 +1474,14 @@ ENDIF
     BNE plot_column_from_buffer_loop
     RTS
 .next_group_1ba8
-    PHX                             \ 65C02 opcode
+    PHX_A                           \ 65C02 opcode
     LDA edge_screen_address_low
     LDX edge_screen_address_high
     LDY #&02                        \ &0280                                     # Move down a group
     JSR add_delta_to_screen_address_in_AX
     STX edge_screen_address_high
     STA edge_screen_address_low
-    PLX                             \ 65C02 opcode
+    PLX_A                           \ (hand) A dead: the loop reloads it, and plot_column_from_buffer's callers do not read it
     LDY #&00
     BEQ next_row_1ba4               \ Always branches
 
@@ -1500,7 +1505,7 @@ ENDIF
     BEQ move_backwards_through_sprite\ if scrolling right
 \ #     also     BNE move_backwards_through_sprite                    # if scrolling left
     JMP move_forward_through_sprite
-IF GAMEPLAY_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
+IF ROOM_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
     SKIP 5                          \ step 2 (grind): never run; keeps the code after where it was
 ENDIF
 .move_backwards_through_sprite
@@ -1531,7 +1536,14 @@ ENDIF
     TXA
     STA scenery_layer_sprite_addresses_high,Y
     STA scenery_sprite_address_high
+IF NMOS
+    LDY #&00
+    LDA (scenery_sprite_address),Y
+    LDY edge_and_layer              \ NMOS: Y back to edge_and_layer (as it was)
+    ORA #0                          \ N and Z the byte's, as the LDA left them (C, V kept)
+ELSE
     LDA (scenery_sprite_address)    \ 65C02 opcode; Y stays edge_and_layer
+ENDIF
     BMI move_forward_end_of_sprite_r2ebb
     RTS
 .move_forward_end_of_sprite_r2ebb
@@ -1572,11 +1584,11 @@ ENDIF
     BPL add_ground_to_column_buffer_loop
 .leave_1c4e
     RTS
-IF GAMEPLAY_ANY = 0
+IF ROOM_ANY = 0
     SKIP 1                          \ step 2 (grind): never run; keeps the padding after it where it was
 ENDIF
 ASSERT LO(ground_columns) + 9 + 21 < &100, "ground_columns + t * t + Y stays in its page"
-IF GAMEPLAY_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
+IF ROOM_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
     SKIP 3                          \ layer 5: never executed; keeps ground_left_x_low and what follows where they were
 ENDIF
 
@@ -1636,7 +1648,7 @@ ENDIF
     LDY viewport_left_high
     STX edge_x_low
     STY edge_x_high
-    STZ &CF                         \ Zero to indicate left edge (grind: 65C02 opcode; A, N and Z are dead in both callers)
+    STZ_LDA &CF                     \ Zero to indicate left edge ((hand) grind: A, N and Z are dead in both callers)
     RTS
 
 .move_to_next_column_in_XY
@@ -1668,16 +1680,16 @@ ENDIF
 .initialise_column_buffer
     LDX #20                         \ step 2 (layer 3, D): ten 20-byte strips, X 20 down to 1;
 .initialise_column_buffer_loop      \ the flags as the original's loop left them (C and V untouched)
-    STZ column_buffer - 1,X
-    STZ column_buffer + 19,X
-    STZ column_buffer + 39,X
-    STZ column_buffer + 59,X
-    STZ column_buffer + 79,X
-    STZ column_buffer + 99,X
-    STZ column_buffer + 119,X
-    STZ column_buffer + 139,X
-    STZ column_buffer + 159,X
-    STZ column_buffer + 179,X
+    STZ_LDA column_buffer - 1,X
+    STZ_A column_buffer + 19,X
+    STZ_A column_buffer + 39,X
+    STZ_A column_buffer + 59,X
+    STZ_A column_buffer + 79,X
+    STZ_A column_buffer + 99,X
+    STZ_A column_buffer + 119,X
+    STZ_A column_buffer + 139,X
+    STZ_A column_buffer + 159,X
+    STZ_A column_buffer + 179,X
     DEX
     BNE initialise_column_buffer_loop
     LDA #&00                        \ A = X = 0, Z set, N clear
@@ -1723,7 +1735,7 @@ ENDIF
     RTS                             \ Leave with A = address_low, X = address_high
 .wrap_add_delta_g4566
     SBC #&3F                        \ grind: C = 0 here (a negative sum cannot carry, deltas_high_table <= &3E), so A - &40 with C and V as SEC : SBC #&40
-    BRA skip_wraparound_1d66        \ 65C02 opcode; TAX : TYA : RTS
+    BRA_NE skip_wraparound_1d66     \ 65C02 opcode; TAX : TYA : RTS
 
 .subtract_delta_from_screen_address_in_AX    \ # Called with A = address_low, X = address_high
     STX delta_high                  \ grind: in-line, delta_high the high byte's temporary
@@ -1755,18 +1767,32 @@ ENDIF
 .next_row_1d84
     BEQ leave_1d68                  \ *** Leave if no rows to add (not present in standard version)
 .add_row
+IF NMOS
+    TAY                             \ NMOS (the original's way): the next row's low byte in Y
+    INY
+    TYA
+    AND #&07                        \ Z if the row was the last of its group
+    BEQ next_group_1d94
+    TYA
+ELSE
     INC A                           \ 65C02 opcode; grind: the next row's low byte, Z below if the
     BIT #&07                        \ 65C02 opcode     row was the last of its group (low byte 7 mod 8)
     BEQ next_group_1d94
+ENDIF
 .to_next_row
     DEC unused_0076
     BNE add_row
     RTS
 .next_group_1d94
-    DEC A                           \ 65C02 opcode; back to the group's last row
+IF NMOS
+    DEY                             \ back to the group's last row
+    TYA
+ELSE
+    DEC_A_SEC                       \ 65C02 opcode; back to the group's last row
+ENDIF
     LDY #&03                        \ &0279
     JSR add_delta_to_screen_address_in_AX
-    BRA to_next_row                 \ 65C02 opcode
+    BRA_JMP to_next_row             \ 65C02 opcode
 
 .edge_go_right_b3a9                 \ grind: the right edge leaves from here (edge_right sets Y itself before any read)
     JMP edge_right
@@ -1898,7 +1924,7 @@ ENDIF
 .get_mover_type_and_colour
     \ (grind) get_mover_type_and_colour and get_mover_Y_x are inlined into plot_mover below; these
     \ 12 bytes, never executed, keep everything after plot_mover's TAX where it was
-IF GAMEPLAY_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
+IF ROOM_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
     SKIP 12
 ENDIF
 not_white = leave_1e3e - 4                \ plot_mover's BCS not_white + 4 lands on an RTS
@@ -1929,8 +1955,8 @@ not_white = leave_1e3e - 4                \ plot_mover's BCS not_white + 4 lands
     CMP #&87                        \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_SOLDIER
     BEQ pm_not_white_g0b1b
     INC pixel_table_address_high    \ Use white pixel table for most enemies
-IF GAMEPLAY_ANY = 0
-    BRA pm_not_white_g0b1b
+IF ROOM_ANY = 0
+    BRA_JMP pm_not_white_g0b1b
     SKIP 0
 ENDIF
 .pm_not_white_g0b1b
@@ -1969,7 +1995,7 @@ ENDIF
     LDA y_offset
     ADC #&08                        \ C = 0: the CPX fell through
     STA y_offset
-    STZ sprite_data_offset          \ 65C02 opcode
+    STZ_LDA sprite_data_offset      \ 65C02 opcode
     LDA mover_types_third_sprite,X
     TAX
     LDA movers_frame_and_flip,Y
@@ -1992,7 +2018,7 @@ ENDIF
     STA pixel_table_address_low
 .leave_1f08
     RTS
-IF GAMEPLAY_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
+IF ROOM_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
     SKIP 13                         \ free (the unpack path's bytes): walk_column stays where it was
 ENDIF
 
@@ -2059,12 +2085,12 @@ walk_d = walk_ptr + 1
 .c1_walk_high_kept
     LDA #&08                        \ the column step's delta (deltas_*_table[0])
     STA delta_low
-    STZ delta_high                  \ 65C02 opcode
+    STZ_LDA delta_high              \ 65C02 opcode
 .walked
     RTS
 
 .get_mover_sprite_and_screen_addresses    \ # Called with X = mover type
-    STZ columns_to_clip_from_left   \ 65C02 opcode
+    STZ_LDA columns_to_clip_from_left   \ 65C02 opcode
     LDY mover
     LDA movers_frame_and_flip,Y     \ grind: get_mover_Y_sprite in line, without its CLC: C = 0 from
     AND #&3F                        \ both callers (BCS not taken; ADC #&1C on a type under &80)
@@ -2088,7 +2114,7 @@ walk_d = walk_ptr + 1
     JSR clip_unflipped_mover_loop   \ Returns carry set
     BCS set_sprite_address          \ Always branches
 .is_flipped_1f25
-    STZ pixel_table_address_low     \ 65C02 opcode
+    STZ_LDA pixel_table_address_low \ 65C02 opcode
     LDY flipped_mover_sprite_addresses_low_table,X
     STY &CE
     LDA flipped_mover_sprite_addresses_high_table,X
@@ -2198,7 +2224,7 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     TAY
     INC mover_x_low
     INC columns_to_clip_from_left
-    BRA clip_unflipped_mover_loop   \ 65C02 opcode (grind: a byte for the flipped loop's count)
+    BRA_JMP clip_unflipped_mover_loop   \ 65C02 opcode (grind: a byte for the flipped loop's count)
 .leave_with_carry_set_2031
     SEC                             \ Leave with carry set to indicate mover is on edge
     RTS
@@ -2207,7 +2233,7 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     STA &CE
     LDA flipped_mover_sprite_addresses_high_table,X
     STA &CF
-    STZ pixel_table_address_low     \ 65C02 opcode: zero to use flipped pixel table
+    STZ_LDA pixel_table_address_low \ 65C02 opcode: zero to use flipped pixel table
 .clip_flipped_mover_loop            \ Grind: the n = edge_x_low - mover_x_low columns counted in X
     LDA edge_x_low
     TAY                             \ Grind: edge_x_low kept in Y (free here: the exits reload it from &CE)
@@ -2218,9 +2244,16 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     TAX
     STY mover_x_low                 \ + n, as n INCs left it
     SEC
+IF NMOS
+    LDY #&00                        \ NMOS: for SBC (&CE),Y (Y free here: the exits reload it from &CE)
+ENDIF
     LDA &CE                         \ Grind: once, here; the loop leaves A = the new &CE (STA keeps it, BCS/DEC/SEC/DEX/BNE do not touch A)
 .clip_flipped_column_c1
+IF NMOS
+    SBC (&CE),Y                     \ move back a column of sprite data (C = 1)
+ELSE
     SBC (&CE)                       \ 65C02 opcode: move back a column of sprite data (C = 1)
+ENDIF
     STA &CE
     BCS skip_page_2054
     DEC &CF
@@ -2289,15 +2322,19 @@ calculate_sprite_address_for_mover_on_edge_from_sprite = *
     RTS
 .is_left_of_viewport_right          \ the BCC from check_if_mover_is_on_screen: C=0
     SEC
-    BRA is_left_c1_3d13             \ 65C02 opcode
+    BRA_CS is_left_c1_3d13          \ 65C02 opcode
 .overflow_c1_3d13                   \ C=1; Z set if x + width = &FF exactly (no carry in the original)
     BNE overflow_carry_3d13
+IF NMOS
+    LDA #&FF                        \ NMOS: A was 0 (Z set by the BNE's test)
+ELSE
     DEC A                           \ 65C02 opcode; A = &FF = x + width, Y as it was; C=1, so the SBC compares as the CMP did
-    BRA skip_overflow_c1_3d13       \ 65C02 opcode
+ENDIF
+    BRA_NE skip_overflow_c1_3d13    \ 65C02 opcode
 .overflow_carry_3d13
     INY                             \ x + width >= &100: the high byte carries, as the original's INY
     CLC                             \ so the SBC below takes the + 1 back off
-    BRA skip_overflow_c1_3d13       \ 65C02 opcode
+    BRA_CC skip_overflow_c1_3d13    \ 65C02 opcode
 
 .completion_screen
 IF GAMEPLAY_TIMER
@@ -2326,7 +2363,7 @@ ENDIF
     STA romsel                      \ Paged ROM latch                      ***
     JSR title_screen                       \ ***
 .start_game
-    STZ drawing                     \ Step 2 (layer 2): the game's own plot calls draw nothing
+    STZ_LDA drawing                 \ Step 2 (layer 2): the game's own plot calls draw nothing
     LDA #&01                        \ ***
     STA top_palette_value           \ *** Set colour 0 to cyan
     LDX #&17                        \ MOVER_FIRST_ALLY_HELICOPTER - 1           # Remove all movers except for ally helicopters
@@ -2350,7 +2387,7 @@ IF GAMEPLAY_ARMOUR
 ENDIF
     LDA #&18
     STA movers_y,X
-    STZ movers_frame_and_flip,X     \ *** 65C02 opcode, not zeroed in standard version
+    STZ_LDA movers_frame_and_flip,X \ *** 65C02 opcode, not zeroed in standard version
     DEX
     CPX #&17                        \ MOVER_FIRST_ALLY_HELICOPTER - 1
     BNE initialise_player_helicopters_loop
@@ -2416,7 +2453,7 @@ ENDIF
 .skip_overflow_217e    \ ***
     JSR scroll_screen_right         \ ***
     JSR update_screen_observer      \ *** (step 2 layer 2: was JSR update_screen)
-    BRA observer_mode_loop          \ *** 65C02 opcode
+    BRA_JMP observer_mode_loop      \ *** 65C02 opcode
 .not_scrolling_right    \ ***
     LDX #&E6                        \ LEFT                                  ***
     JSR check_for_keypress          \ ***
@@ -2429,7 +2466,7 @@ ENDIF
 .skip_underflow_219a    \ ***
     JSR scroll_screen_left          \ ***
     JSR update_screen_observer      \ *** (step 2 layer 2: was JSR update_screen)
-    BRA observer_mode_loop          \ *** 65C02 opcode
+    BRA_JMP observer_mode_loop      \ *** 65C02 opcode
 .not_scrolling_left    \ ***
     LDX #&8F                        \ ESCAPE                                ***
     JSR check_for_keypress          \ ***
@@ -2607,11 +2644,20 @@ ENDIF
 .initialise_scenery_layer_addresses
     LDY #&03
 .initialise_scenery_layer_addresses_loop
+IF NMOS
+    LDA #0                          \ NMOS: the zero first, so A leaves as the low byte (a caller stores it)
+    STA scenery_layer_sprite_addresses_high,X
+    LDA initial_scenery_layer_addresses_high,Y
+    STA scenery_layer_addresses_high,X
+    LDA initial_scenery_layer_addresses_low,Y
+    STA scenery_layer_addresses_low,X
+ELSE
     LDA initial_scenery_layer_addresses_high,Y
     STA scenery_layer_addresses_high,X
     LDA initial_scenery_layer_addresses_low,Y
     STA scenery_layer_addresses_low,X
     STZ scenery_layer_sprite_addresses_high,X\ 65C02 opcode
+ENDIF
     DEX
     DEY
     BPL initialise_scenery_layer_addresses_loop
@@ -2619,8 +2665,8 @@ ENDIF
 
 .reset_screen_scroll
     JSR pre_cancel                  \ decision 38: a column built ahead undone, its state put back
-    STZ pre_valid                   \ step 2 (layer 3): no column built ahead, no scroll yet
-    STZ last_dir
+    STZ_LDA pre_valid               \ step 2 (layer 3): no column built ahead, no scroll yet
+    STZ_A last_dir
 IF HUD_RUPTURE
     BIT rupture                     \ decision 67: with the rupture on, M's start, not R12/R13
     BPL rss_crtc
@@ -2770,7 +2816,7 @@ ENDIF                               \ shooting pose for this update only, as a g
     CLC
     ADC #&73
     STA movers_y,X
-    STZ movers_frame_and_flip,X     \ *** 65C02 opcode
+    STZ_LDA movers_frame_and_flip,X \ *** 65C02 opcode
     INY
     INX
     CPX #&0C                        \ MOVER_LAST_HELICOPTER + 1
@@ -2795,7 +2841,7 @@ ENDIF                               \ shooting pose for this update only, as a g
     TAX
     LDA movers_frame_and_flip,Y     \ grind: the next frame kept in A and compared with the type's
     AND #&7F                        \ frame count in place (frames, &C6, no longer written: nothing
-    INC A                           \ 65C02 opcode; else reads it)
+    INC_A_CLC                       \ 65C02 opcode; else reads it)
     CMP mover_types_animation_frame,X
     BCC skip_wraparound_23c3
     LDA #&00
@@ -2805,7 +2851,7 @@ ENDIF                               \ shooting pose for this update only, as a g
 .skip_animation
     LDA movers_y,Y
     RTS
-IF GAMEPLAY_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
+IF ROOM_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
     EQUB &EA                        \ spare (grind): the byte freed, kept so move_mover_right and all after stay put
 ENDIF
 
@@ -2840,7 +2886,7 @@ ENDIF
     STA mover_x_low
     LDA movers_x_high,Y
     STA &C5
-    STZ x_edge_size_and_direction   \ *** 65C02 opcode; set to zero to skip edge buffering
+    STZ_LDA x_edge_size_and_direction   \ *** 65C02 opcode; set to zero to skip edge buffering
 .not_hostile
     LDX mover_screen_address_high
     LDA mover_screen_address_low
@@ -2927,10 +2973,10 @@ ENDIF
 .vertical_collision_b245f
     LDA movers_y,Y
     STA mover_y
-    STZ y_edge_size_and_direction   \ *** 65C02 opcode; set to zero to skip edge buffering
+    STZ_LDA y_edge_size_and_direction   \ *** 65C02 opcode; set to zero to skip edge buffering
     LDX movers_screen_address_high,Y
     LDA movers_screen_address_low,Y
-    BRA skip_changing_screen_address_245f
+    BRA_CS skip_changing_screen_address_245f
 
 .move_mover_down    \ # Called with A = mover_y
     SEC
@@ -2974,7 +3020,7 @@ ENDIF
     INX
     INX
     INX
-    BRA move_mover_set_43fa
+    BRA_NE move_mover_set_43fa
     SKIP 5                          \ grind: the 5 bytes the high-byte store below drops, so that the code after this routine keeps its address
 
 .unplot_and_move_mover
@@ -2992,7 +3038,12 @@ ENDIF
     AND #&80
     STA flip                        \ N = x direction
     BPL move_mover_x_done_43fa
+IF NMOS
+    EOR x_delta                     \ NMOS: A = &80 and bit 7 of x_delta set: x_delta AND &7F
+    STA x_delta
+ELSE
     TRB x_delta                     \ A = &80: x_delta AND &7F
+ENDIF
     LDX #LO(move_mover_up_and_left)
 .move_mover_x_done_43fa
     LDA y_delta
@@ -3024,8 +3075,8 @@ move_mover_routine_address_low = * + 1
     STA result_low
     LDA times_78_hi,X
     STA result_high
-    STZ multiplicand                \ 65C02 opcode
-    STZ multiplier_low              \ 65C02 opcode
+    STZ_LDX multiplicand            \ 65C02 opcode
+    STZ_X multiplier_low            \ 65C02 opcode
     LDX #&4E
     STX multiplier_high
     STA movers_raster_y,Y           \ A = result_high
@@ -3106,11 +3157,11 @@ move_mover_routine_address_low = * + 1
     RTS                             \ ***
 
 .update_player_in_exploding_helicopter
-    STZ mover_to_update             \ grind: MOVER_PLAYER (Y holds the explosion here, not zero)
+    STZ_LDA mover_to_update         \ grind: MOVER_PLAYER (Y holds the explosion here, not zero)
     LDA movers_x_high + 17          \ movers_x_high + &11 (MOVER_PLAYER_BULLET)
     BPL leave_25f3                  \ Positive if explosion animation hasn't finished
-    STZ player_helicopter_explosion \ Set to zero to indicate explosion has finished
-    STZ player_jump_direction
+    STZ_LDA player_helicopter_explosion \ Set to zero to indicate explosion has finished
+    STZ_A player_jump_direction
     LDY player_helicopter
     JMP set_player_as_soldier
 .update_player
@@ -3234,7 +3285,7 @@ ENDIF
 .set_player_y_velocity_2673
     STA player_y_velocity
 .to_consider_falling
-    BRA consider_falling            \ grind: was JMP (same cycles, a byte paid for the inlined check)
+    BRA_JMP consider_falling        \ grind: was JMP (same cycles, a byte paid for the inlined check)
 .is_jumping_or_moving_up
     LDY movers_type_and_colour
     BEQ prepare_for_jump
@@ -3285,7 +3336,7 @@ ENDIF
 .replot_player
     JMP plot_player                 \ grind: plot_player sets Y = 0 and writes C before reading it; the raster wait
                                     \ (check_if_raster_is_in_mover: CLC : RTS) and unbuffer_player (an RTS) went
-IF GAMEPLAY_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
+IF ROOM_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
     EQUB &EA, &EA, &EA, &EA, &EA, &EA, &EA, &EA, &EA    \ spare (grind): the 10 bytes freed above, kept so is_descending_helicopter and all after stay put
     EQUB &EA
 ENDIF
@@ -3372,7 +3423,7 @@ ENDIF
     JSR remove_mover
 .not_a_projectile
     JMP skip_plotting_player
-IF GAMEPLAY_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
+IF ROOM_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
     EQUB &EA, &EA, &EA, &EA, &EA    \ spare (grind's 18; layer 5 took 13), kept so skip_killing_player and all after stay put
 ENDIF
 .skip_killing_player
@@ -3387,7 +3438,7 @@ ENDIF
     LDX player_y_velocity
     BNE end_jump
     RTS                             \ was BEQ leave_27b8 (always)
-IF GAMEPLAY_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
+IF ROOM_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
     EQUB &EA, &EA                   \ spare: the 21 bytes kept, so nothing after moves
 ENDIF
 .not_on_ground
@@ -3419,10 +3470,10 @@ ENDIF
     RTS
 
 .end_jump
-    STZ player_y_velocity           \ grind: 65C02 STZ for LDA #&00 : STA
+    STZ_LDA player_y_velocity       \ grind: 65C02 STZ for LDA #&00 : STA
     LDA #&28                        \ Play sound for landing
     JMP play_sound                  \ grind: tail call (its RTS returns to our caller)
-IF GAMEPLAY_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
+IF ROOM_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
     SKIP 2                          \ grind: never run; keeps leave_27b8 and all after it in place
 ENDIF
 .leave_27b8
@@ -3437,7 +3488,7 @@ ENDIF
     \ grind: the loop unrolled, slot 2 first as before, the next enemy soldier (9 -> 1) from um_next
     \ (X and Y take turns, as LDX abs,Y and LDY abs,X are all there are). The base is 1-9 always.
 IF GAMEPLAY_ANY = 0                 \ (gameplay builds: um_next in moved_0a20, decision 52: room)
-    BRA um_populate
+    BRA_JMP um_populate
 .um_next    \ the mover after mover i (1-9): i + 1, MOVER_FIRST_ENEMY after MOVER_LAST_ENEMY_SOLDIER
     EQUB &02, &03, &04, &05, &06, &07, &08, &09, &01
     ASSERT HI(um_next - 1) == HI(um_next + 8)   \ um_next - 1,Y/X (1-9) must not cross a page
@@ -3472,7 +3523,7 @@ ENDIF
     STY movers_to_update + 1
     LDX movers_to_update + 1
     LDY movers_to_update + 2
-    BRA umsort_loop
+    BRA_CC umsort_loop
 .umsort_done
     STY mover_to_update             \ slot 0 (Y)
     JSR update_mover                \ Update mover
@@ -3502,14 +3553,14 @@ ENDIF
     LDA field_count                 \ grind: the next field (field_count + 1), or the one after if no
     CMP pass_start                  \ field has gone by since the last flip - the same as pass_start + 2
     BNE flip_next_field_eb41b       \ (1 field gone: pass_start + 2 = field_count + 1; 2 or more: the next)
-    INC A                           \ 65C02 opcode
-    INC A                           \ 65C02 opcode: field_count + 2
-    BRA set_flip_field              \ 65C02 opcode
-IF GAMEPLAY_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
+    INC_A_X                         \ 65C02 opcode
+    INC_A_X                         \ 65C02 opcode: field_count + 2
+    BRA_CS set_flip_field           \ 65C02 opcode
+IF ROOM_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
     EQUB &00, &00, &00, &00, &00, &00 \ never run: keeps the 18 bytes, so nothing after moves
 ENDIF
 .flip_next_field_eb41b
-    INC A                           \ 65C02 opcode: field_count + 1
+    INC_A_X                         \ 65C02 opcode: field_count + 1
 .set_flip_field
     STA flip_target                 \ layer 2: the vsync interrupt shows the new screen then
     STA pass_start
@@ -3618,7 +3669,11 @@ cm_x_max_low_operand = * + 1
     BCS cm_left_known
     SBC #0                          \ a borrow (C=0): one less, C clear if that is below 0
     BCS cm_left_known
+IF NMOS
+    LDA #0                          \ NMOS: as the original (C kept)
+ELSE
     INC A                           \ 65C02 opcode: &FF -> 0, Z set, N clear, as LDA #0 left them
+ENDIF
     STA cm_left_low
 .cm_left_known
     STA cm_left_high
@@ -3649,7 +3704,7 @@ cm_x_max_low_operand = * + 1
     RTS
 .cmxy_skeleton_height
     LDA #&11
-    BRA cmxy_add_height             \ 65C02 opcode
+    BRA_NE cmxy_add_height          \ 65C02 opcode
 
 .check_for_player_collision_with_mover_Y
     JSR get_mover_Y_x_and_y
@@ -3714,7 +3769,7 @@ cm_x_max_low_operand = * + 1
     LDA player_helicopter_explosion \ Non-zero if player in exploding helicopter
     BNE leave_with_carry_clear_28c9
     JSR unbuffer_player_getting_addresses
-    BRA skip_unplotting_mover       \ *** 65C02 opcode
+    BRA_EQ skip_unplotting_mover    \ *** 65C02 opcode
 .not_player_28f3
     LDX &87
     JSR check_for_player_collision_with_mover_Y\ Returns carry set if collision
@@ -3814,7 +3869,7 @@ ENDIF
     STA movers_frame_and_flip       \ *** Set helicopter or tank as wreck
     LDA #&FF                        \ ***
     STA helicopter_fuel_high        \ ***
-    BRA to_plot_mover_2957          \ *** 65C02 opcode
+    BRA_NE to_plot_mover_2957       \ *** 65C02 opcode
 .already_wrecked    \ ***
     LDA #&04
     STA movers_frame_and_flip
@@ -3873,7 +3928,12 @@ ENDIF
     BCS set_y_delta
     TAX
     BMI increase_downwards_velocity
+IF NMOS
+    DEX                             \ NMOS: the grind's DEC A undone (X = A, dead from set_y_delta)
+    TXA
+ELSE
     DEC A                           \ Grenades and bombs fall (grind: was DEX/TXA; X is dead from set_y_delta)
+ENDIF
     BNE set_y_delta
     LDA #&80
     BMI set_y_delta
@@ -3916,7 +3976,7 @@ ENDIF
     BCC replot_projectile           \ Grenades have no ttl, but bullets do
     DEC projectiles_ttl - 12,X
     BNE replot_projectile           \ grind: the bullet still alive, the common case, in one branch
-    BRA explode_projectile          \ Explode projectile at end of life (65C02 opcode)
+    BRA_EQ explode_projectile       \ Explode projectile at end of life (65C02 opcode)
 .projectile_hit_mover
     CPX #&11                        \ MOVER_PLAYER_BULLET
     BEQ is_player_projectile
@@ -4077,8 +4137,8 @@ ENDIF                               \ (an enemy's bullet into a friendly soldier
     JSR calculate_mover_x_max_from_offset
     LDA mover_x_max_high            \ grind: the range's right (high) in the prefilter's LDA
     STA stf_x_max_high_operand_s
-    STZ friendly_targets_found
-    STZ unfriendly_targets_found
+    STZ_LDA friendly_targets_found
+    STZ_A unfriendly_targets_found
     LDX #&FF
     STX target                      \ Set to negative to indicate no target found by default
 IF (SKY_MODE = 1) AND (GAMEPLAY_ANY = 0) \ grind G0464: not on the gameplay disc (no room)
@@ -4091,13 +4151,13 @@ IF (SKY_MODE = 1) AND (GAMEPLAY_ANY = 0) \ grind G0464: not on the gameplay disc
 .stf_cm_known_ve
     STA stf_left_high_operand_ve
     LDX #&0A                        \ MOVER_LAST_ENEMY_HELICOPTER - 1: the prefilter's index is one below the mover's
-    BRA search_pf_test_ve           \ grind: into the first test (the DEX below is for the others)
+    BRA_NE search_pf_test_ve        \ grind: into the first test (the DEX below is for the others)
 .stf_cm_borrow_ve
     SBC #0                          \ a borrow (C=0): one less, C clear if that is below 0
     BCS stf_cm_known_ve
-    INC A                           \ &FF -> 0
+    INC_A_X                         \ &FF -> 0
     STA stf_left_low_operand_ve
-    BRA stf_cm_known_ve
+    BRA_CC stf_cm_known_ve
 IF LO(*) >= &E0
     SKIP &100 - LO(*)               \ grind: never run; the loop below starts on a page boundary, so no hot branch crosses a page
 ENDIF
@@ -4171,7 +4231,7 @@ ENDIF
     BCS is_friendly_2afd            \ grind: friendly the common case, taken
 .not_friendly    \ ***
     INC unfriendly_targets_found    \ ***
-    BRA consider_target             \ *** 65C02 opcode
+    BRA_CC consider_target          \ *** 65C02 opcode
 .is_friendly_2afd    \ ***
     INC friendly_targets_found      \ ***
 .consider_target    \ ***
@@ -4192,7 +4252,7 @@ ENDIF
     STX target
     DEX
     BPL search_for_target_loop
-    BRA search_done                 \ grind: X=0 was the last, so target is 0
+    BRA_MI search_done              \ grind: X=0 was the last, so target is 0
 
 .find_free_projectile_slot    \ # Called with A = first slot, X = last slot + 1
     STA last_slot
@@ -4302,7 +4362,7 @@ ENDIF
     BCC calculate_bullet_screen_address
     INX
     BPL calculate_bullet_screen_address\ Always branches
-IF GAMEPLAY_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
+IF ROOM_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
     SKIP 9                          \ Grind: keeps the code after this where it was
 ENDIF
 .subtract_x_offset
@@ -4384,8 +4444,15 @@ ENDIF
     LDA #&40
     STA clear_screen_loop + 2
     LDX #&00
+IF NMOS
+    LDA #0                          \ NMOS: A unused in the loop and after
+ENDIF
 .clear_screen_loop    \ # Wipe &4000 - &7fff
+IF NMOS
+    STA &4000,X
+ELSE
     STZ &4000,X                     \ 65C02 opcode
+ENDIF
 \ #     actually STZ wipe_address,X
     INX
     BNE clear_screen_loop
@@ -4394,8 +4461,8 @@ ENDIF
     RTS
 
 .irq1_handler
-    PHX                             \ *** 65C02 opcode
-    PHY                             \ *** 65C02 opcode
+    PHX_A                           \ *** 65C02 opcode
+    PHY_A                           \ *** 65C02 opcode
     LDA irq_accumulator             \ ***
     PHA                             \ ***
     LDA sysvia_ifr                  \ System VIA interrupt flag register
@@ -4492,7 +4559,7 @@ ELSE
     AND #&01                        \ = flip_screen (0 or 1): the D bit just toggled to
     STA shown_screen
 ENDIF
-    STZ flip_pending                \ 65C02 opcode
+    STZ_LDX flip_pending            \ 65C02 opcode
 .no_flip
     BIT irq_owned
     BPL leave_irq1_handler
@@ -4509,15 +4576,33 @@ ENDIF
     PLA
     STA romsel
 .leave_irq1_handler_owned           \ serviced here: back to the interrupted code, not the MOS
+IF NMOS
+    PLA                             \ NMOS: the interrupted A, kept in &FC while X and Y come off
+    STA irq_accumulator
+    PLA
+    TAY
+    PLA
+    TAX
+    LDA irq_accumulator
+ELSE
     PLA                             \ irq_accumulator still holds this byte: nothing in the handler writes &FC
     PLY
     PLX
+ENDIF
     RTI                             \ A is still the interrupted A (PLY/PLX leave it)
 .leave_irq1_handler                 \ anything else (in play, nothing: the MOS's tick is off)
     PLA                             \ ***
     STA irq_accumulator             \ ***
+IF NMOS
+    PLA
+    TAY
+    PLA
+    TAX
+    LDA irq_accumulator             \ A as the PLY/PLX left it
+ELSE
     PLY                             \ *** 65C02 opcode
     PLX                             \ *** 65C02 opcode
+ENDIF
 previous_irq1_vector_low = * + 1
     JMP &FFFF
 \ #     actually JMP previous_irq1_vector
@@ -4643,7 +4728,7 @@ ENDIF
     LSR A
     LSR A
     LSR A
-    INC A                           \ 65C02 opcode: effect + 1
+    INC_A_ADC                       \ (hand) effect + 1, at most 8: C stays 0
     STA sfx_request,X
     RTS
 .play_sound_with_the_mos
@@ -4713,7 +4798,7 @@ ENDIF
     CPX #&69                        \ Enemy helicopters can't fall below top of mountains
     BCS consider_horizontal_direction
 .keep_vertical_position
-    STZ y_delta                     \ 65C02 opcode
+    STZ_LDA y_delta                 \ 65C02 opcode
 .consider_horizontal_direction
     LDA frame_and_flip
     AND #&80
@@ -4944,7 +5029,7 @@ ENDIF
     CMP #&13                        \ MOVER_TYPE_MINE: mines are updated too
     BCS um0db5_update
     JMP animate_explosion_or_skeleton\ Explosion or skeleton: animate it and leave (its RTS returns from update_mover)
-IF GAMEPLAY_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
+IF ROOM_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
     EQUB &00, &00, &00                  \ never run: keeps the bytes after it where they were (page crossings)
 ENDIF
 
@@ -4997,7 +5082,7 @@ ENDIF
     CMP movers_maximum_x_low - 1,Y
     BNE patrol_store_f1bcb
     LDX #&81                        \ at the limit: turn
-    BRA patrol_store_f1bcb          \ 65C02 opcode
+    BRA_NE patrol_store_f1bcb       \ 65C02 opcode
 .patrol_left_f1bcb
     LDX #&81
     LDA mover_x_low
@@ -5022,7 +5107,7 @@ ENDIF
     JSR multiply_A_by_X_2f1e        \ Add three movers in slots 1, 4 and 7
     LDX new_movers_offset           \ or 2, 5 and 8, or 3, 6 and 9
     TXA
-    INC A                           \ 65C02 opcode
+    INC_A_CLC                       \ 65C02 opcode
     CMP #&04
     BCC anm_store_offset_b
     LDA #&01
@@ -5072,7 +5157,7 @@ ENDIF
     STA frame_and_flip
     LDA #&3C
     LDY #&B4                        \ &3C + &78
-    BRA grenade_sam_join_c2         \ 65C02 opcode
+    BRA_NE grenade_sam_join_c2      \ 65C02 opcode
 
 .consider_mover_firing_grenade    \ # Also bombs and rockets
     JSR get_mover_x_and_y
@@ -5145,7 +5230,7 @@ ENDIF
 .leave_plot_lives
     RTS
 
-IF GAMEPLAY_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
+IF ROOM_ANY = 0                 \ (gameplay builds: unexecuted padding not needed, decision 43)
     SKIP 8                          \ grind: never run (after RTS); the row loop below is 8 bytes
 ENDIF
                                     \ shorter, so everything from its end on stays in place
@@ -5243,7 +5328,7 @@ ENDIF
     ADC mover_type_scoring_tens_table,Y\ ***
     LDX #&04                        \ the units digit is never added to: start at the tens, A = its new value
     LDY #&00
-    BRA update_score_tens_d
+    BRA_EQ update_score_tens_d
 .update_score_loop
     TYA
     LDY #&00
@@ -5403,14 +5488,14 @@ ENDIF
     BNE start_clear
     LDA #1
     STA pre_use                     \ the walk's state from the prebuild (install_prebuilt)
-    STZ pre_valid                   \ 65C02 opcode
+    STZ_LDA pre_valid               \ 65C02 opcode
     PLP                             \ grind: pops the PHP; A, X, N and Z are dead here (both callers
     RTS                             \ load or INC first), so not set as initialise_column_buffer sets them
     EQUB &00, &00, &00, &00         \ grind: pad, so nothing after moves
 .start_clear
     JSR pre_cancel                  \ decision 38: a walk built for another scroll undone (HAZEL)
-    STZ pre_valid                   \ 65C02 opcode
-    STZ pre_use
+    STZ_LDA pre_valid               \ 65C02 opcode
+    STZ_A pre_use
     PLP
     JMP initialise_column_buffer
 \ install_prebuilt, in place of the walk: the prebuild's walk left its state in place (decision
@@ -5430,7 +5515,7 @@ ENDIF
     CPX #&01
     BNE prebuild_left
     JSR layers_right
-    BRA prebuild_walked             \ 65C02 opcode
+    BRA_CC prebuild_walked          \ 65C02 opcode
 .prebuild_left
     JSR layers_left
 .prebuild_walked
@@ -5546,7 +5631,7 @@ IF HUD_RUPTURE
                                     \ below HUD_ROW, rom_ws_save in bank 5's &8000 block)
 ENDIF
 
-IF GAMEPLAY_ANY
+IF ROOM_ANY
     unused_3400_original = &340D - GAME_DOWN    \ decision 43: over the dead fragment below; the font stays put
 ELSE
     unused_3400_original = &3400 - GAME_DOWN
@@ -5554,7 +5639,7 @@ ENDIF
     ASSERT * <= unused_3400_original, "layer 1's code overruns the free block by ", * - unused_3400_original, " bytes"
     SKIP unused_3400_original - *
 
-IF GAMEPLAY_ANY
+IF ROOM_ANY
     unused_3400 = &3400 - GAME_DOWN \ (unused sprites &30, &31 point here: the same bytes)
 ELSE
 .unused_3400    \ # Source code fragment
@@ -5587,7 +5672,7 @@ PLAYER_SAVE = player_save           \ fixed addresses: only the player draws the
 \ entry_point, before the arena is first used. The rest of the start-up block follows &4000.
 
 .moved_0004_load     \ carried in the save arena, copied to &0004-&0077 at start-up
-SECTION moved_0004, org = &0004, cmos = TRUE
+SECTION moved_0004, org = &0004, cmos = CMOS
 
 \ Decision 34: the original's zero-page sprite unpacker. In step 2 nothing runs it (the game's own
 \ plot calls walk the sprite instead, walk_column: `drawing` is never set), but &0004-&001E stay
@@ -5723,7 +5808,7 @@ ENDSECTION
     LDA irq1v
     STA previous_irq1_vector_low
     LDA irq1v + 1
-    STA leave_irq1_handler + 7
+    STA previous_irq1_vector_low + 1
     SEI
     LDA #LO(irq1_handler)           \ &2ec2 = irq1_handler
     STA irq1v
@@ -5827,7 +5912,7 @@ target_address_high = * + 2
     STA MOVED_ORG,X
     LDA moved_0a20_load + &100,X
     STA MOVED_ORG + &100,X
-IF GAMEPLAY_ANY                     \ decision 59: from &0982, three pages and the rest
+IF ROOM_ANY                     \ decision 59: from &0982, three pages and the rest
     LDA moved_0a20_load + &200,X
     STA MOVED_ORG + &200,X
 ENDIF
@@ -5875,7 +5960,7 @@ ENDIF
 
 
 .moved_0400_load     \ carried in the save arena (decision 33), copied to &0400-&07FF at start-up
-SECTION moved_0400, org = &0400, cmos = TRUE
+SECTION moved_0400, org = &0400, cmos = CMOS
 
 \ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f          0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 .flipped_green_pixel_table
@@ -5973,7 +6058,7 @@ ENDSECTION
 
 
 .moved_0880_load     \ carried in the save arena (decision 33), copied to &0880-&095F at start-up
-SECTION moved_0880, org = &0880, cmos = TRUE
+SECTION moved_0880, org = &0880, cmos = CMOS
 
 \ ;     chan  vol   pitch dur
 .sound_data_0880
@@ -6001,12 +6086,12 @@ SECTION moved_0880, org = &0880, cmos = TRUE
 ENDSECTION
 
 .moved_0a20_load     \ step 2 (RAM for cycles 4): carried in the save arena (decision 33), copied to &0A20 at start-up
-IF GAMEPLAY_ANY                     \ decision 59: gameplay builds start it at &0982, after movers_helicopter_fuel_high
+IF ROOM_ANY                     \ decision 59: gameplay builds start it at &0982, after movers_helicopter_fuel_high
     MOVED_ORG = &0982               \ (&0982-&0A1F: !BOOT's and SRRUN's, dead in play; nothing writes there in a game
 ELSE                                \ or the front end after, measured 2026-10-21), for the HUD's room after it
     MOVED_ORG = &0A20
 ENDIF
-SECTION moved_0a20, org = MOVED_ORG, cmos = TRUE
+SECTION moved_0a20, org = MOVED_ORG, cmos = CMOS
 \ &0982-&0CFF is never read or written after start-up but by the game (front end and play, 50,000
 \ frames, 2026-10-17); &0A00-&0A1F is kept clear: the relocation test builds read it as the ground.
 \ Decision 40: the section fills the hole to &0CFF (times_78 is in HAZEL) and the level tables are in it.
@@ -6021,8 +6106,8 @@ IF HUD_RUPTURE = 0                  \ (decision 67: no caller since the grind in
     STA result_low
     LDA times_78_hi,X
     STA result_high
-    STZ multiplicand                \ 65C02 opcode
-    STZ multiplier_low
+    STZ_LDX multiplicand            \ 65C02 opcode
+    STZ_X multiplier_low
     LDX #&4E
     STX multiplier_high             \ grind: C, Y, N and Z are dead at the RTS (the one caller reloads Y; its callee writes C before reading it)
     RTS
@@ -6043,12 +6128,18 @@ ENDIF
     LDA ru_lo                       \ inside the cell (C set: line >= rows)
     SBC unused_0076                 \ (ru_lo not stored: nothing reads it before rows_up's next STA)
     PLP
-    BRA ru_done                     \ 65C02 opcode
+    BRA_JMP ru_done                 \ 65C02 opcode
 .ru_cross                           \ A = the line. d = rows - line - 1: the rows below the cell
     EOR #&FF                        \ above's bottom line when it is reached (C clear: BCC took us here)
     ADC unused_0076
     STA ru_d
+IF NMOS
+    TAY                             \ NMOS: the saved flags dropped, A kept (Y and N Z set below)
+    PLA
+    TYA
+ELSE
     PLY                             \ 65C02 opcode; drop the saved flags, A kept = d (Y and N Z set below)
+ENDIF
     LSR A
     LSR A
     LSR A
@@ -6377,7 +6468,7 @@ save_arena_end = *
 .resident_end         \ everything above is in memory for the whole game; the screen starts at &4000
     ASSERT resident_end <= &4000, "resident code and data overrun the screen by ", resident_end - &4000, " bytes"
 .hazel_b_load
-SECTION hazel_b, org = hazel_a_end, cmos = TRUE
+SECTION hazel_b, org = hazel_a_end, cmos = CMOS
     INCLUDE "compiled_hazel_b.6502"
 \ Decision 40: read-only tables only play reads (HAZEL is paged in through play), from the main block,
 \ placed so that no read crosses a page: player_helicopter_types_vertical_speed (read from 5 below
@@ -6669,7 +6760,7 @@ ENDIF
 ENDSECTION
 IF SKY_MODE
 .hazel_c_load
-SECTION hazel_c, org = &C200, cmos = TRUE
+SECTION hazel_c, org = &C200, cmos = CMOS
     INCLUDE "sky_hazel_c.6502"      \ the enemy helicopters over the sky: the image builder
 .hazel_c_end
     ASSERT hazel_c_end <= &C2FF, "hazel_c overruns &C2FE by ", hazel_c_end - &C2FF

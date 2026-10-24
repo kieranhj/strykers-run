@@ -28,8 +28,14 @@
 .sfx_t_req_each                     \ is empty, so this writes nothing to the chip)
     LDA sfx_request,X
     BEQ sfx_t_req_next
+IF NMOS
+    TAY
+    LDA #0
+    STA sfx_request,X
+ELSE
     STZ sfx_request,X               \ (a request in between these two is lost: the next replaces it)
     TAY                             \ E + 1: the tables are read one byte early
+ENDIF
     LDA sfx_effect_lo - 1,Y
     STA sfx_ptr_lo,X
     LDA sfx_effect_hi - 1,Y
@@ -52,7 +58,7 @@
     STA sfx_p_lo,X
     BCS sfx_pa_clc
     DEC sfx_p_hi,X                  \ no carry: the high byte less 1
-    BRA sfx_pa_c0                   \ 65C02 opcode; C = 0
+    BRA_CC sfx_pa_c0                \ 65C02 opcode; C = 0
 .up
     ADC sfx_p_lo,X
     STA sfx_p_lo,X
@@ -83,7 +89,7 @@
     BNE v_known                     \ always
 .c1_clamp0
     LDA #0
-    BRA v_known
+    BRA_EQ v_known
 }
 
 \ X = channel: its next ramp, from sfx_ptr; at the end, the channel is silenced.
@@ -127,10 +133,10 @@
 .same_page
     RTS
 .ended
-    STZ sfx_n,X
+    STZ_LDA sfx_n,X
     LDA sfx_channel_bits,X
     ORA #&9F                        \ attenuation 15: off
-    BRA sfx_write                   \ 65C02 opcode
+    BRA_NE sfx_write                \ 65C02 opcode
 .ramp
     LDA &FFFF,Y                     \ self-modified: this ramp
     RTS
@@ -150,7 +156,7 @@
     BEQ sfx_write.g1_rts             \ channel's slot of the noise control's array; a request left a high byte,
     STA sfx_noise_written,X         \ never 0-15): unchanged, nothing to send
     EOR g1_att_bits,X                \ the chip takes attenuation, &10: an amplitude latch byte: (n EOR &1F) OR channel
-    BRA sfx_write.ddra_set_c046b    \ 65C02 opcode
+    BRA_JMP sfx_write.ddra_set_c046b    \ 65C02 opcode
 .g1_att_bits
     EQUB &9F, &BF, &DF, &FF         \ channel bits OR &1F
 .amplitude
@@ -174,7 +180,7 @@ noise = sfx_write.noise             \ after sfx_write's RTS
     LDY #&FF
     STY sysvia_ddra
     STA sysvia_ora_nh
-    STZ sysvia_orb                  \ latch line 0 low: write enable
+    STZ_LDA sysvia_orb              \ latch line 0 low: write enable
     LDA sfx_p_hi,X                  \ a tone's high byte: the period >> 4: C = bit 0 of the period's high byte,
     LSR A                           \ A = its bit 1 in bit 0 with the low byte's bits 7-4 above (the rest
     EOR sfx_p_lo,X                  \ of the low nibble is dropped below)
@@ -184,10 +190,10 @@ noise = sfx_write.noise             \ after sfx_write's RTS
     ROR A                           \ high nibble comes down beside them: &00 &00 h1 h0 l7-l4
     LSR A
     LSR A
-    BRA g1_fin                       \ 65C02 opcode
+    BRA_PL g1_fin                    \ 65C02 opcode
 .ddra_set_c046b                     \ entered with DDRA already &FF (sfx_output's tone)
     STA sysvia_ora_nh
-    STZ sysvia_orb                  \ latch line 0 low: write enable
+    STZ_LDA sysvia_orb              \ latch line 0 low: write enable
     LDA sfx_v,X                     \ the amplitude, n = v >> 4
     LSR A
     LSR A
@@ -212,7 +218,7 @@ noise = sfx_write.noise             \ after sfx_write's RTS
     STA sfx_noise_written,X
     ORA #&E0
     JSR sfx_write
-    BRA sfx_output.amplitude        \ 65C02 opcode
+    BRA_NE sfx_output.amplitude     \ 65C02 opcode
 }
 
 \ All four channels off, and forgotten (requests too).
@@ -222,7 +228,7 @@ noise = sfx_write.noise             \ after sfx_write's RTS
     SEI
     LDX #3
 .each
-    STZ sfx_request,X
+    STZ_LDA sfx_request,X
     JSR sfx_next_ramp.ended         \ its channel off and forgotten (ends in sfx_write: Y = 0)
     DEX
     BPL each

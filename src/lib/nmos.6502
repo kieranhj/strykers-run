@@ -1,0 +1,287 @@
+\ nmos.6502 - the 65SC12's own instructions as macros (decision 73): without NMOS each is that
+\ instruction, so the build is byte-identical; with NMOS, the NMOS form named, which holds only
+\ where its condition does. tools/nmosify.py chose each site's from the analysis's state before
+\ the instruction (build/annotated); `python tools/nmosify.py check` says whether every site's
+\ condition still holds after a change. Costs are the NMOS form's against the 65SC12's.
+
+\ ---- STZ ----
+\ STZ_A/X/Y: that register is 0 here (free)
+MACRO STZ_A addr
+IF NMOS
+    STA addr
+ELSE
+    STZ addr
+ENDIF
+ENDMACRO
+MACRO STZ_A addr, "X"
+IF NMOS
+    STA addr,X
+ELSE
+    STZ addr,X
+ENDIF
+ENDMACRO
+MACRO STZ_X addr
+IF NMOS
+    STX addr
+ELSE
+    STZ addr
+ENDIF
+ENDMACRO
+MACRO STZ_Y addr
+IF NMOS
+    STY addr
+ELSE
+    STZ addr
+ENDIF
+ENDMACRO
+\ STZ_LDA/LDX/LDY: that register, N and Z dead here: loaded with 0 (+2 bytes, +2 cycles)
+MACRO STZ_LDA addr
+IF NMOS
+    LDA #0
+    STA addr
+ELSE
+    STZ addr
+ENDIF
+ENDMACRO
+MACRO STZ_LDA addr, "X"
+IF NMOS
+    LDA #0
+    STA addr,X
+ELSE
+    STZ addr,X
+ENDIF
+ENDMACRO
+MACRO STZ_LDX addr
+IF NMOS
+    LDX #0
+    STX addr
+ELSE
+    STZ addr
+ENDIF
+ENDMACRO
+MACRO STZ_LDY addr
+IF NMOS
+    LDY #0
+    STY addr
+ELSE
+    STZ addr
+ENDIF
+ENDMACRO
+
+\ ---- BRA ----
+\ BRA_EQ .. BRA_VS: that flag is known here, so the branch on it is always taken (free)
+MACRO BRA_EQ target
+IF NMOS
+    BEQ target
+ELSE
+    BRA target
+ENDIF
+ENDMACRO
+MACRO BRA_NE target
+IF NMOS
+    BNE target
+ELSE
+    BRA target
+ENDIF
+ENDMACRO
+MACRO BRA_CS target
+IF NMOS
+    BCS target
+ELSE
+    BRA target
+ENDIF
+ENDMACRO
+MACRO BRA_CC target
+IF NMOS
+    BCC target
+ELSE
+    BRA target
+ENDIF
+ENDMACRO
+MACRO BRA_MI target
+IF NMOS
+    BMI target
+ELSE
+    BRA target
+ENDIF
+ENDMACRO
+MACRO BRA_PL target
+IF NMOS
+    BPL target
+ELSE
+    BRA target
+ENDIF
+ENDMACRO
+MACRO BRA_VS target
+IF NMOS
+    BVS target
+ELSE
+    BRA target
+ENDIF
+ENDMACRO
+MACRO BRA_VC target
+IF NMOS
+    BVC target
+ELSE
+    BRA target
+ENDIF
+ENDMACRO
+\ BRA_JMP: no flag known (+1 byte); never where the code runs elsewhere than it is assembled
+MACRO BRA_JMP target
+IF NMOS
+    JMP target
+ELSE
+    BRA target
+ENDIF
+ENDMACRO
+
+\ ---- INC A / DEC A ----
+\ INC_A_ADC: C is 0 here, C and V dead after (+1 byte); DEC_A_SBC: C is 1 here, likewise
+MACRO INC_A_ADC
+IF NMOS
+    ADC #1
+ELSE
+    INC A
+ENDIF
+ENDMACRO
+MACRO DEC_A_SBC
+IF NMOS
+    SBC #1
+ELSE
+    DEC A
+ENDIF
+ENDMACRO
+\ INC_A_CLC, DEC_A_SEC: C and V dead after (+2 bytes, +2 cycles)
+MACRO INC_A_CLC
+IF NMOS
+    CLC
+    ADC #1
+ELSE
+    INC A
+ENDIF
+ENDMACRO
+MACRO DEC_A_SEC
+IF NMOS
+    SEC
+    SBC #1
+ELSE
+    DEC A
+ENDIF
+ENDMACRO
+\ INC_A_X/Y, DEC_A_X/Y: that register dead after (+2 bytes, +4 cycles)
+MACRO INC_A_X
+IF NMOS
+    TAX
+    INX
+    TXA
+ELSE
+    INC A
+ENDIF
+ENDMACRO
+MACRO INC_A_Y
+IF NMOS
+    TAY
+    INY
+    TYA
+ELSE
+    INC A
+ENDIF
+ENDMACRO
+MACRO DEC_A_X
+IF NMOS
+    TAX
+    DEX
+    TXA
+ELSE
+    DEC A
+ENDIF
+ENDMACRO
+MACRO DEC_A_Y
+IF NMOS
+    TAY
+    DEY
+    TYA
+ELSE
+    DEC A
+ENDIF
+ENDMACRO
+
+\ ---- PHX/PHY/PLX/PLY ----
+\ through A: A dead after (and N and Z for a push) (+1 byte, +2 cycles)
+MACRO PHX_A
+IF NMOS
+    TXA
+    PHA
+ELSE
+    PHX
+ENDIF
+ENDMACRO
+MACRO PHY_A
+IF NMOS
+    TYA
+    PHA
+ELSE
+    PHY
+ENDIF
+ENDMACRO
+MACRO PLX_A
+IF NMOS
+    PLA
+    TAX
+ELSE
+    PLX
+ENDIF
+ENDMACRO
+MACRO PLY_A
+IF NMOS
+    PLA
+    TAY
+ELSE
+    PLY
+ENDIF
+ENDMACRO
+
+\ STZ_PHA: no register free, but N and Z are A's (or dead): A kept on the stack (+4 bytes, +9 cycles)
+MACRO STZ_PHA addr
+IF NMOS
+    PHA
+    LDA #0
+    STA addr
+    PLA
+ELSE
+    STZ addr
+ENDIF
+ENDMACRO
+MACRO STZ_PHA addr, "X"
+IF NMOS
+    PHA
+    LDA #0
+    STA addr,X
+    PLA
+ELSE
+    STZ addr,X
+ENDIF
+ENDMACRO
+
+\ ---- BIT abs,X then BVC/BVS (V = bit 6): A dead here, and V nowhere read but after a BIT ----
+\ (+1 byte, +2 cycles: bit 6 to N by ASL)
+MACRO BVC_BIT6 addr, "X", target
+IF NMOS
+    LDA addr,X
+    ASL A
+    BPL target
+ELSE
+    BIT addr,X
+    BVC target
+ENDIF
+ENDMACRO
+MACRO BVS_BIT6 addr, "X", target
+IF NMOS
+    LDA addr,X
+    ASL A
+    BMI target
+ELSE
+    BIT addr,X
+    BVS target
+ENDIF
+ENDMACRO

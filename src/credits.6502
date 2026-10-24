@@ -18,11 +18,11 @@ CREDIT_LEFT   = &3E AND &AA         \ the line's colour (the copyright's, &3E), 
 CREDIT_RIGHT  = &3E AND &55         \ and a right one
 
 .credit_start
-    STZ credit_on                   \ 65C02 opcodes
-    STZ credit_which                \ the copyright line
-    STZ credit_phase
-    STZ credit_count
-    STZ credit_k
+    STZ_LDA credit_on               \ 65C02 opcodes
+    STZ_A credit_which              \ the copyright line
+    STZ_A credit_phase
+    STZ_A credit_count
+    STZ_A credit_k
     LDA #0                          \ row 24 cleared and the copyright drawn whole: the menu's own text
     TAX                             \ draws it in its cells over what was there, and REDUX's (from 16,
 .credit_clear                       \ not 32) would show at its ends
@@ -46,9 +46,9 @@ CREDIT_RIGHT  = &3E AND &55         \ and a right one
     LDA credit_count
     CMP #CREDIT_HOLD
     BCC credit_rts
-    STZ credit_count
+    STZ_LDA credit_count
     INC credit_phase                \ 1: out
-    STZ credit_k
+    STZ_LDA credit_k
 .credit_active
     LDA #&80                        \ as scroll_pixel: interrupts on, a vsync meanwhile on to the MOS
     STA scroll_busy
@@ -74,13 +74,13 @@ CREDIT_RIGHT  = &3E AND &55         \ and a right one
     STA credit_which
     LDA #2
     STA credit_phase
-    BRA credit_end                  \ 65C02 opcode
+    BRA_NE credit_end               \ 65C02 opcode
 .credit_in
     DEC credit_k                    \ in: a pixel further right
     JSR credit_draw
     LDA credit_k
     BNE credit_end
-    STZ credit_phase                \ 65C02 opcode: in place, held
+    STZ_A credit_phase              \ 65C02 opcode: in place, held
 .credit_end
     SEI
     PLA
@@ -91,7 +91,7 @@ CREDIT_RIGHT  = &3E AND &55         \ and a right one
     STA &CB
     PLA
     STA &CA
-    STZ scroll_busy                 \ 65C02 opcode
+    STZ_LDA scroll_busy             \ 65C02 opcode
 .credit_rts
     RTS
 
@@ -108,13 +108,13 @@ CREDIT_RIGHT  = &3E AND &55         \ and a right one
     STA text_screen_address_low + 1
     LDA credit_len,X
     STA credit_n
-    STZ credit_i                    \ 65C02 opcode
+    STZ_LDA credit_i                \ 65C02 opcode
 .credit_glyph
     LDY credit_i
 .credit_char
     LDA &FFFF,Y                     \ the glyph's number: its font bytes at title_screen_font_data + 6 * it
     STA &CA
-    STZ &CB                         \ 65C02 opcode
+    STZ_LDY &CB                     \ 65C02 opcode
     ASL A
     ADC &CA                         \ 3 * it (C = 0: it is below &80)
     ASL A                           \ 6 * it
@@ -125,7 +125,7 @@ CREDIT_RIGHT  = &3E AND &55         \ and a right one
     LDA &CB
     ADC #HI(title_screen_font_data)
     STA &CB
-    STZ credit_col                  \ 65C02 opcode
+    STZ_LDA credit_col              \ 65C02 opcode
 .credit_column
     LDA credit_col                  \ the byte column's two pixels: font columns 2j + k and 2j + 1 + k
     ASL A

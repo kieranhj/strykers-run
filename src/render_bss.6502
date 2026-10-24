@@ -3,7 +3,7 @@
 \ zeroed once at start-up (src/render_bss_zero.6502, from unpack_for_play) as the file's zeros were. Each region
 \ is within one page, so no table here crosses one.
 
-SECTION ren_vars_z, org = REN_BASE + &822, cmos = TRUE
+SECTION ren_vars_z, org = REN_BASE + &822, cmos = CMOS
 .ren_vars_z_start
 .acc_main       SKIP 1              \ ACCCON with the CPU on main RAM, and on shadow
 .acc_shadow     SKIP 1
@@ -116,7 +116,7 @@ ENDSECTION
 ASSERT ren_vars_z_end - ren_vars_z_start <= &DE, "ren_vars_z overruns its hole"
 ASSERT HI(ren_vars_z_start) = HI(ren_vars_z_end - 1)
 
-SECTION ren_vars_a, org = REN_BASE + &380, cmos = TRUE
+SECTION ren_vars_a, org = REN_BASE + &380, cmos = CMOS
 .ren_vars_a_start
 .list_slot      SKIP MOVER_SLOTS + 1
 .list_x1_lo     SKIP MOVER_SLOTS + 1
@@ -126,7 +126,7 @@ ENDSECTION
 ASSERT ren_vars_a_end - ren_vars_a_start <= &78, "ren_vars_a overruns its hole"
 ASSERT HI(ren_vars_a_start) = HI(ren_vars_a_end - 1)
 
-SECTION ren_vars_d, org = REN_BASE + &A80, cmos = TRUE
+SECTION ren_vars_d, org = REN_BASE + &A80, cmos = CMOS
 .ren_vars_d_start
 .list_x2_lo     SKIP MOVER_SLOTS + 1
 .list_x2_hi     SKIP MOVER_SLOTS + 1
@@ -142,7 +142,7 @@ ENDSECTION
 ASSERT ren_vars_d_end - ren_vars_d_start <= &80, "ren_vars_d overruns its hole"
 ASSERT HI(ren_vars_d_start) = HI(ren_vars_d_end - 1)
 
-SECTION ren_vars_h0, org = REN_BASE + &4C8, cmos = TRUE
+SECTION ren_vars_h0, org = REN_BASE + &4C8, cmos = CMOS
 .ren_vars_h0_start
 .list_y2        SKIP MOVER_SLOTS + 1
 IF SKY_MODE = 0
@@ -154,7 +154,7 @@ ENDSECTION
 ASSERT ren_vars_h0_end - ren_vars_h0_start <= &38, "ren_vars_h0 overruns its hole"
 ASSERT HI(ren_vars_h0_start) = HI(ren_vars_h0_end - 1)
 
-SECTION ren_vars_h1, org = REN_BASE + &5C8, cmos = TRUE
+SECTION ren_vars_h1, org = REN_BASE + &5C8, cmos = CMOS
 .ren_vars_h1_start
 .cp_list        SKIP MOVER_SLOTS    \ compact: the live blocks (slot + boff), by start address
 .cp_start_lo    SKIP 1

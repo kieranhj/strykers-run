@@ -64,9 +64,9 @@
     BCC zero
     CLV
 .zero
-    STZ result_high                 \ 65C02 opcode
-    STZ multiplicand
-    STZ multiplier_low
+    STZ_LDY result_high             \ 65C02 opcode
+    STZ_Y multiplicand
+    STZ_Y multiplier_low
     RTS
     EQUB &EA, &EA, &EA, &EA         \ grind: never executed; keeps squares and unpack_scenery_column where they were
 .squares
@@ -110,10 +110,10 @@
     STA column_buffer,X
     INX
     LDY scenery_data_offset
-    BRA next                        \ 65C02 opcode
+    BRA_CC next                     \ 65C02 opcode
 .skip1
     INX
-    BRA next
+    BRA_CC next
 .merge1
     STA scenery_mask
     LDA column_buffer,X
@@ -122,7 +122,7 @@
     STA column_buffer,X
     INX
     LDY scenery_data_offset
-    BRA next
+    BRA_CC next
 .done
     JMP move_to_next_column
 
@@ -142,12 +142,12 @@
     STA column_buffer,X
     INX
     LDY scenery_data_offset
-    BRA next
+    BRA_CC next
 .skip3
     INX
     INX
     INX
-    BRA next
+    BRA_CC next
 .merge3
     STA scenery_mask
     LDA column_buffer,X
@@ -166,7 +166,7 @@
     STA column_buffer,X
     INX
     LDY scenery_data_offset
-    BRA next                        \ 65C02 opcode: in range now (-127)
+    BRA_CC next                     \ 65C02 opcode: in range now (-127)
 
 .short_or_long
     BPL long

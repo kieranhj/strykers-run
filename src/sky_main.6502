@@ -37,7 +37,7 @@
     JSR sky_old_geom
     JSR sky_zero
     LDX sky_s
-    STZ sky_on,X                    \ 65C02 opcode
+    STZ_LDA sky_on,X                \ 65C02 opcode
     PLA
     STA sky_H
     RTS
@@ -52,10 +52,18 @@
     STA sky_d1
     LDA sky_ojh,X
     STA sky_d2
+IF NMOS
+    LDA sky_adr_lo,X
+    PHA
+    LDA sky_adr_hi,X
+    TAX
+    PLA
+ELSE
     LDA sky_adr_hi,X
     PHA
     LDA sky_adr_lo,X
     PLX                             \ 65C02 opcode
+ENDIF
     JMP sky_geom                    \ (it was drawn: none runs past &7FFF)
 
 \ sky_image: the image for this kind held (built if not): the body sprite, the line, the pixel
@@ -107,9 +115,19 @@
     TAY
     LDA sky_rn,X
     STA sky_n
+IF NMOS
+    PHP                             \ NMOS: C kept (sky.6502's cell needs it clear)
+    SEC
+    SBC #1
+    EOR #7
+    STA sky_skip
+    PLP
+    LDA sky_skip                    \ A = 8 - n and Z for the caller
+ELSE
     DEC A                           \ 65C02 opcode: n is 1 to 8, so 8 - n = (n - 1) EOR 7
     EOR #7
     STA sky_skip                    \ (A = 8 - n and Z for the caller: no reload)
+ENDIF
     RTS
     SKIP 1                          \ (so the code after stays at its addresses)
 

@@ -42,9 +42,9 @@
     ASL A
     ASL A
     STA sky_ytop
-    STZ sky_rb                      \ 65C02 opcode
+    STZ_LDA sky_rb                  \ 65C02 opcode
     LDA sky_L
-    INC A                           \ 65C02 opcode
+    INC_A_CLC                       \ 65C02 opcode
     STA sky_rn                      \ the bottom row's lines: H > 8, so all L + 1
     STA sky_t
     LDA sky_H
@@ -129,7 +129,7 @@ ENDIF
     ADC sky_t                       \ (C clear)
     CMP #9
     BCS rows
-    STZ sky_rb,X                    \ 65C02 opcode: block 0, by the bottom row's lines
+    STZ_LDA sky_rb,X                \ 65C02 opcode: block 0, by the bottom row's lines
 .rows
     INX
     STX sky_nq
@@ -138,7 +138,7 @@ ENDIF
 .split                              \ each runs ytop + 8 bytes from its first drawn cell: one past
     LDA sky_ytop                    \ &7FFF is two entries, the part past it from &4000 (at most
     STA sky_ry,X                    \ one: rows are &280 apart)
-    STZ sky_rc,X                    \ 65C02 opcode
+    STZ_LDA sky_rc,X                \ 65C02 opcode
     LDA sky_rh,X
     CMP #&7F
     BNE whole
@@ -235,7 +235,7 @@ ELSE
     ORA sky_stop                    \ (rn <= rt + 1, so 0 or more)
     SEC
     SBC sky_rn,X
-    INC A                           \ 65C02 opcode
+    INC_A_CLC                       \ 65C02 opcode
     CLC
     ADC sky_rl,X
     STA s_ptr
