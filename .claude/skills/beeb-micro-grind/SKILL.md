@@ -11,6 +11,10 @@ operand ranges; spawn army of agents to evaluate every 32-instruction consecutiv
 annotated instructions for better implementations; record candidates; apply serially with
 skeptic; iterate indefinitely."
 
+The method is Eben Upton's, from beebgame: its `tools/dataflow/README.md`, "Using the annotations to
+shrink code: a suggested farm" (vendored in `tools/dataflow/`), there shrinking Commando's code by
+about 400 bytes; here turned on cycles, the windows weighted by measured cycles a pass.
+
 **It is expensive.** A round is one optimiser agent per hot window (one per two cold ones) and two
 or three skeptics per candidate: at Stryker's Run's size (232 windows, 78 of them 90% of the
 measured cycles) a round over the hot code is 300-600 agents. Say so before starting one, and run

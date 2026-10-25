@@ -45,7 +45,9 @@ The work landed in the kit as five branches merged into `takeaways-strykers`, as
    IRQ1V and loses the MOS's driver; this replaces it. Interrupts 10.9% to 2.2% of the CPU, 8
    effects in 158 bytes (decision 25).
 5. **The micro-grind** (`.claude/skills/beeb-micro-grind`, `tools/grind.py`, `grind_config.py`): not
-   in the kit. 256 of 580 proposals kept; a pass's work 43,036 to 31,869 cycles over rounds 1-3.
+   in the kit. The method is Eben Upton's, beebgame's "suggested farm" (`tools/dataflow/README.md`:
+   annotated windows, a reviewer then a skeptic, survivors behind an equivalence gate); this project
+   turned it on cycles and wrote its bookkeeping. 256 of 580 proposals kept; a pass's work 43,036 to 31,869 cycles over rounds 1-3.
 6. **Video and sound capture** (`sidebyside.mjs`, `playvideo.mjs`): fields to ffmpeg at 50 fps, the
    SN76489 to a WAV, muxed; and an original's timer-read randomness replaced by injecting the PRNG's
    byte into A, without touching its RAM.
