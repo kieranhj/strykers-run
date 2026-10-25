@@ -66,11 +66,14 @@ const events = makeScript(6000, SEED);
 for (let f = 1; f <= 6000 && m.passes < 1; f++) { applyEvents(events, f, [s]); await s.runFrames(1); }
 s.releaseAllKeys();
 
-// the frame's start: latched when the 6845 starts a frame (vertCounter back to 0)
-let startMa = 0, lastV = -1, fieldsSinceFlip = 0;
+// the frame's start: the 6845's address in a frame's first row (vertCounter 0). HUD_RUPTURE (decision 67) makes
+// each field two frames, the HUD row's (one row from HUD_ROW, below &3000: an address under &600) then the
+// screen's: the screen frame's start is kept, and while the HUD row shows the beam is above every screen row (inH)
+let startMa = 0, lastV = -1, fieldsSinceFlip = 0, inH = false;
 cpu.debugInstruction.add(() => {
     const v = video.vertCounter;
-    if (v === 0 && lastV !== 0) { startMa = (video.regs[13] | (video.regs[12] << 8)) & 0x3fff; fieldsSinceFlip++; }
+    if (v === 0 && lastV !== 0) fieldsSinceFlip++;
+    if (v === 0) { const la = video.lineStartAddr & 0x3fff; inH = la < 0x600; if (!inH) startMa = la; } else inH = false;
     lastV = v;
     return false;
 });
@@ -95,13 +98,13 @@ cpu.debugWrite.add((a) => {
     const fr = pending ? (next ??= newFrame()) : frame;
     if (!fr) return false;
     fr.writes++;
-    if (SLOT && !pending && on() && fr && (fieldsSinceFlip >= 1 || (fieldsSinceFlip === 0 && (!(video.dispEnabled & VDISP) || video.vertCounter > 24))))
+    if (SLOT && !pending && on() && fr && (fieldsSinceFlip >= 1 || (fieldsSinceFlip === 0 && (!(video.dispEnabled & VDISP) || video.vertCounter >= video.regs[6]))))
         (fr.missed ??= new Set()).add(cur);     // after its frame's first field has shown the whole screen: missed it entirely
-    if (!(video.dispEnabled & VDISP) || video.vertCounter > 24) return false;
+    if (!(video.dispEnabled & VDISP) || video.vertCounter >= video.regs[6]) return false;
     const off = ((a >> 3) - startMa) & 0x7ff, row = Math.floor(off / 80), col = off % 80, line = a & 7;
-    if (off >= 2000) return false;                          // the ring's 384 bytes never shown
+    if (off >= 80 * video.regs[6]) return false;            // past the rows the frame displays (R6: 25, or HUD_RUPTURE's screen frame 24): never shown
     const v = video.vertCounter, sc = video.scanlineCounter, h = video.horizCounter;
-    const passed = row < v || (row === v && (line < sc || (line === sc && col < h)));
+    const passed = !inH && (row < v || (row === v && (line < sc || (line === sc && col < h))));
     if (SLOT && !pending && fieldsSinceFlip === 0 && passed) (fr.missed ??= new Set()).add(cur);
     if (SLOT && !pending) { const w = ((fr.slotW ??= new Map()).get(cur) ?? [0, 0]); w[passed ? 0 : 1]++; fr.slotW.set(cur, w); }
     if (pending ? passed : !passed) return false;

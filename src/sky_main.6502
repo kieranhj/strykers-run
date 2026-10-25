@@ -137,6 +137,12 @@ IF MODEL_B
     STA p_ptr                       \ looked up here, in bank 4's table
     LDA straight_sprite_hi,X
     STA p_ptr + 1
+IF SKY_B4
+    LDA sprite_in_b5,X              \ decision 79: a body bank 4 holds is built by bank 4's copy, here
+    BNE in_b5
+    JMP sky_b4.sky_build
+.in_b5
+ENDIF
     LDA #LO(sky_build)
     STA b5_vec
     LDA #HI(sky_build)

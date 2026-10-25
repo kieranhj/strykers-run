@@ -394,3 +394,46 @@ most often) miss their field more often (gameplay disc slots 17 and 3 also 36 ->
 the zone's and the player's clusters behind the beam in the last frame's field from line 184 (T2's count 60):
 with the HUD row on top each screen row shows 8 lines later than the T2 mapping `behind_beam` uses, so
 `write_column` wrote rows 23-24 ahead of the beam (126 frames with early bytes), and the player still missed 42.
+
+## Step 8: the edges' helicopters in place too (decision 79, 2026-10-25)
+
+KC, 2026-10-25: "now fix that new bug - I've definitely seen this on my playthroughs" (decision 78's price: the
+zone's movers, the edges' helicopters most often, missing their field). Measured (a per-slot cost of every take
+off and put on, passbench's game): helicopter 0's put on about 15,600 cycles (p50; p90 25,000), its take off
+6,300: always the masked draw, as its body (sprite &45) is one of bank 4's and decision 75 built sky images in
+bank 5 only (item 3). And with it in sky mode (10,600 p50, much of it `sky_draw` and the arena's compaction) the
+blank still could not hold the columns, the helicopter and the player: zone first, the player missed 23 frames
+and helicopter 0 14; the player first, 0 and 38.
+
+- `SKY_B4`: `sky_hazel_c.6502` again in bank 4 (`sky_b4`, a scope whose `SKY_BLK_LO`/`HI`/`SKY_RB` are bank 4's
+  own tables: Baron lets a scope's assignment shadow a global one, measured), called by `sky_image` for the
+  bodies bank 4 holds; `sky_put_on` no longer refuses them.
+- `ZONE_SPLIT`: the sky's helicopters are near the top, which the beam passes early in the last frame's field.
+  `zone_split` (after `cluster_build`) makes the zone's movers wholly above `SPLIT_ROWS` (12) character rows a
+  cluster of their own (`cl_ztop`; a mover across the split: no split); `behind_beam` runs `zone_top` once the beam
+  is past the split (`ZT_E`, cluster_thresholds' count for line 95, 2 more for the HUD row): their take off, the
+  columns' rows above the split (each the last frame's left column a row down, passed), their put on. At the
+  display's end `write_column` writes only the rows below (`wc_from`, and `wc_stop` for zone_top's). The field
+  begun before zone_top: `zone_merge` puts the zone back whole. Only with `HUD_RUPTURE`'s HUD (no lives digit on
+  the screen, which the scroll writes over the zone).
+- `tools/beamcheck.mjs` was wrong on the gameplay disc: it took the screen frame's start when the 6845's row count
+  went back to 0, which with `HUD_RUPTURE` is the HUD row's frame's (the screen frame starts at row 0 again), and
+  it judged 25 rows where that frame shows 24. Now the start is the 6845's row address in a frame's first row (a
+  HUD row's, below &600, kept apart: the beam above every screen row while it shows), the rows R6's. Step 7's
+  gameplay-disc figures were measured with the old tool; remeasured below.
+
+jsbeeb 2.10.2 Model B, 2026-10-25, beamcheck `--slot` (fixed) seed 1, passes 501-1,500, frames whose first field
+missed each slot's bytes:
+
+| gameplay disc | player | helicopter 0 | slot 17 | column | frames with late bytes | whole world late frames |
+|---|---|---|---|---|---|---|
+| decision 76 | 50 | 34 | 39 | 7 | 61 | 548 (23.89 passes/s) |
+| decision 78 | 8 | 43 | 44 | 8 | 75 | 458 (23.99) |
+| `SKY_B4` only, the player first | 0 | 38 | 20 | 1 | | |
+| `SKY_B4` only, the zone first | 23 | 14 | 17 | 1 | | |
+| `SKY_B4` and `ZONE_SPLIT` (built) | 0 | 4 | 12 | 1 | 25 | 336 (24.65) |
+
+(The `SKY_B4`-only rows with the old tool.) No early bytes. The whole world on the B: state identical to the
+Master gameplay disc every pass; on the Master, every frame identical to the Master gameplay disc's but BUGS #17's
+28, so bank 4's images are the Master's. passbench 25.02 passes/s, 4 late frames. The plain, gameplay and plain
+Model B discs' game files unchanged.

@@ -43,9 +43,9 @@ hist1       = REN_BASE + &500
 zp_save     = REN_BASE + &600
 REN_Z       = &622                  \ ren_vars_z's offset, after zp_save's &22
 REN_D       = &700                  \ ren_vars_d's
-REN_CL      = &769                  \ the clusters' (render_clusters.6502), to &7B8
+REN_CL      = &769                  \ the clusters' (render_clusters.6502), to &7BD
 REN_RECORDS = 64                    \ a record array's entries
-ASSERT REN_BASE + &7B8 <= &C000
+ASSERT REN_BASE + &7BD <= &C000
 ELSE
 REN_BASE    = &B400 + PAD_START + NMOS * &100   \ workspace above the code and data (DATA1 ASSERTs it), to &C000
                                     \ (NMOS: a page higher, for its longer code; the offsets in a page as they were);
@@ -536,6 +536,9 @@ IF MODEL_B
     \ a chain) off and on as a unit; the zone's (the scroll's columns, the lives digit) first, with
     \ the scroll, then the others from the one reaching highest on the screen down ----
     JSR cluster_build
+IF ZONE_SPLIT
+    JSR zone_split                  \ decision 79: the zone's top movers a cluster of their own (cl_ztop)
+ENDIF
     JSR cluster_thresholds
     JSR behind_beam                 \ those the beam has passed in the last frame's last field
     LDA cl_zone                     \ then, its display over, the zone's with the scroll
@@ -951,6 +954,21 @@ ENDIF
     STA src6 + 2
     STA src7 + 2
 .same_slot
+IF ZONE_SPLIT
+    LDX wc_from                     \ decision 79: the rows below the split only (zone_top wrote the rest)
+    BEQ from_top
+    LDA edge_screen_address_high    \ SPLIT_ROWS character rows down, round the 16K
+    CLC
+    ADC #HI(SPLIT_ROWS * &280)
+    CMP #&80
+    BCC split_on
+    SBC #&40
+.split_on
+    STA edge_screen_address_high
+    LDX #&C8 - 8 * SPLIT_ROWS
+    BNE group                       \ (always)
+.from_top
+ENDIF
     LDX #&C8                        \ the history's bytes from the top: X - 1 - line
 .group
     LDY #0
@@ -988,6 +1006,9 @@ ENDIF
     TXA
     SEC
     SBC #8
+IF ZONE_SPLIT
+    CMP wc_stop                     \ decision 79: 0, or the split's (zone_top: the rows above it); C = 1 if not
+ENDIF
     BEQ done
     TAX
     LDA edge_screen_address_low     \ down a character row: &280, round the 16K screen

@@ -90,6 +90,10 @@ ASSERT MB_GAMEPLAY = 0 OR HUD_RUPTURE <> 0, "the Model B's gameplay disc is laid
 COMPILED = 1 - MB_GAMEPLAY
 PLAYER_NEXT = MODEL_B               \ the player's cluster after the scroll's column, before the zone's movers go back
                                     \ on (render_clusters.6502 player_next, decision 78)
+SKY_B4 = MB_GAMEPLAY * SKY_MODE     \ decision 79: sky_build in bank 4 too (sky_b4), for helicopter bodies bank 4 holds
+ZONE_SPLIT = MB_GAMEPLAY            \ decision 79: the zone's top rows (the sky's helicopters) and the columns' behind the
+                                    \ beam in the last frame's field (render_clusters.6502 zone_split; no lives digit on
+                                    \ the screen with HUD_RUPTURE)
 IF COMPILED = 0
 HAZEL_ORG = &C700                   \ (no compiled_table to say so: hazel_a, empty, is copied from here)
 ENDIF
@@ -221,6 +225,15 @@ ENDIF
 IF MB_GAMEPLAY * SKY_MODE          \ decision 76: sky mode's code, called only by the renderer (bank 4 paged)
     INCLUDE "sky_main.6502"         \ take_off's half and the image's kind (main RAM elsewhere)
     INCLUDE "sky_hazel.6502"        \ the geometry and column checks (HAZEL, or helicopter 1's image's room)
+ENDIF
+IF SKY_B4                           \ decision 79: the image builder again, for the bodies bank 4 holds (bank 5's
+.sky_b4                             \ copy reads only its own): bank 4's tables, read where they are
+{
+SKY_BLK_LO = sky_blk_lo
+SKY_BLK_HI = sky_blk_hi
+SKY_RB = sky_rb
+    INCLUDE "sky_hazel_c.6502"
+}
 ENDIF
 IF GAMEPLAY_SHIELD
 IF MB_GAMEPLAY = 0                  \ (MB_GAMEPLAY: in bank 7, decision 76)

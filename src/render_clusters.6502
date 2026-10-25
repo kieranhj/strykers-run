@@ -15,7 +15,12 @@ cl_best     = REN_BASE + REN_CL + 73
 cl_key      = REN_BASE + REN_CL + 74
 cl_cur      = REN_BASE + REN_CL + 75
 cl_y        = REN_BASE + REN_CL + 76
-ASSERT MOVER_SLOTS + 1 <= 35 AND REN_CL + 79 <= &800
+wc_from     = REN_BASE + REN_CL + 79    \ ZONE_SPLIT (decision 79): write_column's first row (0 or SPLIT_ROWS)
+wc_stop     = REN_BASE + REN_CL + 80    \ and where it stops (X - 8: 0, or the split's)
+cl_ztop     = REN_BASE + REN_CL + 81    \ the zone's top movers' cluster (&FF: none)
+zt_state    = REN_BASE + REN_CL + 82    \ 0: zone_top to do; &80: done, or nothing to do
+zt_y        = REN_BASE + REN_CL + 83
+ASSERT MOVER_SLOTS + 1 <= 35 AND REN_CL + 84 <= &800
 
 \ group_off: A = a cluster (&FF none). Its movers off: the player first (drawn last), then the
 \ others from the last slot down (the list is in slot order)
@@ -104,6 +109,15 @@ BB_STOP_E = 56                      \ no cluster started behind the beam from li
     CMP #BB_STOP_E
     BCS ending                      \ the display nearly over: the zone's next, in the blank
     STA cl_e
+IF ZONE_SPLIT
+    BIT zt_state
+    BMI scan                        \ done, or nothing to do
+    CMP #ZT_E
+    BCC scan                        \ the beam not past the split yet
+    JSR zone_top
+    JMP loop
+.scan
+ENDIF
     LDX list_n
 .each
     DEX
@@ -113,6 +127,10 @@ BB_STOP_E = 56                      \ no cluster started behind the beam from li
     BCS each
     CPY cl_zone
     BEQ each
+IF ZONE_SPLIT
+    CPY cl_ztop
+    BEQ each                        \ (zone_top's)
+ENDIF
     LDA cl_thr,Y
     CMP cl_e
     BEQ ready
@@ -130,15 +148,201 @@ BB_STOP_E = 56                      \ no cluster started behind the beam from li
     SBC field_count
     CMP #1
     BNE out
+IF ZONE_SPLIT
+    BIT zt_state
+    BMI end_wait
+    JSR zone_top                    \ (the beam is past the split: BB_STOP_E > ZT_E)
+    JMP ending
+.end_wait
+ENDIF
     LDA #&FF
     SEC
     SBC usrvia_t2ch
     CMP #DISPLAY_END_E
     BCC ending
 .out
+IF ZONE_SPLIT
+    BIT zt_state
+    BMI split_done
+    JMP zone_merge                  \ T has begun with zone_top not done: the zone's whole again
+.split_done
+ENDIF
     RTS
 }
 cl_thr      = REN_BASE + REN_CL + 35           \ (each cluster's: labels are entry indices)
+
+IF ZONE_SPLIT
+\ Decision 79 (KC, 2026-10-25: the edges' helicopters missing their field, "I've definitely seen this on my
+\ playthroughs"): the zone's work is the scroll's columns and the movers over them, all at the display's end
+\ until now, the player's (decision 78) after the columns. The sky's helicopters are near the top, which the
+\ beam passes early in the last frame's field. So the zone's movers wholly above the split (SPLIT_ROWS
+\ character rows) are a cluster of their own (cl_ztop), and once the beam is past the split (ZT_E) zone_top
+\ takes them off, writes the columns' rows above it (each the last frame's left column a row down: passed),
+\ and puts them on, all behind the beam; at the display's end the columns' rows below the split only
+\ (wc_from). A zone mover across the split: no split. T begun first: merged back (zone_merge).
+SPLIT_ROWS = 12
+SPLIT_LINE = 8 * SPLIT_ROWS
+ZT_E = ((55 + SPLIT_LINE) >> 2) + 4 + 2 \ cluster_thresholds' count for a lowest line SPLIT_LINE - 1, and 2 more: the
+                                    \ HUD row shows each screen row 8 lines later
+ASSERT ZT_E < BB_STOP_E AND LO(SPLIT_ROWS * &280) = 0
+.zone_split
+{
+    LDA #&FF
+    STA cl_ztop
+    LDA #0
+    STA wc_from
+    STA wc_stop
+    LDA #&80
+    STA zt_state
+    LDA pending_n
+    BEQ out                         \ no columns: as before
+    LSR zt_state                    \ &40: the columns' top at least
+    LDA cl_zone
+    CMP #&FF
+    BEQ out                         \ no zone movers: the columns' top only
+    LDA #&FF                        \ cl_key: a top entry other than the zone's label; cl_best: a bottom one;
+    STA cl_key                      \ cl_y: tops seen
+    STA cl_best
+    LDA #0
+    STA cl_y
+    LDX list_n
+.each
+    DEX
+    BMI scanned
+    LDA list_cl,X
+    CMP cl_zone
+    BNE each
+    LDA list_y1,X                   \ its lowest line above the split: a top
+    CMP #200 - SPLIT_LINE
+    BCS top
+    LDA list_y2,X                   \ its highest line below it: a bottom; else across it
+    CMP #200 - SPLIT_LINE
+    BCS across
+    STX cl_best
+    BCC each                        \ (always)
+.top
+    INC cl_y
+    CPX cl_zone
+    BEQ each
+    STX cl_key
+    BNE each                        \ (always: Z from the CPX)
+.across
+    LDA #&80                        \ no split at all
+    STA zt_state
+.out
+    RTS
+.scanned
+    LDA cl_y
+    BEQ out                         \ no tops: the columns' top only
+    LDA cl_best
+    CMP #&FF
+    BNE both
+    LDA cl_zone                     \ all tops: the zone's movers are zone_top's
+    STA cl_ztop
+    LDA #&FF
+    STA cl_zone
+    RTS
+.both
+    LDA cl_key
+    CMP #&FF
+    BEQ relabel_bottoms
+    STA cl_ztop                     \ the tops take cl_key's label
+    LDX list_n
+.tops
+    DEX
+    BMI out
+    LDA list_cl,X
+    CMP cl_zone
+    BNE tops
+    LDA list_y1,X
+    CMP #200 - SPLIT_LINE
+    BCC tops
+    LDA cl_ztop
+    STA list_cl,X
+    BCS tops                        \ (always: C from the CMP)
+.relabel_bottoms                    \ the only top is the zone's label entry: the bottoms take cl_best's
+    LDA cl_zone
+    STA cl_ztop
+    LDA cl_best
+    STA cl_zone
+    LDX list_n
+.bottoms
+    DEX
+    BMI out
+    LDA list_cl,X
+    CMP cl_ztop
+    BNE bottoms
+    LDA list_y1,X
+    CMP #200 - SPLIT_LINE
+    BCS bottoms
+    LDA cl_zone
+    STA list_cl,X
+    BCC bottoms                     \ (always: C from the CMP)
+}
+
+\ zone_top: in the last frame's last field, the beam past the split: the zone's top movers off, the columns'
+\ rows above the split (oldest first, as render's scroll), the top movers on; write_column then writes
+\ only the rows below (wc_from)
+.zone_top
+{
+    LDA cl_ztop
+    JSR group_off
+    LDA #&C8 - 8 * SPLIT_ROWS
+    STA wc_stop
+    LDA pending_n                   \ pending_n 1 or 2 -> Y 1 or 0
+    LSR A
+    EOR #1
+    TAY
+.each
+    STY zt_y
+    LDX pending_slot,Y
+    JSR write_column
+    LDY zt_y
+    INY
+    CPY #2
+    BNE each
+    LDA #0
+    STA wc_stop
+    LDA #SPLIT_ROWS
+    STA wc_from
+    LDA cl_ztop
+    JSR group_on
+    LDA #&80
+    STA zt_state
+    RTS
+}
+
+\ zone_merge: T begun before zone_top: the top movers back in the zone's cluster, the columns whole
+.zone_merge
+{
+    LDA #&80
+    STA zt_state
+    LDX cl_ztop
+    CPX #&FF
+    BEQ out
+    LDA cl_zone
+    CMP #&FF
+    BNE relabel
+    STX cl_zone                     \ all were tops
+    BEQ none                        \ (always: Z from the CMP)
+.relabel
+    LDX list_n
+.each
+    DEX
+    BMI none
+    LDA list_cl,X
+    CMP cl_ztop
+    BNE each
+    LDA cl_zone
+    STA list_cl,X
+    JMP each
+.none
+    LDA #&FF
+    STA cl_ztop
+.out
+    RTS
+}
+ENDIF
 
 IF PLAYER_NEXT
 \ player_next (decision 78; KC, 2026-10-25: the player "not staying centered in the screen ... offset by one

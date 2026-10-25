@@ -112,9 +112,9 @@ ENDIF
     TAY
     LDA animation_table,Y
     STA sky_body
-IF MODEL_B
+IF MODEL_B * (1 - SKY_B4)
     TAY                             \ decision 75: the image is built in bank 5, from ANDY's sprites only
-    LDA sprite_in_b5,Y
+    LDA sprite_in_b5,Y              \ (SKY_B4, decision 79: or in bank 4, from its own)
     BEQ to_fall
     TYA
 ENDIF
