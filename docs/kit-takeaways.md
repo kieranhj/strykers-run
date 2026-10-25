@@ -83,7 +83,7 @@ The work landed in the kit as five branches merged into `takeaways-strykers`, as
   is CPU-only. A Model B means one screen raced against the beam (Model B brief).
 - Indexed reads crossing pages add up: 824 bytes of slide cost 165 cycles a pass; tables laid out
   by counted crossings saved 15.6 (decision 40).
-- The MOS sound driver is stateful: 38 of 48 effect pairs end differently over another effect than
+- The MOS sound driver is stateful: 27 of 48 effect pairs (38 before BUGS #19's tick fix) end differently over another effect than
   from silence (layer 3).
 
 ### Bug classes
@@ -143,7 +143,7 @@ its negative controls failing; lib tests exit 0; and on this repo's discs, the k
 gave `passlock`'s verdict on every pair tried, `irqprofile` on the original 18.8% in interrupts
 (layer 1: 21.0% on jsbeeb 2.5.0), the fitter remade `src/sfx_data.6502`'s 158 bytes.
 
-## 5. Found here on the way (not fixed)
+## 5. Found here on the way (all four fixed 2026-10-25: BUGS #18, #19)
 
 - **`tools/tracediff.mjs` is stale for bank 5 on the plain disc's shift pair**: it maps every
   bank's PC back by `-SHIFT` (line 108), but since 2026-10-23 the plain build's relocation moves
@@ -151,10 +151,10 @@ gave `passlock`'s verdict on every pair tried, `irqprofile` on the original 18.8
   at `title_screen` (control `&8C27`, shifted `&8B27`). The kit's `tracediff` reads the map from
   the dumps and passes the same pair (400M cycles identical).
 - **The 50 Hz effects end a field early**: `sfx50` silences a channel in the tick that plays its
-  last field, so each shipped effect is 20 ms short of the MOS's. The kit's fitter has `--pad-end`;
-  here the bytes are unchanged (decision 25's fit).
+  last field, so each shipped effect was 20 ms short of the MOS's. The kit's fitter has `--pad-end`;
+  here `tools/sfx50.py` now pads by default (BUGS #18).
 - **`tools/sfxcapture.mjs` counts ticks by IRQ entries with T1's flag up**, which double counts
-  (entries 300 cycles apart) and skips; the fitted bytes came out right regardless (the kit's
-  capture, ticks on a 20,000-cycle grid, fits the same 158).
+  (entries 300 cycles apart) and skips; the fitted bytes came out right regardless. Now a grid,
+  as the kit's (BUGS #19).
 - **`tools/nmosify.py` matches the annotation to today's sources by line**: on the 2026-10-25
   annotation it reports 47 failures that are drift (the kit's, reading the annotation alone: 0).

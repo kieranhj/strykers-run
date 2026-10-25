@@ -189,8 +189,8 @@ disassembly's `actually`/`also` notes say what an operand really is.
 - `tools/hang.mjs DISC PASS`, `tools/screendiff.mjs A B PASS` - where a stalled build goes; two builds' screens byte by byte
 - `tools/scenerycols.mjs DISC OUT.json`, `tools/scenerycols.mjs A.json B.json` - every scenery column (both flips) through a build's own unpacker into random buffers; two builds' results compared (decision 39)
 - `tools/sprites.py stats|emit|straight` - sprite sizes, save block sizes, and the generated sprite sources
-- `tools/sfxcapture.mjs DISC OUT [--pairs]` - each sound effect's chip writes by MOS tick; `--pairs`, an effect over another
-- `tools/sfx50.py CAPTURE.json OUT.6502 [--show]` - fit 50 Hz ramps (for `src/lib/sfx50.6502`) to captured effects; `--show` prints them against the MOS's
+- `tools/sfxcapture.mjs DISC OUT [--pairs]` - each sound effect's chip writes by MOS tick (a grid at T1's period, BUGS #19; an original build: the tick is off in play otherwise); `--pairs`, an effect over another
+- `tools/sfx50.py CAPTURE.json OUT.6502 [--show] [--no-pad-end]` - fit 50 Hz ramps (for `src/lib/sfx50.6502`) to captured effects, each last ramp a field longer (BUGS #18); `--show` prints them against the MOS's
 - `tools/worldmap.py [DISC] [--out DIR] [--json F] [--crop LEFT ...] [--observed DIR]` - the whole world from the build's level data
   (`docs/level-format.md`): `world-background.png` (every layer and the ground), `world-objects.png` (movers, helicopters, craft,
   trigger points); `--crop` the 80 columns a view shows. `tools/worldshots.mjs DISC OUT COLUMN ...` - the emulator's screen

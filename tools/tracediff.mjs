@@ -12,7 +12,10 @@
 // own destination operand, and the pages it copies, into &4000-&7FFF at addresses SHIFT apart -
 // so starting at the stub, &5181 in both, stops at once on its first STA operand). From there every instruction's PC is recorded,
 // mapped back to the unshifted program (the SHIFTED build's game, assembled at &0E00 - n, is moved
-// up by n, and each bank's code from its org + n down by n), and the two streams are compared. The first
+// up by n; a bank's code by the offset of the nearest label at or below it that both dumps have in
+// that bank - a bank's contents move up or down by n, or not at all, by build: the plain build's
+// bank 5 moves DOWN since 2026-10-23, B5_OFF, where a fixed -n for every bank gave a false
+// divergence at title_screen), and the two streams are compared. The first
 // mismatch is printed with the instructions before it, as label + offset from the symbol dumps.
 import { readFileSync } from "node:fs";
 import { loadMachineSession } from "./jsbeeb_src.mjs";
@@ -42,13 +45,16 @@ function loadSymbols(ssd) {
         return -1;
     };
     const out = [];
-    const walk = (o, prefix, bank) => {
+    // a section nested in a bank's (andy_data at &8000, hazel_a at &C700: carried in DATA2, run
+    // elsewhere) is rephased: its labels are not addresses in that bank, so the bank map skips them
+    const rephased = (sec) => sec.parent != null && sec.parent !== 0 && !(sec.name in SECTION_BANK);
+    const walk = (o, prefix, bank, re) => {
         for (const [k, v] of Object.entries(o || {})) {
-            if (v && typeof v.value === "number") out.push([v.value, prefix + k, bank]);
-            else if (v && typeof v === "object" && !("value" in v)) walk(v, prefix + k + ".", bank);
+            if (v && typeof v.value === "number") out.push([v.value, prefix + k, bank, re]);
+            else if (v && typeof v === "object" && !("value" in v)) walk(v, prefix + k + ".", bank, re);
         }
     };
-    for (const sec of secs) walk(sec.labels, "", bankOf(sec));
+    for (const sec of secs) walk(sec.labels, "", bankOf(sec), rephased(sec));
     return out.filter(([a]) => a >= 0x400 && a < 0xC000).sort((x, y) => x[0] - y[0]);
 }
 const symA = loadSymbols(discA);
@@ -62,6 +68,33 @@ const orgB = (() => { for (const sec of JSON.parse(readFileSync(discB.replace(/\
 if (endB === undefined || orgB === undefined) { console.error(`${discB}: no mgame_end or GAME_ORG in its symbols`); process.exit(2); }
 if (orgB + SHIFT !== (() => { for (const sec of JSON.parse(readFileSync(discA.replace(/\.ssd$/, ".symbols.json"), "utf8")).assemblies[0].sections)
     if (sec.assignments && sec.assignments.GAME_ORG) return sec.assignments.GAME_ORG.value; })()) { console.error(`the two builds' GAME_ORG are not SHIFT apart`); process.exit(2); }
+// Each bank's map, shifted -> control: the common labels (same name, same bank) by their shifted
+// address, each with its delta; a PC takes the delta of the last one at or below it.
+const bankMap = new Map();
+{
+    const byName = (syms) => { const m = new Map(); for (const [ad, n, bk, re] of syms) if (bk >= 0 && !re) m.set(bk + ":" + n, ad); return m; };
+    const mA = byName(symA);
+    for (const [ad, n, bk, re] of symB) {
+        if (bk < 0 || re || ad < 0x8000) continue;
+        const aa = mA.get(bk + ":" + n);
+        if (aa === undefined) continue;
+        if (!bankMap.has(bk)) bankMap.set(bk, []);
+        bankMap.get(bk).push([ad, aa - ad]);
+    }
+    for (const [bk, list] of bankMap) {
+        list.sort((x, y) => x[0] - y[0]);
+        const ds = [...new Set(list.map(([, d]) => d))];
+        if (ds.some((d) => d % 256 !== 0)) { console.error(`bank ${bk}: a label moved by other than whole pages (${ds.join(", ")})`); process.exit(2); }
+        console.error(`bank ${bk}: ${list.length} common labels, offsets ${ds.map((d) => (d < 0 ? "-" : "+") + "&" + Math.abs(d).toString(16)).join(", ")}`);
+    }
+}
+const bankDelta = (bank, pc) => {
+    const list = bankMap.get(bank);
+    if (!list) return 0;
+    let d = 0;
+    for (const [ad, dd] of list) { if (ad <= pc) d = dd; else break; }
+    return d;
+};
 const name = (syms, pcb) => {
     const pc = pcb & 0xffff, bank = pc >= 0x8000 ? pcb >> 16 : -1;
     let best = null;
@@ -105,7 +138,7 @@ const canonB = (pc) => {
     // where the file loads it, does not move
     if (pc >= orgB && pc < endB) return pc + SHIFT;
     const bank = cpuB.romsel & 15;
-    if (bank >= 4 && bank <= 7 && pc >= 0x8000 + SHIFT && pc < 0xc000) return pc - SHIFT;
+    if (bank >= 4 && bank <= 7 && pc >= 0x8000 && pc < 0xc000) return pc + bankDelta(bank, pc);
     return pc;
 };
 // Both streams hold instructions (canonical PC | bank << 16) and, between them, every write

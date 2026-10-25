@@ -1,7 +1,7 @@
 """sfx50.py - fit 50 Hz ramp scripts for src/lib/sfx50.6502 to sound effects captured from the
 MOS (tools/sfxcapture.mjs), and write them out as a source file.
 
-    python tools/sfx50.py CAPTURE.json OUT.6502 [--show]
+    python tools/sfx50.py CAPTURE.json OUT.6502 [--show] [--no-pad-end]
 
 The capture holds, per effect, the SN76489 writes by MOS centisecond tick from the SOUND call.
 For each effect this replays the writes on its own channel (the chip's channel, from the
@@ -13,6 +13,13 @@ long as every field it covers is within tolerance (period: 3% or 2, whichever is
 
 An effect ends where its channel goes silent for good, or after MAX_FIELDS for a silent tone
 (a sweep that only sets the pitch of noise mode 3, which takes tone 2's period).
+
+THE LAST FIELD (2026-10-25). src/lib/sfx50.6502 silences a channel in the same tick that outputs
+its last field (sfx_tick: the output, then DEC sfx_n reaching 0, then sfx_next_ramp finding the
+end), so that field sounded for microseconds: every effect was a field (20 ms) shorter than the
+MOS played it, from decision 25 to 2026-10-25. Each effect's last ramp now gets one more field
+(or, at 255, a one-field ramp of its last values), so the field cut is one past the MOS's;
+--no-pad-end makes the bytes shipped before. Found by beeb-port-kit's lib/test/sfx50_test.mjs.
 
 The output, per effect, ramps of 6 bytes: fields (0 ends the effect: the channel is silenced),
 period low and high (noise: the noise control in the low byte), period step (signed, a field),
@@ -115,6 +122,7 @@ def ramps(s, noise):
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     show = "--show" in sys.argv
+    pad_end = "--no-pad-end" not in sys.argv
     capture, outfile = args
     effects = json.loads(Path(capture).read_text())["effects"]
     c = BS + " "
@@ -122,11 +130,20 @@ def main():
              c + "The game's sound effects as 50 Hz ramps for src/lib/sfx50.6502 (step 2 layer 3,",
              c + "decision 25), fitted to the MOS's own playing of each (tools/sfxcapture.mjs).",
              c + "Each ramp: fields, period (low, high), period step, amplitude * 16 + 8, amplitude step."]
+    if pad_end:
+        lines.append(c + "Each effect's last ramp is a field longer than the MOS's playing: the driver silences a")
+        lines.append(c + "channel in the tick that outputs its last field (tools/sfx50.py, THE LAST FIELD).")
     total = 0
     for off, chan, what in EFFECTS:
         ch = chip_channel(chan)
         s = trim(samples(effects[str(off)], ch))
         rs = ramps(s, ch == 3)
+        if pad_end and rs:
+            n, p, dp, a, dv = rs[-1]
+            if n < 255:
+                rs[-1] = (n + 1, p, dp, a, dv)
+            else:
+                rs.append((1, p + dp * n, 0, (a * 16 + 8 + dv * n) >> 4, 0))
         total += 6 * len(rs) + 1
         lines.append("")
         lines.append(f".sfx_effect_{off:02x}{' ' * 20}{c}{what}: chip channel {ch}, {len(s)} fields")

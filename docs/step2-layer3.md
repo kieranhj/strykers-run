@@ -275,7 +275,8 @@ is over 2 fields (79,872 cycles), and by how much:
   often moves more when it does. Reverted.
 
 - **An exact copy of the MOS's sound**: `tools/sfxcapture.mjs --pairs` shows it is stateful: in
-  38 of 48 cases an effect started over another on its channel leaves the chip in a different
+  27 of 48 cases (corrected 2026-10-25, BUGS #19: this said 38, from a capture that miscounted the
+  MOS's ticks) an effect started over another on its channel leaves the chip in a different
   state from the same effect started from silence (pitch and amplitude carry on). Its tick costs
   1,200-2,200 cycles, twice a field, nearly all in the sound code (`&F4xx-&F6xx`). KC: not needed;
   the effects are approximated (above).

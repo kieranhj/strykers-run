@@ -8,7 +8,12 @@
 // play_sound: playscript.mjs's callFrom, which writes nothing but the stack - the stub this used
 // to put at &0C00 overwrote `times_78_hi` once decisions 32-34 moved things there). The MOS's tick is System VIA T1, every
 // 20,000 cycles; a write is put in the tick it falls in, counted from the first tick after the
-// call. --pairs also fires every effect B a few ticks into every effect A on the same channel,
+// call. The ticks are a GRID at T1's period (2026-10-25, from beeb-port-kit's sfxcapture.mjs):
+// until then each IRQ entry with T1's flag up was counted a tick, and an entry made for another
+// source can see the flag before the MOS takes it (two "ticks" ~300 cycles apart) while the MOS
+// can take T1 inside an entry made for another source (a tick missed) - the entries now only fix
+// the grid's phase, the earliest-serviced one after the call being the underflow. Measures on the
+// original build (`make original`): in step 2 builds the tick is off in play (decision 25). --pairs also fires every effect B a few ticks into every effect A on the same channel,
 // and checks the chip's state from B's start against B's from silence: if they agree, an
 // effect is the same whatever it replaces, and its script can simply restart.
 import { readFileSync, writeFileSync } from "node:fs";
@@ -29,9 +34,13 @@ const cpu = s._machine.processor; const cyc = () => cpu.currentCycles + cpu.cycl
 const chip = cpu.soundChip; const orig = chip.poke.bind(chip);
 let log = null; chip.poke = (v) => { if (log) log.push([cyc(), v]); return orig(v); };
 const W = syms.wait_for_unpause, PS = syms.play_sound;
-// the MOS's ticks: entries to the IRQ vector with System VIA T1's flag up
+// the MOS's ticks: T1 free-running, period = latch + 2 at 1 MHz; entries to the IRQ vector with
+// System VIA T1's flag up fix only the phase
+const latchT1 = s.readMemory(0xfe46, 2);
+const P = ((latchT1[0] | (latchT1[1] << 8)) + 2) * 2;
 const ticks = [];
 cpu.debugInstruction.add((pc) => { if (pc === 0xe59e && log && (s.readMemory(0xfe4d, 1)[0] & 0x40)) ticks.push(cyc()); return false; });
+const phase = { entries: 0, ticks: 0 };
 async function fire(off) {
     if (!(await runToPc(s, W, 10))) throw new Error("not in the pause loop");
     callFrom(s, PS, off);
@@ -39,9 +48,14 @@ async function fire(off) {
 }
 // writes -> per tick lists, from the first tick after t0
 function byTick(writes, t0) {
-    const tk = ticks.filter((t) => t > t0);
+    const mod = (v) => ((v % P) + P) % P;
+    const after = ticks.filter((t) => t > t0);
+    if (!after.length) throw new Error("no MOS tick after the call: is T1 running (an original build)?");
+    const first = t0 + Math.min(...after.map((t) => mod(t - t0)));   // the first underflow after t0
+    const end = Math.max(first, ...writes.map(([c]) => c));
+    phase.entries += after.length; phase.ticks += Math.floor((end - first) / P) + 1;
     const res = [];
-    for (const [c, v] of writes) { if (c < t0) continue; let i = tk.findIndex((t, j) => c >= t && (j + 1 === tk.length || c < tk[j + 1])); res.push([i, v]); }
+    for (const [c, v] of writes) if (c >= t0) res.push([Math.floor((c - first) / P), v]);
     return res;
 }
 // the chip's registers after each tick, from a list of [tick, byte]
@@ -91,4 +105,5 @@ if (PAIRS) {
     for (const r of report.filter((r) => r.firstDiff).slice(0, 20)) console.log(JSON.stringify(r));
 }
 writeFileSync(out, JSON.stringify(result));
+console.log(`T1 every ${P} cycles; ${phase.entries} entries with its flag up for ${phase.ticks} ticks`);
 console.log(disc, Object.entries(effects).map(([k, v]) => `&${(+k).toString(16)}: ${v.length} writes over ${v.length ? v[v.length - 1][0] + 1 : 0} ticks`).join("; "));

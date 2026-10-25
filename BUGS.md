@@ -489,3 +489,42 @@ carried copy) and the Master's value in `scenery_layer_sprite_banks`: without `D
 sprites below &17, 6 below &30 and 7 after (`scenery_sprite_banks` as assembled), built as `LDA #1 : CPX #&17 : ROL
 A : CPX #&30 : ROL A`. `prebuild` keeps `scenery_layer_romsel` on both Model B discs. The Master builds page banks
 4-7 and never had it. Proven: see decision 80.
+
+## 18. Every 50 Hz sound effect ended a field early (step 2, decision 25; FIXED)
+
+Found 2026-10-25 by beeb-port-kit's `lib/test/sfx50_test.mjs` (the kit's copy of the driver, against its
+fitter's model). `sfx_tick` outputs a channel's field, steps it, and when `sfx_n` reaches 0 calls
+`sfx_next_ramp`, which on the effect's end writes the silence in the same tick: the last field sounded
+for microseconds, so each effect was one field (20 ms) shorter than the MOS played it, on every disc since
+decision 25. Measured (`tools/soundfx.mjs`, each effect's own channel from its first write to its
+silence, jsbeeb 2.10.2, against the MOS's capture `tools/sfx-mos320.json`): explosion 319 ms against
+the MOS's 340, firing grenade 1,198 / 1,230, bullet 699 / 730, landing 300 / 330, jump 539 / 560,
+exploding grenade 120 / 140. **Fixed**: `tools/sfx50.py` gives each effect's last ramp one more field
+(THE LAST FIELD in its header; `--no-pad-end` makes the old bytes), `src/sfx_data.6502` regenerated, still
+158 bytes, the driver unchanged: now 339, 1,218, 719, 319, 559 and 140 ms, within the MOS's own 10 ms
+tick of its lengths. The gameplay disc's own effects (`src/sfx_gameplay.6502`, decision 69) were made by
+ear on this driver and are left as they are. Checked: `passlock.mjs` against the build before, state and
+screen identical over 2,000 passes (seed 1); `frontend.mjs` 0 failed.
+
+## 19. Three measuring tools wrong (found by the kit work, 2026-10-25; FIXED)
+
+- **`tools/tracediff.mjs` mapped every bank back by -SHIFT**, but since 2026-10-23 the plain build's
+  relocation moves bank 5 a page LOWER (`B5_OFF = -PAD_START`, `src/main.6502`): on the plain shift pair
+  it stopped at once at `title_screen` (control `&8C27`, shifted `&8B27`). Now each bank's PC takes the
+  offset of the nearest label at or below it that both symbol dumps have in that bank (`andy_data` and
+  `hazel_a`, rephased into DATA2, left out): bank 5 `+&0` for its `&8000` block and `+&100` after, banks
+  4, 6, 7 `-&100`. The `-Shift 256 -Define DEBUG_LIVES` pair: no divergence in 400M cycles (122M
+  entries). (The gameplay builds cannot be shifted: `src/main.6502` refuses them.)
+- **`tools/sfxcapture.mjs` counted a MOS tick per IRQ entry with T1's flag up**, which double-counts (an
+  entry for another source sees the flag before the MOS takes it) and skips (the MOS takes T1 inside an
+  entry made for another): the two silent sweeps' writes were a tick late from tick 78 and 201 on, and
+  `--pairs` reported 38 of 48 pairs differing. Now the ticks are a grid at T1's period, the entries
+  fixing only its phase (as beeb-port-kit's capture): 3,206 entries for 3,189 ticks over the 8 effects,
+  the fit unchanged (158 bytes), 27 of 48 pairs differing. `tools/sfx-mos320.json` recaptured
+  (`make original`'s build, jsbeeb 2.10.2).
+- **`tools/nmosify.py` matched the annotation to today's sources by line number**, so any edit above a
+  site since the annotation shifted it: `check` reported 47 failures that were only drift. Now the
+  files are lined up by their code lines (difflib), and a site whose code changed since is STALE
+  (listed, a failure, never rewritten by `apply`). On the 2026-10-25 01:47 annotation: 284 hold, 16
+  by hand, 10 not in that build, 0 fail, 0 stale; `report`: one stale (`src/shield.6502`'s `TSB`,
+  gone in `e78ee10`).

@@ -22,12 +22,51 @@ state before the instruction allows:
 
 Anything else (TSB, TRB, BIT #, BIT zp,X, (zp)) is reported MANUAL and left alone. A site the
 build does not assemble (another flag set's) has no annotation and is not seen.
+
+THE ANNOTATION AND TODAY'S SOURCES (2026-10-25). The annotated files are the sources as they were
+when analyse.py ran, comments dropped. They are lined up with today's sources by their code
+(difflib over each file's code lines), not by line number: matched by number, any edit above a
+site since the annotation shifted it, and `check` reported sites that had only moved (47 on the
+2026-10-25 annotation). A site whose code matches nothing in today's source is STALE: counted,
+listed, a failure, and never rewritten by `apply`; re-annotate to see it.
 """
-import re, sys, os, collections
+import re, sys, os, collections, difflib
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ANN = os.path.join(ROOT, 'build', 'annotated', 'src')
 SRC = os.path.join(ROOT, 'src')
+STALE = []
+
+
+def code_of(line):
+    """A line's code, comments (\\ and the annotation's ;|) dropped and spaces collapsed."""
+    return ' '.join(line.split(';|')[0].split('\\')[0].split())
+
+
+def align(ann_path, src_path):
+    """(annotated lines, today's source lines, {annotated index: source index}): the two files
+    matched by their code lines, so lines that only moved still meet; a line with code that
+    changed, or is new, has no partner."""
+    # the annotated files end their lines \r\r\n: read raw, split on \n
+    a_lines = [l.rstrip('\r') for l in open(ann_path, encoding='utf-8', newline='').read().split('\n')]
+    s_lines = [l.rstrip('\r') for l in open(src_path, encoding='utf-8', newline='').read().split('\n')]
+    ak = [i for i, l in enumerate(a_lines) if code_of(l)]
+    sk = [i for i, l in enumerate(s_lines) if code_of(l)]
+    sm = difflib.SequenceMatcher(None, [code_of(a_lines[i]) for i in ak], [code_of(s_lines[i]) for i in sk],
+                                 autojunk=False)
+    to = {}
+    for b in sm.get_matching_blocks():
+        for k in range(b.size):
+            to[ak[b.a + k]] = sk[b.b + k]
+    return a_lines, s_lines, to
+
+
+def lined_up(ann_path, src_path):
+    """(annotated line, today's source line or None, its number or None), for every annotated line."""
+    a_lines, s_lines, to = align(ann_path, src_path)
+    for i, al in enumerate(a_lines):
+        j = to.get(i)
+        yield al, (s_lines[j] if j is not None else None), (j + 1 if j is not None else None)
 
 INS = re.compile(r'^(\s*)(STZ|BRA|INC\s+A\b|DEC\s+A\b|PHX|PHY|PLX|PLY|TSB|TRB|BIT|LDA|STA|ADC|SBC|AND|ORA|EOR|CMP|JMP)\b(.*)$', re.I)
 BLOCK = ('IF', 'ELSE', 'ELIF', 'ENDIF', 'MACRO', 'ENDMACRO', 'FOR', 'NEXT', '{', '}')
@@ -126,16 +165,19 @@ def sites():
             src = os.path.join(SRC, rel)
             if not os.path.exists(src):
                 continue
-            # the annotated files end their lines \r\r\n: read raw, split on \n
-            a_lines = [l.rstrip('\r') for l in open(os.path.join(dirpath, f), encoding='utf-8', newline='').read().split('\n')]
-            s_lines = [l.rstrip('\r') for l in open(src, encoding='utf-8', newline='').read().split('\n')]
             run_zero = set()        # registers an STZ_LD? just zeroed, for the STZs straight after
-            for n, (al, sl) in enumerate(zip(a_lines, s_lines), 1):
-                code = sl.split('\\')[0].strip()
+            for al, sl, n in lined_up(os.path.join(dirpath, f), src):
+                code = code_of(al)
                 st = state(al)
                 if st is None:
                     if code.startswith('.') or code.upper().startswith(BLOCK):
                         run_zero = set()
+                    continue
+                if sl is None:
+                    m = INS.match(code)
+                    if m and is_cmos(re.sub(r'\s+', ' ', m.group(2).upper()), m.group(3)):
+                        STALE.append(f"src/{rel}: {code[:60]}")
+                    run_zero = set()
                     continue
                 m = INS.match(sl)
                 mn = re.sub(r'\s+', ' ', m.group(2).upper()) if m else None
@@ -195,13 +237,18 @@ def check():
             src = os.path.join(SRC, rel)
             if not f.endswith('.6502') or not os.path.exists(src):
                 continue
-            a_lines = [l.rstrip('\r') for l in open(os.path.join(dirpath, f), encoding='utf-8', newline='').read().split('\n')]
-            s_lines = [l.rstrip('\r') for l in open(src, encoding='utf-8', newline='').read().split('\n')]
+            a_lines, s_lines, to = align(os.path.join(dirpath, f), src)
+            back = {j: i for i, j in to.items()}
             run_zero = set()
-            for n, (al, sl) in enumerate(zip(a_lines, s_lines), 1):
+            for n, sl in enumerate(s_lines, 1):
                 code = sl.split('\\')[0].strip()
                 word = code.split()[0] if code else ''
-                st = state(al)
+                al = a_lines[back[n - 1]] if n - 1 in back else None
+                if al is None and word in macros:
+                    STALE.append(f"src/{rel}:{n}: {code[:60]}")     # changed or new since the annotation
+                    run_zero = set()
+                    continue
+                st = state(al) if al is not None else None
                 if word not in macros:
                     if code and (st is not None or code.startswith('.') or code.upper().startswith(BLOCK)):
                         run_zero = set()
@@ -221,10 +268,13 @@ def check():
                     run_zero.add(word[-1])
                 elif not word.startswith('STZ_'):
                     run_zero = set()
-    print(f"{ok} hold, {hand} checked by hand, {unseen} not in this build, {len(bad)} NO LONGER HOLD")
+    print(f"{ok} hold, {hand} checked by hand, {unseen} not in this build, {len(bad)} NO LONGER HOLD, "
+          f"{len(STALE)} stale (changed since the annotation: re-annotate)")
     for b in bad:
         print('  ' + b)
-    return 1 if bad else 0
+    for s in STALE:
+        print('  STALE ' + s)
+    return 1 if bad or STALE else 0
 
 
 def check_nmos():
@@ -275,7 +325,10 @@ def main():
     found = list(sites())
     forms = collections.Counter(s[4] or 'MANUAL' for s in found)
     nbytes = sum(COST.get(s[4], (0, 0))[0] for s in found)
-    print(f"{len(found)} sites; NMOS forms add at most {nbytes} bytes")
+    print(f"{len(found)} sites; NMOS forms add at most {nbytes} bytes"
+          + (f"; {len(STALE)} STALE, changed since the annotation (re-annotate; apply leaves them)" if STALE else ""))
+    for s in STALE:
+        print('  STALE ' + s)
     for k, v in sorted(forms.items()):
         print(f"  {k:10s} {v}")
     for rel, n, sl, mn, form, regs, out in found:
