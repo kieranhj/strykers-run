@@ -126,10 +126,33 @@ The work landed in the kit as five branches merged into `takeaways-strykers`, as
 
 ## 4. What landed in the kit
 
+On beeb-port-kit's branch `takeaways-strykers` (`b4f356c`, 2026-10-25; not yet merged to `master`):
+
 | Branch | Carries |
 |---|---|
-| `tstrykers-fixes` | `baron_dbg` nested sections; `dfs` directories, `layout`, `file`, `game_files` |
-| `tstrykers-harness` | the pair harness on `harness.mjs`; the relocation proof; harness helpers |
-| `tstrykers-lib` | `nmos.6502` + `nmosify.py`; `sfx50` (driver, fitter, capture); `isr_model.py` |
-| `tstrykers-tools` | the micro-grind skill and `grind.py`; capture; `zpwatch`; `irqprofile` |
-| `tstrykers-docs` | the lessons above into PORTING, gotchas, hardware-facts, verification |
+| `tstrykers-fixes` | `baron_dbg` nested SECTIONs (`read_disc` hook); `dfs` keys `D.NAME`, `game_files`, `layout`, `file` |
+| `tstrykers-harness` | `passplay.mjs` (keys by pass, one module), `pairlock.mjs`, `passbench.mjs`; `lockstep.mjs`, `tracediff.mjs` (the shift map from both dumps); `harness.mjs` helpers (`keyDownRaw`, `callFrom`, bank-aware hooks, `hang`); the template's `-Shift 256 [-ShiftEnd]` |
+| `tstrykers-lib` | `lib/nmos.6502` + `nmosify.py`; `lib/sfx50.6502`, `py/beeb_port_kit/sfx50.py`, `sfxcapture.mjs`; `isr_model.py` behind `ISR_MODEL` |
+| `tstrykers-tools` | `skills/beeb-micro-grind`, `grind.py`, `grind_config.py`, `pcprof.mjs`; `capture.mjs` + `video.mjs`; `irqprofile.mjs`, `memwatch.mjs` (`zpwatch` generalised), `keyscript.mjs` |
+| `tstrykers-docs` | PORTING 2.1c (rebuilding a BBC original), 5.3, 5.5-5.7, 9, 9b (Master to Model B), 10-13; 21 gotchas; 15 hardware facts; verification procedures 20-23 |
+
+Proven on the merged branch (jsbeeb 2.10.2): py 196 tests OK; the template's suite 15 of 15 with
+its negative controls failing; lib tests exit 0; and on this repo's discs, the kit's `pairlock`
+gave `passlock`'s verdict on every pair tried, `irqprofile` on the original 18.8% in interrupts
+(layer 1: 21.0% on jsbeeb 2.5.0), the fitter remade `src/sfx_data.6502`'s 158 bytes.
+
+## 5. Found here on the way (not fixed)
+
+- **`tools/tracediff.mjs` is stale for bank 5 on the plain disc's shift pair**: it maps every
+  bank's PC back by `-SHIFT` (line 108), but since 2026-10-23 the plain build's relocation moves
+  bank 5 a page lower (`B5_OFF = -PAD_START`, `src/main.6502`), so it reports a false divergence
+  at `title_screen` (control `&8C27`, shifted `&8B27`). The kit's `tracediff` reads the map from
+  the dumps and passes the same pair (400M cycles identical).
+- **The 50 Hz effects end a field early**: `sfx50` silences a channel in the tick that plays its
+  last field, so each shipped effect is 20 ms short of the MOS's. The kit's fitter has `--pad-end`;
+  here the bytes are unchanged (decision 25's fit).
+- **`tools/sfxcapture.mjs` counts ticks by IRQ entries with T1's flag up**, which double counts
+  (entries 300 cycles apart) and skips; the fitted bytes came out right regardless (the kit's
+  capture, ticks on a 20,000-cycle grid, fits the same 158).
+- **`tools/nmosify.py` matches the annotation to today's sources by line**: on the 2026-10-25
+  annotation it reports 47 failures that are drift (the kit's, reading the annotation alone: 0).
