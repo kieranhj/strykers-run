@@ -12,8 +12,7 @@ then the level editor, then the ideas (KC has not ranked them). What has landed 
   (decision 67) KC has seen on b2 (2026-10-23), not yet on hardware.
 - **Redux Lite on a real Model B** (decisions 73-80): seen in jsbeeb (its Model B, banks 4-7 and poked
   elsewhere) and tested by KC in b2 (2026-10-25); real hardware still to come (the HUD row's rupture, the
-  beam-raced one screen and the bank probe on a real board). The Model B disc is on the prod page (uncommitted on the site,
-  2026-10-25, for KC's review).
+  beam-raced one screen and the bank probe on a real board). The Model B disc is on the prod page (site commit 351787d, 2026-10-25).
 - **Which ideas to build** (below): each changes how the original plays (rule 1), so each needs a
   decision first.
 
