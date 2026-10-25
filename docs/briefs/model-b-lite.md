@@ -336,7 +336,7 @@ Decision 75's six, and: (7) the 8 remaining compiled kinds drawn straight (the l
 whole world's late frames, 248 -> 558). Ways back: bank 4's 885 and bank 6's 967 free bytes (some
 compiled kinds again, or `times_78`'s 512-byte table if its reads are all with bank 4 paged).
 
-## Step 6: the player never torn (decision 77, 2026-10-25)
+## Step 6: the player never torn (decision 77, 2026-10-25; superseded by 78, step 7)
 
 KC, 2026-10-25: "it is a little flickery around the player sometimes. can you tighten up the timing for the player
 sprite plotting specifically?" `tools/beamcheck.mjs --slot` (new: late bytes by the slot being drawn, and the frames
@@ -363,3 +363,34 @@ else holds it (`cl_pdef`, skipped by `pick_cluster`) and `player_behind`, after 
 Held: 48 of about 400 player draws. The whole world's state identical to the Master gameplay disc every pass. The
 cost is the wait for the beam: the cheaper way to fewer holds is a cheaper player (compiled kinds again in bank 5's
 1,167 free bytes and bank 6's 967: the commonest, `ck2`, `ck3`, `ck1`, 569 bytes each).
+
+## Step 7: the player in place for the field (decision 78, 2026-10-25)
+
+KC, 2026-10-25: "the problem with deferring the player to the second field is that you more often get ghosting with
+the player not staying centered in the screen. they are offset by one column due to the mismatch of when the sprite
+is plotted vs the scroll. let's fix this!" Decision 77's hold only turned a torn player into one shown a column off.
+`tools/beamcheck.mjs --slot` now counts, per slot, the frames whose first field missed its bytes (written behind
+the beam, after that field's display, or in a later field; beamcheck had not judged writes in the blank), and of
+them the frames that scrolled. Traced: in those frames the zone's cluster (most often an edge helicopter) went back
+on until rows 7-13 of the field before the player's started. `PLAYER_NEXT` (both Model B discs): `player_next`
+draws the player's cluster after the scroll's column and the lives digit, before the zone's movers go back on
+(clusters do not overlap, so the order cannot change the frame).
+
+jsbeeb 2.10.2 Model B, 2026-10-25, beamcheck seed 1, passes 501-1,500 (missed: frames whose first field missed a
+slot's bytes; of the player's, all but a few on frames that scrolled):
+
+| disc | player missed | torn | column missed | helicopter 0 missed | whole world late frames |
+|---|---|---|---|---|---|
+| gameplay, decision 76 | 48 | 38 | 7 | 31 | 548 (23.89 passes/s) |
+| gameplay, decision 77 (held) | 50 | 2 | 8 | 33 | 686 (23.75) |
+| gameplay, zone and player behind the beam from line 184 (dropped) | 42 | 36 | 8 | 29 | |
+| gameplay, `player_next` (built) | 4 | 4 | 8 | 40 | 458 (23.99) |
+| plain, decision 75 | 30 | | 1 | 1 | 244 |
+| plain, `player_next` (built) | 1 | | 1 | 14 | 203 (24.80) |
+
+The whole world's state identical to the Master discs' every pass (11,412 passes each); passbench on the gameplay
+disc 25.00 passes/s, 6 late frames (7 before); no early bytes. The price: the zone's movers (the edges' helicopters
+most often) miss their field more often (gameplay disc slots 17 and 3 also 36 -> 41 and 6 -> 17). The dropped try:
+the zone's and the player's clusters behind the beam in the last frame's field from line 184 (T2's count 60):
+with the HUD row on top each screen row shows 8 lines later than the T2 mapping `behind_beam` uses, so
+`write_column` wrote rows 23-24 ahead of the beam (126 frames with early bytes), and the player still missed 42.

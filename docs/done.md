@@ -287,7 +287,7 @@ and costs are `docs/briefs/gameplay-shield.md`.
   in `R`, each started by its own `!BOOT`. `tools/menutest.mjs`: the picture byte for byte, each choice
   its own directory's game to its title.
 
-## Redux Lite: the Model B (branch `model-b-lite`, decisions 73-77; `docs/briefs/model-b-lite.md`)
+## Redux Lite: the Model B (branch `model-b-lite`, decisions 73-78; `docs/briefs/model-b-lite.md`)
 
 - **NMOS** (2026-10-24, `3d564af`): every 65SC12 instruction given an NMOS form behind `NMOS`
   (`src/lib/nmos.6502`, `tools/nmosify.py` and its `check`/`check --nmos` proofs); without the flag
@@ -304,9 +304,10 @@ and costs are `docs/briefs/gameplay-shield.md`.
   gameplay flag, the dithered hills, the HUD rupture and sky mode kept. The whole world's state identical to
   the Master gameplay disc on both machines; every rules harness passes on jsbeeb's BBC B; late frames 558
   against 248.
-- **The player never torn on the Model B gameplay disc** (2026-10-25, decision 77): drawn straight after the
-  scroll's cluster when it fits before the beam, else held and drawn behind it; torn frames 38 -> 2 in 1,000,
-  the whole world's late frames 548 -> 686.
+- **The player in place for its field on both Model B discs** (2026-10-25, decision 78; 77's hold superseded):
+  the player's cluster after the scroll's column, before the zone's movers go back on. Frames whose first
+  field missed the player 48 -> 4 in 1,000 (gameplay disc), 30 -> 1 (plain); the whole world's late frames
+  548 -> 458 and 244 -> 203.
 - **The Model B's release disc** (2026-10-25): both Model B builds behind the original release's menu
   (`-ReleaseDisc -Define NMOS,MODEL_B`, `make release-disc-b`); each release disc names its machine in the
   menu's bottom right corner.

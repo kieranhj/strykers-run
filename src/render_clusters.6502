@@ -15,8 +15,7 @@ cl_best     = REN_BASE + REN_CL + 73
 cl_key      = REN_BASE + REN_CL + 74
 cl_cur      = REN_BASE + REN_CL + 75
 cl_y        = REN_BASE + REN_CL + 76
-cl_pdef     = REN_BASE + REN_CL + 79    \ the player's cluster, held for behind the beam (&FF: none)
-ASSERT MOVER_SLOTS + 1 <= 35 AND REN_CL + 80 <= &800
+ASSERT MOVER_SLOTS + 1 <= 35 AND REN_CL + 79 <= &800
 
 \ group_off: A = a cluster (&FF none). Its movers off: the player first (drawn last), then the
 \ others from the last slot down (the list is in slot order)
@@ -141,105 +140,29 @@ BB_STOP_E = 56                      \ no cluster started behind the beam from li
 }
 cl_thr      = REN_BASE + REN_CL + 35           \ (each cluster's: labels are entry indices)
 
-IF PLAYER_HOLD
-\ player_first (KC, 2026-10-25: "tighten up the timing for the player sprite plotting"): the player's
-\ cluster straight after the zone's, in the blank if it can be: the eye is on the player, who stays put
-\ while the screen scrolls under them. Taken off and put on with the beam inside it, part of it is
-\ shown missing for a field (the flicker); so it goes now only if it can be done before the beam reaches
-\ its top line in T, allowing PLAYER_E (T2 counts of 4 lines) for it. Else it is held (cl_pdef): the
-\ others go ahead of the beam, then player_behind draws it once the beam has passed it, whole a field late.
-PLAYER_E = 28                       \ 112 lines: its take off and put on together, about p90 (jsbeeb, 2026-10-25;
-                                    \ 36 held more and tore more, beamcheck seed 1)
-PLAYER_SPARE = 4                    \ player_behind's row more
-.player_first
+IF PLAYER_NEXT
+\ player_next (decision 78; KC, 2026-10-25: the player "not staying centered in the screen ... offset by one
+\ column due to the mismatch of when the sprite is plotted vs the scroll"): the player stays put on screen
+\ while the scroll moves the screen under them, so their bytes must be in place before the beam reaches them
+\ in the frame's first field, or it shows them a column off (or part drawn). So the player's cluster goes
+\ next after the scroll's column and the lives digit, before the zone's movers go back on: the clusters do
+\ not overlap, so the order cannot change the frame (render_clusters.6502's group_off), and the zone's
+\ movers (the edges' helicopters, most often) can take the time instead.
+.player_next
 {
-    LDA #&FF
-    STA cl_pdef
     LDA list_n
     BEQ out
     LDA list_slot                   \ the player, when listed, is entry 0
     BNE out
     LDA list_cl
     CMP #CL_DONE
-    BCS out                         \ done with the zone's, or staying
-    STA cl_pdef
-    LDA #0                          \ its top: its entries' greatest list_y2 (y counts up the screen)
-    STA cl_key
-    LDX list_n
-.top
-    DEX
-    BMI topped
-    LDA list_cl,X
-    CMP cl_pdef
-    BNE top
-    LDA list_y2,X
-    CMP cl_key
-    BCC top
-    STA cl_key
-    BCS top                         \ always
-.topped
-    LDA #255                        \ the count at which the beam reaches its top line, 199 - y2:
-    SEC                             \ (255 - y2) >> 2, as cluster_thresholds counts
-    SBC cl_key
-    LSR A
-    LSR A
-    STA cl_key
-    LDA flip_target                 \ the beam's count now: field_count read before T2 (behind_beam)
-    SEC
-    SBC field_count
-    BMI now                         \ T has gone: the beam is in a later field, from its top
-    BEQ in_t
-    LDA #0                          \ T's not begun: still the blank before it, so as at its vsync
-    BEQ budget                      \ (always)
-.in_t
-    LDA #&FF
-    SEC
-    SBC usrvia_t2ch
-.budget
-    CLC
-    ADC #PLAYER_E
-    BCS out                         \ (held)
-    CMP cl_key
-    BCS out                         \ not done before the beam reaches it: held
-.now
-    LDA cl_pdef
+    BCS out                         \ done, or staying
+    CMP cl_zone
+    BEQ out                         \ the zone's: drawn with it
     PHA
     JSR group_off
     PLA
-    JSR group_on
-    LDA #&FF
-    STA cl_pdef
-.out
-    RTS
-}
-
-\ player_behind: a held player's cluster, once the beam has passed its lowest line (cl_thr: a row to
-\ spare) in T, or at once if T has gone (the beam is above it, from the next field's top)
-.player_behind
-{
-    LDX cl_pdef
-    CPX #&FF
-    BEQ out
-.wait
-    LDA flip_target
-    SEC
-    SBC field_count
-    BMI go                          \ T has gone
-    BNE wait                        \ T's not begun
-    LDA #&FF
-    SEC
-    SBC usrvia_t2ch
-    SEC                             \ a row more than the others' threshold: its bytes reached a row past
-    SBC #PLAYER_SPARE               \ it in T (jsbeeb, 2026-10-25: rows 23-24 with the beam at row 23)
-    BCC wait
-    CMP cl_thr,X
-    BCC wait
-.go
-    TXA
-    PHA
-    JSR group_off
-    PLA
-    JSR group_on
+    JMP group_on
 .out
     RTS
 }

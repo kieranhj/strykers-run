@@ -13,7 +13,9 @@
 // Reports frames (the vsync interrupt's flips: writes of shown_screen), how many had early or late
 // bytes and how many, the late ones by the frame's field (0 = the field it was first shown in); --rows
 // the bytes by character row, --who by routine and cell, --slot by the mover slot being taken off or put on (and the frames each was torn in: its writes after
-// the flip partly behind the beam and partly ahead)
+// the flip partly behind the beam and partly ahead; and the frames that scrolled in which it was late; and
+// the frames it missed: a write after the flip that the frame's first field did not show, written behind the
+// beam, after that field's display, or in a later field: on a frame that scrolled, shown a column off)
 // (take_off's or put_on's X; "column" the scroll's, "lives" the digit's) and the slot's frames. Neither lasts: the next field is right.
 import { readFileSync } from "node:fs";
 import { loadMachineSession } from "./jsbeeb_src.mjs";
@@ -81,19 +83,26 @@ if (SLOT) {
 }
 const frames = [], rows = new Array(26).fill(0), who = new Map(), cells = new Map();
 const newFrame = () => ({ pass: m.passes, late: 0, early: 0, writes: 0, byField: {} });
-let frame = null, next = null;          // the frame shown; the one whose flip is pending
+let frame = null, next = null, lastStart = -1;          // the frame shown; the one whose flip is pending
 cpu.debugWrite.add((a) => {
-    if (a === syms.shown_screen) { if (on()) { frame = next || newFrame(); frame.pass = m.passes; frames.push(frame); next = null; } fieldsSinceFlip = -1; return false; }
+    if (a === syms.shown_screen) {
+        const st = cpu.readmem(syms.flip_crtc_lo) | cpu.readmem(syms.flip_crtc_hi) << 8;   // the frame's start: moved = it scrolled
+        if (on()) { frame = next || newFrame(); frame.pass = m.passes; frame.scrolled = st !== lastStart; frames.push(frame); next = null; }
+        lastStart = st; fieldsSinceFlip = -1; return false;
+    }
     if (a < 0x4000 || a > 0x7fff || !on() || (cpu.acccon & 4)) return false;
     const pending = !!(cpu.readmem(syms.flip_pending) & 0x80);
     const fr = pending ? (next ??= newFrame()) : frame;
     if (!fr) return false;
     fr.writes++;
+    if (SLOT && !pending && on() && fr && (fieldsSinceFlip >= 1 || (fieldsSinceFlip === 0 && (!(video.dispEnabled & VDISP) || video.vertCounter > 24))))
+        (fr.missed ??= new Set()).add(cur);     // after its frame's first field has shown the whole screen: missed it entirely
     if (!(video.dispEnabled & VDISP) || video.vertCounter > 24) return false;
     const off = ((a >> 3) - startMa) & 0x7ff, row = Math.floor(off / 80), col = off % 80, line = a & 7;
     if (off >= 2000) return false;                          // the ring's 384 bytes never shown
     const v = video.vertCounter, sc = video.scanlineCounter, h = video.horizCounter;
     const passed = row < v || (row === v && (line < sc || (line === sc && col < h)));
+    if (SLOT && !pending && fieldsSinceFlip === 0 && passed) (fr.missed ??= new Set()).add(cur);
     if (SLOT && !pending) { const w = ((fr.slotW ??= new Map()).get(cur) ?? [0, 0]); w[passed ? 0 : 1]++; fr.slotW.set(cur, w); }
     if (pending ? passed : !passed) return false;
     if (pending) fr.early++; else { fr.late++; const f = Math.max(0, fieldsSinceFlip); fr.byField[f] = (fr.byField[f] || 0) + 1; }
@@ -115,7 +124,13 @@ for (let p = 1; p <= FROM + N; p++) {
 }
 const bad = frames.filter((f) => f.late || f.early);
 const torn = new Map();                 // --slot: frames where a slot's writes after the flip were partly behind the beam, partly ahead
-for (const f of frames) for (const [k, [late, ok]] of f.slotW || []) if (late && ok) torn.set(k, (torn.get(k) || 0) + 1);
+const missed = new Map(), missedScrolled = new Map();   // --slot: frames whose first field showed a slot's bytes not yet written (and of them, frames that scrolled)
+for (const f of frames) for (const k of f.missed || []) { missed.set(k, (missed.get(k) || 0) + 1); if (f.scrolled) missedScrolled.set(k, (missedScrolled.get(k) || 0) + 1); }
+const scrolledLate = new Map();         // --slot: frames that scrolled in which a slot had late bytes (shown a column off where late)
+for (const f of frames) for (const [k, [late, ok]] of f.slotW || []) {
+    if (late && ok) torn.set(k, (torn.get(k) || 0) + 1);
+    if (late && f.scrolled) scrolledLate.set(k, (scrolledLate.get(k) || 0) + 1);
+}
 const byField = {}; let late = 0, early = 0;
 for (const f of frames) { late += f.late; early += f.early; for (const [k, n] of Object.entries(f.byField)) byField[k] = (byField[k] || 0) + n; }
 const hist = {}; for (const f of bad) { const n = f.late + f.early, b = n < 10 ? "1-9" : n < 100 ? "10-99" : n < 1000 ? "100-999" : "1000+"; hist[b] = (hist[b] || 0) + 1; }
@@ -125,6 +140,10 @@ console.log(JSON.stringify({ disc, passes: `${FROM + 1}-${FROM + N}`, seed: SEED
     worst: bad.sort((a, b) => b.late + b.early - a.late - a.early).slice(0, 8).map((f) => `${f.pass}:${f.late}+${f.early}`),
     ...(ROWS ? { badByRow: rows } : {}),
     ...(SLOT ? { lateBySlot: Object.fromEntries([...slotBytes].sort((a, b) => b[1] - a[1])), framesBySlot: Object.fromEntries([...slotFrames].sort((a, b) => b[1] - a[1])),
-        tornBySlot: Object.fromEntries([...torn].sort((a, b) => b[1] - a[1])) } : {}),
+        tornBySlot: Object.fromEntries([...torn].sort((a, b) => b[1] - a[1])),
+        scrolledFrames: frames.filter((f) => f.scrolled).length,
+        missedBySlot: Object.fromEntries([...missed].sort((a, b) => b[1] - a[1])),
+        missedInScrolledFramesBySlot: Object.fromEntries([...missedScrolled].sort((a, b) => b[1] - a[1])),
+        lateInScrolledFramesBySlot: Object.fromEntries([...scrolledLate].sort((a, b) => b[1] - a[1])) } : {}),
     ...(WHO ? { badBy: Object.fromEntries([...who].sort((a, b) => b[1] - a[1]).slice(0, 16)), badCells: Object.fromEntries([...cells].sort((a, b) => b[1] - a[1]).slice(0, 24)) } : {}) }));
 process.exit(0);
