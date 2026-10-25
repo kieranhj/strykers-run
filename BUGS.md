@@ -419,3 +419,30 @@ the shadow screen it read ANDY's `&8B80-&8DFF` (the renderer's sprites).
   address and D (the HUD's addresses with D 0, the screen's with the shown screen's), and each write's
   beam position. Found on the way: the 6845 latches a frame's end at its last scanline's C0 = 1 (jsbeeb
   models the Hitachi part), so R4 0 must be in before the HUD row's scanline 7.
+
+## 16. After a prebuilt scroll, bank 0 was paged, not the walk's bank (step 2 grind; FIXED, `f1cc2f2`)
+
+Found 2026-10-25 by the Model B build with its game in banks 0-3 (decision 74), where bank 0 is no
+longer empty. Grind G0297 put `install_prebuilt` in line on the prebuilt path of both scrolls as
+`LDA pre_bank : STA &F4 : STA romsel`; G0321 (`66db298`, 2026-10-18) then moved the walk's bank into
+`install_prebuilt`'s own `LDA #` operand and stopped writing `pre_bank`, so the in-line copies paged
+bank 0 (`pre_bank`'s only value) from then on, on every disc. Nothing read the paged bank before the
+next select on the plain disc's path: its whole world, state and every frame, is identical with the
+fix (the two in-line loads read `install_prebuilt + 1`).
+
+## 17. With the game's banks anywhere but 4-7, the headquarters' approach draws differently (decision 74; OPEN)
+
+Found 2026-10-25: a `MODEL_B` build on jsbeeb's Model B (banks 0-7 RAM), its banks found at 0-3
+(`SWR_LOW`) or poked (`SWR_POKE`: 7 6 5 4, 1 2 3 0, 4 5 6 3, 5 6 7 4), against the same build in 4-7:
+the whole world's state is identical every pass, and every frame up to pass ~11,381; then 28-32
+frames, on the approach to the headquarters, differ in the right edge's columns (`write_column`
+writes other bytes from the column history: 3 to 228 bytes a frame). Ruled out so far: the bank
+selects (the two machines' ROMSEL sequences are the same logical banks, pass by pass); the memory
+below `&4000` and the four banks (logically identical at each pass's start, the bank numbers mapped);
+the timing (`field_count` equal); `pre_bank` (#16); an unset layer's bank (`scenery_layer_sprite_banks`'
+starting 0, paged by the walk and read at the headquarters: now a bank with no ROM the game does not
+use, `bank_patch`); the bank immediate the original also used as the pixel table's page
+(`bks_game_1934`, now separate). Next: diff the column buffer and the history push in the pass the
+first byte differs; look for a read of a bank number as data in the walk (the logical bank 7 alone
+moved is enough to show it). The Master, and a Model B whose RAM is at 4-7, use banks 4-7 and are
+not affected.

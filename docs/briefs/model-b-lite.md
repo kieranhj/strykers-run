@@ -218,3 +218,66 @@ unchanged: passbench seed 1, 25.04 passes/s, 1,998 frames each shown 2 fields, 0
 `&3D27`. Finished frames identical to the double-buffered build's (worldrun, the whole world: 11,412 passes, state and the
 finished frame identical every pass; late frames 120 against 143). The `-Define DITHER_HILLS` and `NMOS` builds
 unchanged by it (every file).
+
+## Step 3: nothing in ANDY or HAZEL (decision 75, 2026-10-25)
+
+Part 1 (`73e1e40`): ANDY's 53 sprites stay where `DATA2` carries them in bank 5 and are drawn from
+there by bank 5's copy of the column loop (`src/render_b5.6502`, through `call_b5` in main RAM:
+`sprite_in_b5` says which); HAZEL's 6 compiled kinds are refused before their save entry is written
+and drawn straight; the renderer's workspace compacted for one screen (`REN_BASE` `&B800`, records
+at a `&40` stride, the clusters' state at `REN_CL`); sky mode's image builder at bank 5's end, its
+tables copied there.
+
+Part 2 (`8c77f43`): what `hazel_b` held, by where it is read (`tools/hazelbanks.mjs`-style scratch:
+every HAZEL execution and table read with the ROMSEL it ran under, 3,000 passes):
+
+| what | bytes | where (MODEL_B) |
+|---|---|---|
+| the scroll column's code (`pre_cancel`, `edge_right` as a loop, `ground_square`, `unpack_scenery_column`), mover widths, the player helicopters' speeds, `times_78_of_a` | 460 | `mb_low`, `&0BC8-&0D94` (after `moved_0a20`; under the MOS's extended vectors at `&0D9F`; the DFS's NMI page is idle once loaded) |
+| the player helicopters' initial x | 30 | the main block's free room (`&33E1`) |
+| sky mode's geometry and column checks (`sky_hazel`) | 430 | helicopter 1's sky image's room, `&3E40-&3FEE` (helicopter 1 masked) |
+| the animation table, `sprites_y_offset`, the other mover type tables | 524 | bank 4 (only read with it paged) |
+| `times_78_lo/hi` | 512 | none: computed |
+
+The arena may not run into code now: `sky_room` asks for the mover type's largest block
+(`src/sprite_blocks.6502`, `tools/sprites.py blocks`), not `MAX_BLOCK`, which refused small draws;
+none refused over 12,000 passes. No ACCCON write in `MODEL_B`.
+
+Measured (jsbeeb 2.10.2, Master, 2026-10-25): the whole world against the double-buffered NMOS build,
+state identical, every finished frame identical (11,412), late frames 244 (126); helilock flights 2,
+5, 8 identical; passbench 25.04 passes/s, 1 late frame; beamcheck 37 frames in 1,000 with late
+bytes (24 at step 2), 0 early.
+
+### The cycles given for RAM (to win back)
+
+1. HAZEL's 6 compiled kinds drawn straight: the larger part of the late frames' rise (126 -> 251).
+2. ANDY's sprites through `call_b5` (a bank switch there and back a column draw).
+3. Sky mode for helicopter 0 only, and only with a body sprite bank 5 holds.
+4. `times_78_of_a`: ~100 cycles a moved mover where the table took ~25.
+5. `edge_right` looped: ~10 cycles a mover on each right scroll.
+6. The arena's room test by mover type: ~30 cycles where it tests.
+
+Ways back: the save arena single (one screen) is 2,294 bytes, its live blocks peak near 2,000, so
+part of it can hold code; bank 6 has ~530 and bank 7 ~480 bytes free; the gameplay disc needs its
+own sums (its HUD buffer and rules code).
+
+## Step 4: the Model B boot (decision 74, 2026-10-25, `f1cc2f2`)
+
+`!BOOT` (no Master check) runs `SWR`, the probe (`src/swr.6502`: Paradroid's, after stnicc-beeb), then
+SRRUN, which fills the banks found; the game's start-up patches its bank selects (`bank_patch`: 20
+immediates labelled `.bks_*`, `scenery_sprite_banks`, `ck_bank`, and an unset layer's bank pointed at a
+bank with no ROM the game does not use). The disc runs on a Master too (the probe finds 4-7).
+
+Measured (jsbeeb 2.10.2, `B-DFS1.2`: BBC B, DFS 1.2, banks 0-7 RAM, 2026-10-25): boots, probes
+("Sideways RAM found: 7 6 5 4 3 2 1 0 / Using banks: 4 5 6 7"), frontend's 15 checks 0 failed, observer
+ok, passbench 25.04 passes/s and 1 late frame, beamcheck 37 in 1,000 late and 0 early, helilock flight
+5 state identical to the Master build; the whole world with the banks at 0-3 or permuted, state
+identical every pass (BUGS #17: 28-32 frames at the headquarters' approach differ).
+
+The Model B's screen differs from the Master's in two places the original takes from what the machine
+has: the ground's texture (the MOS ROM at `&E000` as a random stream) and the mountain layer's choice
+of sprite (HAZEL's bytes on a Master, BUGS #9; MOS 1.20's ROM at `&C300` on a B). Both are the
+original's behaviour on that machine.
+
+Not done yet: real hardware and other emulators (b2, b-em; `beeb-target-matrix`); Paradroid's ROM
+image as the fourth bank; BUGS #17.

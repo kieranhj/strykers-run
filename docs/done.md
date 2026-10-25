@@ -287,6 +287,19 @@ and costs are `docs/briefs/gameplay-shield.md`.
   in `R`, each started by its own `!BOOT`. `tools/menutest.mjs`: the picture byte for byte, each choice
   its own directory's game to its title.
 
+## Redux Lite: the Model B (branch `model-b-lite`, decisions 73-75; `docs/briefs/model-b-lite.md`)
+
+- **NMOS** (2026-10-24, `3d564af`): every 65SC12 instruction given an NMOS form behind `NMOS`
+  (`src/lib/nmos.6502`, `tools/nmosify.py` and its `check`/`check --nmos` proofs); without the flag
+  every build is byte-identical. The whole world: state and finished frames identical.
+- **One screen** (`MODEL_B`, 2026-10-24, `8872f42`): drawn in the beam's order, clusters taken off and
+  put on as units; 25.04 passes/s, 0 late frames on the bench; 24 frames in 1,000 with late bytes.
+- **No ANDY or HAZEL** (2026-10-25, `73e1e40`, `8c77f43`): the whole world identical to the
+  double-buffered build (frames too); the cycles given for RAM listed in decision 75.
+- **The Model B boot** (2026-10-25, `f1cc2f2`): `SWR` finds the sideways RAM, the start-up patches the
+  bank selects; on jsbeeb's BBC B (DFS 1.2) the front end's 15 checks pass, 25.04 passes/s.
+  BUGS #16 fixed on the way (every disc); BUGS #17 open.
+
 ## Tooling
 
 - **Two builds from one repository** (decision 28, `7e60e02`): the POSIX `Makefile` beside
