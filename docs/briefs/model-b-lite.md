@@ -281,3 +281,33 @@ original's behaviour on that machine.
 
 Not done yet: real hardware and other emulators (b2, b-em; `beeb-target-matrix`); Paradroid's ROM
 image as the fourth bank; BUGS #17.
+
+## Next: the gameplay disc on the Model B (not built; the choices are KC's)
+
+Done towards it (2026-10-25, `2ebf85d`): the gameplay code's NMOS forms (72 sites and 4 by hand; the
+gameplay CMOS disc unchanged, `nmosify check` 0 failing).
+
+What the gameplay disc adds, measured on its Master build (bytes): bank 4 ~880 (shield 359, the HUD
+builder 224, the HUD's progress and score 251, its start 44); bank 5 ~860 (the rules screen 511, its
+text 244, the hooks 101); the tables HAZEL holds with `HUD_RUPTURE` 231 (triggers, `level_movers_x_low`,
+`ground_columns`, the rupture's T1 counts); `DITHER_HILLS` 2,473 unpacked (its carrier was ANDY's
+sprites' room in bank 5, their home now); and the rupture's HUD row needs `&0B80-&0DFF`, where `mb_low`
+(460) lives. Free in the plain Model B build: bank 4 ~60, bank 5 ~270, bank 6 ~530, bank 7 ~480, main
+~10.
+
+Room that can be had, and its price:
+
+| from | bytes | price |
+|---|---|---|
+| the 8 remaining compiled kinds (banks 5, 6, 7) | ~6,000 | measured: the whole world's late frames 244 -> 271, passbench 25.04 -> 25.02 passes/s; one draw refused for the arena's room (helicopter 1, pass 5,708), which `player_save`'s 117 bytes (unused then) give back |
+| `MOUNTAINS_ONE`'s original in bank 4, replaced by the dithered pair's packed 595 (as on the Master gameplay disc) | ~1,500 | none |
+| sky mode's main RAM (`sky_main` 528, helicopter 0's image 448) and `sky_hazel` (430, helicopter 1's image's room) | ~1,400 main | the helicopters drawn masked (a new mode: `SKY_MODE` 0 is the kind cache, which needs HAZEL) |
+| the front end's code into the save arena while the front end runs (packed, unpacked at the title) | up to ~2,000 | a load time at each title; work |
+
+A layout that fits, if sky mode can go: banks 5-7's compiled kinds out; the dithered mountains
+unpacked into bank 6 and bank 7's freed room (the scroll pages each scenery sprite's own bank); the
+shield, HUD and their start in bank 4 (`MOUNTAINS_ONE`'s room); the rules screen and the credit line at
+bank 5's end; `mb_low` and the rupture's tables in sky mode's main RAM; the rupture without ACCCON (on a
+B the 6845 reads `&0B80` as it is). Keeping sky mode instead needs ~700 bytes of main RAM found
+elsewhere (the stack page's unused half, if measured so, and `player_save`), or the HUD's rupture
+dropped (the HUD row back in the play area, as before decision 67).
