@@ -10,9 +10,9 @@ then the level editor, then the ideas (KC has not ranked them). What has landed 
   jsbeeb only (`docs/step2-layer2.md` "Open"); so are the front end's scroll text and credit line,
   run in the vsync interrupt with interrupts re-enabled (decisions 57, 60). The HUD's rupture
   (decision 67) KC has seen on b2 (2026-10-23), not yet on hardware.
-- **Redux Lite on a real Model B** (decisions 73-80): seen in jsbeeb only (its Model B, banks 4-7 and
-  poked elsewhere); the HUD row's rupture, the beam-raced one screen and the bank probe want b2 and real
-  hardware (the beeb-cross-emulator skill). The Model B disc is on the prod page (uncommitted on the site,
+- **Redux Lite on a real Model B** (decisions 73-80): seen in jsbeeb (its Model B, banks 4-7 and poked
+  elsewhere) and tested by KC in b2 (2026-10-25); real hardware still to come (the HUD row's rupture, the
+  beam-raced one screen and the bank probe on a real board). The Model B disc is on the prod page (uncommitted on the site,
   2026-10-25, for KC's review).
 - **Which ideas to build** (below): each changes how the original plays (rule 1), so each needs a
   decision first.
