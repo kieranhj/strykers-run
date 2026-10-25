@@ -335,3 +335,31 @@ Measured (jsbeeb 2.10.2, 2026-10-25):
 Decision 75's six, and: (7) the 8 remaining compiled kinds drawn straight (the larger part of the
 whole world's late frames, 248 -> 558). Ways back: bank 4's 885 and bank 6's 967 free bytes (some
 compiled kinds again, or `times_78`'s 512-byte table if its reads are all with bank 4 paged).
+
+## Step 6: the player never torn (decision 77, 2026-10-25)
+
+KC, 2026-10-25: "it is a little flickery around the player sometimes. can you tighten up the timing for the player
+sprite plotting specifically?" `tools/beamcheck.mjs --slot` (new: late bytes by the slot being drawn, and the frames
+each was torn in, its writes after the flip partly behind the beam and partly ahead) on the gameplay disc, seed 1,
+passes 501-1,500: the player (slot 0) late in 42 frames of 1,000, torn in 38. Traced: its cluster went after every
+cluster reaching higher, and its put on alone is about 9,500 cycles (p50; p90 10,500, p99 22,000: 74 lines and more,
+most of it bank 5's column loop, the compiled kinds gone), its take off about 3,700; in heavy frames the zone's
+cluster ran 150-180 lines into the field first.
+
+`PLAYER_HOLD` (the gameplay disc; the plain disc's bank 4 is 87 bytes short): `player_first`, after the zone's
+cluster, draws the player's if `PLAYER_E` (28 T2 counts, 112 lines) fits before the beam reaches its top line in T;
+else holds it (`cl_pdef`, skipped by `pick_cluster`) and `player_behind`, after the others, draws it once the beam is
+`PLAYER_SPARE` (a row) past its cluster's threshold, or at once if T has gone. A held player is whole, a field late.
+
+| disc | player torn | player late bytes | whole world late frames | passbench (B) |
+|---|---|---|---|---|
+| decision 76 | 38 | 2,057 | 548 (23.89 passes/s) | 25.00, 7 late |
+| player's cluster first after the zone's | 33 | 1,825 | | |
+| held, `PLAYER_E` 28, threshold as the others' | 9 | 762 | | |
+| held, `PLAYER_E` 36 | 11 | 1,154 | 691 | |
+| held, `PLAYER_E` 28, a row more (built) | 2 | 86 | 686 (23.75) | 24.97, 12 late |
+
+(jsbeeb 2.10.2 Model B, 2026-10-25.) The 2 left: an arena compaction inside the player's put on (130 lines and more).
+Held: 48 of about 400 player draws. The whole world's state identical to the Master gameplay disc every pass. The
+cost is the wait for the beam: the cheaper way to fewer holds is a cheaper player (compiled kinds again in bank 5's
+1,167 free bytes and bank 6's 967: the commonest, `ck2`, `ck3`, `ck1`, 569 bytes each).

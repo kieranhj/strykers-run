@@ -43,9 +43,9 @@ hist1       = REN_BASE + &500
 zp_save     = REN_BASE + &600
 REN_Z       = &622                  \ ren_vars_z's offset, after zp_save's &22
 REN_D       = &700                  \ ren_vars_d's
-REN_CL      = &769                  \ the clusters' (render_clusters.6502), to &7B8
+REN_CL      = &769                  \ the clusters' (render_clusters.6502), to &7B9
 REN_RECORDS = 64                    \ a record array's entries
-ASSERT REN_BASE + &7B8 <= &C000
+ASSERT REN_BASE + &7B9 <= &C000
 ELSE
 REN_BASE    = &B400 + PAD_START + NMOS * &100   \ workspace above the code and data (DATA1 ASSERTs it), to &C000
                                     \ (NMOS: a page higher, for its longer code; the offsets in a page as they were);
@@ -599,14 +599,21 @@ ENDIF
 IF MODEL_B
     LDA cl_zone
     JSR group_on
+IF PLAYER_HOLD
+    JSR player_first                \ then the player's, if it can be done ahead of the beam (else held)
+ENDIF
 .each_cluster
     JSR pick_cluster                \ the one reaching highest on the screen, the beam's next
-    BCS player_done
+    BCS clusters_done
     PHA
     JSR group_off
     PLA
     JSR group_on
     JMP each_cluster
+.clusters_done
+IF PLAYER_HOLD
+    JSR player_behind               \ a held player's, once the beam has passed it
+ENDIF
 ELSE
     \ ---- 6. put on: slot order, the player last; ANDY paged over bank 4's first 4K ----
 .bks_render_612                     \ decision 74: a bank select, patched at start-up (bank_patch)
@@ -1608,6 +1615,10 @@ cl_pl       = REN_BASE + REN_CL + 78        \ &FF: the player is in this cluster
     LDA list_cl,X
     CMP #CL_DONE
     BCS each                        \ done or staying
+IF PLAYER_HOLD
+    CMP cl_pdef
+    BEQ each                        \ the player's, held for behind the beam (render_clusters.6502)
+ENDIF
     LDA list_y2,X
     CMP cl_key
     BCC each

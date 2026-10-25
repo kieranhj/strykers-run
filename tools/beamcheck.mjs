@@ -5,14 +5,16 @@
 // flip "late" if the beam has passed it (that field shows the byte's old value). In the vertical blank,
 // behind the beam before the flip, or ahead of it after, a write is seen when it should be.
 //
-//   node tools/beamcheck.mjs DISC.ssd [--from P] [--passes N] [--seed S] [--rows] [--who]
+//   node tools/beamcheck.mjs DISC.ssd [--from P] [--passes N] [--seed S] [--rows] [--who] [--slot]
 //
 // passbench's game (keys by pass, seed S), passes P+1 to P+N (default 500 and 1000). Every CPU write to
 // &4000-&7FFF is placed on the displayed frame: its character row, column and line from the frame's
 // start (R12/R13 as the 6845 latched them at the frame's top), the beam's from jsbeeb's 6845 counters.
 // Reports frames (the vsync interrupt's flips: writes of shown_screen), how many had early or late
 // bytes and how many, the late ones by the frame's field (0 = the field it was first shown in); --rows
-// the bytes by character row, --who by routine and cell. Neither lasts: the next field is right.
+// the bytes by character row, --who by routine and cell, --slot by the mover slot being taken off or put on (and the frames each was torn in: its writes after
+// the flip partly behind the beam and partly ahead)
+// (take_off's or put_on's X; "column" the scroll's, "lives" the digit's) and the slot's frames. Neither lasts: the next field is right.
 import { readFileSync } from "node:fs";
 import { loadMachineSession } from "./jsbeeb_src.mjs";
 import { makeScript, applyEvents, bootMaster, gameKey, loadSyms } from "./playscript.mjs";
@@ -20,7 +22,7 @@ const MS = await loadMachineSession();
 const args = process.argv.slice(2);
 const opt = (n, d) => { const i = args.indexOf(n); if (i < 0) return d; const v = args[i + 1]; args.splice(i, 2); return +v; };
 const flag = (n) => { const i = args.indexOf(n); if (i < 0) return false; args.splice(i, 1); return true; };
-const FROM = opt("--from", 500), N = opt("--passes", 1000), SEED = opt("--seed", 1), ROWS = flag("--rows"), WHO = flag("--who");
+const FROM = opt("--from", 500), N = opt("--passes", 1000), SEED = opt("--seed", 1), ROWS = flag("--rows"), WHO = flag("--who"), SLOT = flag("--slot");
 const [disc] = args;
 if (!disc) { console.error("usage: node tools/beamcheck.mjs DISC.ssd [--from P] [--passes N] [--seed S] [--rows] [--who]"); process.exit(2); }
 const syms = loadSyms(disc);
@@ -71,6 +73,12 @@ cpu.debugInstruction.add(() => {
     return false;
 });
 const on = () => m.passes > FROM && m.passes <= FROM + N;
+let cur = "?";                          // --slot: the drawing's owner
+const slotBytes = new Map(), slotFrames = new Map();
+if (SLOT) {
+    const at = new Map([[syms.take_off, "x"], [syms["put_on.going_on"], "x"], [syms.write_column, "column"], [syms.ren_plot_lives, "lives"], [syms.restore_game_zp, "?"]]);
+    cpu.debugInstruction.add((pc) => { const w = at.get(pc); if (w) cur = w === "x" ? `slot ${cpu.x}` : w; return false; });
+}
 const frames = [], rows = new Array(26).fill(0), who = new Map(), cells = new Map();
 const newFrame = () => ({ pass: m.passes, late: 0, early: 0, writes: 0, byField: {} });
 let frame = null, next = null;          // the frame shown; the one whose flip is pending
@@ -86,9 +94,11 @@ cpu.debugWrite.add((a) => {
     if (off >= 2000) return false;                          // the ring's 384 bytes never shown
     const v = video.vertCounter, sc = video.scanlineCounter, h = video.horizCounter;
     const passed = row < v || (row === v && (line < sc || (line === sc && col < h)));
+    if (SLOT && !pending) { const w = ((fr.slotW ??= new Map()).get(cur) ?? [0, 0]); w[passed ? 0 : 1]++; fr.slotW.set(cur, w); }
     if (pending ? passed : !passed) return false;
     if (pending) fr.early++; else { fr.late++; const f = Math.max(0, fieldsSinceFlip); fr.byField[f] = (fr.byField[f] || 0) + 1; }
     rows[row]++;
+    if (SLOT && !pending) { slotBytes.set(cur, (slotBytes.get(cur) || 0) + 1); fr.slots ??= new Set(); if (!fr.slots.has(cur)) { fr.slots.add(cur); slotFrames.set(cur, (slotFrames.get(cur) || 0) + 1); } }
     if (WHO) { const r = (pending ? "early " : "") + routine(cpu.pc); who.set(r, (who.get(r) || 0) + 1); const k = `r${row} c${col}`; cells.set(k, (cells.get(k) || 0) + 1); }
     return false;
 });
@@ -104,6 +114,8 @@ for (let p = 1; p <= FROM + N; p++) {
     held = want;
 }
 const bad = frames.filter((f) => f.late || f.early);
+const torn = new Map();                 // --slot: frames where a slot's writes after the flip were partly behind the beam, partly ahead
+for (const f of frames) for (const [k, [late, ok]] of f.slotW || []) if (late && ok) torn.set(k, (torn.get(k) || 0) + 1);
 const byField = {}; let late = 0, early = 0;
 for (const f of frames) { late += f.late; early += f.early; for (const [k, n] of Object.entries(f.byField)) byField[k] = (byField[k] || 0) + n; }
 const hist = {}; for (const f of bad) { const n = f.late + f.early, b = n < 10 ? "1-9" : n < 100 ? "10-99" : n < 1000 ? "100-999" : "1000+"; hist[b] = (hist[b] || 0) + 1; }
@@ -112,5 +124,7 @@ console.log(JSON.stringify({ disc, passes: `${FROM + 1}-${FROM + N}`, seed: SEED
     lateBytes: late, earlyBytes: early, writes: frames.reduce((a, f) => a + f.writes, 0), lateByField: byField, framesByBadBytes: hist,
     worst: bad.sort((a, b) => b.late + b.early - a.late - a.early).slice(0, 8).map((f) => `${f.pass}:${f.late}+${f.early}`),
     ...(ROWS ? { badByRow: rows } : {}),
+    ...(SLOT ? { lateBySlot: Object.fromEntries([...slotBytes].sort((a, b) => b[1] - a[1])), framesBySlot: Object.fromEntries([...slotFrames].sort((a, b) => b[1] - a[1])),
+        tornBySlot: Object.fromEntries([...torn].sort((a, b) => b[1] - a[1])) } : {}),
     ...(WHO ? { badBy: Object.fromEntries([...who].sort((a, b) => b[1] - a[1]).slice(0, 16)), badCells: Object.fromEntries([...cells].sort((a, b) => b[1] - a[1]).slice(0, 24)) } : {}) }));
 process.exit(0);

@@ -88,6 +88,8 @@ REN_ROMSEL = &84 - &80 * MODEL_B    \ the renderer's ROMSEL: ANDY over bank 4, o
 MB_GAMEPLAY = MODEL_B * GAMEPLAY_SHIELD
 ASSERT MB_GAMEPLAY = 0 OR HUD_RUPTURE <> 0, "the Model B's gameplay disc is laid out for HUD_RUPTURE (its HUD row)"
 COMPILED = 1 - MB_GAMEPLAY
+PLAYER_HOLD = MB_GAMEPLAY           \ the player's cluster first, or held for behind the beam (render_clusters.6502
+                                    \ player_first; KC, 2026-10-25): the plain Model B disc's bank 4 has no room
 IF COMPILED = 0
 HAZEL_ORG = &C700                   \ (no compiled_table to say so: hazel_a, empty, is copied from here)
 ENDIF
