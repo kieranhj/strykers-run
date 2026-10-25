@@ -130,7 +130,7 @@ FINDBARON = baron="$(BARON)"; \
 # Prints a file's SHA256 the way build.ps1 does (sha256sum is not on a Mac).
 SHA256 = $(PYTHON) -c "import hashlib, sys; print('       sha256', hashlib.sha256(open(sys.argv[1], 'rb').read()).hexdigest())"
 
-.PHONY: all debug release gameplay release-disc original clean help
+.PHONY: all debug release gameplay release-disc release-disc-b original clean help
 
 # The options become a name and a set of -D flags here, in the shell, exactly
 # as build.ps1 makes them; the stamp runs; then a second make builds the image.
@@ -203,7 +203,15 @@ gameplay:
 release-disc:
 	@$(MAKE) RELEASE=1 all
 	@$(MAKE) RELEASE=1 gameplay
-	$(PYTHON) tools/releasedisc.py $(BUILD)/strykers.ssd $(BUILD)/strykers-gameplay.ssd $(BUILD)/strykers-release.ssd
+	$(PYTHON) tools/releasedisc.py $(BUILD)/strykers.ssd $(BUILD)/strykers-gameplay.ssd $(BUILD)/strykers-release.ssd --machine Master
+
+# The same for a Model B (Redux Lite, decisions 73-76): both NMOS,MODEL_B builds, RELEASE=1,
+# build/strykers-release-nmos-model_b.ssd; as build.ps1 -ReleaseDisc -Define NMOS,MODEL_B
+MB_GP = strykers-nmos-model_b-gameplay_shield-gameplay_lives-gameplay_timer-gameplay_options-gameplay_run-gameplay_jump-gameplay_fire-gameplay_armour-dither_hills-hud_rupture
+release-disc-b:
+	@$(MAKE) RELEASE=1 DEFINES=NMOS,MODEL_B all
+	@$(MAKE) RELEASE=1 DEFINES=NMOS,MODEL_B,GAMEPLAY_SHIELD,GAMEPLAY_LIVES,GAMEPLAY_TIMER,GAMEPLAY_OPTIONS,GAMEPLAY_RUN,GAMEPLAY_JUMP,GAMEPLAY_FIRE,GAMEPLAY_ARMOUR,DITHER_HILLS,HUD_RUPTURE all
+	$(PYTHON) tools/releasedisc.py $(BUILD)/strykers-nmos-model_b.ssd $(BUILD)/$(MB_GP).ssd $(BUILD)/strykers-release-nmos-model_b.ssd --machine "Model B"
 
 # Only reached when the .config is missing and the image was asked for by
 # name (`make build/strykers.ssd`); `all` always stamps first.

@@ -96,6 +96,25 @@ release-disc` makes `build/strykers-release.ssd` (both builds `-Release`). The s
   byte-identical to its single disc's; a game started from each choice plays (screenshots).
 - The WIP: `strykers-run-release-wip.ssd`.
 
+## The Model B's release disc and the machine's label (2026-10-25)
+
+KC, 2026-10-25: "can you make a model b release disc with both versions on", then "add "Model B" and
+"Master" to the bottom right hand corner of the version selection screen on each release disc accordingly."
+
+- `build.ps1 -ReleaseDisc -Define NMOS,MODEL_B` / `make release-disc-b` -> `build/strykers-release-nmos-model_b.ssd`:
+  the plain Model B build in `O.`, the Model B gameplay disc in `R.` (both `-Release`), behind the same
+  menu; each directory's own `!BOOT` runs its `SWR` probe first. 23 files, 454 sectors.
+- The label: `releasedisc.py --machine` (Master unless given; the scripts pass `Model B` for a `MODEL_B`
+  disc) draws the name in the box's font (M and B drawn in its style), white on a black box of its own,
+  its right edge and bottom 8 pixels in from the screen's corner, whole bytes (121 for "Model B", 110 for
+  "Master"). MENU's line 55 pokes them onto the screen after MSCREEN, while the display is still off, from
+  DATA lines `releasedisc.py` adds after the blanking routine's 126 values (it checks the count).
+- **Checked** (jsbeeb 2.10.2, 2026-10-25): `tools/menutest.mjs` on each disc on its own machine (the
+  Model B's with `BEEB_MODEL=B-DFS1.2`; menutest had booted a Master whatever the variable said, now
+  fixed): the picture 0 of 5,928 bytes differing, the label 0 of 121 ("Model B") and 0 of 110 ("Master"),
+  both choices loading their game to its title. On the Model B, `bank_patch` writes 8 bytes of the game's
+  first 2K at start-up (`scenery_layer_sprite_banks`, BUGS #17), which `--patched` excuses.
+
 ## Questions for KC
 
 1. **The menu's wording** for the two lines (about 20 characters each), and whether "PLEASE CHOOSE"

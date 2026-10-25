@@ -1,6 +1,6 @@
 """releasedisc.py - the release disc: both builds behind the original release's menu (docs/briefs/release-disc.md).
 
-    python tools/releasedisc.py ORIGINAL.ssd REDUX.ssd OUT.ssd [--screen OUT.bin]
+    python tools/releasedisc.py ORIGINAL.ssd REDUX.ssd OUT.ssd [--screen OUT.bin] [--machine "Model B"]
     python tools/releasedisc.py --extract REFERENCE.ssd      (once: src/mscreen.bin from the reference disc)
 
 $.!BOOT (*EXEC: BASIC, CHAIN "MENU"), $.MENU (src/menu.bas, tokenised here), $.MSCREEN (the original
@@ -16,6 +16,9 @@ from source &6270 - 256 - 312 * (29 - r) + (c - 24) * 8 + l, measured against th
 screen in jsbeeb (2026-10-23: all 5,928 bytes). The choices' box is drawn in a narrow font of the
 artist's; its letters are cut from the box's own lines, the ones it lacks drawn here in its style.
 --screen writes the 20K screen the new MSCREEN draws (its copy and the box), for a look.
+--machine names the machine the disc is for (Master unless given; KC, 2026-10-25: "Model B" and
+"Master" in the screen's bottom right corner): white in the box's font on a black box of its own,
+poked onto the screen by MENU (DATA after the blanking routine's) while the display is still off.
 """
 import sys
 from pathlib import Path
@@ -176,6 +179,8 @@ DRAWN = {
     "x": ["", "", "", "#   #", " # # ", "  #  ", " # # ", "#   #"],
     "m": ["", "", "", " ## ## ", "#  #  #", "#  #  #", "#  #  #", "#  #  #"],
     "p": ["", "", "", "#### ", "#   #", "#   #", "#   #", "#### ", "#    ", "#    "],
+    "M": ["", "#   #", "## ##", "# # #", "#   #", "#   #", "#   #", "#   #"],
+    "B": ["", "#### ", "#   #", "#   #", "#### ", "#   #", "#   #", "#### "],
 }
 SPACE = 6                                                   # the box's word gap (5, and a letter's 1)
 
@@ -228,6 +233,67 @@ def write_line(pic, glyphs, line, text):
         sys.exit(f"MSCREEN: '{text}' runs {x - 1 - BOX_X1} pixels past the box")
 
 
+def text_width(glyphs, text):
+    return sum(SPACE if ch == " " else len(glyphs[ch][0]) + 1 for ch in text) - 1
+
+
+# The machine's label: its box's right edge and bottom (exclusive), 8 pixels in from the screen's
+# corner; the text's rows 1-7 of the frame (no descenders) with 2 lines of black above and below, 3
+# pixels at the sides, the box widened left to a byte's edge so it is whole bytes
+LABEL_X1, LABEL_Y1, LABEL_PAD = 312, 248, 3
+
+
+def label_bytes(machine):
+    """{screen address: byte} for the machine's label, MODE 1 at &3000 (MENU writes them)."""
+    glyphs = font(Picture((ROOT / "src" / "mscreen.bin").read_bytes()))
+    w = text_width(glyphs, machine)
+    x0 = (LABEL_X1 - w - 2 * LABEL_PAD) // 4 * 4
+    y0 = LABEL_Y1 - 11
+    on = set()
+    x = LABEL_X1 - LABEL_PAD - w
+    for ch in machine:
+        if ch == " ":
+            x += SPACE
+            continue
+        g = glyphs.get(ch)
+        if g is None:
+            sys.exit(f"MSCREEN: no letter '{ch}'")
+        for y, row in enumerate(g[1:8]):
+            for i, v in enumerate(row):
+                if v:
+                    on.add((x + i, y0 + 2 + y))
+        x += len(g[0]) + 1
+    out = {}
+    for y in range(y0, LABEL_Y1):
+        for c in range(x0 // 4, LABEL_X1 // 4):
+            b = 0
+            for p in range(4):
+                if (4 * c + p, y) in on:
+                    b |= 0x08 >> p              # colour 1, white: the low bit of the pixel's pair
+            out[0x3000 + (y >> 3) * 640 + c * 8 + (y & 7)] = b
+    return out
+
+
+def label_data(machine, first=2000):
+    """MENU's DATA lines for the label: the runs of consecutive addresses, then each run's address,
+    length and bytes (line 55 reads them)."""
+    lab = sorted(label_bytes(machine).items())
+    runs = []
+    for a, b in lab:
+        if runs and runs[-1][0] + len(runs[-1][1]) == a:
+            runs[-1][1].append(b)
+        else:
+            runs.append((a, [b]))
+    vals = [len(runs)]
+    for a, bs in runs:
+        vals += [a, len(bs)] + bs
+    lines, n = [], first
+    for i in range(0, len(vals), 16):
+        lines.append(f"{n} DATA " + ",".join(map(str, vals[i:i + 16])))
+        n += 10
+    return lines
+
+
 def mscreen(original):
     pic = Picture(original)
     glyphs = font(pic)
@@ -258,13 +324,22 @@ def main():
         i = args.index("--screen")
         shot = args[i + 1]
         del args[i:i + 2]
+    machine = "Master"
+    if "--machine" in args:
+        i = args.index("--machine")
+        machine = args[i + 1]
+        del args[i:i + 2]
     if len(args) != 3:
         sys.exit(__doc__)
     orig, redux = (Path(a).read_bytes() for a in args[:2])
     ms = mscreen((ROOT / "src" / "mscreen.bin").read_bytes())
     if shot:
         Path(shot).write_bytes(screen_of(ms))
-    menu = tokenise((ROOT / "src" / "menu.bas").read_text())
+    menu_src = (ROOT / "src" / "menu.bas").read_text()
+    blank = sum(len(ln.split("DATA", 1)[1].split(",")) for ln in menu_src.splitlines() if ln[:1].isdigit() and " DATA " in ln)
+    if blank != 126:                    # line 25 reads the blanking routine's 126; line 55 the label's after them
+        sys.exit(f"src/menu.bas: {blank} DATA values before the label's, not 126")
+    menu = tokenise(menu_src + "\n" + "\n".join(label_data(machine)) + "\n")
     files = [dict(dir="$", name="!BOOT", load=0, exec=0, data=b'*BASIC\rCHAIN "MENU"\r'),
              dict(dir="$", name="MENU", load=0x30E00, exec=0x38023, data=menu),      # BASIC: &FFFF0E00, &FFFF8023
              dict(dir="$", name="MSCREEN", load=0x2F00, exec=0x2F00, data=ms)]
@@ -273,7 +348,7 @@ def main():
             files.append(dict(f, dir=dr))
     out, used = write_ssd(files, "STRYKERS RUN", 3)
     Path(args[2]).write_bytes(out)
-    print(f"wrote {args[2]}: {len(files)} files, {used} sectors of 800")
+    print(f"wrote {args[2]}: {len(files)} files, {used} sectors of 800; the menu's label '{machine}'")
 
 
 if __name__ == "__main__":

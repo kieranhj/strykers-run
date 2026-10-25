@@ -12,6 +12,8 @@
 #                                      build\strykers-gameplay.ssd (with -Release for testers)
 #   .uild.ps1 -ReleaseDisc           both, -Release, behind the original release's menu (tools/releasedisc.py):
 #                                      build\strykers-release.ssd, 1 the original in O., 2 Redux in R.
+#   .\build.ps1 -ReleaseDisc -Define NMOS,MODEL_B   the same for a Model B (Redux Lite): both Model B
+#                                      builds, build\strykers-release-nmos-model_b.ssd
 #
 # Every -D symbol the source reads is passed on every build (Baron cannot default one).
 # The Makefile is the same build for POSIX systems and produces the same image; a change to the
@@ -20,13 +22,17 @@
 # local.ps1 beside this file (gitignored); it is run first if it exists.
 param([switch]$Release, [switch]$Compare, [switch]$NoCompare, [int]$Shift = 0, [switch]$ShiftEnd, [string[]]$Define = @(), [switch]$Gameplay, [switch]$ReleaseDisc)
 if ($ReleaseDisc) {
-    & $PSCommandPath -Release
-    & $PSCommandPath -Release -Gameplay
+    & $PSCommandPath -Release -Define $Define
+    & $PSCommandPath -Release -Gameplay -Define $Define
+    $sfx = ($Define | ForEach-Object { '-' + $_.ToLower() }) -join ''   # the two builds' names, as below
+    $gp = if ($Define.Count) { "strykers$sfx-gameplay_shield-gameplay_lives-gameplay_timer-gameplay_options-gameplay_run-gameplay_jump-gameplay_fire-gameplay_armour-dither_hills-hud_rupture" } else { 'strykers-gameplay' }
+    $out = "build\strykers-release$sfx.ssd"
     Push-Location $PSScriptRoot
     try {
-        & python tools\releasedisc.py build\strykers.ssd build\strykers-gameplay.ssd build\strykers-release.ssd
+        $machine = if ($Define -contains 'MODEL_B') { 'Model B' } else { 'Master' }   # the menu's label
+        & python tools\releasedisc.py "build\strykers$sfx.ssd" "build\$gp.ssd" $out --machine $machine
         if ($LASTEXITCODE -ne 0) { throw "releasedisc.py failed ($LASTEXITCODE)" }
-        (Get-FileHash 'build\strykers-release.ssd' -Algorithm SHA256).Hash.ToLower() | ForEach-Object { "       sha256 $_" }
+        (Get-FileHash $out -Algorithm SHA256).Hash.ToLower() | ForEach-Object { "       sha256 $_" }
     } finally { Pop-Location }
     return
 }

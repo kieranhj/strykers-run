@@ -12,12 +12,15 @@
 #   CALL &96E  at the next vsync, the display on (R8 0: the MOS's MODE 1 value after *TV255,1)
 # Line 30 keeps the display off while MSCREEN draws and the palette is set; line 70 shows it whole.
 # Line 90's VDU 23 takes MODE 7's cursor off for the load, as line 30 does for the menu.
+# Line 55 (2026-10-25, KC): the machine's label in the bottom right corner, "Master" or "Model B", from
+# the DATA lines tools/releasedisc.py adds after the blanking routine's (runs: address, length, bytes).
 10 *TV255,1
 20 *FX200,3
 25 FORI%=0TO125:READB%:I%?&900=B%:NEXT:CALL&900
 30 MODE1:VDU23;8202;0;0;0;23;12296;0;0;0;:CALL&94D
 40 VDU19,1,0;0;19,2,0;0;19,3,0;0;
 50 *RUN MSCREEN
+55 READR%:FORJ%=1TOR%:READA%,N%:FORI%=0TON%-1:READB%:A%?I%=B%:NEXT:NEXT
 60 VDU19,1,7;0;19,2,4;0;19,3,2;0;
 65 CALL&96E
 70 *FX15,1
