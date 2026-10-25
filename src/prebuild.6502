@@ -40,6 +40,9 @@ PRE_T2_MIN = &C8                    \ one field to go: start only if User VIA T2
     EQUB &A7, &B4, &B5, &B7, &B8, &B9, &C8, &C9, &CB, &CC, &CD, &CE, &CF, &D0, &F8, &F9
 .pre_old_layers SKIP PRE_LAYERS_N   \ the layers' state before the walk (pre_undo)
 .pre_old_y      SKIP 8
+IF MB_GAMEPLAY
+.pre_old_romsel SKIP 8              \ BUGS #17: scenery_layer_romsel, kept as the y positions are
+ENDIF
 .pre_old_zp     SKIP PRE_ZP_N
 .pre_old_ops    SKIP 2              \ the walk's two flip opcodes
 .pre_old_view   SKIP 2              \ viewport_left_low, viewport_right_low
@@ -79,6 +82,10 @@ PRE_T2_MIN = &C8                    \ one field to go: start only if User VIA T2
 .save_y
     LDA scenery_layers_y_positions,X
     STA pre_old_y,X
+IF MB_GAMEPLAY
+    LDA scenery_layer_romsel,X
+    STA pre_old_romsel,X
+ENDIF
     DEX
     BPL save_y
     LDX #PRE_ZP_N - 1
@@ -254,6 +261,10 @@ ASSERT HI(column_buffer + 24) = HI(column_buffer + 199)
 .y_loop
     LDA pre_old_y,X
     STA scenery_layers_y_positions,X
+IF MB_GAMEPLAY
+    LDA pre_old_romsel,X
+    STA scenery_layer_romsel,X
+ENDIF
     DEX
     BPL y_loop
     RTS

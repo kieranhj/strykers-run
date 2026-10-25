@@ -287,7 +287,7 @@ and costs are `docs/briefs/gameplay-shield.md`.
   in `R`, each started by its own `!BOOT`. `tools/menutest.mjs`: the picture byte for byte, each choice
   its own directory's game to its title.
 
-## Redux Lite: the Model B (branch `model-b-lite`, decisions 73-79; `docs/briefs/model-b-lite.md`)
+## Redux Lite: the Model B (branch `model-b-lite`, decisions 73-80; `docs/briefs/model-b-lite.md`)
 
 - **NMOS** (2026-10-24, `3d564af`): every 65SC12 instruction given an NMOS form behind `NMOS`
   (`src/lib/nmos.6502`, `tools/nmosify.py` and its `check`/`check --nmos` proofs); without the flag
@@ -312,6 +312,9 @@ and costs are `docs/briefs/gameplay-shield.md`.
   sky mode whatever bank holds its body (the image builder also in bank 4), and the zone's top rows (the sky's
   helicopters, the columns' top) behind the beam in the last frame's field. Frames missing the player 0 and
   helicopter 0 4 in 1,000 (decision 78: 8 and 43); the whole world's late frames 458 -> 336.
+- **The Model B's background as the Master's** (2026-10-25, decision 80; BUGS #9, #17): the mountains from zeros,
+  not the MOS ROM (both Model B discs), and the headquarters' approach from the Master's bank values (gameplay
+  disc): every frame of the whole world the Master gameplay disc's, and the same with the banks at 0-3.
 - **The Model B's release disc** (2026-10-25): both Model B builds behind the original release's menu
   (`-ReleaseDisc -Define NMOS,MODEL_B`, `make release-disc-b`); each release disc names its machine in the
   menu's bottom right corner.

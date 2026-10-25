@@ -155,7 +155,7 @@ mask table and the page as `calculate_sprite_address_for_column_of_scenery` does
 state identical to `e72c386` over 6,000 passes on seeds 1 and 3; the screens (see the layer 4
 costing doc for the count: 591 and 627 passes of 6,000 differ, by 5 to 11 bytes).
 
-## 9. The mountain layer's data is HAZEL, not the MOS ROM (original behaviour; KEPT: decision 31)
+## 9. The mountain layer's data is HAZEL, not the MOS ROM (original behaviour; KEPT: decision 31; on the Model B discs, the Master's zeros: decision 80)
 
 Found 2026-10-17 (`tools/hazelwatch.mjs`, jsbeeb 2.5.0, Master 128 MOS 3.20): the MOS leaves ACCCON's
 Y bit set from the start of the game on, so HAZEL (the filing system's workspace) is paged in at
@@ -172,6 +172,15 @@ DEBUG_LIVES` at `d879af0`, jsbeeb 2.5.0, 12,233 passes to the completion screen)
 below `&C700` (decision 29). KC, 2026-10-17: leave it (decision 31) - the mountains stay as the
 enhanced version draws them, from whatever HAZEL holds at `&C300`; nothing may be put in
 `&C300-&C6FF`.
+
+2026-10-25, decision 80 (KC: "fix the mountains on the model b too"): on a Model B `&C300` on is the MOS ROM, so
+the mountains changed sprite and flip at random every 11-12 columns. Measured (every read of `&C300-&C6FF` over the
+whole world): only `get_mountain_or_cloud_type`, 1,243 reads of `&C301-&C56C`, and it keeps only the low two bits;
+on the Master gameplay disc in jsbeeb 526 of those 620 bytes are 0 (the rest the DFS's leftovers). On both Model B
+discs the mountain layer now reads 0 (`mtn_or_cloud_byte`, at the main block's end: 4 bytes in place, as a longer
+form moved the target search across a page and grew its pad by 29); the clouds read their own data. Proven: the
+Model B gameplay disc on the Master against the Master gameplay disc with HAZEL's `&C300-&C6FF` zeroed, every
+frame identical over the whole world.
 
 Seen 2026-10-24 (KC, the release disc): its menu's disc activity leaves HAZEL's bytes picking
 `MOUNTAINS_ONE` (25 of the first 624 in jsbeeb), which the gameplay disc had left undithered; decision 70
@@ -430,7 +439,7 @@ bank 0 (`pre_bank`'s only value) from then on, on every disc. Nothing read the p
 next select on the plain disc's path: its whole world, state and every frame, is identical with the
 fix (the two in-line loads read `install_prebuilt + 1`).
 
-## 17. With the game's banks anywhere but 4-7, the headquarters' approach draws differently (decision 74; OPEN)
+## 17. With the game's banks anywhere but 4-7, the headquarters' approach draws differently (decision 74; FIXED on the gameplay disc, decision 80)
 
 Found 2026-10-25: a `MODEL_B` build on jsbeeb's Model B (banks 0-7 RAM), its banks found at 0-3
 (`SWR_LOW`) or poked (`SWR_POKE`: 7 6 5 4, 1 2 3 0, 4 5 6 3, 5 6 7 4), against the same build in 4-7:
@@ -451,3 +460,24 @@ not affected.
 disc shows the same thing, the last 28 passes of the whole world (11,385 on), up to 22 bytes in the right edge's
 columns, state identical; there the two differ in which banks the scenery sprites are in (the dithered
 mountains in 6 and 7, not 5) and in an unset layer's bank (8, not 0), not in the game's bank map.
+
+**Found and fixed** (2026-10-25, decision 80; KC: "let's fix bug 17 - I get some weird jumps in the background when
+playing through the model b version"). The same gameplay disc twice on jsbeeb's B, its banks at 4-7 and poked to
+0-3, the WorldBot's keys from the first, every instruction recorded from pass 11,360: the program counters part in
+pass 11,380, in `get_scenery_type` for layer 5 (the right edge's first), its `LDA (scenery_data_address),Y` reading
+7 in one and 3 in the other. The walk has run past the end of `scenery_data_two`, and the next table in memory is
+`scenery_layer_sprite_banks`, the bank each layer pages: as on the original (whose layout the step 1 rebuild kept),
+near the headquarters the right edge reads those bank numbers as scenery data. On a Master they are the logical
+banks; with `bank_patch` they are the machine's, and on the gameplay disc the mountain layer's is 6 or 7 where the
+Master gameplay disc's is 5. Measured (every `(scenery_data_address)` read outside the two scenery tables and
+HAZEL over the whole world, both Master discs): entries +0 to +4 (layers 0-4), 327 reads, values 4, 5 (the
+mountain layer, gameplay disc), 6 and 7. The unset layer's bank was a red herring (no read of a bank the game does
+not use, anywhere near the headquarters). Fixed on the gameplay disc (`MB_GAMEPLAY`): `scenery_layer_sprite_banks`
+holds what the Master gameplay disc's does (from `scenery_sprite_banks_m`, the Master's formula: logical banks,
+the mountains in 5), and the bank paged is `scenery_layer_romsel`'s (from the patched `scenery_sprite_banks`;
+`prebuild` keeps it as it keeps the y positions; `bank_patch` puts the unused bank there). Both tables at the main
+block's end (the movers' page pad has 7 bytes to spare). Proven (jsbeeb 2.10.2, 2026-10-25, the whole world,
+`worldrun.mjs --screen`): on the Master, against the Master gameplay disc (`WORLDRUN_HAZEL=0`), state and every
+frame identical (11,412 passes; the 28 at the headquarters before); on the B, banks poked to 0-3 against 4-7,
+state and every frame identical. The plain Model B disc still reads the machine's banks there (2 bytes free in
+its main block): it differs only on a Model B whose RAM is not at 4-7.

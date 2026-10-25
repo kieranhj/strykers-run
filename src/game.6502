@@ -1079,7 +1079,11 @@
     LDA #&55
     JSR change_pixel_tables         \ Use background palette (use colour 15 for cyan)
 .scroll_layers_left_loop    \ # For each of four layers on two edges,
+IF MB_GAMEPLAY
+    LDA scenery_layer_romsel,Y      \ BUGS #17: the bank to page (scenery_layer_sprite_banks: the Master's value)
+ELSE
     LDA scenery_layer_sprite_banks,Y\ ***
+ENDIF
     STA os_ram_copy_of_currently_selected_rom\ ***
     STA romsel                      \ Paged ROM latch                     ***
     JSR check_for_scenery_when_scrolling_left\ Returns non-zero if scenery present
@@ -1152,7 +1156,10 @@
     RTS                             \ Leave with X = sprite, A = flip
 
 .get_mountain_or_cloud_type
-IF NMOS
+IF MODEL_B
+    JSR mtn_or_cloud_byte           \ BUGS #9 on a Model B: the mountain layer's byte is 0 (at the main block's end: 4 bytes
+    NOP                             \ here, as before, so the target search's page pad stays as it is)
+ELIF NMOS
     LDY #&00                        \ NMOS: Y is dead after both callers' returns
     LDA (scenery_data_address),Y
 ELSE
@@ -1207,7 +1214,11 @@ ENDIF
     LDA &CC                         \ Zero if left edge, non-zero if right edge
     BNE leave_1a5b
 .add_column_of_scenery_to_column_buffer
+IF MB_GAMEPLAY
+    LDA scenery_layer_romsel,Y      \ BUGS #17: the bank to page (scenery_layer_sprite_banks: the Master's value)
+ELSE
     LDA scenery_layer_sprite_banks,Y\ ***
+ENDIF
     STA os_ram_copy_of_currently_selected_rom\ ***
     STA romsel                      \ Paged ROM latch                      ***
     JMP unpack_scenery_column       \ layer 4 (decision 39): src/scroll_hazel.6502
@@ -1224,6 +1235,10 @@ ENDIF
     LDY edge_and_layer
     STA scenery_layers_y,Y
     LDA scenery_sprite_banks,X      \ ***
+IF MB_GAMEPLAY
+    STA scenery_layer_romsel,Y      \ BUGS #17: paged from here; the walk may read the Master's value as data
+    LDA scenery_sprite_banks_m,X
+ENDIF
     STA scenery_layer_sprite_banks,Y\ ***
     LDA scenery_layer_flip
     STA scenery_layers_flip,Y
@@ -1380,7 +1395,11 @@ ENDIF
     LDA #&55
     JSR change_pixel_tables         \ Use background palette (use colour 15 for cyan)
 .scroll_layers_right_loop    \ # For each of four layers on two edges,
+IF MB_GAMEPLAY
+    LDA scenery_layer_romsel,Y      \ BUGS #17: the bank to page (scenery_layer_sprite_banks: the Master's value)
+ELSE
     LDA scenery_layer_sprite_banks,Y\ ***
+ENDIF
     STA os_ram_copy_of_currently_selected_rom\ ***
     STA romsel                      \ Paged ROM latch                      ***
     LDA scenery_layers_table,Y
@@ -5678,6 +5697,35 @@ IF GAMEPLAY_TIMER
     RTS
 ENDIF
 ENDIF
+IF MODEL_B
+\ mtn_or_cloud_byte (get_mountain_or_cloud_type's): A = the mountain or cloud layer's byte, Y = 0. The mountain layer
+\ (its data address &C3xx) reads 0: on a Model B &C300 on is the MOS ROM, whose bytes picked a sprite and flip every
+\ 11-12 columns at random; the Master reads HAZEL there, zeros but for the DFS's leftovers (BUGS #9; KC, 2026-10-25:
+\ "fix the mountains on the model b too"). The clouds read their own data.
+.mtn_or_cloud_byte
+    LDA #0
+    TAY
+    LDX scenery_data_address_high
+    BMI mtn_byte
+    LDA (scenery_data_address),Y
+.mtn_byte
+    RTS
+ENDIF
+IF MB_GAMEPLAY
+\ BUGS #17: the bank each layer pages. scenery_layer_sprite_banks keeps what the Master gameplay disc's holds, as the
+\ walk reads its first five entries as scenery data, past scenery_data_two's end, at the headquarters' approach;
+\ scenery_sprite_banks_m is scenery_sprite_banks as that disc has it (the mountains in bank 5, not 6 and 7; logical
+\ banks, not bank_patch's). Here, not by the other layer tables: the movers' page pad has 7 bytes to spare.
+.scenery_layer_romsel
+    EQUB &00, &00, &00, &00, &00, &00, &00, &00
+.scenery_sprite_banks_m
+    EQUB &04, &04, &04, &04, &04 + DITHER_HILLS, &04 + DITHER_HILLS, &04, &04, &04, &04, &04, &04, &04, &04, &04, &04
+    EQUB &04, &04, &04, &04, &04, &04, &04, &06, &06, &06, &06, &06, &06, &06, &06, &06
+    EQUB &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06
+    EQUB &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07
+    EQUB &07, &07
+    ASSERT * - scenery_sprite_banks_m = scenery_sprite_banks_end - scenery_sprite_banks
+ENDIF
     ASSERT * <= unused_3400_original, "layer 1's code overruns the free block by ", * - unused_3400_original, " bytes"
     SKIP unused_3400_original - *
 
@@ -6695,7 +6743,11 @@ ENDIF
 .bp_empty_found
     LDX #7
 .bp_empty_set
+IF MB_GAMEPLAY
+    STA scenery_layer_romsel,X      \ (scenery_layer_sprite_banks keeps the Master's 0: BUGS #17)
+ELSE
     STA scenery_layer_sprite_banks,X
+ENDIF
     DEX
     BPL bp_empty_set
     RTS
