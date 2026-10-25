@@ -61,7 +61,7 @@ cpu.debugInstruction.add((pc) => {
     if (pc === syms.shield_sound && hit && hit.pass === m.passes && cpu.a === 9) (hit.sounds ||= []).push(0x38);
     // decision 69: the refill's tone, from shield_tone_start's caller's return: its ramp for the shield now
     if (syms.shield_tone_start !== undefined && pc === syms.shield_tone_start) tone = { pass: m.passes, shield: zp("shield") };
-    if (tone && tone.at === undefined && pc === syms.shield_sound) {
+    if (tone && tone.at === undefined && pc === (syms.tick_sound ?? syms.shield_sound)) {   // (the Model B's gameplay disc: bank 7's copy, decision 76)
         tone.at = m.passes; tones++;
         const d = 50 - tone.shield, r = rd(syms.shield_tone, 7), period = r[1] + 256 * r[2];
         if (r[0] !== 2 * d || period !== (syms.SHIELD_TONE_TOP ?? 100) + 8 * d || r[3] !== 0xfc || r[6] !== 0) fail(`the refill's tone at shield ${tone.shield}: ${r.map((b) => b.toString(16)).join(" ")}`);

@@ -68,6 +68,7 @@ for (let f = FROM + 1; f <= FROM + N; f++) { applyEvents(ev, f, [s]); await s.ru
 
 const stat = (a) => a.length ? { n: a.length, min: Math.min(...a), max: Math.max(...a) } : { n: 0 };
 const hist = (a) => Object.entries(a.reduce((o, k) => ((o[k] = (o[k] || 0) + 1), o), {})).sort((x, y) => y[1] - x[1]).slice(0, 6);
+const ONE_SCREEN = syms.call_b5 !== undefined;                       // a MODEL_B build (its bank 5 call: no other build has one)
 let ruptured = 0, bad = 0;
 const badFields = [], r4hud = [], r4m = [], dAt = [], startAt = [];
 fields.forEach((x, i) => {
@@ -78,7 +79,8 @@ fields.forEach((x, i) => {
     m.forEach((w) => r4m.push(`row ${w.row} line ${w.line}`));
     x.d.forEach((w) => dAt.push(`row ${w.row} line ${w.line} char ${w.char}`));
     const okH = h.length === 1 && inHud(h[0].ma) && h[0].row === 0 && (h[0].line < 7 || (h[0].line === 7 && h[0].char < 1));
-    const okD = x.d.length === 1 && inHud(x.d[0].ma) && x.d[0].row === 0 && x.d[0].line === 7 && x.d[0].char >= 80;
+    const okD = ONE_SCREEN ? x.d.length === 0                       // MODEL_B (decision 76): one screen, main RAM's, no D to write
+        : x.d.length === 1 && inHud(x.d[0].ma) && x.d[0].row === 0 && x.d[0].line === 7 && x.d[0].char >= 80;
     const okM = m.length === 1 && m[0].row === 0 && ((inHud(m[0].ma) && m[0].line === 7 && m[0].char >= 1) ||   // after H's end latched
         (m[0].ma >= 0x0800 && m[0].line < 7));                                                              // or M's, before its own
     // by the frame the beam is in: written in H, they are M's start (and must be M's); in M, H's (HUD_ROW's)

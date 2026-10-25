@@ -349,7 +349,7 @@
 
 \ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 .scenery_sprite_banks
-    EQUB &04, &04, &04, &04, &04 + DITHER_HILLS, &04 + DITHER_HILLS, &04, &04, &04, &04, &04, &04, &04, &04, &04, &04    \ &00 (DITHER_HILLS: the mountains in bank 5, decisions 70, 71)
+    EQUB &04, &04, &04, &04, &04 + DITHER_HILLS * (1 + MODEL_B), &04 + DITHER_HILLS * (1 + 2 * MODEL_B), &04, &04, &04, &04, &04, &04, &04, &04, &04, &04    \ &00 (DITHER_HILLS: the mountains in bank 5, decisions 70, 71; MODEL_B: 6 and 7, decision 76)
     EQUB &04, &04, &04, &04, &04, &04, &04, &06, &06, &06, &06, &06, &06, &06, &06, &06    \ &10
     EQUB &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06    \ &20
     EQUB &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07    \ &30
@@ -2495,10 +2495,10 @@ ENDIF
     BPL not_at_headquarters
     JMP game_over_screen
 .not_game_over
-IF GAMEPLAY_SHIELD
-    JSR shield_tick                 \ decision 44 (src/shield.6502, bank 4: ROMSEL &04 here)
+IF GAMEPLAY_SHIELD * (1 - MB_GAMEPLAY)
+    JSR shield_tick                 \ decision 44 (src/shield.6502, bank 4: ROMSEL &04 here; MB_GAMEPLAY: timer_tick_call)
 ENDIF
-IF GAMEPLAY_TIMER OR GAMEPLAY_RUN
+IF GAMEPLAY_TIMER OR GAMEPLAY_RUN OR MB_GAMEPLAY
     JSR timer_tick_call             \ decisions 47, 52 (src/timer.6502 in bank 6, src/run.6502 in bank 7)
 ENDIF
     JSR check_for_player_input
@@ -2526,16 +2526,22 @@ ENDIF
     JSR update_projectiles
     JSR update_movers
     JMP main_game_loop
-IF GAMEPLAY_TIMER OR GAMEPLAY_RUN
+IF GAMEPLAY_TIMER OR GAMEPLAY_RUN OR MB_GAMEPLAY
 \ decisions 47, 52, 59: the run meter's code is in bank 7 (src/run.6502), the timer's in bank 6
-\ (src/timer.6502): each paged in for it, bank 4 back after
+\ (src/timer.6502): each paged in for it, bank 4 back after (MB_GAMEPLAY, decision 76: the shield's
+\ tick first, in bank 7 too, as main_game_loop called it just before)
 .timer_tick_call
-  IF GAMEPLAY_RUN
+  IF GAMEPLAY_RUN OR MB_GAMEPLAY
 .bks_game_2526                      \ decision 74: a bank select, patched at start-up (bank_patch)
     LDA #7
     STA os_ram_copy_of_currently_selected_rom
     STA romsel                      \ Paged ROM latch
+   IF MB_GAMEPLAY
+    JSR shield_tick
+   ENDIF
+   IF GAMEPLAY_RUN
     JSR run_tick
+   ENDIF
   ENDIF
   IF GAMEPLAY_TIMER
 .bks_game_2532                      \ decision 74: a bank select, patched at start-up (bank_patch)
@@ -4536,9 +4542,11 @@ ENDIF
 IF HUD_RUPTURE
     BRA_NE rup_armed                \ 65C02 opcode
 .rup_arm
+  IF MODEL_B = 0                    \ (MODEL_B: one screen, main RAM's, and &FE34 is ROMSEL on a Model B)
     LDA acccon                      \ decision 67: main RAM for the HUD row's frame (rupture_t1 shows
     AND #&FE                        \ the screen from the boundary)
     STA acccon
+  ENDIF
     STZ_LDA rup_phase               \ 65C02 opcode
     LDA #LO(RUP_E1)
     STA usrvia_t1cl
@@ -5581,6 +5589,7 @@ ENDIF
 \ the ROMSEL to come back to, compiled_vec = the entry. Pages the bank (with the MOS's copy, which
 \ the vsync interrupt restores ROMSEL from), runs the code, pages X's back; keeps the code's carry.
 \ Here because the renderer in bank 4 cannot page another bank over itself.
+IF COMPILED                         \ (decision 76: none)
 .compiled_call
     STA os_ram_copy_of_currently_selected_rom
     STA romsel
@@ -5591,6 +5600,7 @@ compiled_vec = * + 1                \ self-modified: the entry (also compiled_di
     STA romsel
     RTS
     EQUB &00, &00, &00, &00         \ grind: pad, so nothing after moves
+ENDIF
 IF MODEL_B
 \ call_b5 (decision 75): the routine at b5_vec with bank 5 paged (ANDY's sprites' home), then bank 4 again.
 \ Keeps nothing (draw_column uses X, which compiled_call keeps for its way back).
@@ -5614,76 +5624,18 @@ IF SKY_MODE
 ENDIF
 ENDIF
 IF SKY_MODE
+  IF MB_GAMEPLAY = 0                \ (MB_GAMEPLAY: in bank 4, decision 76)
     INCLUDE "sky_main.6502"         \ the enemy helicopters over the sky (src/sky.6502 its take_off half)
+  ENDIF
+    INCLUDE "sky_state.6502"        \ its per-screen state and helicopter 0's image
 ELSE
     INCLUDE "kindcache_build.6502"  \ step 2 layer 4 (decision 36): the kind cache's builder
 ENDIF
 
 IF HUD_RUPTURE
-\ Decision 67: rupture_on, from take_irq_for_play (interrupts off): the ROMs' workspace bytes at
-\ &0DF0-&0DFF kept (paged ROMs 9 and 13 read them on the front end, tools/zpwatch.mjs), the HUD row
-\ cleared, R6 24 rows and R7 the vsync a row earlier (the HUD's frame takes the first), M's start.
-.rupture_on
-    LDX #15
-.rup_keep
-    LDA &0DF0,X
-    STA rom_ws_save,X
-    DEX
-    BPL rup_keep
-    LDX #0
-    TXA
-.rup_clear
-    STA HUD_ROW,X
-    STA HUD_ROW + &100,X
-    CPX #&80
-    BCS rup_cleared
-    STA HUD_ROW + &200,X
-.rup_cleared
-    INX
-    BNE rup_clear
-    LDX #6
-    LDA #24
-    JSR rup_crtc
-    LDX #7
-    LDA #&1F
-    JSR rup_crtc
-    LDA crtc_start_address_low
-    LDX crtc_start_address_high
-    JSR rup_set_m_start
-    LDA #2                          \ this field's T1 was armed for row 111 (the rupture was off at
-    STA rup_phase                   \ its vsync): the palette's, not the HUD row's
-    LDA #&80
-    STA rupture
-    RTS
-\ rupture_off, from give_irq_back (interrupts off): the one frame back, the ROMs' bytes back
-.rupture_off
-    STZ_LDA rupture                 \ 65C02 opcode
-    LDX #4
-    LDA #&26
-    JSR rup_crtc
-    LDX #6
-    LDA #&19
-    JSR rup_crtc
-    LDX #7
-    LDA #&20
-    JSR rup_crtc
-    LDX #12
-    LDA crtc_start_address_high
-    JSR rup_crtc
-    LDX #13
-    LDA crtc_start_address_low
-    JSR rup_crtc
-    LDX #15
-.rup_back
-    LDA rom_ws_save,X
-    STA &0DF0,X
-    DEX
-    BPL rup_back
-    RTS
-.rup_crtc
-    STX crtc_reg
-    STA crtc_data
-    RTS
+IF MB_GAMEPLAY = 0
+    INCLUDE "rupture_switch.6502"   \ rupture_on, rupture_off (MB_GAMEPLAY: in bank 5, decision 76)
+ENDIF
 .hud_vars       SKIP 17             \ game_completed .. n_hi (the HUD's, src/game.6502 after moved_0a20; vehicle_hits
                                     \ below HUD_ROW, rom_ws_save in bank 5's &8000 block)
 ENDIF
@@ -5695,6 +5647,36 @@ ELSE
 ENDIF
 IF MODEL_B
     INCLUDE "play_heli_init.6502"   \ decision 75: out of HAZEL; mb_low has no room for it (it must stop at &0D9F)
+ENDIF
+IF MB_GAMEPLAY
+\ Decision 76: what HAZEL held for the rupture (read with any bank paged: the scroll's, the interrupt's), and the
+\ player helicopters' speeds and the mover types' widths (mb_low, in helicopter 1's image's room here, has no room for them)
+    INCLUDE "play_heli_speed.6502"
+    INCLUDE "play_movers_width.6502"
+    INCLUDE "level_triggers.6502"
+    INCLUDE "new_helicopter_types.6502"
+    INCLUDE "level_movers_x_low.6502"
+  IF HI(*) <> HI(* + 30)            \ (the texture must not cross a page)
+    SKIP (&100 - LO(*)) AND &FF
+  ENDIF
+    INCLUDE "ground_columns.6502"
+.rup_k_lo       EQUB LO(RUP_K_EB), LO(RUP_K_PAL), LO(RUP_K_B)   \ decision 67: rupture_t1's T1 counts
+.rup_k_hi       EQUB HI(RUP_K_EB), HI(RUP_K_PAL), HI(RUP_K_B)
+IF GAMEPLAY_TIMER
+\ time_up_b4: time_up_now's death (src/shield_hi.6502, in bank 7 here) with bank 4 paged, as the death's path
+\ calls shield_hit there; bank 7 again for shield_tick after
+.time_up_b4
+.bks_time_up_4                      \ decision 74: a bank select, patched at start-up (bank_patch)
+    LDA #&04
+    STA os_ram_copy_of_currently_selected_rom
+    STA romsel
+    JSR kill_mover_Y
+.bks_time_up_7                      \ decision 74: a bank select, patched at start-up (bank_patch)
+    LDA #&07
+    STA os_ram_copy_of_currently_selected_rom
+    STA romsel
+    RTS
+ENDIF
 ENDIF
     ASSERT * <= unused_3400_original, "layer 1's code overruns the free block by ", * - unused_3400_original, " bytes"
     SKIP unused_3400_original - *
@@ -5723,7 +5705,9 @@ ENDIF
 \ screen 1 (render.6502).
 .player_save                        \ step 2 layer 4: the compiled kinds' saves (tools/compiled.py), at
 PLAYER_SAVE = player_save           \ fixed addresses: only the player draws them, once a screen
+IF COMPILED                         \ (decision 76: none, and the arena has the bytes)
     SKIP PLAYER_SAVE_SIZE
+ENDIF
 .save_arena
 \ Decision 33: nothing reads or writes the arena (main or shadow) before the first game's
 \ render_reset (measured: the start-up and the whole front end), and the renderer writes every
@@ -5933,7 +5917,7 @@ copy_andy_target = * + 1
     CMP #&90
     BNE copy_andy_loop
 ENDIF
-IF DITHER_HILLS                     \ decisions 70, 71: the mountain sprites dithered, and mirrored for their
+IF DITHER_PACKED                    \ decisions 70, 71: the mountain sprites dithered, and mirrored for their
     LDA #LO(hills_unpacked)         \ flipped draws, packed in banks 4 and 7: unpacked one after the other
     STA zxdst                       \ over ANDY's carrier in bank 5, which the copy has finished with
     LDA #HI(hills_unpacked)
@@ -6287,15 +6271,7 @@ ENDIF
     EQUB &9A, &5A, &9A, &5A, &9A
 
 IF HUD_RUPTURE = 0
-.new_helicopter_types
-    EQUB &85    \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_MISSILE
-    EQUB &86    \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER
-    EQUB &96    \ MOVER_TYPE_ENEMY | MOVER_TYPE_GREEN_WHITE_HELICOPTER
-    EQUB &87    \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_SOLDIER
-    EQUB &97    \ MOVER_TYPE_ENEMY | MOVER_TYPE_GREEN_WHITE_CRAFT_ONE
-    EQUB &9A    \ MOVER_TYPE_ENEMY | MOVER_TYPE_GREEN_WHITE_HELICOPTER_WITH_MISSILE
-    EQUB &99    \ MOVER_TYPE_ENEMY | MOVER_TYPE_FLYING_SCOOTER
-    EQUB &98    \ MOVER_TYPE_ENEMY | MOVER_TYPE_GREEN_WHITE_CRAFT_TWO
+    INCLUDE "new_helicopter_types.6502"
 ENDIF
 
 IF HUD_RUPTURE = 0
@@ -6335,10 +6311,12 @@ IF HUD_RUPTURE
     BIT usrvia_ifr                  \ V = T1's flag
     BVC rup_wait
 .rup_switch
+IF MODEL_B = 0                      \ (MODEL_B: one screen, main RAM's, and &FE34 is ROMSEL on a Model B)
     LDA acccon
     AND #&FE
     ORA shown_screen
     STA acccon
+ENDIF
     LDX #1
 .rup_writes                         \ X = 0: the HUD row's writes, 1: M's
     LDA #4                          \ R4: vertical total (H's must be in before its last line's C0 = 1)
@@ -6485,7 +6463,9 @@ ENDIF
     LDA #HI(hazel_a_end - HAZEL_ORG)
     STA up_n + 1
     JSR copy
-IF MODEL_B
+IF MB_GAMEPLAY
+                                    \ (decision 76: mb_low is initialisation's, in helicopter 1's image's room)
+ELIF MODEL_B
     LDA #LO(mb_low_load)            \ decision 75: the blocks HAZEL held, to main RAM: after moved_0a20, and
     STA zxsrc                       \ where helicopter 1's image was
     LDA #HI(mb_low_load)
@@ -6572,12 +6552,18 @@ IF MODEL_B
 \ paged: after moved_0a20 to &0D9E (the DFS's NMI code and workspace: no disc is read once the game has
 \ loaded; not the extended vectors from &0D9F, which a ROM that claims a vector goes through), and where helicopter 1's sky image was. In bank 4, the tables read only with it
 \ paged (src/main.6502: measured over 3,000 passes, tools/hazelbanks.mjs).
+IF MB_GAMEPLAY
+mb_low_org = SKY_IMG1               \ decision 76: the rupture's HUD row is after moved_0a20; sky_hazel is in bank 4
+ELSE
 mb_low_org = moved_0a20_end
+ENDIF
 .mb_low_load
 SECTION mb_low, org = mb_low_org, cmos = CMOS
     INCLUDE "scroll_hazel.6502"     \ pre_cancel, edge_right (a loop), ground_square, unpack_scenery_column
+IF MB_GAMEPLAY = 0                  \ (MB_GAMEPLAY: in the main block)
     INCLUDE "play_movers_width.6502"
     INCLUDE "play_heli_speed.6502"
+ENDIF
 \ times_78_of_a: A x &4E as multiply_by_78's table gave it: result_low/high, multiplicand and multiplier_low 0,
 \ multiplier_high = X = &4E, A = result_high, Y kept (2n + 4n + 8n + 64n; about 100 cycles)
 .times_78_of_a
@@ -6623,8 +6609,16 @@ SECTION mb_low, org = mb_low_org, cmos = CMOS
     STX multiplier_high
     RTS
 .mb_low_end
+IF MB_GAMEPLAY
+    ASSERT mb_low_end <= &4000, "mb_low overruns helicopter 1's image's room by ", mb_low_end - &4000
+ELSE
     ASSERT mb_low_end <= &0D9F, "mb_low overruns the MOS's extended vectors (&0D9F) by ", mb_low_end - &0D9F
+ENDIF
 ENDSECTION
+IF MB_GAMEPLAY                      \ decision 76: mb_low is initialisation's mb_img (copied there, not by unpack_for_play)
+mb_img_load = mb_low_load
+mb_img_end = mb_low_end
+ELSE
 .mb_img_load
 SECTION mb_img, org = SKY_IMG1, cmos = CMOS
 IF SKY_MODE
@@ -6633,6 +6627,7 @@ ENDIF
 .mb_img_end
     ASSERT mb_img_end <= &4000, "mb_img overruns &3FFF by ", mb_img_end - &4000
 ENDSECTION
+ENDIF
 \ bank_patch (decision 74): the bank selects patched to the banks SWR found (swr_hand, src/swr.6502): every
 \ immediate that pages one of the build's banks 4-7 (its labels .bks_*; the list made from the build's every
 \ store to ROMSEL, 2026-10-25), then the tables the others come from (scenery_sprite_banks: the scroll's
@@ -6668,6 +6663,7 @@ ENDSECTION
     STA scenery_sprite_banks,X
     DEX
     BPL bp_scenery
+IF COMPILED
     LDX #CK_KINDS - 1
 .bp_kinds
     LDA ck_bank,X
@@ -6679,6 +6675,7 @@ ENDSECTION
 .bp_kind_next
     DEX
     BPL bp_kinds
+ENDIF
     LDX #15                         \ a layer whose bank was never set pages scenery_layer_sprite_banks' first
 .bp_empty                           \ value, the original's 0, and the scroll reads it (at the headquarters):
     LDA os_rom_type_table,X         \ an empty socket on a Master, but one of the game's banks if SWR found it
@@ -6702,9 +6699,11 @@ ENDSECTION
     DEX
     BPL bp_empty_set
     RTS
-BANK_SITES = 20
+BANK_SITES = bank_site_hi - bank_site_lo
+IF COMPILED
 CK_KINDS = 14
     ASSERT ck_bank + CK_KINDS = ck_draw_lo, "ck_bank is not 14 long"
+ENDIF
 .bank_site_lo
     EQUB LO(bks_game_1441 + 1)
     EQUB LO(bks_game_1934 + 1)
@@ -6721,11 +6720,30 @@ CK_KINDS = 14
     EQUB LO(bks_game_5928 + 1)
     EQUB LO(unpack_for_play.bks_game_6445 + 1)
     EQUB LO(unpack_for_play.bks_game_6503 + 1)
+IF COMPILED
     EQUB LO(compiled_part.bks_render_2109 + 1)
+ENDIF
     EQUB LO(group_on.bks_render_1458 + 1)
     EQUB LO(group_on.bks_render_1490 + 1)
+IF COMPILED
     EQUB LO(restore_block.bks_render_2374 + 1)
+ENDIF
     EQUB LO(pre_cancel.bks_scroll_hazel_19 + 1 - mb_low_org + mb_low_load)
+IF GAMEPLAY_RUN OR MB_GAMEPLAY      \ decision 76: the gameplay disc's
+    EQUB LO(bks_game_2526 + 1)
+ENDIF
+IF GAMEPLAY_TIMER
+    EQUB LO(bks_game_2532 + 1)
+    EQUB LO(bks_game_2545 + 1)
+    EQUB LO(bks_time_up_4 + 1)
+    EQUB LO(bks_time_up_7 + 1)
+ENDIF
+IF GAMEPLAY_TIMER OR GAMEPLAY_RUN OR MB_GAMEPLAY
+    EQUB LO(bks_game_2538 + 1)
+ENDIF
+IF GAMEPLAY_LIVES
+    EQUB LO(bks_game_2557 + 1)
+ENDIF
 .bank_site_hi
     EQUB HI(bks_game_1441 + 1)
     EQUB HI(bks_game_1934 + 1)
@@ -6742,15 +6760,36 @@ CK_KINDS = 14
     EQUB HI(bks_game_5928 + 1)
     EQUB HI(unpack_for_play.bks_game_6445 + 1)
     EQUB HI(unpack_for_play.bks_game_6503 + 1)
+IF COMPILED
     EQUB HI(compiled_part.bks_render_2109 + 1)
+ENDIF
     EQUB HI(group_on.bks_render_1458 + 1)
     EQUB HI(group_on.bks_render_1490 + 1)
+IF COMPILED
     EQUB HI(restore_block.bks_render_2374 + 1)
+ENDIF
     EQUB HI(pre_cancel.bks_scroll_hazel_19 + 1 - mb_low_org + mb_low_load)
+IF GAMEPLAY_RUN OR MB_GAMEPLAY
+    EQUB HI(bks_game_2526 + 1)
+ENDIF
+IF GAMEPLAY_TIMER
+    EQUB HI(bks_game_2532 + 1)
+    EQUB HI(bks_game_2545 + 1)
+    EQUB HI(bks_time_up_4 + 1)
+    EQUB HI(bks_time_up_7 + 1)
+ENDIF
+IF GAMEPLAY_TIMER OR GAMEPLAY_RUN OR MB_GAMEPLAY
+    EQUB HI(bks_game_2538 + 1)
+ENDIF
+IF GAMEPLAY_LIVES
+    EQUB HI(bks_game_2557 + 1)
+ENDIF
+IF COMPILED
     ASSERT compiled_part.bks_render_2109 >= &8000 AND compiled_part.bks_render_2109 < &C000
+    ASSERT restore_block.bks_render_2374 >= &8000 AND restore_block.bks_render_2374 < &C000
+ENDIF
     ASSERT group_on.bks_render_1458 >= &8000 AND group_on.bks_render_1458 < &C000
     ASSERT group_on.bks_render_1490 >= &8000 AND group_on.bks_render_1490 < &C000
-    ASSERT restore_block.bks_render_2374 >= &8000 AND restore_block.bks_render_2374 < &C000
     ASSERT bks_game_1441 < &8000
     ASSERT bks_game_1934 < &8000
     ASSERT bks_game_2164 < &8000
@@ -6781,15 +6820,7 @@ ENDIF
 IF HUD_RUPTURE
 .hazel_rup_gap
     INCLUDE "level_triggers.6502"   \ decision 67: in the padding before the page these tables need
-.new_helicopter_types
-    EQUB &85    \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_MISSILE
-    EQUB &86    \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER
-    EQUB &96    \ MOVER_TYPE_ENEMY | MOVER_TYPE_GREEN_WHITE_HELICOPTER
-    EQUB &87    \ MOVER_TYPE_ENEMY | MOVER_TYPE_HELICOPTER_WITH_SOLDIER
-    EQUB &97    \ MOVER_TYPE_ENEMY | MOVER_TYPE_GREEN_WHITE_CRAFT_ONE
-    EQUB &9A    \ MOVER_TYPE_ENEMY | MOVER_TYPE_GREEN_WHITE_HELICOPTER_WITH_MISSILE
-    EQUB &99    \ MOVER_TYPE_ENEMY | MOVER_TYPE_FLYING_SCOOTER
-    EQUB &98    \ MOVER_TYPE_ENEMY | MOVER_TYPE_GREEN_WHITE_CRAFT_TWO
+    INCLUDE "new_helicopter_types.6502"
     ASSERT * - hazel_rup_gap <= ((&105 - LO(hazel_rup_gap)) AND &FF), "the trigger tables overrun hazel_b's padding"
 ENDIF
     SKIP (&105 - LO(*)) AND &FF
@@ -6830,7 +6861,7 @@ SECTION hazel_c, org = &C200, cmos = CMOS
 ENDSECTION
 ENDIF
     INCLUDE "music_packed.6502"
-IF DITHER_HILLS
+IF DITHER_PACKED
 \ unpack_hills (decisions 70, 71; start-up code, run once where the file put it, after what
 \ unpack_for_play has finished with): the packed stream at YA in bank X copied to the screen
 \ (dead: the title draws it; &4000-&42FF, below this code),

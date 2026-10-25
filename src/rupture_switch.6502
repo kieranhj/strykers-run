@@ -1,0 +1,67 @@
+\ rupture_switch.6502 - HUD_RUPTURE (decision 67): rupture_on and rupture_off, the front end's (bank 5 paged),
+\ cut from src/game.6502 unchanged: in the main block, or (the Model B's gameplay disc, decision 76) in bank 5.
+
+\ Decision 67: rupture_on, from take_irq_for_play (interrupts off): the ROMs' workspace bytes at
+\ &0DF0-&0DFF kept (paged ROMs 9 and 13 read them on the front end, tools/zpwatch.mjs), the HUD row
+\ cleared, R6 24 rows and R7 the vsync a row earlier (the HUD's frame takes the first), M's start.
+.rupture_on
+    LDX #15
+.rup_keep
+    LDA &0DF0,X
+    STA rom_ws_save,X
+    DEX
+    BPL rup_keep
+    LDX #0
+    TXA
+.rup_clear
+    STA HUD_ROW,X
+    STA HUD_ROW + &100,X
+    CPX #&80
+    BCS rup_cleared
+    STA HUD_ROW + &200,X
+.rup_cleared
+    INX
+    BNE rup_clear
+    LDX #6
+    LDA #24
+    JSR rup_crtc
+    LDX #7
+    LDA #&1F
+    JSR rup_crtc
+    LDA crtc_start_address_low
+    LDX crtc_start_address_high
+    JSR rup_set_m_start
+    LDA #2                          \ this field's T1 was armed for row 111 (the rupture was off at
+    STA rup_phase                   \ its vsync): the palette's, not the HUD row's
+    LDA #&80
+    STA rupture
+    RTS
+\ rupture_off, from give_irq_back (interrupts off): the one frame back, the ROMs' bytes back
+.rupture_off
+    STZ_LDA rupture                 \ 65C02 opcode
+    LDX #4
+    LDA #&26
+    JSR rup_crtc
+    LDX #6
+    LDA #&19
+    JSR rup_crtc
+    LDX #7
+    LDA #&20
+    JSR rup_crtc
+    LDX #12
+    LDA crtc_start_address_high
+    JSR rup_crtc
+    LDX #13
+    LDA crtc_start_address_low
+    JSR rup_crtc
+    LDX #15
+.rup_back
+    LDA rom_ws_save,X
+    STA &0DF0,X
+    DEX
+    BPL rup_back
+    RTS
+.rup_crtc
+    STX crtc_reg
+    STA crtc_data
+    RTS

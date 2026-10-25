@@ -1,0 +1,162 @@
+\ shield_tick.6502 - GAMEPLAY_SHIELD (decision 44): the shield's pass by pass tick and its refill's tone, cut
+\ from src/shield.6502 unchanged: in bank 4 after shield_hit, or (the Model B's gameplay disc, decision 76) in
+\ bank 7 with the HUD's builders, paged by timer_tick_call (src/game.6502).
+
+\ shield_tone_start: the shield starts to refill: a tone rising from its level to the top note,
+\ over the fields the refill takes at the design speed (a unit of 1 a pass, 2 fields a pass), on
+\ chip channel 1, where a hit's tink (the same channel) cuts it. Nothing at full. Keeps X.
+SHIELD_TONE_TOP = 200               \ the period at full: 625 Hz (KC: lower); empty, 200 + 8 * 50 = 600 (208 Hz)
+.shield_tone_start
+{
+    LDA #SHIELD_FULL
+    SEC
+    SBC shield                      \ d: the passes to full
+    BEQ tone_none
+    ASL A                           \ 2d fields (d <= 50)
+    STA shield_tone
+    LDY #0
+    ASL A
+    ASL A                           \ 8d, its high bit in C
+    BCC low
+    INY
+    CLC
+.low
+    ADC #SHIELD_TONE_TOP
+    STA shield_tone + 1
+    BCC high
+    INY
+.high
+    STY shield_tone + 2
+    LDA #10                         \ effect 9: shield_tone
+}
+\ falls through
+\ shield_sound: request A (an effect + 1) on chip channel 1, unless the sound is off (play_sound's
+\ rule). In play only: src/lib/sfx50.6502 plays it from the vsync interrupt.
+IF MB_GAMEPLAY
+.tick_sound                         \ (decision 76: bank 7's copy, for shield_tone_start; shield_hit's is in bank 4)
+{
+    LDY sound_muted
+    BNE done
+    STA sfx_request + 1
+.done
+    RTS
+}
+tone_none = tick_sound.done
+ELSE
+.shield_sound
+{
+    LDY sound_muted
+    BNE done
+    STA sfx_request + 1
+.done
+    RTS
+}
+tone_none = shield_sound.done
+ENDIF
+
+\ shield_tick: once a pass (main_game_loop). Sets the shield up at a game's first pass; counts down
+\ the flash and the wait; refills a twenty-fifth of a unit a pass once the wait is over; and rebuilds
+\ hud_buffer (the lives digit, then the bar) when what it shows changes, bumping hud_serial so the
+\ renderer redraws it on each screen.
+.shield_tick
+{
+    LDA shield_ready
+    BNE ready
+    LDA #SHIELD_FULL
+    STA shield
+    STZ_LDA shield_wait             \ 65C02 opcodes
+    STZ_A shield_flash
+    STZ_A hud_serial
+    LDA #&FF
+    STA hud_lives                   \ so the HUD is built below
+    STA shield_ready
+IF GAMEPLAY_LIVES
+    STZ_LDA respawn_left            \ 65C02 opcodes
+    STZ_A invulnerable
+ENDIF
+IF GAMEPLAY_TIMER
+    STZ_LDA time_up                 \ (the front end writes this zero page: this tick reads it before the timer's)
+ENDIF
+IF HUD_RUPTURE
+    JSR hud_extra_init              \ decision 68: the progress and the score (src/hud_extra.6502)
+ENDIF
+.ready
+IF HUD_RUPTURE
+    JSR hud_extra
+ENDIF
+IF GAMEPLAY_TIMER
+    LDA time_up                     \ decision 47: the time is up (timer_tick): the skeleton, then game over
+    BEQ time_left
+    JSR time_up_now
+.time_left
+ENDIF
+IF GAMEPLAY_LIVES
+    LDA invulnerable
+    BEQ safe_done
+    DEC invulnerable
+.safe_done
+ENDIF
+    LDX #0                          \ X: non-zero if what the bar shows may have changed
+    LDA shield_flash
+    BEQ flash_done
+    DEC shield_flash                \ (a hit sets the flash, so it is running after any)
+    INX
+.flash_done
+    LDA shield_wait
+    BEQ refill
+    DEC shield_wait
+    BNE check
+    JSR shield_tone_start           \ decision 69: the wait is over: the refill's tone (keeps X)
+    BRA_JMP check                   \ 65C02 opcode
+.refill
+    LDA shield
+    CMP #SHIELD_FULL
+    BCS check
+    INC shield
+    INX
+.check
+    TXA                             \ the common pass: the bar as it was, only the lives to look at
+    BNE level
+    LDA lives
+    CMP hud_lives
+    BNE level
+    RTS
+.level
+    LDA shield                      \ the bar's filled pixels, 3 * shield / 25 (0-6: 3 a unit)
+IF HUD_RUPTURE
+    LSR A                           \ decision 68's wide bar: shield / 2 (0-25)
+    STA shield_tmp
+ELSE
+    STA shield_tmp
+    ASL A                           \ C = 0 after: shield <= 50
+    ADC shield_tmp                  \ 3 * shield, at most 150
+    LDX #&FF
+.thirds
+    INX
+    SEC
+    SBC #SHIELD_UNIT
+    BCS thirds
+    STX shield_tmp
+ENDIF
+    LDA shield_flash                \ bit 7 while it flashes, 2 passes on, 2 off
+    AND #2
+    BEQ steady
+IF NMOS                             \ (hand: the TSB's Z is not read: .steady loads A)
+    LDA shield_tmp
+    ORA #&80
+    STA shield_tmp
+ELSE
+    LDA #&80
+    TSB shield_tmp                  \ 65C02 opcode
+ENDIF
+.steady
+    LDA shield_tmp
+    CMP hud_level
+    BNE build
+    LDA lives
+    CMP hud_lives
+    BNE build
+    RTS
+.build
+    JMP hud_build                   \ src/shield_hi.6502 (above &9000)
+}

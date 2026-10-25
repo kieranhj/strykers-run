@@ -282,32 +282,56 @@ original's behaviour on that machine.
 Not done yet: real hardware and other emulators (b2, b-em; `beeb-target-matrix`); Paradroid's ROM
 image as the fourth bank; BUGS #17.
 
-## Next: the gameplay disc on the Model B (not built; the choices are KC's)
+## Step 5: the gameplay disc on the Model B (decision 76, 2026-10-25)
 
-Done towards it (2026-10-25, `2ebf85d`): the gameplay code's NMOS forms (72 sites and 4 by hand; the
-gameplay CMOS disc unchanged, `nmosify check` 0 failing).
+Its code's NMOS forms first (2026-10-25, `2ebf85d`: 72 sites and 4 by hand). Then KC, 2026-10-25: "Drop the remaining compiled sprites to get the gameplay version built." Built as
+`.\build.ps1 -Gameplay -Define NMOS,MODEL_B` (`make DEFINES=NMOS,MODEL_B,GAMEPLAY_SHIELD,...,HUD_RUPTURE`, the same
+image): every gameplay flag, `DITHER_HILLS`, `HUD_RUPTURE` and sky mode kept. `MB_GAMEPLAY` (`MODEL_B` with
+`GAMEPLAY_SHIELD`) lays it out; `COMPILED` is 0 there. Every other build is byte-identical to before (plain,
+gameplay, NMOS, the plain Model B disc: every game file).
 
-What the gameplay disc adds, measured on its Master build (bytes): bank 4 ~880 (shield 359, the HUD
-builder 224, the HUD's progress and score 251, its start 44); bank 5 ~860 (the rules screen 511, its
-text 244, the hooks 101); the tables HAZEL holds with `HUD_RUPTURE` 231 (triggers, `level_movers_x_low`,
-`ground_columns`, the rupture's T1 counts); `DITHER_HILLS` 2,473 unpacked (its carrier was ANDY's
-sprites' room in bank 5, their home now); and the rupture's HUD row needs `&0B80-&0DFF`, where `mb_low`
-(460) lives. Free in the plain Model B build: bank 4 ~60, bank 5 ~270, bank 6 ~530, bank 7 ~480, main
-~10.
+What went where:
 
-Room that can be had, and its price:
+| what | from | to | cycles |
+|---|---|---|---|
+| the 8 compiled kinds (banks 5-7), `compiled_table`, `compiled_call`, `player_save` | | gone: the player drawn straight, its saves in the arena (117 bytes larger) | the price (below) |
+| the dithered hills (2,473 bytes) | packed in banks 4 and 7, unpacked into ANDY's carrier | unpacked on the disc (`DATA3`/`DATA4` are packed anyway): `MOUNTAINS_ONE` and its mirror in bank 6, `MOUNTAINS_TWO` and its mirror in bank 7 (`src/hills_dither_b6/b7.6502`, `tools/ditherhills.py`); no `unpack_hills` | none |
+| sky mode's code (`sky_main`, 506) and geometry (`sky_hazel`, 430) | main RAM | bank 4 (only the renderer calls them, bank 4 paged); its state and helicopter 0's image stay in main RAM (`src/sky_state.6502`) | none |
+| the shield's tick, the HUD's builders and the score/progress (`shield_tick`, `shield_hi`, `hud_extra`, `hud_extra_init`, ~720) | bank 4 | bank 7, called by `timer_tick_call` after it pages bank 7 for the run meter (the tick first, as `main_game_loop` called it just before); `time_up_now`'s death through `time_up_b4` (main RAM: bank 4 for `shield_hit`'s path, bank 7 back) | none a pass |
+| `rupture_on`, `rupture_off` (119) | main RAM | bank 5 (the front end calls them, bank 5 paged) | none |
+| the gameplay front end (`front_gameplay`) | bank 5's `&8000` block | bank 5's end | none |
+| the rupture's tables HAZEL held (triggers, `new_helicopter_types`, `level_movers_x_low`, `ground_columns`, T1 counts), the player helicopters' speeds, the mover widths | HAZEL / `mb_low` | the main block | none |
+| `mb_low` (the scroll's code, `times_78_of_a`) | `&0BC8`, under the HUD row now | helicopter 1's image's room, `&3E40-&3FEF`, copied by `initialisation` | none |
 
-| from | bytes | price |
-|---|---|---|
-| the 8 remaining compiled kinds (banks 5, 6, 7) | ~6,000 | measured: the whole world's late frames 244 -> 271, passbench 25.04 -> 25.02 passes/s; one draw refused for the arena's room (helicopter 1, pass 5,708), which `player_save`'s 117 bytes (unused then) give back |
-| `MOUNTAINS_ONE`'s original in bank 4, replaced by the dithered pair's packed 595 (as on the Master gameplay disc) | ~1,500 | none |
-| sky mode's main RAM (`sky_main` 528, helicopter 0's image 448) and `sky_hazel` (430, helicopter 1's image's room) | ~1,400 main | the helicopters drawn masked (a new mode: `SKY_MODE` 0 is the kind cache, which needs HAZEL) |
-| the front end's code into the save arena while the front end runs (packed, unpacked at the title) | up to ~2,000 | a load time at each title; work |
+On a Model B `&FE34` is ROMSEL, so the rupture's two ACCCON writes (D for the HUD's frame and the
+screen's) are left out under `MODEL_B` (one screen, main RAM's); `tools/rupture.mjs` expects none there.
 
-A layout that fits, if sky mode can go: banks 5-7's compiled kinds out; the dithered mountains
-unpacked into bank 6 and bank 7's freed room (the scroll pages each scenery sprite's own bank); the
-shield, HUD and their start in bank 4 (`MOUNTAINS_ONE`'s room); the rules screen and the credit line at
-bank 5's end; `mb_low` and the rupture's tables in sky mode's main RAM; the rupture without ACCCON (on a
-B the 6845 reads `&0B80` as it is). Keeping sky mode instead needs ~700 bytes of main RAM found
-elsewhere (the stack page's unused half, if measured so, and `player_save`), or the HUD's rupture
-dropped (the HUD row back in the play area, as before decision 67).
+Free (2026-10-25): bank 4 885 bytes, bank 5 1,167 at its end and 114 in its `&8000` block, bank 6 967,
+bank 7 96, the main block 97, helicopter 1's image's room 16, `moved_0a20` 22.
+
+Measured (jsbeeb 2.10.2, 2026-10-25):
+
+- The whole world (WorldBot, `keepAlive`) against the Master gameplay disc: on jsbeeb's Model B (`B-DFS1.2`),
+  state identical every pass to completion (11,412 passes); on the Master, state identical and every frame
+  identical but 28 (with `WORLDRUN_HAZEL=0`: the mountain layer reads HAZEL's DFS workspace, which each
+  disc's catalogue leaves different, BUGS #9), the last 28 passes, the headquarters' approach, up to 22
+  bytes in the right edge's columns: BUGS #17's.
+- The price: the whole world's late frames 558 against the gameplay disc's 248 (Master; on the B 548
+  against 242), 23.88 passes/s against 24.76. passbench (passes 500-2500) on the B: 25.00 passes/s, 7
+  late frames, as the Master gameplay disc (25.00, 7). beamcheck on the B: 56 frames in 1,000 with late
+  bytes (the plain Model B disc 37), 0 early.
+- On the B: frontend 17 checks 0 failed; optionstest 0 failed (it now waits for the high score table's
+  key loop: the B draws the table more slowly, and a key pressed while it draws is, by design, not taken);
+  timertest over the whole world, `--bonus`, and `--short` (a `GAMEPLAY_TIMER=2` build: time up, the
+  skeleton, game over through `time_up_b4`) all held; livestest 3,000 passes (8 deaths, rewinds,
+  respawns) held; shieldtest held, with `--wait 10` (30 refill tones through bank 7's `tick_sound`) the
+  same game as the Master disc's; runmeter held; observer ok; rupture: every CRTC write in place, the HUD
+  and screen read right; the sound effects' values the Master disc's, in order. helilock does not board
+  on the gameplay disc (Master against Master too), so the flights rest on the whole world (4,513 passes
+  in the air).
+
+### The cycles given for RAM (to win back)
+
+Decision 75's six, and: (7) the 8 remaining compiled kinds drawn straight (the larger part of the
+whole world's late frames, 248 -> 558). Ways back: bank 4's 885 and bank 6's 967 free bytes (some
+compiled kinds again, or `times_78`'s 512-byte table if its reads are all with bank 4 paged).

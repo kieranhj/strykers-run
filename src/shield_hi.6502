@@ -165,7 +165,11 @@ IF GAMEPLAY_TIMER
     STZ_LDY invulnerable
   ENDIF
     LDY #0                          \ MOVER_PLAYER
+  IF MB_GAMEPLAY
+    JMP time_up_b4                  \ decision 76: bank 4 paged for it (src/game.6502)
+  ELSE
     JMP kill_mover_Y
+  ENDIF
 .over
     LDA #&FF                        \ lives negative: main_game_loop's game over, after the cooldown
     STA lives

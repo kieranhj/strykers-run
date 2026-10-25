@@ -446,3 +446,8 @@ use, `bank_patch`); the bank immediate the original also used as the pixel table
 first byte differs; look for a read of a bank number as data in the walk (the logical bank 7 alone
 moved is enough to show it). The Master, and a Model B whose RAM is at 4-7, use banks 4-7 and are
 not affected.
+
+2026-10-25, decision 76: the Model B's gameplay disc on the Master (banks 4-7) against the Master gameplay
+disc shows the same thing, the last 28 passes of the whole world (11,385 on), up to 22 bytes in the right edge's
+columns, state identical; there the two differ in which banks the scenery sprites are in (the dithered
+mountains in 6 and 7, not 5) and in an unset layer's bank (8, not 0), not in the game's bank map.

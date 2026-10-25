@@ -349,16 +349,3 @@ NEXT
     BNE row
     RTS
 }
-
-\ ---- per screen ----
-    ASSERT * >= &3000
-.sky_on         SKIP 2              \ per helicopter: non-zero, drawn here in sky mode
-.sky_adr_lo     SKIP 2              \ its rectangle: the bottom left byte, the rows
-.sky_adr_hi     SKIP 2
-.sky_h          SKIP 2
-.sky_ojl        SKIP 2              \ its columns drawn (as its image numbers them)
-.sky_ojh        SKIP 2
-.sky_k          SKIP 2 * 5          \ the image's kind (sky_body to sky_H), each per helicopter: body
-                                    \ sprite (&FF: none), line, pixel table, height
-
-.sky_img0       SKIP SKY_IMG_SIZE   \ helicopter 0's image (1's: SKY_IMG1), a block a character row

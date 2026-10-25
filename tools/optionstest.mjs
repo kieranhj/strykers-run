@@ -32,7 +32,7 @@ const press = async (k, hold = 10, after = 40) => { s.keyDownRaw(K[k]); await ru
 let step = 0, fails = 0;
 const shot = async (name) => writeFileSync(`build/shots/${PREFIX}-${String(++step).padStart(2, "0")}-${name}.png`, await s.screenshotActive({ scale: 1 }));
 const check = (what, ok, detail = "") => { console.log(`${ok ? "ok  " : "FAIL"} ${what}${detail ? ": " + detail : ""}`); if (!ok) fails++; };
-const seen = { options: 0, loop: 0, entry: 0, newGame: 0, table: 0, title: 0 };
+const seen = { options: 0, loop: 0, entry: 0, newGame: 0, table: 0, title: 0, listening: 0 };
 cpu.debugInstruction.add((pc) => {
     const b5 = (cpu.romsel & 15) === 5;
     if (pc === syms.options_screen && b5) seen.options++;
@@ -40,6 +40,7 @@ cpu.debugInstruction.add((pc) => {
     if (pc === syms.finished_shuffling_names && b5) seen.entry++;
     if (pc === syms.shield_new_game && b5) seen.newGame++;
     if (pc === syms.display_high_scores && b5) seen.table++;
+    if (pc === syms.options_high_score_key && b5) seen.listening++;
     if (pc === syms.display_title_screen && b5) seen.title++;
     return false;
 });
@@ -55,6 +56,8 @@ await shot("title");
 {   // decision 56: any key on the high score table goes back to the menu (and is not taken as an option)
     const t0 = seen.table;
     for (let i = 0; i < 40 && seen.table === t0; i++) await run(50);   // the title cycles to the table by itself
+    const l0 = seen.listening;                                         // drawn, and its loop reading keys (a Model B takes
+    for (let i = 0; i < 100 && seen.listening === l0; i++) await run(1);   // longer to draw it: decision 76)
     await run(30);
     const title0 = seen.title, loop0 = seen.loop;
     await press("K1", 10, 60);                                         // "1": on the menu it would start a game

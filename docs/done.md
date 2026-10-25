@@ -287,7 +287,7 @@ and costs are `docs/briefs/gameplay-shield.md`.
   in `R`, each started by its own `!BOOT`. `tools/menutest.mjs`: the picture byte for byte, each choice
   its own directory's game to its title.
 
-## Redux Lite: the Model B (branch `model-b-lite`, decisions 73-75; `docs/briefs/model-b-lite.md`)
+## Redux Lite: the Model B (branch `model-b-lite`, decisions 73-76; `docs/briefs/model-b-lite.md`)
 
 - **NMOS** (2026-10-24, `3d564af`): every 65SC12 instruction given an NMOS form behind `NMOS`
   (`src/lib/nmos.6502`, `tools/nmosify.py` and its `check`/`check --nmos` proofs); without the flag
@@ -299,6 +299,11 @@ and costs are `docs/briefs/gameplay-shield.md`.
 - **The Model B boot** (2026-10-25, `f1cc2f2`): `SWR` finds the sideways RAM, the start-up patches the
   bank selects; on jsbeeb's BBC B (DFS 1.2) the front end's 15 checks pass, 25.04 passes/s.
   BUGS #16 fixed on the way (every disc); BUGS #17 open.
+- **The gameplay disc on the Model B** (2026-10-25, decision 76): the compiled kinds dropped, the rest placed
+  for free (hills unpacked in banks 6 and 7, sky code in bank 4, the shield's tick and HUD in bank 7); every
+  gameplay flag, the dithered hills, the HUD rupture and sky mode kept. The whole world's state identical to
+  the Master gameplay disc on both machines; every rules harness passes on jsbeeb's BBC B; late frames 558
+  against 248.
 
 ## Tooling
 

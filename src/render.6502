@@ -1988,9 +1988,13 @@ ENDIF
     STZ_LDA ds_clip                 \ 65C02 opcode: 0; step 2 layer 4: a part that cannot be clipped may be one of
     LDA dm_slot                     \ the player's kinds compiled to code (tools/compiled.py), or a big part's kind built at run time (src/kindcache.6502,
 IF SKY_MODE
+  IF COMPILED
     BNE generic
     JSR compiled_part
     BCS generic
+  ELSE
+    JMP generic                     \ (decision 76: no compiled kinds)
+  ENDIF
 ELSE
     BNE cached                      \ decision 36)
     JSR compiled_part
@@ -2063,6 +2067,7 @@ ENDIF
 \ is that cell's base), its cells after the record; restore_block walks them the same way.
     INCLUDE "draw_column.6502"      \ (its own file: MODEL_B builds assemble a second copy in bank 5)
 
+IF COMPILED
 .compiled_direct                    \ a kind in HAZEL: no bank to page
     JMP (compiled_vec)
 .compiled_none                      \ compiled_part: not a kind (carry set)
@@ -2148,6 +2153,7 @@ ENDIF
     STA ds_c
     RTS
 }
+ENDIF
 
 \ raise_address: AX up Y rows (Y may be 0). A row up is one byte lower inside a cell; from a
 \ cell's top line it is the cell above's bottom line.
@@ -2295,7 +2301,9 @@ ENDIF
     TAX                             \ the address's low byte
     DEY
     LDA (v_ptr),Y
+IF COMPILED                         \ (decision 76: none, so no record's count is &FF)
     BMI compiled                    \ &FF: a compiled part (ren_draw_sprite), X = its kind
+ENDIF
     STA rows_m1                     \ count - 1
     LDA v_ptr                       \ the cells after it
     CLC
@@ -2347,6 +2355,7 @@ ENDIF
     DEX
     BPL part_byte
     BRA_CC columns                  \ 65C02 opcode
+IF COMPILED
 .compiled                           \ its entry: the kind, then the part's bottom left cell
 IF SKY_MODE = 0
     CMP #KC_MARK                    \ (or a cached part's: src/kindcache.6502)
@@ -2391,6 +2400,7 @@ ENDIF
 .kop_next_page                      \ v_ptr + 11 crossed a page (rare): off the hot path
     INC v_ptr + 1
     BRA_CS kind_on_page             \ 65C02 opcode
+ENDIF
 IF SKY_MODE = 0
 .cached                             \ X = the slot
     JSR kc_restore
