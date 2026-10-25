@@ -439,7 +439,7 @@ bank 0 (`pre_bank`'s only value) from then on, on every disc. Nothing read the p
 next select on the plain disc's path: its whole world, state and every frame, is identical with the
 fix (the two in-line loads read `install_prebuilt + 1`).
 
-## 17. With the game's banks anywhere but 4-7, the headquarters' approach draws differently (decision 74; FIXED on the gameplay disc, decision 80)
+## 17. With the game's banks anywhere but 4-7, the headquarters' approach draws differently (decision 74; FIXED, decision 80)
 
 Found 2026-10-25: a `MODEL_B` build on jsbeeb's Model B (banks 0-7 RAM), its banks found at 0-3
 (`SWR_LOW`) or poked (`SWR_POKE`: 7 6 5 4, 1 2 3 0, 4 5 6 3, 5 6 7 4), against the same build in 4-7:
@@ -479,5 +479,13 @@ the mountains in 5), and the bank paged is `scenery_layer_romsel`'s (from the pa
 block's end (the movers' page pad has 7 bytes to spare). Proven (jsbeeb 2.10.2, 2026-10-25, the whole world,
 `worldrun.mjs --screen`): on the Master, against the Master gameplay disc (`WORLDRUN_HAZEL=0`), state and every
 frame identical (11,412 passes; the 28 at the headquarters before); on the B, banks poked to 0-3 against 4-7,
-state and every frame identical. The plain Model B disc still reads the machine's banks there (2 bytes free in
-its main block): it differs only on a Model B whose RAM is not at 4-7.
+state and every frame identical.
+
+The plain Model B disc (`B17_PLAIN`, KC: "we do need to make sure that bug 17 is fixed and closed on all builds"):
+2 bytes free in its main block, so the write site keeps its 6 bytes (`LDA scenery_sprite_banks,X`, then `JSR
+layer_banks` where the `STA` was) and `layer_banks` (15 bytes, in helicopter 1's image's room, `mb_img`, 18 free)
+stores the bank to page in `scenery_layer_romsel` (8 bytes at `mb_low`'s end, 11 free; `bank_patch` writes its
+carried copy) and the Master's value in `scenery_layer_sprite_banks`: without `DITHER_HILLS` that is 4 for the
+sprites below &17, 6 below &30 and 7 after (`scenery_sprite_banks` as assembled), built as `LDA #1 : CPX #&17 : ROL
+A : CPX #&30 : ROL A`. `prebuild` keeps `scenery_layer_romsel` on both Model B discs. The Master builds page banks
+4-7 and never had it. Proven: see decision 80.

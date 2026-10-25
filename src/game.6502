@@ -1079,7 +1079,7 @@
     LDA #&55
     JSR change_pixel_tables         \ Use background palette (use colour 15 for cyan)
 .scroll_layers_left_loop    \ # For each of four layers on two edges,
-IF MB_GAMEPLAY
+IF MODEL_B
     LDA scenery_layer_romsel,Y      \ BUGS #17: the bank to page (scenery_layer_sprite_banks: the Master's value)
 ELSE
     LDA scenery_layer_sprite_banks,Y\ ***
@@ -1214,7 +1214,7 @@ ENDIF
     LDA &CC                         \ Zero if left edge, non-zero if right edge
     BNE leave_1a5b
 .add_column_of_scenery_to_column_buffer
-IF MB_GAMEPLAY
+IF MODEL_B
     LDA scenery_layer_romsel,Y      \ BUGS #17: the bank to page (scenery_layer_sprite_banks: the Master's value)
 ELSE
     LDA scenery_layer_sprite_banks,Y\ ***
@@ -1235,11 +1235,15 @@ ENDIF
     LDY edge_and_layer
     STA scenery_layers_y,Y
     LDA scenery_sprite_banks,X      \ ***
+IF B17_PLAIN
+    JSR layer_banks                 \ BUGS #17: in mb_img, the 3 bytes the STA took (src/game.6502's mb_img)
+ELSE
 IF MB_GAMEPLAY
     STA scenery_layer_romsel,Y      \ BUGS #17: paged from here; the walk may read the Master's value as data
     LDA scenery_sprite_banks_m,X
 ENDIF
     STA scenery_layer_sprite_banks,Y\ ***
+ENDIF
     LDA scenery_layer_flip
     STA scenery_layers_flip,Y
     STA pixel_table_address_low
@@ -1395,7 +1399,7 @@ ENDIF
     LDA #&55
     JSR change_pixel_tables         \ Use background palette (use colour 15 for cyan)
 .scroll_layers_right_loop    \ # For each of four layers on two edges,
-IF MB_GAMEPLAY
+IF MODEL_B
     LDA scenery_layer_romsel,Y      \ BUGS #17: the bank to page (scenery_layer_sprite_banks: the Master's value)
 ELSE
     LDA scenery_layer_sprite_banks,Y\ ***
@@ -6656,6 +6660,10 @@ ENDIF
     LDX #&4E
     STX multiplier_high
     RTS
+IF B17_PLAIN
+.scenery_layer_romsel               \ BUGS #17: the bank each layer pages (scenery_layer_sprite_banks: the Master's value,
+    EQUB &00, &00, &00, &00, &00, &00, &00, &00   \ which the walk reads as scenery data at the headquarters' approach)
+ENDIF
 .mb_low_end
 IF MB_GAMEPLAY
     ASSERT mb_low_end <= &4000, "mb_low overruns helicopter 1's image's room by ", mb_low_end - &4000
@@ -6671,6 +6679,21 @@ ELSE
 SECTION mb_img, org = SKY_IMG1, cmos = CMOS
 IF SKY_MODE
     INCLUDE "sky_hazel.6502"        \ sky mode's geometry and column checks
+ENDIF
+IF B17_PLAIN
+\ layer_banks (BUGS #17, the plain Model B disc): A = scenery_sprite_banks,X (the bank to page, bank_patch's), X the
+\ sprite, Y the layer. The bank to page into scenery_layer_romsel; into scenery_layer_sprite_banks, which the walk
+\ reads as scenery data near the headquarters, the Master's: 4 for sprites below &17, 6 below &30, else 7, as
+\ scenery_sprite_banks is assembled without DITHER_HILLS. Keeps X and Y
+.layer_banks
+    STA scenery_layer_romsel,Y
+    LDA #1
+    CPX #&17
+    ROL A                           \ 2 or 3
+    CPX #&30
+    ROL A                           \ 4, 6 or 7
+    STA scenery_layer_sprite_banks,Y
+    RTS
 ENDIF
 .mb_img_end
     ASSERT mb_img_end <= &4000, "mb_img overruns &3FFF by ", mb_img_end - &4000
@@ -6745,6 +6768,8 @@ ENDIF
 .bp_empty_set
 IF MB_GAMEPLAY
     STA scenery_layer_romsel,X      \ (scenery_layer_sprite_banks keeps the Master's 0: BUGS #17)
+ELIF B17_PLAIN
+    STA scenery_layer_romsel - mb_low_org + mb_low_load,X   \ (in mb_low, not yet copied in: BUGS #17)
 ELSE
     STA scenery_layer_sprite_banks,X
 ENDIF

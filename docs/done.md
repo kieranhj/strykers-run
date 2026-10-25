@@ -313,8 +313,8 @@ and costs are `docs/briefs/gameplay-shield.md`.
   helicopters, the columns' top) behind the beam in the last frame's field. Frames missing the player 0 and
   helicopter 0 4 in 1,000 (decision 78: 8 and 43); the whole world's late frames 458 -> 336.
 - **The Model B's background as the Master's** (2026-10-25, decision 80; BUGS #9, #17): the mountains from zeros,
-  not the MOS ROM (both Model B discs), and the headquarters' approach from the Master's bank values (gameplay
-  disc): every frame of the whole world the Master gameplay disc's, and the same with the banks at 0-3.
+  not the MOS ROM, and the headquarters' approach from the Master's bank values (both Model B discs): every
+  frame of the whole world the Master discs', and the same with the banks elsewhere. BUGS #17 closed.
 - **The Model B's release disc** (2026-10-25): both Model B builds behind the original release's menu
   (`-ReleaseDisc -Define NMOS,MODEL_B`, `make release-disc-b`); each release disc names its machine in the
   menu's bottom right corner.

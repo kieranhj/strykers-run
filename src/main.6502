@@ -86,6 +86,7 @@ REN_ROMSEL = &84 - &80 * MODEL_B    \ the renderer's ROMSEL: ANDY over bank 4, o
 \ hills unpacked in banks 6 and 7; sky mode's code in bank 4, the shield's tick and the HUD's builders in bank 7,
 \ the rupture's switch in bank 5, what HAZEL held for the rupture in the main block, mb_low in helicopter 1's image's room
 MB_GAMEPLAY = MODEL_B * GAMEPLAY_SHIELD
+B17_PLAIN = MODEL_B - MB_GAMEPLAY   \ BUGS #17 on the plain Model B disc: its layers' banks paged from scenery_layer_romsel
 ASSERT MB_GAMEPLAY = 0 OR HUD_RUPTURE <> 0, "the Model B's gameplay disc is laid out for HUD_RUPTURE (its HUD row)"
 COMPILED = 1 - MB_GAMEPLAY
 PLAYER_NEXT = MODEL_B               \ the player's cluster after the scroll's column, before the zone's movers go back
