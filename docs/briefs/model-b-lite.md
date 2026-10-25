@@ -1,4 +1,4 @@
-# Brief: Redux Lite - the plain disc on a Model B with 64K sideways RAM (branch `model-b-lite`, from 2026-10-24)
+# Brief: Redux Lite - the plain disc on a Model B with 64K sideways RAM (built on branch `model-b-lite` from 2026-10-24; on `main` since 2026-10-25)
 
 KC, 2026-10-24, from a community question (Integra-B): "Do some investigation into the feasibility
 and trade offs that would be required to make a Model B + 64K SWRAM rather than the Master." Then,

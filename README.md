@@ -14,7 +14,10 @@ to finish (layer 4, tag `step2-layer4-steady-25hz`). 25 Hz is the target (decisi
 costed and does not fit. Next are the original's own glitches (layer 5) and a level editor;
 the gameplay variations (a recharging shield, lives that respawn, a timer, a run key, the HUD as
 a CRTC rupture with the score and progress, their own sounds: decisions 43-69) are on `main` too,
-each behind a flag that is off in the plain build. What has landed is in `docs/done.md`, what is left in `PLAN.md`.
+each behind a flag that is off in the plain build. Redux Lite (decisions 73-80) builds both games for a BBC Model B
+with 64K of sideways RAM: one screen raced against the beam (the Model B has no shadow RAM), NMOS code, the
+Master's extra RAM packed into the four banks (`docs/briefs/model-b-lite.md`). What has landed is in
+`docs/done.md`, what is left in `PLAN.md`.
 Seen in the jsbeeb emulator only so far, not yet on real hardware.
 
 The game remains the copyright of its authors and publisher. This repository is for study and
@@ -39,6 +42,7 @@ preservation; it does not include the original disc images or the disassembly it
 | **The original**, byte for byte the Stairway to Hell disc's game | the tag `step1-byte-identical-rebuild` (`762a0d2`) | `make original`, or the tag's own `build.ps1` in a worktree of it (below) | `build/strykers-original.ssd` |
 | **The gameplay variations** (decisions 43-69: a recharging shield, lives that respawn, a timer, a game rules screen, a run key, vehicles that take hits, dithered hills, the HUD as a CRTC rupture with the score and progress, their own sounds) | `main` | `make gameplay`, or `.\build.ps1 -Gameplay` (add `RELEASE=1` / `-Release` for testers) | `build/strykers-gameplay.ssd` |
 | **The release disc**: both, behind the original release's menu (1 the original, faster; 2 Redux) | `main` | `make release-disc`, or `.\build.ps1 -ReleaseDisc` (both `-Release`) | `build/strykers-release.ssd` |
+| **Redux Lite**: both for a Model B with 64K of sideways RAM (decisions 73-80), alone or on the release disc | `main` | `.\build.ps1 -Define NMOS,MODEL_B` (the plain game), `.\build.ps1 -Gameplay -Define NMOS,MODEL_B` (Redux), `make release-disc-b` or `.\build.ps1 -ReleaseDisc -Define NMOS,MODEL_B` (both) | `build/strykers-nmos-model_b.ssd`, `build/strykers-nmos-model_b-gameplay_shield-...-hud_rupture.ssd`, `build/strykers-release-nmos-model_b.ssd` |
 
 `make original` exports the tag's `src/` and `tools/` into `build/original/` (`git archive`, so it
 needs a clone with its tags: `git fetch --tags`), assembles them with the flags the tag's
@@ -123,7 +127,8 @@ uncommitted changes, so two machines building the same commit get the same SHA25
 `SOURCE_DATE_EPOCH` overrides it. `python tools/dfs.py compare A.ssd B.ssd` compares two images.
 
 Boot the image on a Master 128 (SHIFT+BREAK). The enhanced version needs the Master's four
-sideways RAM banks.
+sideways RAM banks. The Redux Lite discs boot on a Model B with 64K of sideways RAM (any four banks:
+`SWR`, run by `!BOOT`, finds them).
 
 ## Playing
 

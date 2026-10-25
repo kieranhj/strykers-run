@@ -21,7 +21,7 @@ of every agreed decision, `BUGS.md` the bug log. The method is beeb-port-kit's (
 
 | | |
 |---|---|
-| Machine | BBC Master 128 (65SC12, four sideways RAM banks 4-7). The enhanced version needs both |
+| Machine | BBC Master 128 (65SC12, four sideways RAM banks 4-7). The enhanced version needs both. Redux Lite (decisions 73-80, `-Define NMOS,MODEL_B`): a BBC Model B (NMOS 6502, no shadow RAM) with 64K of sideways RAM in any four banks, both games, `docs/briefs/model-b-lite.md` |
 | Reference | The Stairway to Hell disc, `reference/sth/StrykersRun.ssd` (decision 1): files `MGAME`, `DATA1`-`DATA4`, `SCREEN`, `SRRUN` |
 | Disc | Enhanced version only (decision 3): `!BOOT` (`*TYPE INFO`, the build stamp, on a debug build only; `*TV255,1`, `*FX200,3`) -> `SRRUN` -> `SCREEN`, then `DATA1`-`4` into banks 4-7, then `MGAME`; `SCREEN`, `DATA1`-`4` and `MGAME` ZX02-packed, SRRUN unpacking each (2026-10-24; not the `-Shift` builds) |
 

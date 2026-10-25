@@ -287,7 +287,7 @@ and costs are `docs/briefs/gameplay-shield.md`.
   in `R`, each started by its own `!BOOT`. `tools/menutest.mjs`: the picture byte for byte, each choice
   its own directory's game to its title.
 
-## Redux Lite: the Model B (branch `model-b-lite`, decisions 73-80; `docs/briefs/model-b-lite.md`)
+## Redux Lite: the Model B (on `main` since 2026-10-25, built on branch `model-b-lite`; decisions 73-80; `docs/briefs/model-b-lite.md`)
 
 - **NMOS** (2026-10-24, `3d564af`): every 65SC12 instruction given an NMOS form behind `NMOS`
   (`src/lib/nmos.6502`, `tools/nmosify.py` and its `check`/`check --nmos` proofs); without the flag

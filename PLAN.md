@@ -10,6 +10,10 @@ then the level editor, then the ideas (KC has not ranked them). What has landed 
   jsbeeb only (`docs/step2-layer2.md` "Open"); so are the front end's scroll text and credit line,
   run in the vsync interrupt with interrupts re-enabled (decisions 57, 60). The HUD's rupture
   (decision 67) KC has seen on b2 (2026-10-23), not yet on hardware.
+- **Redux Lite on a real Model B** (decisions 73-80): seen in jsbeeb only (its Model B, banks 4-7 and
+  poked elsewhere); the HUD row's rupture, the beam-raced one screen and the bank probe want b2 and real
+  hardware (the beeb-cross-emulator skill). The Model B disc is on the prod page (uncommitted on the site,
+  2026-10-25, for KC's review).
 - **Which ideas to build** (below): each changes how the original plays (rule 1), so each needs a
   decision first.
 
@@ -30,6 +34,15 @@ starts by finding room; the renderer reads only the first three while it draws.
 | bank 6 / bank 7, at their ends | 530 / 481 | 26 / 33 |
 | the start-up code's carrier in the save arena (`arena_carried_end`) | 43 | 135 |
 | `MGAME` under the loading picture (`mgame_end`'s ASSERT) | 223 | 176 |
+
+## Redux Lite (on `main` since 2026-10-25; built on branch `model-b-lite`)
+
+- **The cycles given for RAM** (`docs/briefs/model-b-lite.md`, "The cycles given for RAM" and step 5's item
+  7), to win back where room allows: the compiled kinds (the gameplay disc has none; bank 5's end and bank 6
+  have room for the commonest), `times_78`'s table, `edge_right` unrolled, helicopter 1's sky image (its room
+  holds code). The whole world's late frames: gameplay disc 336 against the Master gameplay disc's 248.
+- **The plain Model B disc's room**: 2 bytes in its main block, 3 in `mb_low`, 3 in `mb_img` (2026-10-25); its
+  bank 4 167 bytes short of decision 79's helicopter fast path and zone split.
 
 ## Gameplay variations (on `main` since 2026-10-23; built on branch `gameplay-shield`)
 
