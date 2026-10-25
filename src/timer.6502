@@ -29,9 +29,9 @@ TIMER_TENTH = HUD_TIMER + 80
 {
     LDA timer_ready
     BNE ready
-    STZ timer_hi                    \ 65C02 opcodes
-    STZ timer_lo
-    STZ time_up
+    STZ_A timer_hi                  \ 65C02 opcodes
+    STZ_A timer_lo
+    STZ_A time_up
     LDA timer_mode
     CMP #2
     BNE start_set
@@ -40,7 +40,7 @@ TIMER_TENTH = HUD_TIMER + 80
     LDA timer_limit + 1
     STA timer_lo
 .start_set
-    STZ timer_frac
+    STZ_LDA timer_frac
     LDA #0                          \ the digits' blank rows and the column after them, once
     LDX #8 * TIMER_COLUMNS - 1
 .clear
@@ -67,7 +67,7 @@ TIMER_TENTH = HUD_TIMER + 80
     LDA timer_frac
     CMP #25                         \ a second of the design speed
     BCC show                        \ (decision 59: the tenths each pass)
-    STZ timer_frac
+    STZ_LDA timer_frac
     SED
     LDA timer_mode
     CMP #2
@@ -86,7 +86,7 @@ TIMER_TENTH = HUD_TIMER + 80
     ORA timer_lo
     BNE show
     DEC time_up                     \ time is up: shield_tick shows the skeleton, then the game is
-    BRA show                        \ over (time_up_now, src/shield_hi.6502). 65C02 opcode
+    BRA_JMP show                    \ over (time_up_now, src/shield_hi.6502). 65C02 opcode
 .out
     CLD
 .out_off
@@ -102,19 +102,19 @@ TIMER_TENTH = HUD_TIMER + 80
     BCS held
     STA timer_hi
     CLD
-    BRA show                        \ 65C02 opcode
+    BRA_CC show                     \ 65C02 opcode
 .held
     LDA #&99
     STA timer_lo
     CLD
-    BRA show                        \ 65C02 opcode
+    BRA_NE show                     \ 65C02 opcode
 .show
 \ decision 59 (KC: "make the timer be MM:SS.t"): the seconds count as before (BCD, timer_hi/lo, the
 \ game's rules and the bonus read them); what is shown is worked out each pass: counting up, the
 \ seconds and a tenth from the pass in the second (timer_frac, 0-24); counting down, what is left
 \ (a second less once the second has begun, and the tenths of the passes left in it). Only what changed is drawn
 \ (the tenth every 2-3 passes, the minutes and seconds once a second), and then hud_serial bumped
-    STZ changed                     \ 65C02 opcodes
+    STZ_LDA changed                 \ 65C02 opcodes
     LDX timer_frac
     LDA timer_lo
     STA shown_lo
@@ -142,10 +142,10 @@ TIMER_TENTH = HUD_TIMER + 80
     SBC timer_frac
     TAX
     JSR tenth
-    BRA shown_t                     \ 65C02 opcode
+    BRA_CC shown_t                  \ 65C02 opcode
 .whole
     LDA #0
-    BRA shown_t
+    BRA_EQ shown_t
 .shown_up
     JSR tenth
 .shown_t
@@ -171,7 +171,7 @@ TIMER_TENTH = HUD_TIMER + 80
     LDA shown_lo                    \ the seconds in binary (0-999): units, + 10 a ten, + 100 a hundred
     AND #15
     STA n_lo
-    STZ n_hi
+    STZ_LDA n_hi
     LDA shown_lo
     LSR A
     LSR A
@@ -212,7 +212,7 @@ TIMER_TENTH = HUD_TIMER + 80
     STA n_hi
     STY n_lo
     INX
-    BRA minutes                     \ 65C02 opcode
+    BRA_CS minutes                  \ 65C02 opcode
 .minutes_done
     LDA n_lo                        \ the seconds, kept: two_digits uses n_lo
     PHA
@@ -250,7 +250,7 @@ TIMER_TENTH = HUD_TIMER + 80
     BCC units
     SBC #10                         \ C = 1
     INX
-    BRA ten                         \ 65C02 opcode
+    BRA_JMP ten                     \ 65C02 opcode
 .units
     PHA
     STY n_lo                        \ (the seconds' binary is no longer needed)
@@ -277,10 +277,18 @@ TIMER_TENTH = HUD_TIMER + 80
 .row
     LDA font_3x5,X                  \ bits 2-0: its three pixels, left to right
     LSR A                           \ C = the third
+IF NMOS                             \ (hand: Y kept in the LDY's operand; the PLY's N and Z are not read)
+    STY row_y + 1
+    TAY
+    LDA left_two,Y                  \ bits 2, 1: the first byte column's two pixels
+.row_y
+    LDY #0                          \ self-modified: Y as it was
+ELSE
     PHY                             \ 65C02 opcodes
     TAY
     LDA left_two,Y                  \ bits 2, 1: the first byte column's two pixels
     PLY
+ENDIF
     STA timer_buf + 2,Y
     BCC no_third
     LDA #&28                        \ bit 0: the second's left pixel (its right one the gap)

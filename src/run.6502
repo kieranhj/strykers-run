@@ -38,9 +38,9 @@ ENDIF
     STA run_state
     RTS
 .spent
-    STZ run_meter                   \ 65C02 opcodes
-    STZ run_meter + 1
-    STZ run_state                   \ tired until it is past half again
+    STZ_LDA run_meter               \ 65C02 opcodes
+    STZ_A run_meter + 1
+    STZ_A run_state                 \ tired until it is past half again
     LDA #RUN_OUT_SOUND
     JMP run_sound
 .not_running
@@ -59,7 +59,7 @@ ENDIF
 .full
     LDA #RUN_FULL
     STA run_meter + 1
-    STZ run_meter                   \ 65C02 opcode
+    STZ_LDX run_meter               \ 65C02 opcode
 .refilled
     BIT run_state                   \ tired: may run again once past half
     BMI done

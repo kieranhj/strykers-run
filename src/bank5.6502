@@ -218,7 +218,7 @@ ENDIF
 
 .define_controls
 IF GAMEPLAY_ANY
-    STZ key_offset                  \ decision 43: room before the music (65C02 opcode; &03's 1 unread here)
+    STZ_LDA key_offset              \ decision 43: room before the music (65C02 opcode; &03's 1 unread here)
 ELSE
     LDX #&00
     STX key_offset

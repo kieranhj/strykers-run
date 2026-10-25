@@ -26,7 +26,7 @@ ENDIF
     BEQ by_update                   \ (kill_mover may have made it an explosion since);
     BMI by_update                   \ 0 or none: the mover being updated hit the player
     LDA hit_type
-    BRA typed                       \ 65C02 opcode
+    BRA_JMP typed                   \ 65C02 opcode
 .by_update
     LDX mover_to_update
     LDA #0                          \ not a mover slot: 1 unit
@@ -68,7 +68,7 @@ ENDIF
 .through
     LDA #SHIELD_FULL                \ a life goes (kill_player): the shield full again
     STA shield
-    STZ shield_wait                 \ 65C02 opcode
+    STZ_LDA shield_wait             \ 65C02 opcode
     RTS
 }
 
@@ -121,18 +121,18 @@ SHIELD_TONE_TOP = 200               \ the period at full: 625 Hz (KC: lower); em
     BNE ready
     LDA #SHIELD_FULL
     STA shield
-    STZ shield_wait                 \ 65C02 opcodes
-    STZ shield_flash
-    STZ hud_serial
+    STZ_LDA shield_wait             \ 65C02 opcodes
+    STZ_A shield_flash
+    STZ_A hud_serial
     LDA #&FF
     STA hud_lives                   \ so the HUD is built below
     STA shield_ready
 IF GAMEPLAY_LIVES
-    STZ respawn_left                \ 65C02 opcodes
-    STZ invulnerable
+    STZ_LDA respawn_left            \ 65C02 opcodes
+    STZ_A invulnerable
 ENDIF
 IF GAMEPLAY_TIMER
-    STZ time_up                     \ (the front end writes this zero page: this tick reads it before the timer's)
+    STZ_LDA time_up                 \ (the front end writes this zero page: this tick reads it before the timer's)
 ENDIF
 IF HUD_RUPTURE
     JSR hud_extra_init              \ decision 68: the progress and the score (src/hud_extra.6502)
@@ -164,7 +164,7 @@ ENDIF
     DEC shield_wait
     BNE check
     JSR shield_tone_start           \ decision 69: the wait is over: the refill's tone (keeps X)
-    BRA check                       \ 65C02 opcode
+    BRA_JMP check                   \ 65C02 opcode
 .refill
     LDA shield
     CMP #SHIELD_FULL
@@ -198,8 +198,14 @@ ENDIF
     LDA shield_flash                \ bit 7 while it flashes, 2 passes on, 2 off
     AND #2
     BEQ steady
+IF NMOS                             \ (hand: the TSB's Z is not read: .steady loads A)
+    LDA shield_tmp
+    ORA #&80
+    STA shield_tmp
+ELSE
     LDA #&80
     TSB shield_tmp                  \ 65C02 opcode
+ENDIF
 .steady
     LDA shield_tmp
     CMP hud_level
@@ -273,19 +279,19 @@ IF GAMEPLAY_LIVES
 
 .respawn
 {
-    STZ respawn_left                \ 65C02 opcodes
+    STZ_LDA respawn_left            \ 65C02 opcodes
     LDA respawn_x_hi
     STA movers_x_high               \ the player back, where the view has left it
-    STZ movers_type_and_colour      \ MOVER_TYPE_PLAYER: a soldier again
-    STZ movers_frame_and_flip       \ standing, facing right
-    STZ flip
-    STZ frame
-    STZ player_y_velocity
-    STZ player_jump_direction
-    STZ player_firing_cooldown
+    STZ_LDA movers_type_and_colour  \ MOVER_TYPE_PLAYER: a soldier again
+    STZ_A movers_frame_and_flip     \ standing, facing right
+    STZ_A flip
+    STZ_A frame
+    STZ_A player_y_velocity
+    STZ_A player_jump_direction
+    STZ_A player_firing_cooldown
     LDA #SHIELD_FULL
     STA shield
-    STZ shield_wait
+    STZ_LDA shield_wait
     LDA #RESPAWN_SAFE
     STA invulnerable
     STA shield_flash                \ the bar flashes while it lasts

@@ -9,7 +9,7 @@
     STA hx_shown,X
     DEX
     BPL unshown
-    STZ hx_pct                      \ 65C02 opcodes
+    STZ_LDA hx_pct                  \ 65C02 opcodes
     LDA #LO(HX_STEP)
     STA hx_next
     LDA #HI(HX_STEP)

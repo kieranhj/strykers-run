@@ -19,7 +19,7 @@ IF GAMEPLAY_OPTIONS
     STA timer_limit
     LDA opt_limit_lo,X
     STA timer_limit + 1
-    STZ game_completed              \ 65C02 opcode: the headquarters not reached
+    STZ_LDA game_completed          \ 65C02 opcode: the headquarters not reached
     LDX opt_hits                    \ decision 50: the shield's hits and its recharge
     LDA opt_hits_unit,X
     STA shield_unit
@@ -76,15 +76,15 @@ IF GAMEPLAY_RUN
     LDA #HI(2560 DIV RUN_CHARGE)
     STA run_charge + 1
   ENDIF
-    STZ run_meter                   \ full, and may run
+    STZ_LDA run_meter               \ full, and may run
     LDA #RUN_FULL
     STA run_meter + 1
     LDA #&80
     STA run_state
 ENDIF
-    STZ shield_ready                \ 65C02 opcode
+    STZ_LDA shield_ready            \ 65C02 opcode
 IF GAMEPLAY_TIMER
-    STZ timer_ready                 \ decision 47
+    STZ_LDA timer_ready             \ decision 47
 ENDIF
     RTS
 

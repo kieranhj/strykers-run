@@ -350,7 +350,7 @@ ENDIF
 IF GAMEPLAY_ANY                     \ grind G0502 left out: no room on the gameplay disc
     TAX
     BNE dirty
-    BRA next_row                    \ 65C02 opcode
+    BRA_EQ next_row                 \ 65C02 opcode
 ELSE
     ORA #0
     BEQ next_row

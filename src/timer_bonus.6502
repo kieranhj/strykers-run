@@ -23,7 +23,7 @@
     STA timer_hi
     CLD
     JSR add_ten
-    BRA each                        \ 65C02 opcode
+    BRA_JMP each                    \ 65C02 opcode
 .up
     LDA timer_hi                    \ until the time reaches the par
     CMP timer_limit                 \ decision 55: the par
@@ -43,7 +43,7 @@
     STA timer_hi
     CLD
     JSR add_ten
-    BRA up                          \ 65C02 opcode
+    BRA_JMP up                      \ 65C02 opcode
 .done
     RTS
 \ add_ten: 10 points: the score's tens digit up one, carried as increase_score carries

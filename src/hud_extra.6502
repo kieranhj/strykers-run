@@ -57,18 +57,24 @@ HX_SIGNG = 11
     INY
     SBC #6
     BCS sixes
-    PHX                             \ 65C02 opcode
+    PHX_A                           \ 65C02 opcode
     TXA                             \ the digit's place: HX_SCORE + 16 * X
     ASL A
     ASL A
     ASL A
     ASL A
     ADC #HX_SCORE                   \ C = 0 (X <= 5)
+IF NMOS                             \ (hand: A and Y swapped through hx_tmp, which hx_digit sets before it reads it)
+    STY hx_tmp
+    TAY
+    LDA hx_tmp
+ELSE
     PHY                             \ 65C02 opcodes
     TAY
     PLA
+ENDIF
     JSR hx_digit
-    PLX
+    PLX_A
 .same
     DEX
     BPL each
@@ -90,7 +96,7 @@ HX_SIGNG = 11
     LDY #HX_PCT + 16
     JSR hx_digit
     LDA #0
-    BRA units                       \ 65C02 opcode
+    BRA_EQ units                    \ 65C02 opcode
 .under
     LDX #0
 .tens
@@ -98,7 +104,7 @@ HX_SIGNG = 11
     BCC split
     SBC #10                         \ C = 1
     INX
-    BRA tens                        \ 65C02 opcode
+    BRA_JMP tens                    \ 65C02 opcode
 .split
     PHA
     TXA
@@ -124,10 +130,18 @@ HX_SIGNG = 11
 .hx_row
     LDA hx_font,X                   \ bits 2-0: its three pixels, left to right
     LSR A                           \ C = the third
+IF NMOS                             \ (hand: Y kept in the LDY's operand; the PLY's N and Z are not read)
+    STY hx_ry + 1
+    TAY
+    LDA hx_left_two,Y               \ bits 2, 1: the first byte column's two pixels
+.hx_ry
+    LDY #0                          \ self-modified: Y as it was
+ELSE
     PHY                             \ 65C02 opcodes
     TAY
     LDA hx_left_two,Y               \ bits 2, 1: the first byte column's two pixels
     PLY
+ENDIF
 .hx_s1
     STA &FF02,Y                     \ self-modified: the page (hx_page)
     LDA #0

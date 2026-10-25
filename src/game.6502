@@ -1737,7 +1737,7 @@ ENDIF
     RTS                             \ Leave with A = address_low, X = address_high
 .wrap_add_delta_g4566
     SBC #&3F                        \ grind: C = 0 here (a negative sum cannot carry, deltas_high_table <= &3E), so A - &40 with C and V as SEC : SBC #&40
-    BRA_NE skip_wraparound_1d66     \ 65C02 opcode; TAX : TYA : RTS
+    BRA_NE skip_wraparound_1d66     \ 65C02 opcode; TAX : TYA : RTS (hand: the BMI's A is &80-&FF, so A - &40 is &40-&BF, not 0)
 
 .subtract_delta_from_screen_address_in_AX    \ # Called with A = address_low, X = address_high
     STX delta_high                  \ grind: in-line, delta_high the high byte's temporary
@@ -2391,7 +2391,7 @@ ENDIF
     LDA #&02
     STA movers_helicopter_fuel_high,X
 IF GAMEPLAY_ARMOUR
-    STZ vehicle_hits - &18,X        \ decision 62: no hits taken (65C02 opcode)
+    STZ_LDA vehicle_hits - &18,X    \ decision 62: no hits taken (65C02 opcode)
 ENDIF
     LDA #&18
     STA movers_y,X
@@ -2558,7 +2558,7 @@ IF GAMEPLAY_TIMER
     STA os_ram_copy_of_currently_selected_rom
     STA romsel
     JSR timer_bonus
-    BRA bank4_back                  \ 65C02 opcode
+    BRA_JMP bank4_back              \ 65C02 opcode
 ENDIF
 IF GAMEPLAY_LIVES
 \ decision 45: a column of the respawn's rewind (src/shield.6502 player_or_rewind), here in main RAM:
@@ -2678,7 +2678,7 @@ ENDIF
 
 .reset_screen_scroll
     JSR pre_cancel                  \ decision 38: a column built ahead undone, its state put back
-    STZ_LDA pre_valid               \ step 2 (layer 3): no column built ahead, no scroll yet
+    STZ_LDA pre_valid               \ step 2 (layer 3): no column built ahead, no scroll yet (hand: HUD_RUPTURE's BIT reads A only for Z, which is not read)
     STZ_A last_dir
 IF HUD_RUPTURE
     BIT rupture                     \ decision 67: with the rupture on, M's start, not R12/R13
@@ -2690,7 +2690,7 @@ IF HUD_RUPTURE
     TYA
     LDX #&08
     JSR rup_set_m_start             \ (Y still 0, as the writes below leave it: all that is read after)
-    BRA rss_done                    \ 65C02 opcode
+    BRA_JMP rss_done                \ 65C02 opcode
 .rss_crtc
 ENDIF
     LDX #&0D                        \ R13: Displayed screen start address register (low)
@@ -3261,7 +3261,7 @@ IF GAMEPLAY_RUN
     BIT run_state                   \ decision 52: bit 7 while the run meter allows it (src/run.6502)
     BPL not_running
     DEC run_state                   \ &80 -> &7F: run_tick drains the meter for this pass
-    BRA check_for_player_firing     \ 65C02 opcode
+    BRA_JMP check_for_player_firing \ 65C02 opcode
 .not_running
 ENDIF
     LDA helicopter_to_update
@@ -4534,12 +4534,12 @@ ENDIF
     LDA #&29
     STA usrvia_t1ch                 \ User VIA timer 1 counter MSB
 IF HUD_RUPTURE
-    BRA rup_armed                   \ 65C02 opcode
+    BRA_NE rup_armed                \ 65C02 opcode
 .rup_arm
     LDA acccon                      \ decision 67: main RAM for the HUD row's frame (rupture_t1 shows
     AND #&FE                        \ the screen from the boundary)
     STA acccon
-    STZ rup_phase                   \ 65C02 opcode
+    STZ_LDA rup_phase               \ 65C02 opcode
     LDA #LO(RUP_E1)
     STA usrvia_t1cl
     LDA #HI(RUP_E1)
@@ -5657,7 +5657,7 @@ IF HUD_RUPTURE
     RTS
 \ rupture_off, from give_irq_back (interrupts off): the one frame back, the ROMs' bytes back
 .rupture_off
-    STZ rupture                     \ 65C02 opcode
+    STZ_LDA rupture                 \ 65C02 opcode
     LDX #4
     LDA #&26
     JSR rup_crtc

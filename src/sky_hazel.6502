@@ -118,7 +118,7 @@ IF GAMEPLAY_ANY                     \ grind G0483 left out: no room on the gamep
     STA sky_n
     LDA #8
     STA sky_rn,X
-    BRA more                        \ 65C02 opcode
+    BRA_NE more                     \ 65C02 opcode
 ELSE
     BCS skyg_a_next
 ENDIF

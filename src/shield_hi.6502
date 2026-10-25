@@ -150,7 +150,7 @@ IF GAMEPLAY_TIMER
 \ dying, rewinding) the game is over at once
 .time_up_now
 {
-    STZ time_up                     \ 65C02 opcodes
+    STZ_LDA time_up                 \ 65C02 opcodes
     LDA player_helicopter
     ORA player_helicopter_explosion
   IF GAMEPLAY_LIVES
@@ -160,9 +160,9 @@ IF GAMEPLAY_TIMER
     BNE over
     LDA #1
     STA lives
-    STZ shield
+    STZ_LDY shield
   IF GAMEPLAY_LIVES
-    STZ invulnerable
+    STZ_LDY invulnerable
   ENDIF
     LDY #0                          \ MOVER_PLAYER
     JMP kill_mover_Y

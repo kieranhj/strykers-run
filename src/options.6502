@@ -63,7 +63,7 @@ ENDIF
 \ the table appeared (RETURN from the name entry may still be down), and the menu is entered only
 \ once it is let go (else the title loop would take it as an option: "1" would start a game)
 .options_high_scores
-    STZ hs_armed                    \ 65C02 opcode
+    STZ_LDA hs_armed                \ 65C02 opcode
     JMP display_high_scores
 .options_high_score_key
     LDA os_most_recently_pressed_key
@@ -181,7 +181,7 @@ ENDIF
     CMP #&30                        \ "1": the lives, 1-9 then infinite
     BNE not_lives
     LDA opt_lives
-    INC A                           \ 65C02 opcode
+    INC_A_CLC                       \ 65C02 opcode
     CMP #OPT_INFINITE + 1
     BCC lives_ok
     LDA #1
@@ -192,7 +192,7 @@ ENDIF
     CMP #&31                        \ "2": the rewind, 40 / 80 / 120 / 160 columns
     BNE not_respawn
     LDA opt_respawn
-    INC A
+    INC_A_CLC
     AND #3
     STA opt_respawn
     JMP show
@@ -200,7 +200,7 @@ ENDIF
     CMP #&12                        \ "4": the shield's hits, 1 / 2 / 3 / 4 / 6 (decision 50)
     BNE not_hits
     LDA opt_hits
-    INC A
+    INC_A_CLC
     CMP #5
     BCC hits_ok
     LDA #0
@@ -211,7 +211,7 @@ ENDIF
     CMP #&13                        \ "5": the recharge, 2 / 5 / 8 / 10 seconds
     BNE not_recharge
     LDA opt_recharge
-    INC A
+    INC_A_CLC
     AND #3
     STA opt_recharge
     JMP show                        \ (out of a branch's reach)
@@ -219,7 +219,7 @@ ENDIF
     CMP #&15                        \ "8": the timer's limit, 3 / 5 / 8 / 10 / 15 minutes (decision 55)
     BNE not_limit
     LDA opt_limit
-    INC A
+    INC_A_CLC
     CMP #5
     BCC limit_ok
     LDA #0
@@ -231,7 +231,7 @@ IF GAMEPLAY_RUN
     CMP #&34                        \ "6": the run time, 5 / 10 / 15 / 20 seconds or off (decision 52)
     BNE not_run_time
     LDA opt_run_time
-    INC A
+    INC_A_CLC
     CMP #5
     BCC run_time_ok
     LDA #0
@@ -242,7 +242,7 @@ IF GAMEPLAY_RUN
     CMP #&24                        \ "7": the run charge, 5 / 10 / 15 / 20 seconds
     BNE not_run_charge
     LDA opt_run_charge
-    INC A
+    INC_A_CLC
     AND #3
     STA opt_run_charge
     JMP show
@@ -253,7 +253,7 @@ ENDIF
     JMP key
 .timer_key
     LDA opt_timer
-    INC A
+    INC_A_CLC
     CMP #3
     BCC timer_ok
     LDA #0
@@ -274,12 +274,12 @@ ENDIF
     INY
     CPY #4
     BNE copy
-    BRA plot_value                  \ 65C02 opcode
+    BRA_EQ plot_value               \ 65C02 opcode
 .value_digit                        \ X: the digit
     STA option_value
     STY option_value + 1
     TXA
-    BRA digit                       \ 65C02 opcode
+    BRA_CS digit                    \ 65C02 opcode
 .value
     STA option_value
     STY option_value + 1
@@ -293,7 +293,7 @@ ENDIF
     INY
     CPY #4
     BNE copy_inf
-    BRA plot_value
+    BRA_EQ plot_value
 .digit
     STA option_value + 6            \ three spaces, then the digit (right-aligned, KC)
     LDA #&25
