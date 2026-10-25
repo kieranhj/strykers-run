@@ -74,6 +74,7 @@ ROOM_ANY = GAMEPLAY_ANY OR NMOS
 \ MODEL_B (decision 73, Redux Lite): one screen, main RAM's, drawn after the beam has shown the last line
 \ of the field before the frame's (src/render.6502 wait_for_window): no shadow RAM. Runs on the Master too.
 ASSERT MODEL_B <= NMOS, "MODEL_B needs NMOS"
+ASSERT SWR_LOW <= MODEL_B, "SWR_LOW is MODEL_B's probe's test flag"
 \ Without ANDY (decision 75): its sprites, those of src/sprite_andy.6502 (sprite_in_b5), are drawn where bank 5 carries them
 \ (src/render_b5.6502); the renderer pages bank 4 alone (REN_ROMSEL); HAZEL's compiled kinds are not built
 ASSERT MODEL_B = 0 OR DITHER_HILLS = 0, "MODEL_B: the dithered hills' room was ANDY's carrier, its sprites' home now (decision 75)"
@@ -329,3 +330,6 @@ SECTION SCREEN, org = &2100, load = &FFFF2100, exec = &FFFF0000 + title.title_en
 ENDSECTION
 
 INCLUDE "loader.6502"
+IF MODEL_B
+    INCLUDE "swr.6502"              \ decision 74: the sideways RAM probe, run by !BOOT before SRRUN
+ENDIF

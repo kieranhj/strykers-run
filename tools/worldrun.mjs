@@ -81,7 +81,13 @@ const machines = C ? [C, T] : [T];
 for (const m of machines) { watchFrames(m); m.view = worldState(m).view; m.clobbers = prngClobber(m, { undo: UNCLOBBER }); console.log(`${m.disc}: game started; infinite lives: ${m.infiniteLives}`); }
 // WORLDRUN_HAZEL=B: HAZEL &C300-&C6FF filled with B in every machine at the start (the mountain layer picks its sprites
 // from these bytes, BUGS #9, and the DFS leaves them as each disc's loads did: two builds' screens then differ there)
-if (process.env.WORLDRUN_HAZEL !== undefined) for (const m of machines) m.s.writeMemory(0xc300, new Array(0x400).fill(+process.env.WORLDRUN_HAZEL));
+// WORLDRUN_HAZEL=mos: a Model B's bytes there (MOS 1.20's ROM, which its mountain layer reads: BUGS #9) into the
+// Master's HAZEL, so the two draw the same mountains (decision 73)
+if (process.env.WORLDRUN_HAZEL === "mos") {
+    const b = machines.find((m) => !m.cpu.model.isMaster);
+    const bytes = [...b.s.readMemory(0xc300, 0x400)];
+    for (const m of machines) if (m.cpu.model.isMaster) m.s.writeMemory(0xc300, bytes);
+} else if (process.env.WORLDRUN_HAZEL !== undefined) for (const m of machines) m.s.writeMemory(0xc300, new Array(0x400).fill(+process.env.WORLDRUN_HAZEL));
 const lead = C || T;                                  // the keys come from this machine's state
 const bot = new WorldBot();
 let firstDiff = null, approach = false, screenPasses = 0, screenDiffCount = 0, screenDiffPasses = [], screenMax = 0, end = null;

@@ -65,6 +65,7 @@ kg_line = kc_q                      \ the line: kc_q is the draw's, not live in 
     LDA #&FF
     STA kc_want
 .stop
+.bks_kindcache_build_68             \ decision 74: a bank select, patched at start-up (bank_patch)
     LDA #&04
     STA os_ram_copy_of_currently_selected_rom
     STA romsel
@@ -91,6 +92,7 @@ kg_line = kc_q                      \ the line: kc_q is the draw's, not live in 
 
 \ kg_paged: ANDY over bank 4's first 4K (the sprites); kg_col = kb_col
 .kg_paged
+.bks_kindcache_build_94             \ decision 74: a bank select, patched at start-up (bank_patch)
     LDA #&84
     STA os_ram_copy_of_currently_selected_rom
     STA romsel

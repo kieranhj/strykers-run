@@ -16,6 +16,7 @@
     BEQ done
     LDA os_ram_copy_of_currently_selected_rom
     PHA
+.bks_scroll_hazel_19                \ decision 74: a bank select, patched at start-up (bank_patch)
     LDA #&04                        \ pre_undo is bank 4's, below &9000 (no ANDY)
     STA os_ram_copy_of_currently_selected_rom
     STA romsel

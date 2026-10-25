@@ -70,9 +70,25 @@ export function applyEvents(events, f, sessions) {
 }
 
 /** A Master booting `disc` with SHIFT held: frame 0 of the script. */
+// BEEB_MODEL=B-DFS1.2 (any jsbeeb model): every harness boots that machine instead (decision 73, MODEL_B builds);
+// with BEEB_MODEL_DISC=TEXT, only for discs whose path contains TEXT (a Master control beside a Model B build)
 export async function bootMaster(MachineSession, disc) {
-    const s = new MachineSession("Master", { tube: false });
+    const only = process.env.BEEB_MODEL_DISC;
+    const model = process.env.BEEB_MODEL && (!only || String(disc).includes(only)) ? process.env.BEEB_MODEL : "Master";
+    const s = new MachineSession(model, { tube: false });
     await s.initialise();
+    const pokeOnly = process.env.SWR_POKE_DISC ?? only;   // SWR_POKE_DISC=TEXT: the poke only for discs whose path has TEXT
+    if (process.env.SWR_POKE && (!pokeOnly || String(disc).includes(pokeOnly))) {   // SWR_POKE=a,b,c,d: MODEL_B's banks (src/swr.6502's handover, &7C)
+        const banks = process.env.SWR_POKE.split(",").map(Number);    // replaced as SRRUN starts (&0A00): the
+        const cpu = s._machine.processor;                             // bank patching tested on any map
+        const h = cpu.debugInstruction.add((pc) => { if (pc === 0x0a00) { for (let i = 0; i < 4; i++) cpu.writemem(0x7c + i, banks[i]); h.remove(); } return false; });
+    }
+    if (!s._machine.processor.model.isMaster) {         // a B has no shadow RAM: the harnesses' { shadow: false } means main
+        for (const f of ["readMemory", "writeMemory"]) {
+            const orig = s[f].bind(s);
+            s[f] = (addr, x, opts) => { if (opts && "shadow" in opts) { opts = { ...opts }; delete opts.shadow; } return orig(addr, x, opts); };
+        }
+    }
     await s.boot(30);
     s.loadDisc(disc);
     s._disc = disc;

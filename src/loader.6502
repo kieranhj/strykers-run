@@ -46,7 +46,12 @@ zxwrk = &77
     LDY #HI(srrun_data)
     JSR srrun_load                  \ DATAn, unpacked into bank n + 3 from &8000
     SEI
+IF MODEL_B
+    LDX srrun_bank                  \ decision 74: the bank SWR found for it (src/swr.6502)
+    LDA swr_hand - 4,X
+ELSE
     LDA srrun_bank
+ENDIF
     STA romsel
     LDA #LO(&8000)
     LDY #HI(&8000)
@@ -177,7 +182,12 @@ BOOT_STAGE = &0900
 INFO_STAGE = &7E00
 
 MACRO BUILD_STAMP
+IF MODEL_B
+    BOOT_STAMP_HEAD "Stryker's Run (Enhanced), Redux Lite: Model B"
+ELSE
     BOOT_STAMP_HEAD "Stryker's Run (Enhanced), Master 128"
+ENDIF
+    BOOT_FLAG SWR_LOW, "SWR_LOW: the lowest four banks"
     BOOT_FLAG DEBUG_LIVES, "DEBUG_LIVES"
     BOOT_FLAG DEBUG_FULLREDRAW, "DEBUG_FULLREDRAW"
     BOOT_FLAG SHIFT, "SHIFT: relocation test"
@@ -192,6 +202,11 @@ ENDSECTION
 
 SECTION Boot, org = BOOT_STAGE, guard = BOOT_STAGE + 256, filename = "!BOOT", exec = &FFFF0000 + bootfile
 .bootfile
+IF MODEL_B                          \ decision 73: any machine; SWR finds its sideways RAM, or stops the boot
+    LDX #LO(boot_swr)
+    LDY #HI(boot_swr)
+    JSR oscli
+ELSE
     LDA #0                          \ OSBYTE 0, X = 1: X = the MOS. 3 the Master 128 (MOS 3.20, 3.50),
     LDX #1                          \ 5 the Master Compact (MOS 5.x); 1 a BBC B, 2 a B+ (the B and the
     JSR osbyte                      \ Master measured in jsbeeb, 2026-10-21; it has no Compact or B+).
@@ -201,6 +216,7 @@ SECTION Boot, org = BOOT_STAGE, guard = BOOT_STAGE + 256, filename = "!BOOT", ex
     BEQ boot_on_a_master
     LDX #boot_refused - boot_text
     JMP boot_print                  \ the reason, then back to the prompt (boot_print's RTS)
+ENDIF
 .boot_on_a_master
     LDX #0                          \ MODE 7's cursor off for the load (KC, 2026-10-24): VDU 23,1,0;0;0;0;
 .boot_cursor_off
@@ -236,9 +252,14 @@ ENDIF
 .boot_cursor_vdu
     EQUB 23, 1, 0, 0, 0, 0, 0, 0, 0, 0
 .boot_text
+IF MODEL_B
+.boot_swr
+    EQUS "RUN SWR", 13
+ELSE
 .boot_refused
     EQUS "Needs a BBC Master 128 or Compact.", 13
     EQUB 0
+ENDIF
 IF RELEASE = 0
 .boot_type_info
     EQUS "TYPE INFO", 13

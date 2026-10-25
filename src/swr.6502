@@ -1,0 +1,254 @@
+\ swr.6502 - SWR, MODEL_B's sideways RAM probe (decision 74): run by !BOOT before SRRUN, it finds the
+\ four sideways RAM banks the game is to use and hands them over in user zero page, swr_hand: the
+\ physical bank for each of the build's banks 4, 5, 6 and 7, lowest first. SRRUN fills them; the
+\ game's start-up patches its bank selects to them (src/game.6502 bank_patch).
+\
+\ Paradroid's probe (its src/swram.asm, after stnicc-beeb's loader), transliterated:
+\ - only banks the MOS found no ROM in (the ROM type table at &02A1 zero): probing writes &8008, which
+\   would harm a live ROM, or a ROM image in sideways RAM;
+\ - a distinct probe value per bank, so a board whose banks alias (N and N + 8) shows as what it is;
+\   written counting up, read back top down, each bank's own byte put back;
+\ - the four highest RAM banks taken (4-7 on a Master, and on a B whose board has them);
+\ - a board with Solidisk-style write select (the bank also in &FE32 and User VIA port B) found by a
+\   second probe only when the first finds fewer than four, and refused: the game writes its banks
+\   through ROMSEL alone. (Paradroid's ROM image as the fourth bank is not done here.)
+\ SWR_LOW (a test flag): the four lowest RAM banks, so the patching is exercised where the highest
+\ four are 4-7 (jsbeeb's Model B).
+\ Runs at &1900 (the Model B DFS's PAGE: free while !BOOT runs) with interrupts off while it probes.
+
+swr_hand    = &7C                   \ 4 (above SRRUN's depacker's &71-&78): the banks, for the build's 4, 5, 6, 7 (read by SRRUN and the game)
+swr_str     = &70                   \ the message pointer (user zero page)
+SWR_TEST    = &8008                 \ the probed byte: past a ROM header's vectors
+swr_ramsel  = &FE32                 \ Solidisk write select
+swr_usr_orb = &FE60                 \ Solidisk bank index
+swr_usr_ddrb = &FE62
+
+SECTION SWR, org = &1900, load = &FFFF1900, exec = &FFFF1900, filename = "SWR", cmos = CMOS
+{
+.swr_main
+    SEI                             \ the MOS's interrupt path pages ROMs for service calls
+    LDA #0
+    STA swr_solid
+    JSR probe
+    LDA swr_count
+    CMP #4
+    BCS found
+    LDA #&FF                        \ fewer than four: is it a Solidisk-style board? (only then is the
+    STA swr_solid                   \ User VIA written)
+    LDA #&0F
+    STA swr_usr_ddrb
+    JSR probe
+    LDA #0
+    STA swr_usr_ddrb
+    JSR restore
+    LDA swr_count
+    CMP #4
+    BCC short
+    JSR list
+    LDX #LO(msg_solid)
+    LDY #HI(msg_solid)
+    JSR print
+    JMP abort
+.short
+    JSR list
+    LDX #LO(msg_short)
+    LDY #HI(msg_short)
+    JSR print
+    LDA swr_count
+    JSR digit
+    LDA #13
+    JSR osasci
+.abort
+    BRK                             \ !BOOT called this through OSCLI: the language prints it, and
+    EQUB &80                        \ !BOOT's RUN SRRUN is never reached
+    EQUS "Stryker's Run not started", 0
+.found                              \ swr_banks is highest first: the top four, lowest first
+    JSR restore
+    JSR list
+IF SWR_LOW
+    LDA swr_count                   \ (the test flag: the lowest four)
+    SEC
+    SBC #1
+    TAX
+    LDY #0
+.hand
+    LDA swr_banks,X
+    STA swr_hand,Y
+    DEX
+    INY
+    CPY #4
+    BNE hand
+ELSE
+    LDX #3
+    LDY #0
+.hand
+    LDA swr_banks,X
+    STA swr_hand,Y
+    INY
+    DEX
+    BPL hand
+ENDIF
+    LDX #LO(msg_ok)
+    LDY #HI(msg_ok)
+    JSR print
+    LDY #0
+.show
+    LDA swr_hand,Y
+    JSR digit
+    LDA #' '
+    JSR osasci
+    INY
+    CPY #4
+    BNE show
+    LDA #13
+    JMP osasci
+
+.restore                            \ the MOS's own idea of what is paged
+    LDA romsel_copy
+    STA romsel
+    CLI
+    RTS
+
+\ probe: swr_count, swr_banks (highest first)
+.probe
+    LDX #15                         \ candidates: the banks with no ROM in them
+.cand
+    LDA os_rom_type_table,X
+    STA swr_cand,X
+    LDA #0
+    STA swr_unique,X
+    DEX
+    BPL cand
+    LDA #15                         \ a distinct probe value per bank, from what every candidate holds
+    STA swr_probe                   \ and every value already chosen; each bank's own byte saved
+    LDY #15
+.nb
+    LDA swr_cand,Y
+    BNE nb_next
+.nv
+    INC swr_probe
+    LDX #15
+.ns
+    LDA swr_cand,X
+    BNE ns_next
+    STX romsel
+    LDA swr_probe
+    CMP SWR_TEST
+    BEQ nv
+    CMP swr_unique,X
+    BEQ nv
+.ns_next
+    DEX
+    BPL ns
+    LDA swr_probe
+    STA swr_unique,Y
+    STY romsel                      \ bank Y's byte, not the loop's last bank's (Paradroid's fix)
+    LDA SWR_TEST
+    STA swr_values,Y
+.nb_next
+    DEY
+    BPL nb
+    LDX #0                          \ every probe written, counting up (a Solidisk board decodes three bits)
+.sw
+    LDA swr_cand,X
+    BNE sw_next
+    JSR sel_w
+    LDA swr_unique,X
+    STA SWR_TEST
+.sw_next
+    INX
+    CPX #16
+    BNE sw
+    LDA #0                          \ read back top down: highest first; each bank's byte put back
+    STA swr_count
+    LDX #15
+.tr
+    LDA swr_cand,X
+    BNE tr_next
+    STX romsel
+    LDA SWR_TEST
+    CMP swr_unique,X
+    BNE tr_next
+    LDY swr_count
+    TXA
+    STA swr_banks,Y
+    INC swr_count
+    JSR sel_w
+    LDA swr_values,X
+    STA SWR_TEST
+.tr_next
+    DEX
+    BPL tr
+    RTS
+
+.sel_w                              \ bank X for writing: the Solidisk latches on the second pass only
+    STX romsel
+    BIT swr_solid
+    BPL sel_x
+    STX swr_usr_orb
+    STX swr_ramsel
+.sel_x
+    RTS
+
+.list                               \ every RAM bank found
+    LDX #LO(msg_list)
+    LDY #HI(msg_list)
+    JSR print
+    LDA swr_count
+    BNE some
+    LDX #LO(msg_none)
+    LDY #HI(msg_none)
+    JSR print
+.some
+    LDY #0
+.bank
+    CPY swr_count
+    BEQ listed
+    LDA swr_banks,Y
+    JSR digit                       \ (osasci keeps Y)
+    LDA #' '
+    JSR osasci
+    INY
+    BNE bank
+.listed
+    LDA #13
+    JMP osasci
+
+.digit                              \ A's hex digit
+    CMP #10
+    BCC num
+    ADC #6                          \ C set: + 7 in all
+.num
+    ADC #'0'
+    JMP osasci
+
+.print                              \ the text at YX, to its 0
+    STX swr_str
+    STY swr_str + 1
+    LDY #0
+.char
+    LDA (swr_str),Y
+    BEQ printed
+    JSR osasci
+    INY
+    BNE char
+.printed
+    RTS
+
+.msg_list   EQUS "Sideways RAM found: ", 0
+.msg_none   EQUS "none", 0
+.msg_ok     EQUS "Using banks: ", 0
+.msg_short  EQUS 13, "Stryker's Run needs 4 x 16K sideways", 13, "RAM banks - found ", 0
+.msg_solid  EQUS 13, "Sideways RAM found, but on a board with", 13
+            EQUS "Solidisk-style write select, which this", 13
+            EQUS "game does not support.", 13, 0
+
+.swr_probe  EQUB 0
+.swr_solid  EQUB 0                  \ &FF on the Solidisk pass
+.swr_count  EQUB 0
+.swr_cand   SKIP 16                 \ each bank's ROM type: 0, probe it
+.swr_unique SKIP 16                 \ each bank's probe value
+.swr_values SKIP 16                 \ each bank's own byte
+.swr_banks  SKIP 16                 \ the RAM banks found, highest first
+}
+ENDSECTION

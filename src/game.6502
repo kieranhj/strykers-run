@@ -354,6 +354,7 @@
     EQUB &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06, &06    \ &20
     EQUB &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07, &07    \ &30
     EQUB &07, &07    \ &40
+.scenery_sprite_banks_end
 
 \ ;      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 .flipped_scenery_sprite_addresses_low_table
@@ -1060,7 +1061,7 @@
     DEC crtc_start_address_low
     LDA pre_use                     \ step 2 (layer 3, RAM for cycles 1): the walk, or the state
     BEQ layers_left_1cb4a_walk
-    LDA pre_bank                    \ grind: install_prebuilt in line (A, Y and C are dead here:
+    LDA install_prebuilt + 1        \ grind: install_prebuilt in line, its operand the walk's bank (BUGS #16) (A, Y and C are dead here:
     STA os_ram_copy_of_currently_selected_rom\ layers_left_done sets each before reading it)
     STA romsel                      \ Paged ROM latch
     BRA_JMP layers_left_done        \ the renderer's prebuilt walk left (65C02 opcode)
@@ -1361,7 +1362,7 @@ ENDIF
 .crtc_stepped_w2a
     LDA pre_use                     \ step 2 (layer 3, RAM for cycles 1): the walk, or the state
     BEQ walk_right_w2a
-    LDA pre_bank                    \ grind: install_prebuilt in line (the A, Y and C it sets are
+    LDA install_prebuilt + 1        \ grind: install_prebuilt in line, its operand the walk's bank (BUGS #16) (the A, Y and C it sets are
     STA os_ram_copy_of_currently_selected_rom\ dead at layers_right_done, which loads A and Y
     STA romsel                      \ Paged ROM latch (and change_pixel_tables' ASL sets C)
     BRA_JMP layers_right_done       \ the renderer's prebuilt walk left (65C02 opcode)
@@ -1438,6 +1439,7 @@ ENDIF
     \ Step 2 (layer 2): the new edge column is the renderer's, which writes it into each screen
     \ in turn (render.6502 history_push). The original waited for the beam to reach the ground,
     \ then wrote the CRTC start and the column into the screen being shown.
+.bks_game_1441                      \ decision 74: a bank select, patched at start-up (bank_patch)
     LDA #&04
     STA os_ram_copy_of_currently_selected_rom
     STA romsel                      \ Paged ROM latch
@@ -1931,10 +1933,14 @@ not_white = leave_1e3e - 4                \ plot_mover's BCS not_white + 4 lands
 .plot_player
     LDY #&00                        \ MOVER_PLAYER
 .plot_mover
+.bks_game_1934                      \ decision 74: a bank select, patched at start-up (bank_patch)
     LDA #&04                        \ ***
     STA os_ram_copy_of_currently_selected_rom\ ***
     STA romsel                      \ Paged ROM latch                      ***
     ASSERT HI(unflipped_green_pixel_table) = &04
+IF MODEL_B
+    LDA #HI(unflipped_green_pixel_table)    \ decision 74: the bank select above is patched; the table's page is not (BUGS #17)
+ENDIF
     STA pixel_table_address_high    \ &0440 = unflipped_green_pixel_table
     LDA viewport_left_low
     STA edge_x_low
@@ -2161,6 +2167,7 @@ walk_d = walk_ptr + 1
     \ overlap it. What the original's loop left behind is set as it left it (the bank, the
     \ column plotter's mask opcode, the unflipped pixel table, mover_to_update past the last).
     \ Layer 4 (decision 39): the column plotter is src/scroll_hazel.6502's, with no opcode to set.
+.bks_game_2164                      \ decision 74: a bank select, patched at start-up (bank_patch)
     LDA #&04
     STA os_ram_copy_of_currently_selected_rom
     STA romsel                      \ Paged ROM latch
@@ -2358,6 +2365,7 @@ ENDIF
     STA bottom_palette_value        \ ***
     STA top_palette_value           \ ***
     JSR convert_score_to_numbers    \ ***
+.bks_game_2361                      \ decision 74: a bank select, patched at start-up (bank_patch)
     LDA #&05                        \ ***
     STA os_ram_copy_of_currently_selected_rom\ ***
     STA romsel                      \ Paged ROM latch                      ***
@@ -2523,18 +2531,21 @@ IF GAMEPLAY_TIMER OR GAMEPLAY_RUN
 \ (src/timer.6502): each paged in for it, bank 4 back after
 .timer_tick_call
   IF GAMEPLAY_RUN
+.bks_game_2526                      \ decision 74: a bank select, patched at start-up (bank_patch)
     LDA #7
     STA os_ram_copy_of_currently_selected_rom
     STA romsel                      \ Paged ROM latch
     JSR run_tick
   ENDIF
   IF GAMEPLAY_TIMER
+.bks_game_2532                      \ decision 74: a bank select, patched at start-up (bank_patch)
     LDA #6
     STA os_ram_copy_of_currently_selected_rom
     STA romsel                      \ Paged ROM latch
     JSR timer_tick
   ENDIF
 .bank4_back
+.bks_game_2538                      \ decision 74: a bank select, patched at start-up (bank_patch)
     LDA #&04
     STA os_ram_copy_of_currently_selected_rom
     STA romsel
@@ -2542,6 +2553,7 @@ IF GAMEPLAY_TIMER OR GAMEPLAY_RUN
 ENDIF
 IF GAMEPLAY_TIMER
 .timer_bonus_call
+.bks_game_2545                      \ decision 74: a bank select, patched at start-up (bank_patch)
     LDA #7                          \ decision 59: the bonus in bank 7 (src/timer_bonus.6502)
     STA os_ram_copy_of_currently_selected_rom
     STA romsel
@@ -2554,6 +2566,7 @@ IF GAMEPLAY_LIVES
 .rewind_column
     JSR scroll_screen_left
     JSR update_screen_observer      \ the screen moved, drawn and shown, as observer mode does it
+.bks_game_2557                      \ decision 74: a bank select, patched at start-up (bank_patch)
     LDA #&04
     STA os_ram_copy_of_currently_selected_rom
     STA romsel                      \ Paged ROM latch
@@ -3433,6 +3446,7 @@ ENDIF
 .skip_killing_player
     JSR plot_player
 .skip_plotting_player
+.bks_game_3436                      \ decision 74: a bank select, patched at start-up (bank_patch)
     LDA #&04                        \ grind: update_player_buffer (an RTS in step 2) no longer called
     STA os_ram_copy_of_currently_selected_rom
     STA romsel                      \ Paged ROM latch
@@ -4586,6 +4600,7 @@ ENDIF
     \ switch in play writes &F4 before ROMSEL, so &F4 is right whenever this can come in.
     LDA os_ram_copy_of_currently_selected_rom
     PHA
+.bks_game_4589                      \ decision 74: a bank select, patched at start-up (bank_patch)
     LDA #&05
     STA romsel
     JSR sfx_tick
@@ -5456,11 +5471,13 @@ ENDIF
 
 \ Step 2 (layer 2): into the renderer, in bank 4 (src/render.6502)
 .render_pass                        \ the end of a pass: bring the hidden screen up to date
+.bks_game_5459                      \ decision 74: a bank select, patched at start-up (bank_patch)
     LDA #&04
     STA os_ram_copy_of_currently_selected_rom
     STA romsel                      \ Paged ROM latch
     JMP render
 .render_finish                      \ the game is over: the newest frame shown, on the main screen
+.bks_game_5464                      \ decision 74: a bank select, patched at start-up (bank_patch)
     LDA #&04
     STA os_ram_copy_of_currently_selected_rom
     STA romsel                      \ Paged ROM latch
@@ -5469,6 +5486,7 @@ ENDIF
     JSR update_screen
     JMP wait_for_timer_281a
 .render_start                       \ a game has started: nothing drawn but the scenery
+.bks_game_5472                      \ decision 74: a bank select, patched at start-up (bank_patch)
     LDA #&04
     STA os_ram_copy_of_currently_selected_rom
     STA romsel                      \ Paged ROM latch
@@ -5539,6 +5557,7 @@ ENDIF
     STA install_prebuilt + 1        \ grind: install_prebuilt's LDA # operand
     LDA #&14                        \ KC
     JSR change_pixel_tables
+.bks_game_5542                      \ decision 74: a bank select, patched at start-up (bank_patch)
     LDA #&04
     STA os_ram_copy_of_currently_selected_rom
     STA romsel                      \ Paged ROM latch
@@ -5576,11 +5595,13 @@ IF MODEL_B
 \ call_b5 (decision 75): the routine at b5_vec with bank 5 paged (ANDY's sprites' home), then bank 4 again.
 \ Keeps nothing (draw_column uses X, which compiled_call keeps for its way back).
 .call_b5
+.bks_game_5579                      \ decision 74: a bank select, patched at start-up (bank_patch)
     LDA #&05
     STA os_ram_copy_of_currently_selected_rom
     STA romsel
 b5_vec = * + 1
     JSR &0000
+.bks_game_5584                      \ decision 74: a bank select, patched at start-up (bank_patch)
     LDA #&04
     STA os_ram_copy_of_currently_selected_rom
     STA romsel
@@ -5895,6 +5916,7 @@ ENDIF
     STA ula_palette                 \ video ULA palette register
 IF MODEL_B = 0                      \ (decision 75: MODEL_B draws them where bank 5 carries them)
     \ Step 2 layer 3: ANDY's sprites, from bank 5 (ROMSEL &85: ANDY at &8000-&8FFF, bank 5 above)
+.bks_game_5898                      \ decision 74: a bank select, patched at start-up (bank_patch)
     LDA #&85
     STA romsel                      \ Paged ROM latch
     LDY #&00
@@ -5925,6 +5947,7 @@ IF DITHER_HILLS                     \ decisions 70, 71: the mountain sprites dit
     LDA #LO(hills_packed_bank7)
     JSR unpack_hills
 ENDIF
+.bks_game_5928                      \ decision 74: a bank select, patched at start-up (bank_patch)
     LDA #&04
     STA romsel                      \ Paged ROM latch
     STA os_ram_copy_of_currently_selected_rom
@@ -5978,6 +6001,9 @@ ENDIF
     STA &D00 - LO(&D00 - MOVED_ORG) - 1,X
     DEX
     BNE move_0a20_loop_2
+IF MODEL_B
+    JSR bank_patch                  \ decision 74: the bank selects patched to the banks SWR found
+ENDIF
     JSR unpack_for_play             \ step 2 layer 4: HAZEL's compiled kinds, the tunes
     JMP initialisation
 
@@ -6442,6 +6468,7 @@ IF MODEL_B = 0                      \ (MODEL_B, decision 75: no HAZEL; no ACCCON
     STA acccon
     CLI
 ENDIF
+.bks_game_6445                      \ decision 74: a bank select, patched at start-up (bank_patch)
     LDA #&05                        \ bank 5: part A's carrier, and the tunes' place
     STA os_ram_copy_of_currently_selected_rom
     STA romsel
@@ -6500,6 +6527,7 @@ ENDIF
     LDA #HI(title_screen_music_data)
     STA zxdst + 1
     JSR zx_unpack
+.bks_game_6503                      \ decision 74: a bank select, patched at start-up (bank_patch)
     LDA #&04
     STA os_ram_copy_of_currently_selected_rom
     STA romsel
@@ -6605,6 +6633,139 @@ ENDIF
 .mb_img_end
     ASSERT mb_img_end <= &4000, "mb_img overruns &3FFF by ", mb_img_end - &4000
 ENDSECTION
+\ bank_patch (decision 74): the bank selects patched to the banks SWR found (swr_hand, src/swr.6502): every
+\ immediate that pages one of the build's banks 4-7 (its labels .bks_*; the list made from the build's every
+\ store to ROMSEL, 2026-10-25), then the tables the others come from (scenery_sprite_banks: the scroll's
+\ sprite banks, and so pre_bank and install_prebuilt's operand; ck_bank: the compiled kinds', 0 = none, kept).
+\ So the selects cost what they did. Runs once, from entry_point, before unpack_for_play (whose selects are on
+\ the list); mb_low's site where mb_low is carried, as it is not yet in place. With bank 4 paged throughout
+\ (bank 4's sites, ck_bank) and left so. Logical bank n is swr_hand + (n AND 3).
+.bank_patch
+    LDA swr_hand                    \ bank 4's own, for its sites and ck_bank
+    STA os_ram_copy_of_currently_selected_rom
+    STA romsel
+    LDX #BANK_SITES - 1
+.bp_site
+    LDA bank_site_lo,X
+    STA zxsrc
+    LDA bank_site_hi,X
+    STA zxsrc + 1
+    LDY #0
+    LDA (zxsrc),Y
+    AND #3
+    TAY
+    LDA swr_hand,Y
+    LDY #0
+    STA (zxsrc),Y
+    DEX
+    BPL bp_site
+    LDX #scenery_sprite_banks_end - scenery_sprite_banks - 1
+.bp_scenery
+    LDA scenery_sprite_banks,X
+    AND #3
+    TAY
+    LDA swr_hand,Y
+    STA scenery_sprite_banks,X
+    DEX
+    BPL bp_scenery
+    LDX #CK_KINDS - 1
+.bp_kinds
+    LDA ck_bank,X
+    BEQ bp_kind_next
+    AND #3
+    TAY
+    LDA swr_hand,Y
+    STA ck_bank,X
+.bp_kind_next
+    DEX
+    BPL bp_kinds
+    LDX #15                         \ a layer whose bank was never set pages scenery_layer_sprite_banks' first
+.bp_empty                           \ value, the original's 0, and the scroll reads it (at the headquarters):
+    LDA os_rom_type_table,X         \ an empty socket on a Master, but one of the game's banks if SWR found it
+    BNE bp_empty_next               \ in 0. So the highest bank the MOS found no ROM in and the game does not
+    TXA                             \ use, or 0 if there is none (BUGS #17)
+    LDY #3
+.bp_empty_hand
+    CMP swr_hand,Y
+    BEQ bp_empty_next
+    DEY
+    BPL bp_empty_hand
+    BMI bp_empty_found              \ (always)
+.bp_empty_next
+    DEX
+    BPL bp_empty
+    LDA #0
+.bp_empty_found
+    LDX #7
+.bp_empty_set
+    STA scenery_layer_sprite_banks,X
+    DEX
+    BPL bp_empty_set
+    RTS
+BANK_SITES = 20
+CK_KINDS = 14
+    ASSERT ck_bank + CK_KINDS = ck_draw_lo, "ck_bank is not 14 long"
+.bank_site_lo
+    EQUB LO(bks_game_1441 + 1)
+    EQUB LO(bks_game_1934 + 1)
+    EQUB LO(bks_game_2164 + 1)
+    EQUB LO(bks_game_2361 + 1)
+    EQUB LO(bks_game_3436 + 1)
+    EQUB LO(bks_game_4589 + 1)
+    EQUB LO(bks_game_5459 + 1)
+    EQUB LO(bks_game_5464 + 1)
+    EQUB LO(bks_game_5472 + 1)
+    EQUB LO(bks_game_5542 + 1)
+    EQUB LO(bks_game_5579 + 1)
+    EQUB LO(bks_game_5584 + 1)
+    EQUB LO(bks_game_5928 + 1)
+    EQUB LO(unpack_for_play.bks_game_6445 + 1)
+    EQUB LO(unpack_for_play.bks_game_6503 + 1)
+    EQUB LO(compiled_part.bks_render_2109 + 1)
+    EQUB LO(group_on.bks_render_1458 + 1)
+    EQUB LO(group_on.bks_render_1490 + 1)
+    EQUB LO(restore_block.bks_render_2374 + 1)
+    EQUB LO(pre_cancel.bks_scroll_hazel_19 + 1 - mb_low_org + mb_low_load)
+.bank_site_hi
+    EQUB HI(bks_game_1441 + 1)
+    EQUB HI(bks_game_1934 + 1)
+    EQUB HI(bks_game_2164 + 1)
+    EQUB HI(bks_game_2361 + 1)
+    EQUB HI(bks_game_3436 + 1)
+    EQUB HI(bks_game_4589 + 1)
+    EQUB HI(bks_game_5459 + 1)
+    EQUB HI(bks_game_5464 + 1)
+    EQUB HI(bks_game_5472 + 1)
+    EQUB HI(bks_game_5542 + 1)
+    EQUB HI(bks_game_5579 + 1)
+    EQUB HI(bks_game_5584 + 1)
+    EQUB HI(bks_game_5928 + 1)
+    EQUB HI(unpack_for_play.bks_game_6445 + 1)
+    EQUB HI(unpack_for_play.bks_game_6503 + 1)
+    EQUB HI(compiled_part.bks_render_2109 + 1)
+    EQUB HI(group_on.bks_render_1458 + 1)
+    EQUB HI(group_on.bks_render_1490 + 1)
+    EQUB HI(restore_block.bks_render_2374 + 1)
+    EQUB HI(pre_cancel.bks_scroll_hazel_19 + 1 - mb_low_org + mb_low_load)
+    ASSERT compiled_part.bks_render_2109 >= &8000 AND compiled_part.bks_render_2109 < &C000
+    ASSERT group_on.bks_render_1458 >= &8000 AND group_on.bks_render_1458 < &C000
+    ASSERT group_on.bks_render_1490 >= &8000 AND group_on.bks_render_1490 < &C000
+    ASSERT restore_block.bks_render_2374 >= &8000 AND restore_block.bks_render_2374 < &C000
+    ASSERT bks_game_1441 < &8000
+    ASSERT bks_game_1934 < &8000
+    ASSERT bks_game_2164 < &8000
+    ASSERT bks_game_2361 < &8000
+    ASSERT bks_game_3436 < &8000
+    ASSERT bks_game_4589 < &8000
+    ASSERT bks_game_5459 < &8000
+    ASSERT bks_game_5464 < &8000
+    ASSERT bks_game_5472 < &8000
+    ASSERT bks_game_5542 < &8000
+    ASSERT bks_game_5579 < &8000
+    ASSERT bks_game_5584 < &8000
+    ASSERT bks_game_5928 < &8000
+    ASSERT unpack_for_play.bks_game_6445 < &8000
+    ASSERT unpack_for_play.bks_game_6503 < &8000
 hazel_b_load = mb_low_load
 hazel_b_end = hazel_a_end
 ELSE
@@ -6694,6 +6855,7 @@ unpack_hills_target = * + 1
     INC unpack_hills_target + 1
     DEX
     BNE unpack_hills_copy
+.bks_game_6697                      \ decision 74: a bank select, patched at start-up (bank_patch)
     LDA #&05
     STA os_ram_copy_of_currently_selected_rom
     STA romsel

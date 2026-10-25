@@ -27,7 +27,7 @@ import dfs  # noqa: E402
 
 HOST = 0x30000                      # bits 16-17 of a DFS address: the host's (&FFFFxxxx)
 GAME_LOAD, PICTURE = 0x1900, 0x5A80
-LAYOUT = ["!BOOT", "SRRUN", "SCREEN", "DATA1", "DATA2", "DATA3", "DATA4", "MGAME", "INFO"]
+LAYOUT = ["!BOOT", "SWR", "SRRUN", "SCREEN", "DATA1", "DATA2", "DATA3", "DATA4", "MGAME", "INFO"]
 
 
 def pack(path, exe):
@@ -53,7 +53,7 @@ def pack(path, exe):
         f.replace(packed, load=HOST | at)
         report.append(f"{name} {len(raw)} -> {len(packed)}")
     for name in LAYOUT:
-        if name not in img.files:
+        if name not in img.files and name != "SWR":     # SWR: MODEL_B's only (src/swr.6502)
             sys.exit(f"{path}: no {name}")
     Path(path).write_bytes(dfs.build_image(img.files, LAYOUT, img.title, img.cycle, img.opt))
     print("  packed: " + ", ".join(report) if packing else "  not packed (SRRUN loads the files as they are): laid out only")

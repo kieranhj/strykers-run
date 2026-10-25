@@ -275,12 +275,14 @@ ENDIF
     STZ_A shown_screen
     \ the shadow screen starts as a copy of main, and shadow &3000-&3FFF as a copy of the code
     \ and data there: the renderer runs the plotters with the CPU seeing shadow RAM
+IF MODEL_B = 0                      \ (MODEL_B, decision 73: one screen, and no ACCCON on a Model B: &FE34 is ROMSEL there)
     LDA acccon
     AND #&FA                        \ X = 0, D = 0: main, for the CPU and the video
     STA acccon
     STA acc_main
     ORA #&04
     STA acc_shadow
+ENDIF
 IF MODEL_B
     LDA field_count                 \ decision 73: one screen, nothing to copy; the first frame's
     STA flip_target                 \ field 2 on (wait_for_window)
@@ -607,6 +609,7 @@ IF MODEL_B
     JMP each_cluster
 ELSE
     \ ---- 6. put on: slot order, the player last; ANDY paged over bank 4's first 4K ----
+.bks_render_612                     \ decision 74: a bank select, patched at start-up (bank_patch)
     LDA #&84
     STA os_ram_copy_of_currently_selected_rom
     STA romsel
@@ -633,6 +636,7 @@ ELSE
     LDX #0
     JSR put_on.going_on
 .pon_player_off
+.bks_render_638                     \ decision 74: a bank select, patched at start-up (bank_patch)
     LDA #&04
     STA os_ram_copy_of_currently_selected_rom
     STA romsel
@@ -1453,6 +1457,7 @@ IF MODEL_B
     STA cl_cur
     CMP #&FF
     BEQ out
+.bks_render_1458                    \ decision 74: a bank select, patched at start-up (bank_patch)
     LDA #REN_ROMSEL
     STA os_ram_copy_of_currently_selected_rom
     STA romsel
@@ -1485,6 +1490,7 @@ IF MODEL_B
     LDX #0
     JSR put_on
 .rom
+.bks_render_1490                    \ decision 74: a bank select, patched at start-up (bank_patch)
     LDA #&04
     STA os_ram_copy_of_currently_selected_rom
     STA romsel
@@ -2104,6 +2110,7 @@ ENDIF
     STA compiled_vec + 1
     LDA ck_bank,X
     BEQ in_hazel                    \ bank 0: HAZEL, paged in through play (MODEL_B: never, refused above)
+.bks_render_2109                    \ decision 74: a bank select, patched at start-up (bank_patch)
     LDX #REN_ROMSEL                 \ ANDY and bank 4 again after (MODEL_B: bank 4)
     JSR compiled_call
     BCS unsafe                      \ the banked kinds (the commoner) fall through
@@ -2369,6 +2376,7 @@ ENDIF
     STY compiled_vec
     LDY ck_restore_hi,X
     STY compiled_vec + 1
+.bks_render_2374                    \ decision 74: a bank select, patched at start-up (bank_patch)
     LDX #&04                        \ bank 4 again after
     JSR compiled_call
     JMP columns
